@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GitHub Autofiller</title>
     <link rel="stylesheet" href="style.css">
-    <script src="main.js" defer></script>
+    <script src="popup.js" defer></script>
 </head>
 <body>
     <h1>GitHub Autofiller</h1>
     <div class="inputContainer">
-        <input type="text">
+        <textarea id="copilot-chat-textarea-preview" rows="4" cols="50" placeholder="Enter your message here..."></textarea>
         <div class="flexInbox">
-            <li>Hello World</li>
-            <button>Löschen</button>
-            <button>Bearbieten</button>
+            <ul id="stored-messages">
+                <!-- Stored messages will be displayed here -->
+            </ul>
+            <button id="clear-storage">Clear Storage</button>
         </div>
     </div>
-    
 </body>
 </html>
