@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "GitHub Autofiller",
+    "version": "1.0.0",
+    "description": "A powerful Chrome extension designed to eliminate distractions on LinkedIn, delivering a seamless and focused browsing experience.",
+    "action": {
+      "default_popup": "popup.html"
+    },
+    "icons": {
+      
+    },
+    "background": {
+      "service_worker": "background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": ["https://www.github.com/*"],
+        "js": [
+          "main.js"
+        ]
+      }
+    ],
+    "permissions": ["storage"]
+  }
