@@ -1,0 +1,25 @@
+body {
+    background-color: black;
+    color: white;
+    width: 500px;
+    height: 100vh;
+}
+h1 {
+    text-align: center;
+}
+.inputContainer{
+    text-align: center;
+}
+.flexInbox{
+    display: flex;
+    margin-top: 1rem;
+}
+
+.flexInbox li {
+    margin-left: auto;
+    margin-right: 1rem;
+}
+
+.flexInbox button{
+    margin-right: 1rem;
+}
