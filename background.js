@@ -1,4 +1,4 @@
-// Store the message in Chrome storage
-chrome.storage.sync.set({ message: "Hello, World!" }, function() {
-    console.log(message);
+// Background script for the Chrome extension
+chrome.runtime.onInstalled.addListener(() => {
+    console.log('Extension Installed');
 });
