@@ -124,11 +124,16 @@ document.addEventListener("DOMContentLoaded", function () {
   // Initial display of stored messages
   displayStoredMessages();
 });
-function myFunction(id) {
-    var x = document.getElementById(id);
-    if (x.className.indexOf("w3-show") == -1) {
-      x.className += " w3-show";
-    } else { 
-      x.className = x.className.replace(" w3-show", "");
-    }
-  }
+const accordions = document.querySelectorAll('.accordion');
+
+    accordions.forEach(accordion => {
+        accordion.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const panel = document.getElementById(targetId);
+            if (panel.classList.contains('show')) {
+                panel.classList.remove('show');
+            } else {
+                panel.classList.add('show');
+            }
+        });
+    });

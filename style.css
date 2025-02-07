@@ -23,16 +23,6 @@ body {
   z-index: -1; /* Hinter den anderen Inhalten */
 }
 
-p {
-    background-color: transparent;
-    color: white;
-    border: none;
-    padding: 12px 10px;
-    font-size: 1.5rem;
-    cursor: pointer;
-    border-radius: 5px;
-  }
-
 h1 {
   text-align: center;
 }
@@ -67,4 +57,38 @@ input[type="text"] {
   justify-content: space-between;
   align-items: center;
   margin: 5px 0;
+}
+
+.accordion {
+    background-color: #007bff; /* Primary color for the button */
+    color: white; /* White text */
+    cursor: pointer; /* Pointer cursor on hover */
+    padding: 15px; /* Padding for the button */
+    width: 100%; /* Full width */
+    border: none; /* No border */
+    text-align: left; /* Align text to the left */
+    outline: none; /* Remove outline */
+    font-size: 16px; /* Font size */
+    transition: background-color 0.3s; /* Smooth transition */
+    border-radius: 5px; /* Rounded corners */
+    margin-bottom: 5px; /* Space between buttons */
+}
+
+.accordion:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+.panel {
+    padding: 15px; /* Padding for the panel */
+    color: black;
+    background-color: white; /* White background for the panel */
+    border: 1px solid #ddd; /* Light border */
+    border-radius: 5px; /* Rounded corners */
+    margin-bottom: 10px; /* Space below the panel */
+    display: none; /* Initially hidden */
+}
+
+
+.panel.show {
+    display: block; /* Show the panel when active */
 }

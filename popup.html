@@ -3,29 +3,126 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GitHub Autofiller</title>
+    <title>PromptIn</title>
     <link rel="stylesheet" href="style.css" />
     <script src="popup.js" defer></script>
   </head>
   <body>
-    <h1>GitHub Autofiller</h1>
+    <h1>PromptIn</h1>
     <div id="backgroundImage"></div>
     <div class="inputContainer">
       <div class="enterage">
         <input type="text" id="inputField" placeholder="Add a new prompt" />
-        <p title="Select folder">📁 Select Folder</p>
+        <p title="Select folder">📁</p>
       </div>
 
       <div class="flexInbox">
-        <button
-          onclick="myFunction('Demo1')"
-          class="w3-btn w3-block w3-black w3-left-align"
-        >
-          Open Section 1
+        <button class="accordion" data-target="Demo1">
+          {Topic Name} Rename Delete
         </button>
-        <div id="Demo1" class="w3-container w3-hide">
-          <h4>Section 1</h4>
-          <p>Some text..</p>
+        <div id="Demo1" class="panel">
+          <table>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+          </table>
+        </div>
+
+        <button class="accordion" data-target="Demo1">
+          {Topic Name} Rename Delete
+        </button>
+        <div id="Demo2" class="panel">
+          <table>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+          </table>
+        </div>
+
+        <button class="accordion" data-target="Demo1">
+          {Topic Name} Rename Delete
+        </button>
+        <div id="Demo3" class="panel">
+          <table>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+            <tr>
+              <td>{Prompt}</td>
+              <td><button>Edit</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Delete</button></td>
+              <td><button>Use</button></td>
+            </tr>
+          </table>
         </div>
         <ul id="stored-messages">
           <!-- Stored messages will be displayed here -->
