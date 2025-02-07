@@ -1,5 +1,8 @@
 // Get the textarea element
-const input = document.querySelector("textarea.ChatInputV2-module__input--B2oNx");
+// selector for entrypoint on github.com/copilot
+const input = document.querySelector("textarea.ChatInputV2-module__input--B2oNx")
+// selector for entrypoint on github.com
+//const input = document.getElementById("copilot-dashboard-entrypoint-textarea");
 
 // Ensure the input element exists
 if (input) {
