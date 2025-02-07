@@ -1,25 +1,70 @@
 body {
-    background-color: black;
+  background-color: black;
+  color: white;
+  width: 500px;
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative; /* Position relative für das Body-Element */
+  overflow: hidden; /* Verhindert Überlauf */
+}
+
+#backgroundImage {
+  position: absolute; /* Position absolute für das Hintergrundbild */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0; /* Deckt den gesamten Body ab */
+  background-image: url(github-copilot-icon.jpg);
+  background-size: cover; /* Bild soll den gesamten Bereich abdecken */
+  background-position: center; /* Bild zentrieren */
+  filter: invert(20%); /* Keine Farbänderung */
+  z-index: -1; /* Hinter den anderen Inhalten */
+}
+
+p {
+    background-color: transparent;
     color: white;
-    width: 500px;
-    height: 100vh;
-}
+    border: none;
+    padding: 12px 10px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+
 h1 {
-    text-align: center;
+  text-align: center;
 }
-.inputContainer{
-    text-align: center;
+
+input[type="text"] {
+  padding: 12px 20px;
+  box-sizing: border-box;
 }
-.flexInbox{
+
+.enterage{
     display: flex;
-    margin-top: 1rem;
 }
 
-.flexInbox li {
-    margin-left: auto;
-    margin-right: 1rem;
+.inputContainer {
+  text-align: center;
 }
 
-.flexInbox button{
-    margin-right: 1rem;
+.flexInbox {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+#stored-messages {
+  list-style-type: none;
+  padding: 0;
+}
+
+#stored-messages li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 5px 0;
 }

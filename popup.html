@@ -1,22 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GitHub Autofiller</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
     <script src="popup.js" defer></script>
-</head>
-<body>
+  </head>
+  <body>
     <h1>GitHub Autofiller</h1>
+    <div id="backgroundImage"></div>
     <div class="inputContainer">
-        <input type="text" id="inputField">
-        <div class="flexInbox">
-            <ul id="stored-messages">
-                <!-- Stored messages will be displayed here -->
-            </ul>
-            <button id="clear-storage">Clear Storage</button>
+      <div class="enterage">
+        <input type="text" id="inputField" placeholder="Add a new prompt" />
+        <p title="Select folder">📁 Select Folder</p>
+      </div>
+
+      <div class="flexInbox">
+        <button
+          onclick="myFunction('Demo1')"
+          class="w3-btn w3-block w3-black w3-left-align"
+        >
+          Open Section 1
+        </button>
+        <div id="Demo1" class="w3-container w3-hide">
+          <h4>Section 1</h4>
+          <p>Some text..</p>
         </div>
+        <ul id="stored-messages">
+          <!-- Stored messages will be displayed here -->
+        </ul>
+        <button id="clear-storage">Clear Storage</button>
+      </div>
     </div>
-</body>
+  </body>
 </html>
