@@ -8,126 +8,280 @@
     <script src="popup.js" defer></script>
   </head>
   <body>
-    <h1>PromptIn</h1>
-    <div id="backgroundImage"></div>
-    <div class="inputContainer">
+    <div class="container">
+      <h1>PromptIn</h1>
       <div class="enterage">
         <input type="text" id="inputField" placeholder="Add a new prompt" />
-        <p title="Select folder">📁</p>
+        <div class="dropdown">
+          <button title="Select folder" class="folder-icon">📁</button>
+          <div class="dropdown-content">
+            <div class="search">
+              <p>Search through folders</p>
+              <input type="text" />
+            </div>
+
+            <a href="#">{Topic name}</a>
+            <a href="#">{Topic name}</a>
+            <a href="#">{Topic name}</a>
+          </div>
+        </div>
       </div>
 
       <div class="flexInbox">
-        <button class="accordion" data-target="Demo1">
-          {Topic Name} Rename Delete
-        </button>
-        <div id="Demo1" class="panel">
-          <table>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-          </table>
-        </div>
+        <div class="accordion-container">
+          <div class="accordion" data-target="1">
+            <button class="topic-name">{Topic Name}</button>
+            <span class="action-links">
+              <button class="rename-button" title="Rename folder">
+                Rename
+              </button>
+              <button class="delete-button" title="Delete folder">
+                Delete
+              </button>
+            </span>
+          </div>
+          <div id="1" class="panel">
+            <table>
+              <tbody>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-        <button class="accordion" data-target="Demo1">
-          {Topic Name} Rename Delete
-        </button>
-        <div id="Demo2" class="panel">
-          <table>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-          </table>
-        </div>
+          <div class="accordion" data-target="2">
+            <button class="topic-name">{Topic Name}</button>
+            <span class="action-links">
+              <button class="rename-button" title="Rename folder">
+                Rename
+              </button>
+              <button class="delete-button" title="Delete folder">
+                Delete
+              </button>
+            </span>
+          </div>
+          <div id="2" class="panel">
+            <table>
+              <tbody>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-        <button class="accordion" data-target="Demo1">
-          {Topic Name} Rename Delete
-        </button>
-        <div id="Demo3" class="panel">
-          <table>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-            <tr>
-              <td>{Prompt}</td>
-              <td><button>Edit</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Delete</button></td>
-              <td><button>Use</button></td>
-            </tr>
-          </table>
+          <div class="accordion" data-target="3">
+            <button class="topic-name">{Topic Name}</button>
+            <span class="action-links">
+              <button class="rename-button" title="Rename folder">
+                Rename
+              </button>
+              <button class="delete-button" title="Delete folder">
+                Delete
+              </button>
+            </span>
+          </div>
+          <div id="3" class="panel">
+            <table>
+              <tbody>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><p>{Prompt}</p></td>
+                  <td>
+                    <button class="action-button" title="Edit prompt">
+                      Edit
+                    </button>
+                  </td>
+                  <td>
+                    <button class="action-button" title="Delete prompt">
+                      Delete
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      class="action-button"
+                      title="Use prompt for Copilot Input Field"
+                    >
+                      Use
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <ul id="stored-messages">
           <!-- Stored messages will be displayed here -->
         </ul>
-        <button id="clear-storage">Clear Storage</button>
+        <button
+          id="clear-storage"
+          class="action-button"
+          title="Remove all the prompts from storage"
+        >
+          Clear Everything
+        </button>
       </div>
     </div>
   </body>

@@ -119,21 +119,36 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  
-
   // Initial display of stored messages
   displayStoredMessages();
 });
-const accordions = document.querySelectorAll('.accordion');
+const accordions = document.querySelectorAll(".accordion");
 
-    accordions.forEach(accordion => {
-        accordion.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
-            const panel = document.getElementById(targetId);
-            if (panel.classList.contains('show')) {
-                panel.classList.remove('show');
-            } else {
-                panel.classList.add('show');
-            }
-        });
+accordions.forEach((accordion) => {
+  accordion.addEventListener("click", function () {
+    const targetId = this.getAttribute("data-target");
+    const panel = document.getElementById(targetId);
+    panel.classList.toggle("show");
+  });
+
+  // Add event listeners for rename and delete buttons
+  const renameButton = accordion.querySelector(".rename-button");
+  const deleteButton = accordion.querySelector(".delete-button");
+
+  if (renameButton) {
+    renameButton.addEventListener("click", function (event) {
+      event.stopPropagation(); // Prevent the accordion from toggling
+      // Handle rename action here
+      console.log("Rename action for:", accordion.textContent.trim());
     });
+  }
+
+  if (deleteButton) {
+    deleteButton.addEventListener("click", function (event) {
+      // Corrected this line
+      event.stopPropagation(); // Prevent the accordion from toggling
+      // Handle delete action here
+      console.log("Delete action for:", accordion.textContent.trim());
+    });
+  }
+});

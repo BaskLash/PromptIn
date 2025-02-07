@@ -1,50 +1,193 @@
 body {
-  background-color: black;
-  color: white;
-  width: 500px;
-  height: 500px;
+  background-color: #121212; /* Dark background for better contrast */
+  color: #ffffff; /* White text for readability */
+  font-family: "Arial", sans-serif; /* Modern font */
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative; /* Position relative für das Body-Element */
-  overflow: hidden; /* Verhindert Überlauf */
+  justify-content: center;
+  height: 100vh; /* Full viewport height */
+  margin: 0; /* Remove default margin */
+  width: 500px; /* Full viewport width */
+  overflow: hidden; /* Prevent overflow */
 }
 
-#backgroundImage {
-  position: absolute; /* Position absolute für das Hintergrundbild */
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0; /* Deckt den gesamten Body ab */
-  background-image: url(github-copilot-icon.jpg);
-  background-size: cover; /* Bild soll den gesamten Bereich abdecken */
-  background-position: center; /* Bild zentrieren */
-  filter: invert(20%); /* Keine Farbänderung */
-  z-index: -1; /* Hinter den anderen Inhalten */
+.dropdown {
+  margin-left: auto; /* Pushes the dropdown to the right */
+  position: relative; /* Keep this for dropdown positioning */
+}
+
+.dropdown-content {
+  display: none;
+  font-size: 1rem;
+  color: black;
+  position: absolute;
+  right: 0; /* Align dropdown content to the right */
+  background-color: #f9f9f9;
+  min-width: 400px; /* Adjust as needed */
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+.search {
+  margin-left: 1rem;
+  display: flex;
+}
+
+.search input[type="text"] {
+  margin-left: 2rem;
+  margin-top: auto;
+  margin-bottom: auto;
+  height: 20px;
+}
+
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+.container {
+  position: relative; /* Position relative for child elements */
+  z-index: 1; /* Bring container above background */
+  width: 90%; /* Responsive width */
+  max-width: 600px; /* Max width for larger screens */
+  padding-top: 10px;
+  padding-bottom: 20px; /* Padding for inner spacing */
 }
 
 h1 {
   text-align: center;
 }
 
-input[type="text"] {
+.enterage {
+  display: flex;
+  justify-content: space-between; /* Space between input and icon */
+  align-items: center; /* Center vertically */
+}
+
+#inputField[type="text"] {
   padding: 12px 20px;
-  box-sizing: border-box;
+  border: none; /* No border */
+  border-radius: 5px; /* Rounded corners */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  width: 100%; /* Full width */
 }
 
-.enterage{
-    display: flex;
-}
-
-.inputContainer {
-  text-align: center;
+.folder-icon {
+  cursor: pointer; /* Pointer cursor for icon */
+  font-size: 2.2rem;
+  margin-left: 10px; /* Space between input and icon */
+  background-color: #121212;
+  border: none;
 }
 
 .flexInbox {
   display: flex;
   flex-direction: column;
-  margin-top: 1rem;
-  width: 100%;
+  width: 100%; /* Full width */
+}
+
+.accordion {
+  display: flex; /* Use flexbox for alignment */
+  justify-content: space-between; /* Space between topic name and action links */
+  align-items: center; /* Center vertically */
+  color: white; /* White text */
+  cursor: pointer; /* Pointer cursor on hover */
+  outline: none; /* Remove outline */
+  transition: background-color 0.3s; /* Smooth transition */
+  margin-bottom: 5px; /* Space between buttons */
+}
+
+.topic-name {
+  flex-grow: 1; /* Allow the topic name to take up available space */
+  color: white;
+  font-weight: bold;
+  border: none;
+  font-size: 2rem;
+  background-color: #007bff; /* Primary color for the button */
+  cursor: pointer;
+  margin-right: 1rem;
+}
+
+.action-links {
+  display: flex; /* Use flexbox for action links */
+  gap: 10px; /* Space between action buttons */
+}
+
+.rename-button {
+  background-color: #04aa6d; /* Green */
+  cursor: pointer;
+}
+
+.rename-button:hover {
+  color: #04aa6d;
+  background-color: white;
+}
+
+.delete-button {
+  background-color: red;
+  cursor: pointer;
+  padding: 11.5px;
+}
+
+.delete-button:hover {
+  background-color: white;
+  color: red;
+}
+
+.rename-button,
+.delete-button {
+  color: white; /* White text */
+  border: none; /* No border */
+  cursor: pointer; /* Pointer cursor on hover */
+  font-size: 14px; /* Smaller font size */
+  transition: color 0.3s; /* Smooth transition */
+}
+
+.topic-name:hover.accordion:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
+.panel {
+  color: black;
+  background-color: white; /* White background for the panel */
+  border: 1px solid #ddd; /* Light border */
+  border-radius: 5px; /* Rounded corners */
+  margin-bottom: 10px; /* Space below the panel */
+  display: none; /* Initially hidden */
+}
+
+.panel table {
+  width: 100%; /* Full width for table */
+}
+
+.panel table tr td {
+  padding: 10px; /* Padding for table cells */
+}
+
+.panel.show {
+  display: block; /* Show the panel when active */
+}
+
+.action-button {
+  background-color: #28a745; /* Green background for action buttons */
+  color: white; /* White text */
+  border: none; /* No border */
+  border-radius: 5px; /* Rounded corners */
+  padding: 10px 15px; /* Padding for buttons */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.3s; /* Smooth transition */
+}
+
+.action-button:hover {
+  background-color: #218838; /* Darker green on hover */
 }
 
 #stored-messages {
@@ -52,43 +195,17 @@ input[type="text"] {
   padding: 0;
 }
 
-#stored-messages li {
+#stored -messages li {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin: 5px 0;
-}
-
-.accordion {
-    background-color: #007bff; /* Primary color for the button */
-    color: white; /* White text */
-    cursor: pointer; /* Pointer cursor on hover */
-    padding: 15px; /* Padding for the button */
-    width: 100%; /* Full width */
-    border: none; /* No border */
-    text-align: left; /* Align text to the left */
-    outline: none; /* Remove outline */
-    font-size: 16px; /* Font size */
-    transition: background-color 0.3s; /* Smooth transition */
-    border-radius: 5px; /* Rounded corners */
-    margin-bottom: 5px; /* Space between buttons */
-}
-
-.accordion:hover {
-    background-color: #0056b3; /* Darker blue on hover */
-}
-
-.panel {
-    padding: 15px; /* Padding for the panel */
-    color: black;
-    background-color: white; /* White background for the panel */
-    border: 1px solid #ddd; /* Light border */
-    border-radius: 5px; /* Rounded corners */
-    margin-bottom: 10px; /* Space below the panel */
-    display: none; /* Initially hidden */
-}
-
-
-.panel.show {
-    display: block; /* Show the panel when active */
+  padding: 10px; /* Padding for list items */
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.1
+  ); /* Slightly transparent background */
+  border-radius: 5px; /* Rounded corners */
 }
