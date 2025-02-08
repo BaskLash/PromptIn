@@ -225,6 +225,24 @@ function createAccordion(id, topicName, prompts) {
       actionButton.title = `${action} prompt`;
       actionCell.appendChild(actionButton);
       row.appendChild(actionCell);
+
+      // Add event listeners for each button
+      actionButton.addEventListener("click", function () {
+        switch (action) {
+          case "Edit":
+            editPrompt(promptText);
+            break;
+          case "Delete":
+            deletePrompt(promptText, id, row);
+            break;
+          case "Use":
+            usePrompt(promptText);
+            break;
+          case "Relocate":
+            relocatePrompt(promptText, id);
+            break;
+        }
+      });
     });
 
     tbody.appendChild(row);
@@ -240,6 +258,73 @@ function createAccordion(id, topicName, prompts) {
   // ✅ Attach event listener for opening and closing
   button.addEventListener("click", function () {
     panel.classList.toggle("show");
+  });
+}
+
+function editPrompt(promptElement) {
+  const currentText = promptElement.textContent;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = currentText;
+  input.classList.add("prompt-edit-input");
+
+  promptElement.replaceWith(input);
+  input.focus();
+
+  input.addEventListener("blur", function () {
+    if (input.value.trim()) {
+      promptElement.textContent = input.value.trim();
+      input.replaceWith(promptElement);
+      console.log("Prompt updated:", input.value);
+    } else {
+      input.replaceWith(promptElement); // Restore if empty
+    }
+  });
+}
+
+function deletePrompt(promptElement, folderId, rowElement) {
+  if (confirm("Are you sure you want to delete this prompt?")) {
+    chrome.storage.sync.get(folderId, function (data) {
+      if (data[folderId]) {
+        data[folderId].prompts = data[folderId].prompts.filter(
+          (p) => p !== promptElement.textContent
+        );
+
+        chrome.storage.sync.set(data, function () {
+          console.log("Prompt deleted:", promptElement.textContent);
+          rowElement.remove();
+        });
+      }
+    });
+  }
+}
+
+function usePrompt(promptElement) {
+  const promptText = promptElement.textContent;
+
+  // Send the prompt to the content script
+  chrome.runtime.sendMessage({ action: "use_prompt", prompt: promptText });
+
+  console.log("Prompt sent to content script:", promptText);
+}
+
+function relocatePrompt(promptElement, currentFolderId) {
+  const newFolderId = prompt("Enter the new folder ID:");
+  if (!newFolderId) return;
+
+  chrome.storage.sync.get([currentFolderId, newFolderId], function (data) {
+    if (data[currentFolderId] && data[newFolderId]) {
+      const promptText = promptElement.textContent;
+      data[newFolderId].prompts.push(promptText);
+      data[currentFolderId].prompts = data[currentFolderId].prompts.filter(
+        (p) => p !== promptText
+      );
+
+      chrome.storage.sync.set(data, function () {
+        console.log(`Prompt moved from ${currentFolderId} to ${newFolderId}`);
+        promptElement.closest("tr").remove();
+      });
+    }
   });
 }
 

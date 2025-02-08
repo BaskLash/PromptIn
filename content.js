@@ -1,85 +1,74 @@
-// Remove News Elements
-// Hide the right sidebar
-const sidebar = document.querySelector(".feed-right-sidebar");
-if (sidebar) {
-  sidebar.style.display = "none";
-}
+// Function to handle input event and save data
+async function handleInputEvent(event, inputElement) {
+  if (event.key !== "Enter") return;
 
-// Hide the feed container for 'for-you' topic
-const feedContainer = document.querySelector(
-  "feed-container[data-active-topic='for-you']"
-);
-if (feedContainer) {
-  feedContainer.style.display = "none";
-}
+  const inputValue = inputElement.value.trim();
+  if (!inputValue) return;
 
-// Hide Footer container
-const footer = document.querySelector("footer");
-if (footer) {
-  footer.style.display = "none";
-}
+  let baseTopicName = "Default";
+  let topicName = baseTopicName;
 
-// Funktion zum Hinzufügen des Event-Listeners
-function addInputListener(input) {
-  input.addEventListener("keydown", function (event) {
-    // Überprüfen, ob die Enter-Taste gedrückt wurde
-    if (event.key === "Enter") {
-      const promptedValue = input.value.trim(); // Trim, um Leerzeichen zu entfernen
-      if (promptedValue) {
-        // Nur speichern, wenn der Wert nicht leer ist
-        console.log(promptedValue);
+  // Retrieve existing topics from Chrome storage
+  chrome.storage.sync.get(null, async function (data) {
+    let topics = data || {};
+    const uniqueID = await generateUniqueID(topicName);
 
-        // Bestehendes Array aus dem Chrome Storage abrufen
-        chrome.storage.sync.get("enteredValues", function (data) {
-          let enteredValues = data.enteredValues || [];
-          // Neuen Wert zum Array hinzufügen
-          enteredValues.push(promptedValue);
-
-          // Aktualisiertes Array zurück im Chrome Storage speichern
-          chrome.storage.sync.set(
-            { enteredValues: enteredValues },
-            function () {
-              console.log("Value stored:", promptedValue);
-            }
-          );
-        });
-      }
+    // Ensure unique topic name
+    while (topics.hasOwnProperty(topicName)) {
+      topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
     }
+
+    // Create new topic object
+    topics[uniqueID] = {
+      name: topicName,
+      prompts: [inputValue],
+    };
+
+    // Save and update UI
+    chrome.storage.sync.set(topics, function () {
+      console.log(`Gespeichert in ${topicName} (ID: ${uniqueID}):`, inputValue);
+      inputElement.value = ""; // Clear input field
+      addDropdownItem(uniqueID, topicName);
+    });
   });
 }
 
-// Funktion zum Überprüfen und Hinzufügen des Input-Listeners
-function checkAndAddInputListener() {
-  const inputStartPage = document.querySelector(
-    "textarea#copilot-dashboard-entrypoint-textarea"
-  );
-  const inputOnCopilot = document.querySelector(
+// Function to attach event listeners to input elements
+function attachListeners() {
+  const copilotInput = document.querySelector(
     "textarea.ChatInputV2-module__input--B2oNx"
   );
+  const gitHubInput = document.querySelector(
+    "textarea#copilot-dashboard-entrypoint-textarea"
+  );
 
-  let input; // Variable für das aktive Input-Element
-
-  // Überprüfen, welches Input-Element existiert und es zuweisen
-  if (inputStartPage) {
-    input = inputStartPage;
-  } else if (inputOnCopilot) {
-    input = inputOnCopilot;
+  if (copilotInput && !copilotInput.dataset.listenerAttached) {
+    copilotInput.addEventListener("keydown", (event) =>
+      handleInputEvent(event, copilotInput)
+    );
+    copilotInput.dataset.listenerAttached = "true";
   }
 
-  // Sicherstellen, dass das Input-Element existiert
-  if (input) {
-    addInputListener(input);
+  if (gitHubInput && !gitHubInput.dataset.listenerAttached) {
+    gitHubInput.addEventListener("keydown", (event) =>
+      handleInputEvent(event, gitHubInput)
+    );
+    gitHubInput.dataset.listenerAttached = "true";
   }
 }
 
-// MutationObserver einrichten, um DOM-Änderungen zu überwachen
-const observer = new MutationObserver(checkAndAddInputListener);
+// Run the function initially
+attachListeners();
 
-// Observer auf den gesamten Body anwenden
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
+// MutationObserver to detect DOM changes and reattach event listeners
+const observer = new MutationObserver(() => {
+  attachListeners();
 });
 
-// Initiale Überprüfung
-checkAndAddInputListener();
+// Observe changes in the entire body
+observer.observe(document.body, { childList: true, subtree: true });
+
+// Hilfsfunktion zur Generierung einer eindeutigen ID
+async function generateUniqueID(baseName) {
+  return `${baseName}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+}
