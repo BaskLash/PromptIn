@@ -99,7 +99,6 @@ h1 {
   justify-content: space-between; /* Space between topic name and action links */
   align-items: center; /* Center vertically */
   color: white; /* White text */
-  cursor: pointer; /* Pointer cursor on hover */
   outline: none; /* Remove outline */
   transition: background-color 0.3s; /* Smooth transition */
   margin-bottom: 5px; /* Space between buttons */
@@ -188,11 +187,6 @@ h1 {
 
 .action-button:hover {
   background-color: #218838; /* Darker green on hover */
-}
-
-#stored-messages {
-  list-style-type: none;
-  padding: 0;
 }
 
 #stored -messages li {
