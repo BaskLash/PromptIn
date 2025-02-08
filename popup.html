@@ -3,34 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GitHub Autofiller</title>
+    <title>PromptIn</title>
     <link rel="stylesheet" href="style.css" />
     <script src="popup.js" defer></script>
   </head>
   <body>
-    <h1>GitHub Autofiller</h1>
-    <div id="backgroundImage"></div>
-    <div class="inputContainer">
+    <div class="container">
+      <h1>PromptIn</h1>
       <div class="enterage">
         <input type="text" id="inputField" placeholder="Add a new prompt" />
-        <p title="Select folder">📁 Select Folder</p>
+        <div class="dropdown">
+          <button title="Select folder" class="folder-icon">📁</button>
+          <div class="dropdown-content">
+            <div class="search">
+              <p>Search through folders</p>
+              <input type="text" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="flexInbox">
+        <div class="accordion-container"></div>
         <button
-          onclick="myFunction('Demo1')"
-          class="w3-btn w3-block w3-black w3-left-align"
+          id="clear-storage"
+          class="action-button"
+          title="Remove all the prompts from storage"
         >
-          Open Section 1
+          Clear Everything
         </button>
-        <div id="Demo1" class="w3-container w3-hide">
-          <h4>Section 1</h4>
-          <p>Some text..</p>
-        </div>
-        <ul id="stored-messages">
-          <!-- Stored messages will be displayed here -->
-        </ul>
-        <button id="clear-storage">Clear Storage</button>
       </div>
     </div>
   </body>
