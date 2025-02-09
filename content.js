@@ -75,7 +75,8 @@ async function generateUniqueID(baseName) {
 
 let buttonCounter = 1; // Startwert für auto_increment
 
-setInterval(() => {
+// Funktion zum Hinzufügen des Buttons
+function addSavePromptButton() {
   let toolbars = document.querySelectorAll(
     '[role="toolbar"][aria-label="Message tools"]'
   );
@@ -131,7 +132,19 @@ setInterval(() => {
       buttonCounter++; // Zähler erhöhen
     }
   });
-}, 3000); // Alle 3 Sekunden prüfen
+}
+
+// Initialer Aufruf der Funktion
+addSavePromptButton();
+
+// MutationObserver to detect DOM changes and reattach event listeners
+const observerCoop = new MutationObserver(() => {
+  buttonCounter = 1; // Zähler zurücksetzen
+  addSavePromptButton(); // Bei Änderungen im DOM die Funktion erneut aufrufen
+});
+
+// Observe changes in the entire body
+observerCoop.observe(document.body, { childList: true, subtree: true });
 
 // Funktion zum Abrufen des passenden Chat-Elements
 function promptGrabber(index) {
