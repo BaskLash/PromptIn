@@ -74,77 +74,82 @@ async function generateUniqueID(baseName) {
 }
 
 let buttonCounter = 1; // Startwert für auto_increment
+let existingToolbars = new Set(); // Set zur Verfolgung bereits verarbeiteter Toolbars
 
-// Funktion zum Hinzufügen des Buttons
-function addSavePromptButton() {
+setInterval(() => {
   let toolbars = document.querySelectorAll(
     '[role="toolbar"][aria-label="Message tools"]'
   );
 
-  toolbars.forEach((toolbar) => {
-    // Überprüfen, ob ein Button existiert, der mit "save-prompt-button-" beginnt
-    let buttonExists = Array.from(toolbar.querySelectorAll("button")).some(
-      (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
-    );
+  toolbars.forEach((toolbar, index) => {
+    // Überprüfen, ob die Toolbar bereits verarbeitet wurde
+    if (!existingToolbars.has(toolbar)) {
+      let buttonExists = Array.from(toolbar.querySelectorAll("button")).some(
+        (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
+      );
 
-    if (!buttonExists) {
-      const button = document.createElement("button");
-      button.textContent = `Save Prompt`;
-      button.classList.add(
-        "save-prompt-button",
-        `save-prompt-button-${buttonCounter}`
-      ); // Allgemeine + spezifische Klasse
+      // Falls es sich um die erste Toolbar handelt und kein Button existiert → Reset!
+      if (index === 0 && !buttonExists) {
+        console.log(
+          "Erste Toolbar hat keinen Button – Counter wird zurückgesetzt."
+        );
+        buttonCounter = 1;
+      }
 
-      // Button-Styling
-      button.style.padding = "5px 10px";
-      button.style.marginLeft = "5px";
-      button.style.cursor = "pointer";
-      button.style.border = "1px solid #ccc";
-      button.style.borderRadius = "5px";
-      button.style.color = "black";
-      button.style.background = "#f0f0f0";
-      button.title =
-        "If you liked the answer, save the prompt that generated it directly to your memory.";
+      // Falls kein Button existiert, neuen Button hinzufügen
+      if (!buttonExists) {
+        const button = document.createElement("button");
+        button.textContent = `Save Prompt`;
+        button.classList.add(
+          "save-prompt-button",
+          `save-prompt-button-${buttonCounter}`
+        );
 
-      // Hover-Effekte
-      button.addEventListener("mouseover", () => {
-        button.style.backgroundColor = "#e0e0e0";
-        button.style.borderColor = "#bbb";
-      });
+        // Button-Styling
+        button.style.padding = "5px 10px";
+        button.style.marginLeft = "5px";
+        button.style.cursor = "pointer";
+        button.style.border = "1px solid #ccc";
+        button.style.borderRadius = "5px";
+        button.style.color = "black";
+        button.style.background = "#f0f0f0";
+        button.title =
+          "If you liked the answer, save the prompt that generated it directly to your memory.";
 
-      button.addEventListener("mouseout", () => {
-        button.style.backgroundColor = "#f0f0f0";
-        button.style.borderColor = "#ccc";
-      });
+        // Hover-Effekte
+        button.addEventListener("mouseover", () => {
+          button.style.backgroundColor = "#e0e0e0";
+          button.style.borderColor = "#bbb";
+        });
 
-      // Klick-Event, das überprüft, welcher Button gedrückt wurde
-      button.addEventListener("click", (event) => {
-        let clickedButton = event.target; // Der geklickte Button
-        let match = clickedButton.className.match(/save-prompt-button-(\d+)/); // Zahl aus Klasse extrahieren
-        if (match) {
-          let buttonNumber = parseInt(match[1], 10); // Zahl in Integer umwandeln
-          console.log(`Button ${buttonNumber} wurde geklickt.`);
-          promptGrabber(buttonNumber);
-        }
-      });
+        button.addEventListener("mouseout", () => {
+          button.style.backgroundColor = "#f0f0f0";
+          button.style.borderColor = "#ccc";
+        });
 
-      toolbar.appendChild(button);
-      buttonCounter++; // Zähler erhöhen
+        // Klick-Event
+        button.addEventListener("click", (event) => {
+          let clickedButton = event.target;
+          let match = clickedButton.className.match(/save-prompt-button-(\d+)/);
+          if (match) {
+            let buttonNumber = parseInt(match[1], 10);
+            console.log(`Button ${buttonNumber} wurde geklickt.`);
+            promptGrabber(buttonNumber);
+          }
+        });
+
+        toolbar.appendChild(button);
+        console.log(`Button ${buttonCounter} hinzugefügt.`);
+        buttonCounter++; // Zähler erhöhen
+      }
+
+      // Toolbar als verarbeitet markieren
+      existingToolbars.add(toolbar);
     }
   });
-}
 
-// Initialer Aufruf der Funktion
-addSavePromptButton();
-
-// MutationObserver to detect DOM changes and reattach event listeners
-const observerCoop = new MutationObserver(() => {
-  buttonCounter = 1; // Zähler zurücksetzen
-  addSavePromptButton(); // Bei Änderungen im DOM die Funktion erneut aufrufen
-});
-
-// Observe changes in the entire body
-observerCoop.observe(document.body, { childList: true, subtree: true });
+  console.log("Der Zähler läuft");
+}, 3000); // Alle 3 Sekunden prüfen
 
 // Funktion zum Abrufen des passenden Chat-Elements
 function promptGrabber(index) {
