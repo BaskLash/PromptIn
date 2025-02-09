@@ -72,3 +72,85 @@ observer.observe(document.body, { childList: true, subtree: true });
 async function generateUniqueID(baseName) {
   return `${baseName}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 }
+
+let buttonCounter = 1; // Startwert für auto_increment
+
+setInterval(() => {
+  let toolbars = document.querySelectorAll(
+    '[role="toolbar"][aria-label="Message tools"]'
+  );
+
+  toolbars.forEach((toolbar) => {
+    // Überprüfen, ob ein Button existiert, der mit "save-prompt-button-" beginnt
+    let buttonExists = Array.from(toolbar.querySelectorAll("button")).some(
+      (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
+    );
+
+    if (!buttonExists) {
+      const button = document.createElement("button");
+      button.textContent = `Save Prompt`;
+      button.classList.add(
+        "save-prompt-button",
+        `save-prompt-button-${buttonCounter}`
+      ); // Allgemeine + spezifische Klasse
+
+      // Button-Styling
+      button.style.padding = "5px 10px";
+      button.style.marginLeft = "5px";
+      button.style.cursor = "pointer";
+      button.style.border = "1px solid #ccc";
+      button.style.borderRadius = "5px";
+      button.style.color = "black";
+      button.style.background = "#f0f0f0";
+      button.title =
+        "If you liked the answer, save the prompt that generated it directly to your memory.";
+
+      // Hover-Effekte
+      button.addEventListener("mouseover", () => {
+        button.style.backgroundColor = "#e0e0e0";
+        button.style.borderColor = "#bbb";
+      });
+
+      button.addEventListener("mouseout", () => {
+        button.style.backgroundColor = "#f0f0f0";
+        button.style.borderColor = "#ccc";
+      });
+
+      // Klick-Event, das überprüft, welcher Button gedrückt wurde
+      button.addEventListener("click", (event) => {
+        let clickedButton = event.target; // Der geklickte Button
+        let match = clickedButton.className.match(/save-prompt-button-(\d+)/); // Zahl aus Klasse extrahieren
+        if (match) {
+          let buttonNumber = parseInt(match[1], 10); // Zahl in Integer umwandeln
+          console.log(`Button ${buttonNumber} wurde geklickt.`);
+          promptGrabber(buttonNumber);
+        }
+      });
+
+      toolbar.appendChild(button);
+      buttonCounter++; // Zähler erhöhen
+    }
+  });
+}, 3000); // Alle 3 Sekunden prüfen
+
+// Funktion zum Abrufen des passenden Chat-Elements
+function promptGrabber(index) {
+  // Überprüfen, ob der Index eine positive Zahl ist
+  if (index <= 0) {
+    console.error("Index muss eine positive Zahl sein.");
+    return;
+  }
+
+  // Berechnung des nth-child-Wertes
+  const nthChild = index * 2;
+
+  let message = document.querySelector(
+    `.ChatMessage-module__chatMessage--rtt38.ChatMessage-module__user--UoWHh:nth-child(${nthChild})`
+  );
+
+  if (message) {
+    console.log(`Prompt ${index}:`, message.textContent);
+  } else {
+    console.log(`Kein Element für Prompt ${index} gefunden.`);
+  }
+}
