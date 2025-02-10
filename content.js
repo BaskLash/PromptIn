@@ -1,150 +1,85 @@
-// Function to handle input event and save data
-async function handleInputEvent(event, inputElement) {
-  if (event.key !== "Enter") return;
-
-  const inputValue = inputElement.value.trim();
-  if (!inputValue) return;
-
-  let baseTopicName = "Default";
-  let topicName = baseTopicName;
-
-  // Retrieve existing topics from Chrome storage
-  chrome.storage.sync.get(null, async function (data) {
-    let topics = data || {};
-    const uniqueID = await generateUniqueID(topicName);
-
-    // Ensure unique topic name
-    while (topics.hasOwnProperty(topicName)) {
-      topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
-    }
-
-    // Create new topic object
-    topics[uniqueID] = {
-      name: topicName,
-      prompts: [inputValue],
-    };
-
-    // Save and update UI
-    chrome.storage.sync.set(topics, function () {
-      console.log(`Gespeichert in ${topicName} (ID: ${uniqueID}):`, inputValue);
-      inputElement.value = ""; // Clear input field
-      addDropdownItem(uniqueID, topicName);
-    });
-  });
-}
-
-// Function to attach event listeners to input elements
-function attachListeners() {
-  const copilotInput = document.querySelector(
-    "textarea.ChatInputV2-module__input--B2oNx"
-  );
-  const gitHubInput = document.querySelector(
-    "textarea#copilot-dashboard-entrypoint-textarea"
-  );
-
-  if (copilotInput && !copilotInput.dataset.listenerAttached) {
-    copilotInput.addEventListener("keydown", (event) =>
-      handleInputEvent(event, copilotInput)
-    );
-    copilotInput.dataset.listenerAttached = "true";
-  }
-
-  if (gitHubInput && !gitHubInput.dataset.listenerAttached) {
-    gitHubInput.addEventListener("keydown", (event) =>
-      handleInputEvent(event, gitHubInput)
-    );
-    gitHubInput.dataset.listenerAttached = "true";
-  }
-}
-
-// Run the function initially
-attachListeners();
-
-// MutationObserver to detect DOM changes and reattach event listeners
-const observer = new MutationObserver(() => {
-  attachListeners();
-});
-
-// Observe changes in the entire body
-observer.observe(document.body, { childList: true, subtree: true });
-
 // Hilfsfunktion zur Generierung einer eindeutigen ID
 async function generateUniqueID(baseName) {
   return `${baseName}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 }
 
 let buttonCounter = 1; // Startwert für auto_increment
+let existingToolbars = new Set(); // Set zur Verfolgung bereits verarbeiteter Toolbars
 
-// Funktion zum Hinzufügen des Buttons
-function addSavePromptButton() {
+setInterval(() => {
   let toolbars = document.querySelectorAll(
     '[role="toolbar"][aria-label="Message tools"]'
   );
 
-  toolbars.forEach((toolbar) => {
-    // Überprüfen, ob ein Button existiert, der mit "save-prompt-button-" beginnt
-    let buttonExists = Array.from(toolbar.querySelectorAll("button")).some(
-      (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
-    );
+  toolbars.forEach((toolbar, index) => {
+    // Überprüfen, ob die Toolbar bereits verarbeitet wurde
+    if (!existingToolbars.has(toolbar)) {
+      let buttonExists = Array.from(toolbar.querySelectorAll("button")).some(
+        (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
+      );
 
-    if (!buttonExists) {
-      const button = document.createElement("button");
-      button.textContent = `Save Prompt`;
-      button.classList.add(
-        "save-prompt-button",
-        `save-prompt-button-${buttonCounter}`
-      ); // Allgemeine + spezifische Klasse
+      // Falls es sich um die erste Toolbar handelt und kein Button existiert → Reset!
+      if (index === 0 && !buttonExists) {
+        console.log(
+          "Erste Toolbar hat keinen Button – Counter wird zurückgesetzt."
+        );
+        buttonCounter = 1;
+      }
 
-      // Button-Styling
-      button.style.padding = "5px 10px";
-      button.style.marginLeft = "5px";
-      button.style.cursor = "pointer";
-      button.style.border = "1px solid #ccc";
-      button.style.borderRadius = "5px";
-      button.style.color = "black";
-      button.style.background = "#f0f0f0";
-      button.title =
-        "If you liked the answer, save the prompt that generated it directly to your memory.";
+      // Falls kein Button existiert, neuen Button hinzufügen
+      if (!buttonExists) {
+        const button = document.createElement("button");
+        button.textContent = `Save Prompt`;
+        button.classList.add(
+          "save-prompt-button",
+          `save-prompt-button-${buttonCounter}`
+        );
 
-      // Hover-Effekte
-      button.addEventListener("mouseover", () => {
-        button.style.backgroundColor = "#e0e0e0";
-        button.style.borderColor = "#bbb";
-      });
+        // Button-Styling
+        button.style.padding = "5px 10px";
+        button.style.marginLeft = "5px";
+        button.style.cursor = "pointer";
+        button.style.border = "1px solid #ccc";
+        button.style.borderRadius = "5px";
+        button.style.color = "black";
+        button.style.background = "#f0f0f0";
+        button.title =
+          "If you liked the answer, save the prompt that generated it directly to your memory.";
 
-      button.addEventListener("mouseout", () => {
-        button.style.backgroundColor = "#f0f0f0";
-        button.style.borderColor = "#ccc";
-      });
+        // Hover-Effekte
+        button.addEventListener("mouseover", () => {
+          button.style.backgroundColor = "#e0e0e0";
+          button.style.borderColor = "#bbb";
+        });
 
-      // Klick-Event, das überprüft, welcher Button gedrückt wurde
-      button.addEventListener("click", (event) => {
-        let clickedButton = event.target; // Der geklickte Button
-        let match = clickedButton.className.match(/save-prompt-button-(\d+)/); // Zahl aus Klasse extrahieren
-        if (match) {
-          let buttonNumber = parseInt(match[1], 10); // Zahl in Integer umwandeln
-          console.log(`Button ${buttonNumber} wurde geklickt.`);
-          promptGrabber(buttonNumber);
-        }
-      });
+        button.addEventListener("mouseout", () => {
+          button.style.backgroundColor = "#f0f0f0";
+          button.style.borderColor = "#ccc";
+        });
 
-      toolbar.appendChild(button);
-      buttonCounter++; // Zähler erhöhen
+        // Klick-Event
+        button.addEventListener("click", (event) => {
+          let clickedButton = event.target;
+          let match = clickedButton.className.match(/save-prompt-button-(\d+)/);
+          if (match) {
+            let buttonNumber = parseInt(match[1], 10);
+            console.log(`Button ${buttonNumber} wurde geklickt.`);
+            promptGrabber(buttonNumber);
+          }
+        });
+
+        toolbar.appendChild(button);
+        console.log(`Button ${buttonCounter} hinzugefügt.`);
+        buttonCounter++; // Zähler erhöhen
+      }
+
+      // Toolbar als verarbeitet markieren
+      existingToolbars.add(toolbar);
     }
   });
-}
 
-// Initialer Aufruf der Funktion
-addSavePromptButton();
-
-// MutationObserver to detect DOM changes and reattach event listeners
-const observerCoop = new MutationObserver(() => {
-  buttonCounter = 1; // Zähler zurücksetzen
-  addSavePromptButton(); // Bei Änderungen im DOM die Funktion erneut aufrufen
-});
-
-// Observe changes in the entire body
-observerCoop.observe(document.body, { childList: true, subtree: true });
+  console.log("Der Zähler läuft");
+}, 3000); // Alle 3 Sekunden prüfen
 
 // Funktion zum Abrufen des passenden Chat-Elements
 function promptGrabber(index) {
@@ -162,7 +97,41 @@ function promptGrabber(index) {
   );
 
   if (message) {
-    console.log(`Prompt ${index}:`, message.textContent);
+    message = message.textContent;
+    console.log(`Prompt ${index}:`, message);
+
+    let baseTopicName = "ExampleName"; // Dynamischer Name möglich
+    let topicName = baseTopicName;
+
+    // Hole bestehende Daten
+    chrome.storage.sync.get(null, async function (data) {
+      let topics = data || {}; // Sicherstellen, dass ein Objekt existiert
+
+      // Eindeutige ID generieren
+      const uniqueID = await generateUniqueID(topicName);
+
+      // Falls der Name bereits existiert, generiere einen neuen
+      while (topics.hasOwnProperty(topicName)) {
+        topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
+      }
+
+      // Neues Topic-Objekt erstellen
+      topics[uniqueID] = {
+        name: topicName,
+        prompts: [message],
+      };
+
+      // Speichern und UI sofort aktualisieren
+      chrome.storage.sync.set(topics, function () {
+        console.log(`Gespeichert in ${topicName} (ID: ${uniqueID}):`, message);
+        inputField.value = ""; // Eingabefeld leeren
+
+        document.querySelector(".dropdown-content p").style.display = "none";
+
+        // Direkt das neue Element in die UI einfügen
+        addDropdownItem(uniqueID, topicName);
+      });
+    });
   } else {
     console.log(`Kein Element für Prompt ${index} gefunden.`);
   }
