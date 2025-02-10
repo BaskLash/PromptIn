@@ -236,7 +236,7 @@ function createAccordion(id, topicName, prompts) {
             deletePrompt(promptText, id, row);
             break;
           case "Use":
-            usePrompt(promptText);
+            usePrompt(prompt);
             break;
           case "Relocate":
             relocatePrompt(promptText, id);
@@ -299,13 +299,25 @@ function deletePrompt(promptElement, folderId, rowElement) {
   }
 }
 
-function usePrompt(promptElement) {
-  const promptText = promptElement.textContent;
+function usePrompt(prompt) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length === 0) {
+      console.error("🚨 No active tab found.");
+      return;
+    }
 
-  // Send the prompt to the content script
-  chrome.runtime.sendMessage({ action: "use_prompt", prompt: promptText });
-
-  console.log("Prompt sent to content script:", promptText);
+    chrome.tabs.sendMessage(
+      tabs[0].id,
+      { action: "usePrompt", text: prompt },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("❌ Message failed:", chrome.runtime.lastError);
+        } else {
+          console.log("📨 Response from content.js:", response);
+        }
+      }
+    );
+  });
 }
 
 function relocatePrompt(promptElement, currentFolderId) {

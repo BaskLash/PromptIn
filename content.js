@@ -81,6 +81,38 @@ setInterval(() => {
   console.log("Der Zähler läuft");
 }, 3000); // Alle 3 Sekunden prüfen
 
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("📩 Message received in content.js:", request);
+
+  if (request.action === "usePrompt") {
+    console.log("✅ usePrompt action received!");
+
+    const textarea = document.querySelector("textarea#copilot-chat-textarea");
+    if (textarea) {
+      textarea.value = request.text; // Insert the stored text
+
+      // Trigger an input event (important for some web apps)
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+
+      console.log("✍️ Text inserted:", request.text);
+      sendResponse({
+        status: "success",
+        message: "Prompt inserted successfully",
+      });
+    } else {
+      console.warn("⚠️ No textarea found.");
+      sendResponse({ status: "error", message: "Textarea not found" });
+    }
+  } else {
+    sendResponse({
+      status: "unknown_action",
+      message: "Action not recognized",
+    });
+  }
+
+  return true; // Required for asynchronous sendResponse
+});
+
 // Funktion zum Abrufen des passenden Chat-Elements
 function promptGrabber(index) {
   // Überprüfen, ob der Index eine positive Zahl ist
