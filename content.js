@@ -1,3 +1,24 @@
+// Remove News Elements
+// Hide the right sidebar
+const sidebar = document.querySelector(".feed-right-sidebar");
+if (sidebar) {
+  sidebar.style.display = "none";
+}
+
+// Hide the feed container for 'for-you' topic
+const feedContainer = document.querySelector(
+  "feed-container[data-active-topic='for-you']"
+);
+if (feedContainer) {
+  feedContainer.style.display = "none";
+}
+
+// Hide Footer container
+const footer = document.querySelector("footer");
+if (footer) {
+  footer.style.display = "none";
+}
+
 // Hilfsfunktion zur Generierung einer eindeutigen ID
 async function generateUniqueID(baseName) {
   return `${baseName}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -7,78 +28,86 @@ let buttonCounter = 1; // Startwert für auto_increment
 let existingToolbars = new Set(); // Set zur Verfolgung bereits verarbeiteter Toolbars
 
 setInterval(() => {
-  let toolbars = document.querySelectorAll(
-    '[role="toolbar"][aria-label="Message tools"]'
-  );
+  // Always in use; That's why on top
+  const path = window.location.pathname;
 
-  toolbars.forEach((toolbar, index) => {
-    // Überprüfen, ob die Toolbar bereits verarbeitet wurde
-    if (!existingToolbars.has(toolbar)) {
-      let buttonExists = Array.from(toolbar.querySelectorAll("button")).some(
-        (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
-      );
+  // Only hide if the user is on the Home Feed
+  if (path.startsWith("/copilot/c/")) {
+    let toolbars = document.querySelectorAll(
+      '[role="toolbar"][aria-label="Message tools"]'
+    );
 
-      // Falls es sich um die erste Toolbar handelt und kein Button existiert → Reset!
-      if (index === 0 && !buttonExists) {
-        console.log(
-          "Erste Toolbar hat keinen Button – Counter wird zurückgesetzt."
-        );
-        buttonCounter = 1;
-      }
-
-      // Falls kein Button existiert, neuen Button hinzufügen
-      if (!buttonExists) {
-        const button = document.createElement("button");
-        button.textContent = `Save Prompt`;
-        button.classList.add(
-          "save-prompt-button",
-          `save-prompt-button-${buttonCounter}`
+    toolbars.forEach((toolbar, index) => {
+      // Überprüfen, ob die Toolbar bereits verarbeitet wurde
+      if (!existingToolbars.has(toolbar)) {
+        let buttonExists = Array.from(toolbar.querySelectorAll("button")).some(
+          (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
         );
 
-        // Button-Styling
-        button.style.padding = "5px 10px";
-        button.style.marginLeft = "5px";
-        button.style.cursor = "pointer";
-        button.style.border = "1px solid #ccc";
-        button.style.borderRadius = "5px";
-        button.style.color = "black";
-        button.style.background = "#f0f0f0";
-        button.title =
-          "If you liked the answer, save the prompt that generated it directly to your memory.";
+        // Falls es sich um die erste Toolbar handelt und kein Button existiert → Reset!
+        if (index === 0 && !buttonExists) {
+          console.log(
+            "Erste Toolbar hat keinen Button – Counter wird zurückgesetzt."
+          );
+          buttonCounter = 1;
+        }
 
-        // Hover-Effekte
-        button.addEventListener("mouseover", () => {
-          button.style.backgroundColor = "#e0e0e0";
-          button.style.borderColor = "#bbb";
-        });
+        // Falls kein Button existiert, neuen Button hinzufügen
+        if (!buttonExists) {
+          const button = document.createElement("button");
+          button.textContent = `Save Prompt`;
+          button.classList.add(
+            "save-prompt-button",
+            `save-prompt-button-${buttonCounter}`
+          );
 
-        button.addEventListener("mouseout", () => {
-          button.style.backgroundColor = "#f0f0f0";
-          button.style.borderColor = "#ccc";
-        });
+          // Button-Styling
+          button.style.padding = "5px 10px";
+          button.style.marginLeft = "5px";
+          button.style.cursor = "pointer";
+          button.style.border = "1px solid #ccc";
+          button.style.borderRadius = "5px";
+          button.style.color = "black";
+          button.style.background = "#f0f0f0";
+          button.title =
+            "If you liked the answer, save the prompt that generated it directly to your memory.";
 
-        // Klick-Event
-        button.addEventListener("click", (event) => {
-          let clickedButton = event.target;
-          let match = clickedButton.className.match(/save-prompt-button-(\d+)/);
-          if (match) {
-            let buttonNumber = parseInt(match[1], 10);
-            console.log(`Button ${buttonNumber} wurde geklickt.`);
-            promptGrabber(buttonNumber);
-          }
-        });
+          // Hover-Effekte
+          button.addEventListener("mouseover", () => {
+            button.style.backgroundColor = "#e0e0e0";
+            button.style.borderColor = "#bbb";
+          });
 
-        toolbar.appendChild(button);
-        console.log(`Button ${buttonCounter} hinzugefügt.`);
-        buttonCounter++; // Zähler erhöhen
+          button.addEventListener("mouseout", () => {
+            button.style.backgroundColor = "#f0f0f0";
+            button.style.borderColor = "#ccc";
+          });
+
+          // Klick-Event
+          button.addEventListener("click", (event) => {
+            let clickedButton = event.target;
+            let match = clickedButton.className.match(
+              /save-prompt-button-(\d+)/
+            );
+            if (match) {
+              let buttonNumber = parseInt(match[1], 10);
+              console.log(`Button ${buttonNumber} wurde geklickt.`);
+              promptGrabber(buttonNumber);
+            }
+          });
+
+          toolbar.appendChild(button);
+          console.log(`Button ${buttonCounter} hinzugefügt.`);
+          buttonCounter++; // Zähler erhöhen
+        }
+
+        // Toolbar als verarbeitet markieren
+        existingToolbars.add(toolbar);
       }
+    });
 
-      // Toolbar als verarbeitet markieren
-      existingToolbars.add(toolbar);
-    }
-  });
-
-  console.log("Der Zähler läuft");
+    console.log("Der Zähler läuft");
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
