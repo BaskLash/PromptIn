@@ -404,15 +404,73 @@ document.addEventListener("DOMContentLoaded", function () {
 
   searchInput.addEventListener("input", function () {
     const searchTerm = searchInput.value.toLowerCase();
-    const folders = document.querySelectorAll(".dropdown-content a"); // Select dynamically
+    const folders = document.querySelectorAll(".dropdown-content a");
+
+    let results = [];
 
     folders.forEach((folder) => {
       const folderName = folder.textContent.toLowerCase();
-      if (folderName.includes(searchTerm)) {
-        folder.style.display = "block"; // Show matching folder
-      } else {
-        folder.style.display = "none"; // Hide non-matching folder
+      const similarity = jaroWinkler(searchTerm, folderName);
+
+      if (folderName.includes(searchTerm) || similarity > 0.8) {
+        results.push({ element: folder, similarity });
       }
     });
+
+    // Ergebnisse nach bester Übereinstimmung sortieren (höchste Ähnlichkeit zuerst)
+    results.sort((a, b) => b.similarity - a.similarity);
+
+    // Alle Elemente verstecken
+    folders.forEach((folder) => (folder.style.display = "none"));
+
+    // Beste Treffer anzeigen
+    results.forEach((result) => (result.element.style.display = "block"));
   });
+
+  // Jaro-Winkler Similarity Function
+  function jaroWinkler(s1, s2) {
+    let m = 0;
+
+    // Kurzer Check, falls einer der Strings leer ist
+    if (s1.length === 0 || s2.length === 0) {
+      return 0;
+    }
+
+    const matchDistance = Math.floor(Math.max(s1.length, s2.length) / 2) - 1;
+    const s1Matches = new Array(s1.length).fill(false);
+    const s2Matches = new Array(s2.length).fill(false);
+
+    for (let i = 0; i < s1.length; i++) {
+      let start = Math.max(0, i - matchDistance);
+      let end = Math.min(i + matchDistance + 1, s2.length);
+
+      for (let j = start; j < end; j++) {
+        if (s2Matches[j]) continue;
+        if (s1[i] !== s2[j]) continue;
+        s1Matches[i] = true;
+        s2Matches[j] = true;
+        m++;
+        break;
+      }
+    }
+
+    if (m === 0) return 0;
+
+    let t = 0;
+    let k = 0;
+    for (let i = 0; i < s1.length; i++) {
+      if (!s1Matches[i]) continue;
+      while (!s2Matches[k]) k++;
+      if (s1[i] !== s2[k]) t++;
+      k++;
+    }
+
+    t /= 2;
+    let jaro = (m / s1.length + m / s2.length + (m - t) / m) / 3;
+
+    let p = 0.1; // Jaro-Winkler Skalierungsfaktor
+    let l = 0;
+    while (l < 4 && s1[l] === s2[l]) l++;
+    return jaro + l * p * (1 - jaro);
+  }
 });
