@@ -381,3 +381,38 @@ function loadFolders() {
 document.addEventListener("DOMContentLoaded", loadDropdownItems);
 // Load folders on page load
 document.addEventListener("DOMContentLoaded", loadFolders);
+
+document.querySelector(".folder-icon").addEventListener("click", function () {
+  document.querySelector(".dropdown-content").classList.toggle("show");
+});
+
+// Close the dropdown if the user clicks outside of the enterage class
+window.onclick = function (event) {
+  // Überprüfen, ob das geklickte Element nicht innerhalb der Klasse "enterage" ist
+  if (!event.target.closest(".enterage")) {
+    var dropdowns = document.getElementsByClassName("dropdown-content");
+    for (var i = 0; i < dropdowns.length; i++) {
+      var openDropdown = dropdowns[i];
+      if (openDropdown.classList.contains("show")) {
+        openDropdown.classList.remove("show");
+      }
+    }
+  }
+};
+document.addEventListener("DOMContentLoaded", function () {
+  const searchInput = document.getElementById("searchInput");
+
+  searchInput.addEventListener("input", function () {
+    const searchTerm = searchInput.value.toLowerCase();
+    const folders = document.querySelectorAll(".dropdown-content a"); // Select dynamically
+
+    folders.forEach((folder) => {
+      const folderName = folder.textContent.toLowerCase();
+      if (folderName.includes(searchTerm)) {
+        folder.style.display = "block"; // Show matching folder
+      } else {
+        folder.style.display = "none"; // Hide non-matching folder
+      }
+    });
+  });
+});

@@ -9,10 +9,17 @@ body {
   width: 500px; /* Full viewport width */
   overflow: hidden; /* Prevent overflow */
 }
-
+.enterage {
+  display: flex;
+  justify-content: space-between; /* Space between input and icon */
+  align-items: center; /* Center vertically */
+}
 .dropdown {
   margin-left: auto; /* Pushes the dropdown to the right */
   position: relative; /* Keep this for dropdown positioning */
+}
+.dropdown a:hover {
+  background-color: #ddd;
 }
 
 .dropdown-content {
@@ -26,6 +33,15 @@ body {
   box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
   z-index: 1;
 }
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+.show {
+  display: block;
+}
 
 .search {
   margin-left: 1rem;
@@ -38,21 +54,6 @@ body {
   margin-bottom: auto;
   height: 20px;
 }
-
-.dropdown-content a {
-  color: black;
-  padding: 12px 16px;
-  text-decoration: none;
-  display: block;
-}
-
-.dropdown-content a:hover {
-  background-color: #f1f1f1;
-}
-
-.dropdown:hover .dropdown-content {
-  display: block;
-}
 .container {
   position: relative; /* Position relative for child elements */
   z-index: 1; /* Bring container above background */
@@ -64,12 +65,6 @@ body {
 
 h1 {
   text-align: center;
-}
-
-.enterage {
-  display: flex;
-  justify-content: space-between; /* Space between input and icon */
-  align-items: center; /* Center vertically */
 }
 
 #inputField[type="text"] {
@@ -113,6 +108,11 @@ h1 {
   background-color: #007bff; /* Primary color for the button */
   cursor: pointer;
   margin-right: 1rem;
+  transition-duration: 0.4s;
+}
+
+.topic-name:hover {
+  background-color: black;
 }
 
 .action-links {
@@ -147,7 +147,7 @@ h1 {
   border: none; /* No border */
   cursor: pointer; /* Pointer cursor on hover */
   font-size: 14px; /* Smaller font size */
-  transition: color 0.3s; /* Smooth transition */
+  transition-duration: 0.4s;
 }
 
 .topic-name:hover.accordion:hover {
