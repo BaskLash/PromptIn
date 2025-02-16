@@ -88,17 +88,28 @@ function loadDropdownItems() {
     }
 
     let topics = Object.entries(data);
+    let noFoldersMessage = document.querySelector(".no-folders-message");
 
+    // Überprüfen, ob es keine Topics gibt
     if (topics.length === 0) {
-      let noFolders = document.createElement("p");
-      noFolders.style.marginLeft = "1rem";
-      noFolders.style.color = "red";
-      noFolders.style.fontWeight = "bold";
-      noFolders.textContent = "No folders available yet";
-      noFolders.title =
-        "Enter a prompt or chat with copilot to create some folders";
-      dropdownContent.appendChild(noFolders);
+      // Wenn der Text noch nicht existiert, erstelle ihn
+      if (!noFoldersMessage) {
+        noFoldersMessage = document.createElement("p");
+        noFoldersMessage.classList.add("no-folders-message");
+        noFoldersMessage.style.marginLeft = "1rem";
+        noFoldersMessage.style.color = "red";
+        noFoldersMessage.style.fontWeight = "bold";
+        noFoldersMessage.textContent = "No folders available yet";
+        noFoldersMessage.title =
+          "Enter a prompt or chat with copilot to create some folders";
+        dropdownContent.appendChild(noFoldersMessage);
+      }
       return;
+    } else {
+      // Wenn Topics vorhanden sind, entferne die Nachricht
+      if (noFoldersMessage) {
+        noFoldersMessage.remove();
+      }
     }
 
     // Vorhandene Links entfernen, um Dopplungen zu vermeiden
@@ -414,6 +425,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const folders = document.querySelectorAll(".dropdown-content a");
 
     let results = [];
+    let noResultsMessage = document.querySelector(".no-results-message");
 
     folders.forEach((folder) => {
       const folderName = folder.textContent.toLowerCase();
@@ -432,6 +444,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Beste Treffer anzeigen
     results.forEach((result) => (result.element.style.display = "block"));
+
+    // Überprüfen, ob es Ergebnisse gibt
+    if (results.length === 0) {
+      // Wenn der Text noch nicht existiert, erstelle ihn
+      if (!noResultsMessage) {
+        noResultsMessage = document.createElement("p");
+        noResultsMessage.classList.add("no-results-message");
+        noResultsMessage.style.color = "red";
+        noResultsMessage.style.marginLeft = "1rem";
+        noResultsMessage.style.fontWeight = "bold";
+        noResultsMessage.textContent = "No results found";
+        dropdownContent.appendChild(noResultsMessage);
+      }
+    } else {
+      // Wenn Ergebnisse vorhanden sind, entferne die Nachricht
+      if (noResultsMessage) {
+        noResultsMessage.remove();
+      }
+    }
   });
 
   // Jaro-Winkler Similarity Function
