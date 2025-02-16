@@ -115,7 +115,14 @@ function loadDropdownItems() {
 if (clearStorageButton) {
   clearStorageButton.addEventListener("click", function () {
     chrome.storage.sync.clear(function () {
-      dropdownContent.innerHTML = ""; // UI zurücksetzen
+      if (chrome.runtime.lastError) {
+        console.error("Error clearing storage:", chrome.runtime.lastError);
+        return;
+      }
+
+      // UI zurücksetzen
+      dropdownContent.innerHTML = ""; // Dropdown zurücksetzen
+      accordionContainer.innerHTML = ""; // Accordion zurücksetzen
       console.log("Storage cleared");
     });
   });
@@ -473,4 +480,16 @@ document.addEventListener("DOMContentLoaded", function () {
     while (l < 4 && s1[l] === s2[l]) l++;
     return jaro + l * p * (1 - jaro);
   }
+});
+document.addEventListener("DOMContentLoaded", function () {
+  const dropdownContent = document.querySelector(".dropdown-content");
+
+  dropdownContent.addEventListener("click", function (event) {
+    const clickedAnchor = event.target.closest("a"); // Find the closest <a> in case of nested elements
+
+    if (clickedAnchor) {
+      console.log("Clicked on:", clickedAnchor.textContent);
+      // You can also do something with clickedAnchor.href or clickedAnchor.dataset
+    }
+  });
 });
