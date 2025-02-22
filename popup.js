@@ -339,21 +339,81 @@ function usePrompt(prompt) {
 }
 
 function relocatePrompt(promptElement, currentFolderId) {
-  const newFolderId = prompt("Enter the new folder ID:");
-  if (!newFolderId) return;
+  // Create dropdown if it doesn't exist
+  let dropdown = document.querySelector(".folder-dropdown");
+  if (!dropdown) {
+    dropdown = document.createElement("div");
+    dropdown.classList.add("folder-dropdown");
+    dropdown.style.position = "absolute"; // Position it absolutely
+    dropdown.style.backgroundColor = "white"; // Background color
+    dropdown.style.border = "1px solid #ccc"; // Border
+    dropdown.style.zIndex = "1000"; // Ensure it appears above other elements
+    document.body.appendChild(dropdown);
+  }
 
-  chrome.storage.sync.get([currentFolderId, newFolderId], function (data) {
-    if (data[currentFolderId] && data[newFolderId]) {
-      const promptText = promptElement.textContent;
-      data[newFolderId].prompts.push(promptText);
-      data[currentFolderId].prompts = data[currentFolderId].prompts.filter(
-        (p) => p !== promptText
-      );
+  // Clear existing items in the dropdown
+  dropdown.innerHTML = "";
 
-      chrome.storage.sync.set(data, function () {
-        console.log(`Prompt moved from ${currentFolderId} to ${newFolderId}`);
-        promptElement.closest("tr").remove();
+  // Populate the dropdown with folder names
+  chrome.storage.sync.get(null, function (data) {
+    if (chrome.runtime.lastError) {
+      console.error("Error fetching folders:", chrome.runtime.lastError);
+      return;
+    }
+
+    Object.entries(data).forEach(([id, topic]) => {
+      const folderItem = document.createElement("div");
+      folderItem.classList.add("folder-item");
+      folderItem.textContent = topic.name;
+      folderItem.dataset.folderId = id; // Store the folder ID in a data attribute
+      dropdown.appendChild(folderItem);
+
+      // Add click event to each folder item
+      folderItem.addEventListener("click", function () {
+        const newFolderId = this.dataset.folderId; // Get the folder ID from data attribute
+        if (!newFolderId) return;
+
+        chrome.storage.sync.get(
+          [currentFolderId, newFolderId],
+          function (data) {
+            if (data[currentFolderId] && data[newFolderId]) {
+              const promptText = promptElement.textContent;
+              data[newFolderId].prompts.push(promptText);
+              data[currentFolderId].prompts = data[
+                currentFolderId
+              ].prompts.filter((p) => p !== promptText);
+
+              chrome.storage.sync.set(data, function () {
+                console.log(
+                  `Prompt moved from ${currentFolderId} to ${newFolderId}`
+                );
+                promptElement.closest("tr").remove();
+              });
+            }
+          }
+        );
+
+        // Remove dropdown after selection
+        dropdown.remove();
       });
+    });
+  });
+
+  // Position the dropdown below the button
+  const button = promptElement
+    .closest("tr")
+    .querySelector(".action-button:contains('Relocate')");
+  const rect = button.getBoundingClientRect();
+  dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+  dropdown.style.left = `${rect.left + window.scrollX}px`;
+
+  // Show the dropdown
+  dropdown.style.display = "block";
+
+  // Hide dropdown when clicking outside
+  document.addEventListener("click", function (event) {
+    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+      dropdown.style.display = "none"; // Hide dropdown
     }
   });
 }
