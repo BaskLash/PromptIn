@@ -52,8 +52,8 @@ setInterval(() => {
           buttonCounter = 1;
         }
 
-        // Falls kein Button existiert, neuen Button hinzufügen
-        if (!buttonExists) {
+        // Nur bei jedem zweiten Element (index 1, 3, 5, ...) einen Button hinzufügen
+        if (index % 2 === 1 && !buttonExists) {
           const button = document.createElement("button");
           button.textContent = `Save Prompt`;
           button.classList.add(
@@ -151,11 +151,21 @@ function promptGrabber(index) {
   }
 
   // Berechnung des nth-child-Wertes
-  const nthChild = index * 2;
+  const nthChild = index;
 
-  let message = document.querySelector(
-    `.ChatMessage-module__chatMessage--rtt38.ChatMessage-module__user--UoWHh:nth-child(${nthChild})`
+  console.log("Nth-child: " + nthChild);
+
+  const elements = document.querySelectorAll(
+    ".UserMessage-module__container--cAvvK.ChatMessage-module__userMessage--xvIFp"
   );
+  let message;
+  // Stelle sicher, dass nthChild innerhalb des gültigen Bereichs liegt
+  if (nthChild > 0 && nthChild <= elements.length) {
+    message = elements[nthChild - 1]; // nth-child ist 1-basiert, NodeList ist 0-basiert
+    console.log(message.textContent.trim());
+  } else {
+    console.log("Ungültiger nthChild-Wert: " + nthChild);
+  }
 
   if (message) {
     message = message.textContent;
