@@ -165,46 +165,33 @@ function createAccordion(id, topicName, prompts) {
   deleteButton.textContent = "Delete";
   deleteButton.title = "Delete folder";
 
-  // ✅ Rename functionality
+  // Rename functionality
   renameButton.addEventListener("click", function (event) {
-    event.stopPropagation(); // Prevent accordion toggle
-
-    // Create input field
+    event.stopPropagation();
     const input = document.createElement("input");
     input.type = "text";
     input.value = topicName;
     input.style.padding = "12px 20px";
     input.classList.add("rename-input");
-
-    // Replace button with input field
     accordion.replaceChild(input, button);
     input.focus();
-
-    // Save the new name on Enter or blur
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        saveNewName(id, input, button, accordion);
-      }
+      if (e.key === "Enter") saveNewName(id, input, button, accordion);
     });
-
     input.addEventListener("blur", function () {
       saveNewName(id, input, button, accordion);
     });
   });
 
   deleteButton.addEventListener("click", function (event) {
-    event.stopPropagation(); // Prevent the accordion from toggling
-
+    event.stopPropagation();
     if (confirm(`Are you sure you want to delete "${topicName}"?`)) {
       chrome.storage.sync.remove(id, function () {
         if (chrome.runtime.lastError) {
           console.error("Error removing folder:", chrome.runtime.lastError);
           return;
         }
-
         console.log(`Deleted folder: ${topicName} (ID: ${id})`);
-
-        // Remove folder from UI
         accordion.remove();
         panel.remove();
       });
@@ -216,7 +203,6 @@ function createAccordion(id, topicName, prompts) {
   accordion.appendChild(button);
   accordion.appendChild(actionLinks);
 
-  // Create panel for prompts
   const panel = document.createElement("div");
   panel.classList.add("panel");
   panel.id = id;
@@ -224,43 +210,297 @@ function createAccordion(id, topicName, prompts) {
   const table = document.createElement("table");
   const tbody = document.createElement("tbody");
 
-  prompts.forEach((prompt) => {
+  prompts.forEach((prompt, index) => {
     const row = document.createElement("tr");
-
-    // Prompt text
     const promptCell = document.createElement("td");
     const promptText = document.createElement("p");
     promptText.textContent = prompt;
     promptCell.appendChild(promptText);
     row.appendChild(promptCell);
 
-    // Action buttons
     ["Edit", "Delete", "Use", "Relocate"].forEach((action) => {
       const actionCell = document.createElement("td");
-      const actionButton = document.createElement("button");
-      actionButton.classList.add("action-button");
-      actionButton.textContent = action;
-      actionButton.title = `${action} prompt`;
-      actionCell.appendChild(actionButton);
-      row.appendChild(actionCell);
 
-      // Add event listeners for each button
-      actionButton.addEventListener("click", function () {
-        switch (action) {
-          case "Edit":
-            editPrompt(promptText);
-            break;
-          case "Delete":
-            deletePrompt(promptText, id, row);
-            break;
-          case "Use":
-            usePrompt(prompt);
-            break;
-          case "Relocate":
-            relocatePrompt(promptText, id);
-            break;
-        }
-      });
+      if (action === "Relocate") {
+        const dropdown = document.createElement("div");
+        dropdown.classList.add("dropdown2");
+
+        const relocateButton = document.createElement("button");
+        relocateButton.classList.add("action-button", "dropbtn2");
+        relocateButton.textContent = "Relocate";
+        relocateButton.title = "Relocate prompt";
+
+        const dropdownContent = document.createElement("div");
+        dropdownContent.classList.add("dropdown-content2");
+        dropdownContent.id = `relocate-dropdown-${index}-${id}`;
+
+        chrome.storage.sync.get(null, function (data) {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Error fetching storage data:",
+              chrome.runtime.lastError
+            );
+            return;
+          }
+          dropdownContent.innerHTML = "";
+          Object.entries(data).forEach(([folderId, topic]) => {
+            const folderName = topic.name;
+            const folderLink = document.createElement("a");
+            folderLink.href = "#";
+            folderLink.textContent = folderName;
+            folderLink.addEventListener("click", (e) => {
+              e.preventDefault();
+              console.log(
+                `Prompt "${prompt}" wird nach ${folderName} verschoben.`
+              );
+
+              // Relocate-Logik direkt im Event-Listener
+              const currentFolderId = id;
+              const promptTextContent = promptText.textContent.trim();
+
+              let currentFolder = data[currentFolderId];
+              let targetFolderId = null;
+
+              // Finde Zielordner-ID
+              Object.entries(data).forEach(([id, topic]) => {
+                if (topic.name === folderName) targetFolderId = id;
+              });
+
+              if (!currentFolder) {
+                console.error(
+                  `Aktueller Ordner mit ID ${currentFolderId} nicht gefunden.`
+                );
+                return;
+              }
+
+              // Entferne Prompt aus aktuellem Ordner
+              const updatedCurrentPrompts = currentFolder.prompts.filter(
+                (p) => p !== promptTextContent
+              );
+              const updatedCurrentFolder = {
+                name: currentFolder.name,
+                prompts: updatedCurrentPrompts,
+              };
+
+              // Füge Prompt zum Zielordner hinzu
+              if (!targetFolderId) {
+                targetFolderId = `folder_${Date.now()}`;
+                data[targetFolderId] = {
+                  name: folderName,
+                  prompts: [promptTextContent],
+                };
+              } else {
+                data[targetFolderId].prompts.push(promptTextContent);
+              }
+
+              data[currentFolderId] = updatedCurrentFolder;
+
+              // Speichere die Änderungen in chrome.storage.sync
+              chrome.storage.sync.set(data, function () {
+                if (chrome.runtime.lastError) {
+                  console.error("Error saving data:", chrome.runtime.lastError);
+                } else {
+                  console.log(
+                    `Prompt "${promptTextContent}" erfolgreich von "${currentFolder.name}" nach "${folderName}" verschoben.`
+                  );
+                  // Aktualisiere das DOM direkt
+                  const currentTbody = document.querySelector(
+                    `#${currentFolderId} tbody`
+                  );
+                  if (currentTbody) {
+                    currentTbody.innerHTML = ""; // Leere aktuelles Panel
+                    updatedCurrentPrompts.forEach((p, idx) => {
+                      const newRow = document.createElement("tr");
+                      const newPromptCell = document.createElement("td");
+                      const newPromptText = document.createElement("p");
+                      newPromptText.textContent = p;
+                      newPromptCell.appendChild(newPromptText);
+                      newRow.appendChild(newPromptCell);
+
+                      ["Edit", "Delete", "Use", "Relocate"].forEach((act) => {
+                        const actCell = document.createElement("td");
+                        if (act === "Relocate") {
+                          const dd = document.createElement("div");
+                          dd.classList.add("dropdown2");
+                          const rb = document.createElement("button");
+                          rb.classList.add("action-button", "dropbtn2");
+                          rb.textContent = "Relocate";
+                          rb.title = "Relocate prompt";
+                          const dc = document.createElement("div");
+                          dc.classList.add("dropdown-content2");
+                          dc.id = `relocate-dropdown-${idx}-${currentFolderId}`;
+
+                          chrome.storage.sync.get(null, (d) => {
+                            dc.innerHTML = "";
+                            Object.entries(d).forEach(([fid, t]) => {
+                              const fl = document.createElement("a");
+                              fl.href = "#";
+                              fl.textContent = t.name;
+                              fl.addEventListener("click", (e) => {
+                                e.preventDefault();
+                                relocatePrompt(
+                                  newPromptText,
+                                  currentFolderId,
+                                  t.name
+                                );
+                                dc.classList.remove("show2");
+                              });
+                              dc.appendChild(fl);
+                            });
+                          });
+
+                          rb.addEventListener("click", () =>
+                            dc.classList.toggle("show2")
+                          );
+                          dd.appendChild(rb);
+                          dd.appendChild(dc);
+                          actCell.appendChild(dd);
+                        } else {
+                          const ab = document.createElement("button");
+                          ab.classList.add("action-button");
+                          ab.textContent = act;
+                          ab.title = `${act} prompt`;
+                          ab.addEventListener("click", () => {
+                            if (act === "Edit") editPrompt(newPromptText);
+                            else if (act === "Delete")
+                              deletePrompt(
+                                newPromptText,
+                                currentFolderId,
+                                newRow
+                              );
+                            else if (act === "Use") usePrompt(p);
+                          });
+                          actCell.appendChild(ab);
+                        }
+                        newRow.appendChild(actCell);
+                      });
+
+                      currentTbody.appendChild(newRow);
+                    });
+                  }
+
+                  // Aktualisiere Zielordner
+                  const targetTbody = document.querySelector(
+                    `#${targetFolderId} tbody`
+                  );
+                  if (targetTbody) {
+                    targetTbody.innerHTML = ""; // Leere Zielpanel
+                    data[targetFolderId].prompts.forEach((p, idx) => {
+                      const newRow = document.createElement("tr");
+                      const newPromptCell = document.createElement("td");
+                      const newPromptText = document.createElement("p");
+                      newPromptText.textContent = p;
+                      newPromptCell.appendChild(newPromptText);
+                      newRow.appendChild(newPromptCell);
+
+                      ["Edit", "Delete", "Use", "Relocate"].forEach((act) => {
+                        const actCell = document.createElement("td");
+                        if (act === "Relocate") {
+                          const dd = document.createElement("div");
+                          dd.classList.add("dropdown2");
+                          const rb = document.createElement("button");
+                          rb.classList.add("action-button", "dropbtn2");
+                          rb.textContent = "Relocate";
+                          rb.title = "Relocate prompt";
+                          const dc = document.createElement("div");
+                          dc.classList.add("dropdown-content2");
+                          dc.id = `relocate-dropdown-${idx}-${targetFolderId}`;
+
+                          chrome.storage.sync.get(null, (d) => {
+                            dc.innerHTML = "";
+                            Object.entries(d).forEach(([fid, t]) => {
+                              const fl = document.createElement("a");
+                              fl.href = "#";
+                              fl.textContent = t.name;
+                              fl.addEventListener("click", (e) => {
+                                e.preventDefault();
+                                relocatePrompt(
+                                  newPromptText,
+                                  targetFolderId,
+                                  t.name
+                                );
+                                dc.classList.remove("show2");
+                              });
+                              dc.appendChild(fl);
+                            });
+                          });
+
+                          rb.addEventListener("click", () =>
+                            dc.classList.toggle("show2")
+                          );
+                          dd.appendChild(rb);
+                          dd.appendChild(dc);
+                          actCell.appendChild(dd);
+                        } else {
+                          const ab = document.createElement("button");
+                          ab.classList.add("action-button");
+                          ab.textContent = act;
+                          ab.title = `${act} prompt`;
+                          ab.addEventListener("click", () => {
+                            if (act === "Edit") editPrompt(newPromptText);
+                            else if (act === "Delete")
+                              deletePrompt(
+                                newPromptText,
+                                targetFolderId,
+                                newRow
+                              );
+                            else if (act === "Use") usePrompt(p);
+                          });
+                          actCell.appendChild(ab);
+                        }
+                        newRow.appendChild(actCell);
+                      });
+
+                      targetTbody.appendChild(newRow);
+                    });
+                  }
+                }
+              });
+
+              dropdownContent.classList.remove("show2");
+            });
+            dropdownContent.appendChild(folderLink);
+          });
+          if (Object.keys(data).length === 0) {
+            const noFolders = document.createElement("a");
+            noFolders.href = "#";
+            noFolders.textContent = "Keine Ordner vorhanden";
+            noFolders.style.color = "#888";
+            noFolders.style.pointerEvents = "none";
+            dropdownContent.appendChild(noFolders);
+          }
+        });
+
+        relocateButton.addEventListener("click", () => {
+          dropdownContent.classList.toggle("show2");
+        });
+
+        dropdown.appendChild(relocateButton);
+        dropdown.appendChild(dropdownContent);
+        actionCell.appendChild(dropdown);
+      } else {
+        const actionButton = document.createElement("button");
+        actionButton.classList.add("action-button");
+        actionButton.textContent = action;
+        actionButton.title = `${action} prompt`;
+        actionCell.appendChild(actionButton);
+
+        actionButton.addEventListener("click", function () {
+          switch (action) {
+            case "Edit":
+              editPrompt(promptText);
+              break;
+            case "Delete":
+              deletePrompt(promptText, id, row);
+              break;
+            case "Use":
+              usePrompt(prompt);
+              break;
+          }
+        });
+      }
+
+      row.appendChild(actionCell);
     });
 
     tbody.appendChild(row);
@@ -269,33 +509,46 @@ function createAccordion(id, topicName, prompts) {
   table.appendChild(tbody);
   panel.appendChild(table);
 
-  // Append to container
   accordionContainer.appendChild(accordion);
   accordionContainer.appendChild(panel);
 
-  // ✅ Attach event listener for opening and closing
   button.addEventListener("click", function () {
-    panel.classList.toggle("show");
+    panel.classList.toggle("show2");
   });
 }
 
+// Schließe Dropdown bei Klick außerhalb
+window.addEventListener("click", (event) => {
+  if (!event.target.matches(".dropbtn2")) {
+    const dropdowns = document.getElementsByClassName("dropdown-content2");
+    for (let i = 0; i < dropdowns.length; i++) {
+      const openDropdown = dropdowns[i];
+      if (openDropdown.classList.contains("show2")) {
+        openDropdown.classList.remove("show2");
+      }
+    }
+  }
+});
+
 function editPrompt(promptElement) {
   const currentText = promptElement.textContent;
-  const input = document.createElement("input");
-  input.type = "text";
-  input.value = currentText;
-  input.classList.add("prompt-edit-input");
 
-  promptElement.replaceWith(input);
-  input.focus();
+  // Erstelle die URL mit Query-Parametern, um den Text zu übergeben
+  const url =
+    chrome.runtime.getURL("/pages/editPrompt.html") +
+    `?promptText=${encodeURIComponent(
+      currentText
+    )}&elementId=${encodeURIComponent(promptElement.id || "no-id")}`;
 
-  input.addEventListener("blur", function () {
-    if (input.value.trim()) {
-      promptElement.textContent = input.value.trim();
-      input.replaceWith(promptElement);
-      console.log("Prompt updated:", input.value);
+  // Öffne eine neue Registerkarte mit der URL
+  chrome.tabs.create({ url: url }, (tab) => {
+    if (chrome.runtime.lastError) {
+      console.error(
+        "Fehler beim Erstellen des Tabs:",
+        chrome.runtime.lastError
+      );
     } else {
-      input.replaceWith(promptElement); // Restore if empty
+      console.log("Neuer Tab geöffnet mit Prompt-Daten:", currentText);
     }
   });
 }
@@ -338,83 +591,66 @@ function usePrompt(prompt) {
   });
 }
 
-function relocatePrompt(promptElement, currentFolderId) {
-  // Create dropdown if it doesn't exist
-  let dropdown = document.querySelector(".folder-dropdown");
-  if (!dropdown) {
-    dropdown = document.createElement("div");
-    dropdown.classList.add("folder-dropdown");
-    dropdown.style.position = "absolute"; // Position it absolutely
-    dropdown.style.backgroundColor = "white"; // Background color
-    dropdown.style.border = "1px solid #ccc"; // Border
-    dropdown.style.zIndex = "1000"; // Ensure it appears above other elements
-    document.body.appendChild(dropdown);
-  }
+// Die relocatePrompt-Funktion bleibt unverändert
+function relocatePrompt(promptElement, currentFolderId, targetFolderName) {
+  const promptText = promptElement.textContent.trim();
 
-  // Clear existing items in the dropdown
-  dropdown.innerHTML = "";
-
-  // Populate the dropdown with folder names
   chrome.storage.sync.get(null, function (data) {
     if (chrome.runtime.lastError) {
-      console.error("Error fetching folders:", chrome.runtime.lastError);
+      console.error("Error fetching data:", chrome.runtime.lastError);
       return;
     }
 
+    let currentFolder = null;
+    let targetFolderId = null;
+
     Object.entries(data).forEach(([id, topic]) => {
-      const folderItem = document.createElement("div");
-      folderItem.classList.add("folder-item");
-      folderItem.textContent = topic.name;
-      folderItem.dataset.folderId = id; // Store the folder ID in a data attribute
-      dropdown.appendChild(folderItem);
-
-      // Add click event to each folder item
-      folderItem.addEventListener("click", function () {
-        const newFolderId = this.dataset.folderId; // Get the folder ID from data attribute
-        if (!newFolderId) return;
-
-        chrome.storage.sync.get(
-          [currentFolderId, newFolderId],
-          function (data) {
-            if (data[currentFolderId] && data[newFolderId]) {
-              const promptText = promptElement.textContent;
-              data[newFolderId].prompts.push(promptText);
-              data[currentFolderId].prompts = data[
-                currentFolderId
-              ].prompts.filter((p) => p !== promptText);
-
-              chrome.storage.sync.set(data, function () {
-                console.log(
-                  `Prompt moved from ${currentFolderId} to ${newFolderId}`
-                );
-                promptElement.closest("tr").remove();
-              });
-            }
-          }
-        );
-
-        // Remove dropdown after selection
-        dropdown.remove();
-      });
+      if (id === currentFolderId) {
+        currentFolder = topic;
+      }
+      if (topic.name === targetFolderName) {
+        targetFolderId = id;
+      }
     });
-  });
 
-  // Position the dropdown below the button
-  const button = promptElement
-    .closest("tr")
-    .querySelector(".action-button:contains('Relocate')");
-  const rect = button.getBoundingClientRect();
-  dropdown.style.top = `${rect.bottom + window.scrollY}px`;
-  dropdown.style.left = `${rect.left + window.scrollX}px`;
-
-  // Show the dropdown
-  dropdown.style.display = "block";
-
-  // Hide dropdown when clicking outside
-  document.addEventListener("click", function (event) {
-    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
-      dropdown.style.display = "none"; // Hide dropdown
+    if (!currentFolder) {
+      console.error(
+        `Aktueller Ordner mit ID ${currentFolderId} nicht gefunden.`
+      );
+      return;
     }
+
+    const updatedCurrentPrompts = currentFolder.prompts.filter(
+      (prompt) => prompt !== promptText
+    );
+    const updatedCurrentFolder = {
+      name: currentFolder.name,
+      prompts: updatedCurrentPrompts,
+    };
+
+    if (!targetFolderId) {
+      targetFolderId = `folder_${Date.now()}`;
+      const newFolder = {
+        name: targetFolderName,
+        prompts: [promptText],
+      };
+      data[targetFolderId] = newFolder;
+    } else {
+      data[targetFolderId].prompts.push(promptText);
+    }
+
+    data[currentFolderId] = updatedCurrentFolder;
+
+    chrome.storage.sync.set(data, function () {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving data:", chrome.runtime.lastError);
+      } else {
+        console.log(
+          `Prompt "${promptText}" erfolgreich von "${currentFolder.name}" nach "${targetFolderName}" verschoben.`
+        );
+        promptElement.closest("tr")?.remove();
+      }
+    });
   });
 }
 

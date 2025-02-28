@@ -1,0 +1,61 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: black;
+}
+
+.title {
+    text-align: center;
+    color: white;
+}
+
+/* CSS für das Textarea */
+textarea {
+  /* Größe und Layout */
+  width: 100%;
+  max-width: 600px; /* Begrenzung der Breite für bessere Lesbarkeit */
+  height: 150px; /* Standardhöhe, anpassbar */
+  padding: 12px; /* Innenabstand für Komfort */
+  box-sizing: border-box; /* Padding wird in die Breite/Höhe eingerechnet */
+
+  /* Typografie */
+  font-family: "Arial", sans-serif; /* Professionelle, klare Schriftart */
+  font-size: 16px; /* Gut lesbar */
+  line-height: 1.5; /* Angenehmer Zeilenabstand */
+  color: #333; /* Dunkler Text für Kontrast */
+
+  /* Rahmen und Hintergrund */
+  border: 1px solid #ccc; /* Subtiler Rahmen */
+  border-radius: 6px; /* Abgerundete Ecken für modernes Design */
+  background-color: #fff; /* Weißer Hintergrund */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Leichter Schatten für Tiefe */
+
+  /* Interaktion */
+  resize: vertical; /* Nur vertikale Größenänderung erlauben */
+  transition: border-color 0.3s ease, box-shadow 0.3s ease; /* Sanfte Übergänge */
+}
+
+/* Hover-Zustand */
+textarea:hover {
+  border-color: #999; /* Dunklerer Rand beim Überfahren */
+}
+
+/* Fokus-Zustand */
+textarea:focus {
+  border-color: #007bff; /* Blauer Rand für Fokus (professionelle Farbe) */
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3); /* Leichter Fokus-Schatten */
+  outline: none; /* Entfernt Standard-Browser-Outline */
+}
+
+/* Placeholder-Styling (falls benötigt) */
+textarea::placeholder {
+  color: #aaa; /* Heller Platzhaltertext */
+  font-style: italic; /* Kursiv für Unterscheidung */
+}
+
+/* Optional: Container für zusätzliche Zentrierung */
+.textarea-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}

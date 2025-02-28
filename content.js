@@ -92,7 +92,17 @@ setInterval(() => {
             if (match) {
               let buttonNumber = parseInt(match[1], 10);
               console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+              // Text auf "✔ Prompt Saved" setzen
+              clickedButton.textContent = "✔ Prompt Saved";
+
+              // Funktion promptGrabber aufrufen
               promptGrabber(buttonNumber);
+
+              // Nach 5 Sekunden zurück auf "Save Prompt" setzen
+              setTimeout(() => {
+                clickedButton.textContent = "Save Prompt";
+              }, 5000); // 5000 Millisekunden = 5 Sekunden
             }
           });
 
