@@ -157,12 +157,12 @@ function createAccordion(id, topicName, prompts) {
 
   const renameButton = document.createElement("button");
   renameButton.classList.add("rename-button");
-  renameButton.textContent = "Rename";
+  renameButton.textContent = "✏️ Rename";
   renameButton.title = "Rename folder";
 
   const deleteButton = document.createElement("button");
   deleteButton.classList.add("delete-button");
-  deleteButton.textContent = "Delete";
+  deleteButton.textContent = "🗑️ Delete";
   deleteButton.title = "Delete folder";
 
   // Rename functionality
@@ -214,7 +214,8 @@ function createAccordion(id, topicName, prompts) {
     const row = document.createElement("tr");
     const promptCell = document.createElement("td");
     const promptText = document.createElement("p");
-    promptText.textContent = prompt;
+    promptText.textContent =
+      prompt.length > 10 ? prompt.slice(0, 10) + "..." : prompt;
     promptCell.appendChild(promptText);
     row.appendChild(promptCell);
 
@@ -361,7 +362,8 @@ function createAccordion(id, topicName, prompts) {
                           ab.textContent = act;
                           ab.title = `${act} prompt`;
                           ab.addEventListener("click", () => {
-                            if (act === "Edit") editPrompt(newPromptText);
+                            if (act === "Edit")
+                              editPrompt(promptText, id, index);
                             else if (act === "Delete")
                               deletePrompt(
                                 newPromptText,
@@ -437,7 +439,8 @@ function createAccordion(id, topicName, prompts) {
                           ab.textContent = act;
                           ab.title = `${act} prompt`;
                           ab.addEventListener("click", () => {
-                            if (act === "Edit") editPrompt(newPromptText);
+                            if (act === "Edit")
+                              editPrompt(promptText, id, index);
                             else if (act === "Delete")
                               deletePrompt(
                                 newPromptText,
@@ -488,7 +491,7 @@ function createAccordion(id, topicName, prompts) {
         actionButton.addEventListener("click", function () {
           switch (action) {
             case "Edit":
-              editPrompt(promptText);
+              editPrompt(promptText, id, index);
               break;
             case "Delete":
               deletePrompt(promptText, id, row);
@@ -530,15 +533,12 @@ window.addEventListener("click", (event) => {
   }
 });
 
-function editPrompt(promptElement) {
-  const currentText = promptElement.textContent;
-
-  // Erstelle die URL mit Query-Parametern, um den Text zu übergeben
+function editPrompt(promptElement, folderId, promptIndex) {
+  // Erstelle die URL mit Query-Parametern nur für Ordner-ID und Prompt-Index
   const url =
     chrome.runtime.getURL("/pages/editPrompt.html") +
-    `?promptText=${encodeURIComponent(
-      currentText
-    )}&elementId=${encodeURIComponent(promptElement.id || "no-id")}`;
+    `?folderId=${encodeURIComponent(folderId)}` +
+    `&promptIndex=${encodeURIComponent(promptIndex)}`;
 
   // Öffne eine neue Registerkarte mit der URL
   chrome.tabs.create({ url: url }, (tab) => {
@@ -548,7 +548,12 @@ function editPrompt(promptElement) {
         chrome.runtime.lastError
       );
     } else {
-      console.log("Neuer Tab geöffnet mit Prompt-Daten:", currentText);
+      console.log(
+        "Neuer Tab geöffnet mit Folder ID:",
+        folderId,
+        "Prompt Index:",
+        promptIndex
+      );
     }
   });
 }
