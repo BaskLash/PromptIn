@@ -263,6 +263,121 @@ setInterval(() => {
       );
     }
   }
+  if (
+    window.location.hostname === "gemini.google.com" &&
+    path.startsWith("/app/")
+  ) {
+    console.log("Your Inside of gemini");
+
+    // Alle Elemente mit der Klasse '.response-container-footer' auswählen
+    const elements = document.querySelectorAll(".response-container-footer");
+    let existingElements = new Set(); // Set für bereits verarbeitete Elemente
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+
+    elements.forEach((element, index) => {
+      let currentElement = element;
+      let messageActions = currentElement.querySelector("message-actions");
+
+      if (messageActions) {
+        let firstDiv = messageActions.querySelector("div");
+        if (firstDiv) {
+          let secondDiv = firstDiv.querySelector("div");
+          if (secondDiv) {
+            // Falls dieses Element schon verarbeitet wurde, überspringen
+            if (existingElements.has(secondDiv)) {
+              console.log(
+                "Dieses Element wurde bereits verarbeitet, überspringe..."
+              );
+              return;
+            }
+
+            // Überprüfe, ob bereits ein Button existiert
+            let buttonExists = Array.from(
+              secondDiv.querySelectorAll("button")
+            ).some((btn) => btn.className.match(/\bsave-prompt-button-\d+\b/));
+
+            // Falls es sich um das erste Element handelt und kein Button existiert → Zähler zurücksetzen
+            if (index === 0 && !buttonExists) {
+              console.log(
+                "Erstes Element hat keinen Button – Counter wird zurückgesetzt."
+              );
+              buttonCounter = 1;
+            }
+
+            // Nur wenn kein Button existiert, einen neuen hinzufügen
+            if (!buttonExists) {
+              const button = document.createElement("button");
+              button.textContent = `Save Prompt`;
+              button.classList.add(
+                "save-prompt-button",
+                `save-prompt-button-${buttonCounter}`
+              );
+
+              // Button-Styling
+              button.style.padding = "5px 10px";
+              button.style.marginLeft = "5px";
+              button.style.cursor = "pointer";
+              button.style.border = "1px solid #ccc";
+              button.style.borderRadius = "5px";
+              button.style.color = "black";
+              button.style.background = "#f0f0f0";
+              button.title =
+                "If you liked the answer, save the prompt that generated it directly to your memory.";
+
+              // Hover-Effekte
+              button.addEventListener("mouseover", () => {
+                button.style.backgroundColor = "#e0e0e0";
+                button.style.borderColor = "#bbb";
+              });
+
+              button.addEventListener("mouseout", () => {
+                button.style.backgroundColor = "#f0f0f0";
+                button.style.borderColor = "#ccc";
+              });
+
+              // Klick-Event
+              button.addEventListener("click", (event) => {
+                let clickedButton = event.target;
+                let match = clickedButton.className.match(
+                  /save-prompt-button-(\d+)/
+                );
+                if (match) {
+                  let buttonNumber = parseInt(match[1], 10);
+                  console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+                  // Text auf "✔ Prompt Saved" setzen
+                  clickedButton.textContent = "✔ Prompt Saved";
+
+                  // Funktion promptGrabber aufrufen
+                  geminiButtonClick(buttonNumber);
+
+                  // Nach 5 Sekunden zurück auf "Save Prompt" setzen
+                  setTimeout(() => {
+                    clickedButton.textContent = "Save Prompt";
+                  }, 5000);
+                }
+              });
+
+              secondDiv.appendChild(button);
+              console.log(`Button ${buttonCounter} hinzugefügt.`);
+              buttonCounter++; // Zähler erhöhen
+            } else {
+              console.log("Button existiert bereits, überspringe...");
+            }
+
+            // Element als verarbeitet markieren
+            existingElements.add(secondDiv);
+          }
+        }
+      }
+    });
+
+    if (elements.length === 0) {
+      console.log(
+        "Keine Elemente mit der Klasse 'response-container-footer' gefunden."
+      );
+    }
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -383,6 +498,77 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   return true; // Required for asynchronous sendResponse
 });
+
+function geminiButtonClick(index) {
+  console.log("INDEX: " + index);
+
+  index = index - 1;
+
+  // Verwende den Index im ID-Selector
+  let element = document.getElementById(`user-query-content-${index}`);
+
+  // Prüfe, ob das Element existiert
+  if (!element) {
+    console.log(`Element mit ID 'user-query-content-${index}' nicht gefunden`);
+    return;
+  }
+
+  // Finde das erste span-Element in der spezifischen Verschachtelung
+  let span = element.querySelector(":scope > span > span > div > p");
+
+  // Prüfe, ob span gefunden wurde und gib Inhalt aus
+  if (span) {
+    console.log("Gefundener Inhalt: " + span.innerHTML);
+
+    message = span.innerHTML.trim(); // Trim entfernt überflüssige Leerzeichen
+    console.log(`Prompt ${index}:`, message);
+
+    let baseTopicName = "ExampleName"; // Dynamischer Name möglich
+    let topicName = baseTopicName;
+
+    // Prüfe, ob ein Doppelpunkt im Text vorhanden ist
+    let processedMessage = message;
+    const colonIndex = message.indexOf(":");
+    if (colonIndex !== -1) {
+      // Wenn ein ":" gefunden wird, nimm nur den Teil links davon inklusive ":"
+      processedMessage = message.substring(0, colonIndex + 1).trim();
+    }
+    // Hole bestehende Daten
+    chrome.storage.sync.get(null, async function (data) {
+      let topics = data || {}; // Sicherstellen, dass ein Objekt existiert
+
+      // Eindeutige ID generieren
+      const uniqueID = await generateUniqueID(topicName);
+
+      // Falls der Name bereits existiert, generiere einen neuen
+      while (topics.hasOwnProperty(topicName)) {
+        topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
+      }
+
+      // Neues Topic-Objekt erstellen mit der verarbeiteten Nachricht
+      topics[uniqueID] = {
+        name: topicName,
+        prompts: [processedMessage],
+      };
+
+      // Speichern und UI sofort aktualisieren
+      chrome.storage.sync.set(topics, function () {
+        console.log(
+          `Gespeichert in ${topicName} (ID: ${uniqueID}):`,
+          processedMessage
+        );
+        inputField.value = ""; // Eingabefeld leeren
+
+        document.querySelector(".dropdown-content p").style.display = "none";
+
+        // Direkt das neue Element in die UI einfügen
+        addDropdownItem(uniqueID, topicName);
+      });
+    });
+  } else {
+    console.log("Kein passendes span-Element gefunden");
+  }
+}
 
 function chatGPTButtonClick(index) {
   // Überprüfen, ob der Index eine positive Zahl ist
