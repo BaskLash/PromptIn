@@ -129,64 +129,68 @@ setInterval(() => {
       "article[data-testid^='conversation-turn-']"
     );
 
-    // Zähler für die Gesamtzahl der article-Elemente
-    const totalArticles = articleElements.length;
-    console.log(`Gefundene article-Elemente: ${totalArticles}`);
+    let existingElements = new Set(); // Set für bereits verarbeitete Elemente
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
 
     articleElements.forEach((articleElement, index) => {
-      const match = articleElement
-        .getAttribute("data-testid")
-        .match(/conversation-turn-(\d+)/);
-      const conversationNumber = match ? match[1] : null;
-
       let currentElement = articleElement;
 
       for (let i = 0; i < 9; i++) {
         let nextDiv = null;
         let nextSibling = currentElement.firstElementChild;
-        let divCount = 0;
         let divElements = [];
 
         // Sammle alle DIV-Kinder des aktuellen Elements
         while (nextSibling) {
           if (nextSibling.tagName === "DIV") {
             divElements.push(nextSibling);
-            divCount++;
           }
           nextSibling = nextSibling.nextElementSibling;
         }
 
         // Logik zur Auswahl des nächsten DIVs
         if (i === 4) {
-          // Ab Ebene 5: Zweites DIV, wenn genau 3 vorhanden
-          nextDiv = divElements[1];
+          nextDiv = divElements[1]; // Ab Ebene 5: Zweites DIV, wenn genau 3 vorhanden
         } else if (divElements.length > 0) {
-          // Standardfall: Erstes DIV, wenn mindestens eines vorhanden
-          nextDiv = divElements[0];
+          nextDiv = divElements[0]; // Standardfall: Erstes DIV, wenn mindestens eines vorhanden
         }
 
         if (nextDiv) {
           currentElement = nextDiv;
-          console.log(`Ebene ${i + 1}:`, currentElement);
 
-          // Prüfe Zielklassen
           if (
             currentElement.classList.contains("flex") &&
             currentElement.classList.contains("items-center")
           ) {
-            console.log(`Gefunden auf Etage ${i + 1}`);
+            // Falls dieses Element schon verarbeitet wurde, überspringen
+            if (existingElements.has(currentElement)) {
+              console.log(
+                "Dieses Element wurde bereits verarbeitet, überspringe..."
+              );
+              break;
+            }
 
-            // Prüfe, ob ein Element mit der spezifischen Klasse bereits existiert
-            const buttonClass = `save-prompt-button-${buttonCounter}`;
-            const existingButton = currentElement.querySelector(
-              `.${buttonClass}`
-            );
+            // Überprüfe, ob bereits ein Button existiert
+            let buttonExists = Array.from(
+              currentElement.querySelectorAll("button")
+            ).some((btn) => btn.className.match(/\bsave-prompt-button-\d+\b/));
 
-            if (!existingButton) {
-              // Neuen Button erstellen
-              let button = document.createElement("button");
-              button.textContent = "Save Prompt";
-              button.className = buttonClass; // Weise die dynamische Klasse zu
+            // Falls es sich um das erste Element handelt und kein Button existiert → Zähler zurücksetzen
+            if (index === 0 && !buttonExists) {
+              console.log(
+                "Erstes Element hat keinen Button – Counter wird zurückgesetzt."
+              );
+              buttonCounter = 1;
+            }
+
+            // Nur wenn kein Button existiert, einen neuen hinzufügen
+            if (!buttonExists) {
+              const button = document.createElement("button");
+              button.textContent = `Save Prompt`;
+              button.classList.add(
+                "save-prompt-button",
+                `save-prompt-button-${buttonCounter}`
+              );
 
               // Button-Styling
               button.style.padding = "5px 10px";
@@ -210,19 +214,40 @@ setInterval(() => {
                 button.style.borderColor = "#ccc";
               });
 
+              // Klick-Event
+              button.addEventListener("click", (event) => {
+                let clickedButton = event.target;
+                let match = clickedButton.className.match(
+                  /save-prompt-button-(\d+)/
+                );
+                if (match) {
+                  let buttonNumber = parseInt(match[1], 10);
+                  console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+                  // Text auf "✔ Prompt Saved" setzen
+                  clickedButton.textContent = "✔ Prompt Saved";
+
+                  // Funktion promptGrabber aufrufen
+                  promptGrabber(buttonNumber);
+
+                  // Nach 5 Sekunden zurück auf "Save Prompt" setzen
+                  setTimeout(() => {
+                    clickedButton.textContent = "Save Prompt";
+                  }, 5000);
+                }
+              });
+
               currentElement.appendChild(button);
               console.log(
-                `Button mit Klasse '${buttonClass}' auf Ebene ${
-                  i + 1
-                } hinzugefügt`
+                `Button ${buttonCounter} auf Ebene ${i + 1} hinzugefügt.`
               );
+              buttonCounter++; // Zähler erhöhen
             } else {
-              console.log(
-                `Button mit Klasse '${buttonClass}' existiert bereits auf Ebene ${
-                  i + 1
-                }`
-              );
+              console.log("Button existiert bereits, überspringe...");
             }
+
+            // Element als verarbeitet markieren
+            existingElements.add(currentElement);
             break;
           }
         } else {
@@ -232,7 +257,7 @@ setInterval(() => {
       }
     });
 
-    if (totalArticles === 0) {
+    if (articleElements.length === 0) {
       console.log(
         "Keine Artikel mit data-testid 'conversation-turn-*' gefunden."
       );
