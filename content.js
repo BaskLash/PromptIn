@@ -178,11 +178,19 @@ function promptGrabber(index) {
   }
 
   if (message) {
-    message = message.textContent;
+    message = message.textContent.trim(); // Trim entfernt überflüssige Leerzeichen
     console.log(`Prompt ${index}:`, message);
 
     let baseTopicName = "ExampleName"; // Dynamischer Name möglich
     let topicName = baseTopicName;
+
+    // Prüfe, ob ein Doppelpunkt im Text vorhanden ist
+    let processedMessage = message;
+    const colonIndex = message.indexOf(":");
+    if (colonIndex !== -1) {
+      // Wenn ein ":" gefunden wird, nimm nur den Teil links davon inklusive ":"
+      processedMessage = message.substring(0, colonIndex + 1).trim();
+    }
 
     // Hole bestehende Daten
     chrome.storage.sync.get(null, async function (data) {
@@ -196,15 +204,18 @@ function promptGrabber(index) {
         topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
       }
 
-      // Neues Topic-Objekt erstellen
+      // Neues Topic-Objekt erstellen mit der verarbeiteten Nachricht
       topics[uniqueID] = {
         name: topicName,
-        prompts: [message],
+        prompts: [processedMessage],
       };
 
       // Speichern und UI sofort aktualisieren
       chrome.storage.sync.set(topics, function () {
-        console.log(`Gespeichert in ${topicName} (ID: ${uniqueID}):`, message);
+        console.log(
+          `Gespeichert in ${topicName} (ID: ${uniqueID}):`,
+          processedMessage
+        );
         inputField.value = ""; // Eingabefeld leeren
 
         document.querySelector(".dropdown-content p").style.display = "none";
