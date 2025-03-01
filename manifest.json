@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "GitHub Autofiller",
+  "name": "PromptIn: GitHub Copilot Prompt Autofiller and Hidder",
   "version": "1.0",
   "permissions": ["storage", "activeTab", "scripting"],
   "icons": {

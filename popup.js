@@ -149,7 +149,7 @@ function createAccordion(id, topicName, prompts) {
 
   const button = document.createElement("button");
   button.classList.add("topic-name");
-  button.textContent = topicName;
+  button.textContent = `${topicName} (${prompts.length})`;
   button.title = topicName;
 
   const actionLinks = document.createElement("span");
