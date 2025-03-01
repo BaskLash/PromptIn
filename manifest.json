@@ -16,8 +16,9 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.github.com/*"],
-      "js": ["content.js"]
+      "matches": ["*://*.github.com/*", "*://*.chatgpt.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
     }
   ],
   "content_security_policy": {

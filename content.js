@@ -26,13 +26,16 @@ async function generateUniqueID(baseName) {
 
 let buttonCounter = 1; // Startwert für auto_increment
 let existingToolbars = new Set(); // Set zur Verfolgung bereits verarbeiteter Toolbars
-
 setInterval(() => {
   // Always in use; That's why on top
   const path = window.location.pathname;
 
   // Only hide if the user is on the Home Feed
-  if (path.startsWith("/copilot/c/")) {
+  if (
+    window.location.hostname === "github.com" &&
+    path.startsWith("/copilot/c/")
+  ) {
+    console.log("Your Inside of copilot");
     let toolbars = document.querySelectorAll(
       '[role="toolbar"][aria-label="Message tools"]'
     );
@@ -118,6 +121,123 @@ setInterval(() => {
 
     console.log("Der Zähler läuft");
   }
+  if (window.location.hostname === "chatgpt.com" && path.startsWith("/c/")) {
+    console.log("Your Inside of chatgpt");
+
+    // Alle article-Elemente mit conversation-turn im data-testid finden
+    const articleElements = document.querySelectorAll(
+      "article[data-testid^='conversation-turn-']"
+    );
+
+    // Zähler für die Gesamtzahl der article-Elemente
+    const totalArticles = articleElements.length;
+    console.log(`Gefundene article-Elemente: ${totalArticles}`);
+
+    articleElements.forEach((articleElement, index) => {
+      const match = articleElement
+        .getAttribute("data-testid")
+        .match(/conversation-turn-(\d+)/);
+      const conversationNumber = match ? match[1] : null;
+
+      let currentElement = articleElement;
+
+      for (let i = 0; i < 9; i++) {
+        let nextDiv = null;
+        let nextSibling = currentElement.firstElementChild;
+        let divCount = 0;
+        let divElements = [];
+
+        // Sammle alle DIV-Kinder des aktuellen Elements
+        while (nextSibling) {
+          if (nextSibling.tagName === "DIV") {
+            divElements.push(nextSibling);
+            divCount++;
+          }
+          nextSibling = nextSibling.nextElementSibling;
+        }
+
+        // Logik zur Auswahl des nächsten DIVs
+        if (i === 4) {
+          // Ab Ebene 5: Zweites DIV, wenn genau 3 vorhanden
+          nextDiv = divElements[1];
+        } else if (divElements.length > 0) {
+          // Standardfall: Erstes DIV, wenn mindestens eines vorhanden
+          nextDiv = divElements[0];
+        }
+
+        if (nextDiv) {
+          currentElement = nextDiv;
+          console.log(`Ebene ${i + 1}:`, currentElement);
+
+          // Prüfe Zielklassen
+          if (
+            currentElement.classList.contains("flex") &&
+            currentElement.classList.contains("items-center")
+          ) {
+            console.log(`Gefunden auf Etage ${i + 1}`);
+
+            // Prüfe, ob ein Element mit der spezifischen Klasse bereits existiert
+            const buttonClass = `save-prompt-button-${buttonCounter}`;
+            const existingButton = currentElement.querySelector(
+              `.${buttonClass}`
+            );
+
+            if (!existingButton) {
+              // Neuen Button erstellen
+              let button = document.createElement("button");
+              button.textContent = "Save Prompt";
+              button.className = buttonClass; // Weise die dynamische Klasse zu
+
+              // Button-Styling
+              button.style.padding = "5px 10px";
+              button.style.marginLeft = "5px";
+              button.style.cursor = "pointer";
+              button.style.border = "1px solid #ccc";
+              button.style.borderRadius = "5px";
+              button.style.color = "black";
+              button.style.background = "#f0f0f0";
+              button.title =
+                "If you liked the answer, save the prompt that generated it directly to your memory.";
+
+              // Hover-Effekte
+              button.addEventListener("mouseover", () => {
+                button.style.backgroundColor = "#e0e0e0";
+                button.style.borderColor = "#bbb";
+              });
+
+              button.addEventListener("mouseout", () => {
+                button.style.backgroundColor = "#f0f0f0";
+                button.style.borderColor = "#ccc";
+              });
+
+              currentElement.appendChild(button);
+              console.log(
+                `Button mit Klasse '${buttonClass}' auf Ebene ${
+                  i + 1
+                } hinzugefügt`
+              );
+            } else {
+              console.log(
+                `Button mit Klasse '${buttonClass}' existiert bereits auf Ebene ${
+                  i + 1
+                }`
+              );
+            }
+            break;
+          }
+        } else {
+          console.log(`Ebene ${i + 1}: Kein DIV-Element gefunden.`);
+          break;
+        }
+      }
+    });
+
+    if (totalArticles === 0) {
+      console.log(
+        "Keine Artikel mit data-testid 'conversation-turn-*' gefunden."
+      );
+    }
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -151,6 +271,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   return true; // Required for asynchronous sendResponse
 });
+
+function chatGPTButtonClick(index) {
+  const articleElement = document.querySelector(
+    `article[data-testid='conversation-turn-${index}']`
+  );
+
+  if (articleElement) {
+    const whitespaceDiv = articleElement.querySelector(
+      "div.whitespace-pre-wrap"
+    );
+
+    if (whitespaceDiv) {
+      console.log(whitespaceDiv.textContent);
+    } else {
+      console.log(
+        "No div with class 'whitespace-pre-wrap' found within the specified article."
+      );
+    }
+  } else {
+    console.log(
+      `Article with data-testid 'conversation-turn-${index}' not found.`
+    );
+  }
+}
 
 // Funktion zum Abrufen des passenden Chat-Elements
 function promptGrabber(index) {

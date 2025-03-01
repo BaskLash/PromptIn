@@ -216,6 +216,7 @@ function createAccordion(id, topicName, prompts) {
     const promptText = document.createElement("p");
     promptText.textContent =
       prompt.length > 10 ? prompt.slice(0, 10) + "..." : prompt;
+    promptText.title = prompt;
     promptCell.appendChild(promptText);
     row.appendChild(promptCell);
 
