@@ -271,6 +271,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "usePrompt") {
     console.log("✅ usePrompt action received!");
 
+    // For Copilot Input
     const textarea = document.querySelector("textarea#copilot-chat-textarea");
     if (textarea) {
       textarea.value = request.text; // Insert the stored text
@@ -286,6 +287,92 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else {
       console.warn("⚠️ No textarea found.");
       sendResponse({ status: "error", message: "Textarea not found" });
+    }
+
+    // For ChatGPT Input
+    const firstDiv = document.getElementById("composer-background");
+
+    // Ebene 1: Überprüfe den Startpunkt
+    if (!firstDiv) {
+      console.log(
+        "Ebene 1: Start-Element 'composer-background' nicht gefunden."
+      );
+    } else if (firstDiv.tagName !== "DIV") {
+      console.log("Ebene 1: Start-Element ist kein DIV:", firstDiv);
+    } else {
+      console.log(
+        "Ebene 1: Start-DIV 'composer-background' gefunden:",
+        firstDiv
+      );
+
+      // Ebene 2
+      const secondDiv = Array.from(firstDiv.children).find(
+        (child) => child.tagName === "DIV"
+      );
+      if (!secondDiv) {
+        console.log("Ebene 2: Kein DIV-Kind gefunden in:", firstDiv);
+      } else {
+        console.log("Ebene 2: DIV gefunden:", secondDiv);
+
+        // Ebene 3
+        const thirdDiv = Array.from(secondDiv.children).find(
+          (child) => child.tagName === "DIV"
+        );
+        if (!thirdDiv) {
+          console.log("Ebene 3: Kein DIV-Kind gefunden in:", secondDiv);
+        } else {
+          console.log("Ebene 3: DIV gefunden:", thirdDiv);
+
+          // Ebene 4
+          const fourthDiv = Array.from(thirdDiv.children).find(
+            (child) => child.tagName === "DIV"
+          );
+          if (!fourthDiv) {
+            console.log("Ebene 4: Kein DIV-Kind gefunden in:", thirdDiv);
+          } else {
+            console.log("Ebene 4: DIV gefunden:", fourthDiv);
+
+            // Ebene 5
+            const fifthDiv = Array.from(fourthDiv.children).find(
+              (child) => child.tagName === "DIV"
+            );
+            if (!fifthDiv) {
+              console.log("Ebene 5: Kein DIV-Kind gefunden in:", fourthDiv);
+            } else {
+              console.log("Ebene 5: DIV gefunden:", fifthDiv);
+
+              // Ebene 6
+              const sixthDiv = Array.from(fifthDiv.children).find(
+                (child) => child.tagName === "DIV"
+              );
+              if (!sixthDiv) {
+                console.log("Ebene 6: Kein DIV-Kind gefunden in:", fifthDiv);
+              } else {
+                console.log("Ebene 6: DIV gefunden:", sixthDiv);
+
+                // Ebene 7: Suche nach einem Paragraph-Element (p)
+                const paragraph = sixthDiv.querySelector("p");
+                if (!paragraph) {
+                  console.log(
+                    "Ebene 7: Kein Paragraph-Element in Ebene 6 gefunden:",
+                    sixthDiv
+                  );
+                  console.log(
+                    "Fehler: Paragraph konnte nicht gefunden werden."
+                  );
+                } else {
+                  console.log("Ebene 7: Paragraph gefunden:", paragraph);
+                  paragraph.textContent = request.text; // Setze den Textinhalt des p-Elements
+                  console.log(
+                    "Paragraph erfolgreich gefunden und Wert gesetzt:",
+                    paragraph.textContent
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
     }
   } else {
     sendResponse({
