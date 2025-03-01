@@ -20,7 +20,8 @@
         "*://*.github.com/*",
         "*://*.chatgpt.com/*",
         "*://*.gemini.google.com/*",
-        "*://*.grok.com/*"
+        "*://*.grok.com/*",
+        "*://*.blackbox.ai/*"
       ],
       "js": ["content.js"],
       "run_at": "document_start"

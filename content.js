@@ -470,6 +470,87 @@ setInterval(() => {
       console.log("Keine Elemente mit der Klasse .items-start gefunden");
     }
   }
+  if (
+    (window.location.hostname === "blackbox.ai" ||
+      window.location.hostname === "www.blackbox.ai") &&
+    path.startsWith("/chat/")
+  ) {
+    console.log("You're inside blackbox");
+
+    // Das gewünschte div-Element auswählen
+    const targetDiv = document.querySelector("div.flex.justify-center");
+
+    // Überprüfen, ob das Ziel-Div existiert
+    if (targetDiv) {
+      // Überprüfen, ob bereits ein Button existiert
+      let buttonExists = Array.from(targetDiv.querySelectorAll("button")).some(
+        (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
+      );
+
+      if (!buttonExists) {
+        // Button-Zähler initialisieren
+        let buttonCounter =
+          document.querySelectorAll(".save-prompt-button").length + 1;
+
+        // Neuen Button erstellen
+        const button = document.createElement("button");
+        button.textContent = "Save Prompt";
+        button.classList.add(
+          "save-prompt-button",
+          `save-prompt-button-${buttonCounter}`
+        );
+
+        // Button-Styling
+        button.style.padding = "5px 10px";
+        button.style.marginLeft = "5px";
+        button.style.cursor = "pointer";
+        button.style.border = "1px solid #ccc";
+        button.style.borderRadius = "5px";
+        button.style.color = "black";
+        button.style.background = "#f0f0f0";
+        button.title =
+          "If you liked the answer, save the prompt that generated it directly to your memory.";
+
+        // Hover-Effekte
+        button.addEventListener("mouseover", () => {
+          button.style.backgroundColor = "#e0e0e0";
+          button.style.borderColor = "#bbb";
+        });
+
+        button.addEventListener("mouseout", () => {
+          button.style.backgroundColor = "#f0f0f0";
+          button.style.borderColor = "#ccc";
+        });
+
+        // Klick-Event
+        button.addEventListener("click", (event) => {
+          let clickedButton = event.target;
+          let match = clickedButton.className.match(/save-prompt-button-(\d+)/);
+          if (match) {
+            let buttonNumber = parseInt(match[1], 10);
+            console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+            clickedButton.textContent = "✔ Prompt Saved";
+            blackboxButtonClick();
+
+            setTimeout(() => {
+              clickedButton.textContent = "Save Prompt";
+            }, 5000);
+          } else {
+            console.log("Button wurde geklickt, aber keine Nummer gefunden.");
+          }
+        });
+
+        // Den Button dem div-Element hinzufügen
+        targetDiv.appendChild(button);
+        console.log(`Button ${buttonCounter} wurde hinzugefügt.`);
+      } else {
+        console.log("Button existiert bereits, überspringe...");
+      }
+    } else {
+      console.error("Das angegebene div-Element wurde nicht gefunden.");
+    }
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -502,6 +583,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     );
     if (geminiInput) {
       geminiInput.innerHTML = request.text;
+    }
+
+    // For BlackBox Input
+    const blackboxInput = document.querySelector("textarea");
+    if (blackboxInput) {
+      blackboxInput.value = request.text;
+      // Trigger an input event (important for some web apps)
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      sendResponse({
+        status: "success",
+        message: "Prompt inserted successfully",
+      });
+    } else {
+      console.warn("⚠️ No textarea found.");
+      sendResponse({ status: "error", message: "Textarea not found" });
     }
 
     // For ChatGPT Input
@@ -615,6 +711,62 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   return true; // Required for asynchronous sendResponse
 });
+
+function blackboxButtonClick() {
+  // Berechnung des Index muss bei jedem Aufruf neu erfolgen
+  const proseElements = document.querySelectorAll(".prose");
+  const totalElements = proseElements.length;
+  const newIndex = totalElements - 2;
+
+  console.log("Total Elements:", totalElements);
+  console.log("New Index (zweitletztes Element):", newIndex);
+
+  if (newIndex >= 0 && newIndex < totalElements) {
+    const selectedProse = proseElements[newIndex];
+    const firstParagraph = selectedProse.querySelector("p");
+
+    if (firstParagraph) {
+      console.log(firstParagraph.innerHTML);
+      let message = firstParagraph.innerHTML.trim();
+      let baseTopicName = "ExampleName";
+      let topicName = baseTopicName;
+
+      let processedMessage = message;
+      const colonIndex = message.indexOf(":");
+      if (colonIndex !== -1) {
+        processedMessage = message.substring(0, colonIndex + 1).trim();
+      }
+
+      chrome.storage.sync.get(null, async function (data) {
+        let topics = data || {};
+        const uniqueID = await generateUniqueID(topicName);
+
+        while (topics.hasOwnProperty(topicName)) {
+          topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
+        }
+
+        topics[uniqueID] = {
+          name: topicName,
+          prompts: [processedMessage],
+        };
+
+        chrome.storage.sync.set(topics, function () {
+          console.log(
+            `Gespeichert in ${topicName} (ID: ${uniqueID}):`,
+            processedMessage
+          );
+          inputField.value = "";
+          document.querySelector(".dropdown-content p").style.display = "none";
+          addDropdownItem(uniqueID, topicName);
+        });
+      });
+    } else {
+      console.log("Kein Paragraph in diesem Prose-Element gefunden.");
+    }
+  } else {
+    console.log("Nicht genügend Prose-Elemente vorhanden.");
+  }
+}
 
 function grokButtonClick(index) {
   console.log("INDEX: " + index);
