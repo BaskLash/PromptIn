@@ -16,7 +16,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.github.com/*", "*://*.chatgpt.com/*", "*://*.gemini.google.com/*"],
+      "matches": [
+        "*://*.github.com/*",
+        "*://*.chatgpt.com/*",
+        "*://*.gemini.google.com/*",
+        "*://*.grok.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_start"
     }
