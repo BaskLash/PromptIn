@@ -228,7 +228,7 @@ setInterval(() => {
                   clickedButton.textContent = "✔ Prompt Saved";
 
                   // Funktion promptGrabber aufrufen
-                  promptGrabber(buttonNumber);
+                  chatGPTButtonClick(buttonNumber);
 
                   // Nach 5 Sekunden zurück auf "Save Prompt" setzen
                   setTimeout(() => {
@@ -298,6 +298,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 function chatGPTButtonClick(index) {
+  // Überprüfen, ob der Index eine positive Zahl ist
+  if (index <= 0) {
+    console.error("Index muss eine positive Zahl sein.");
+    return;
+  }
+  index = index * 2;
   const articleElement = document.querySelector(
     `article[data-testid='conversation-turn-${index}']`
   );
@@ -309,6 +315,53 @@ function chatGPTButtonClick(index) {
 
     if (whitespaceDiv) {
       console.log(whitespaceDiv.textContent);
+
+      message = whitespaceDiv.textContent.trim(); // Trim entfernt überflüssige Leerzeichen
+      console.log(`Prompt ${index}:`, message);
+
+      let baseTopicName = "ExampleName"; // Dynamischer Name möglich
+      let topicName = baseTopicName;
+
+      // Prüfe, ob ein Doppelpunkt im Text vorhanden ist
+      let processedMessage = message;
+      const colonIndex = message.indexOf(":");
+      if (colonIndex !== -1) {
+        // Wenn ein ":" gefunden wird, nimm nur den Teil links davon inklusive ":"
+        processedMessage = message.substring(0, colonIndex + 1).trim();
+      }
+
+      // Hole bestehende Daten
+      chrome.storage.sync.get(null, async function (data) {
+        let topics = data || {}; // Sicherstellen, dass ein Objekt existiert
+
+        // Eindeutige ID generieren
+        const uniqueID = await generateUniqueID(topicName);
+
+        // Falls der Name bereits existiert, generiere einen neuen
+        while (topics.hasOwnProperty(topicName)) {
+          topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
+        }
+
+        // Neues Topic-Objekt erstellen mit der verarbeiteten Nachricht
+        topics[uniqueID] = {
+          name: topicName,
+          prompts: [processedMessage],
+        };
+
+        // Speichern und UI sofort aktualisieren
+        chrome.storage.sync.set(topics, function () {
+          console.log(
+            `Gespeichert in ${topicName} (ID: ${uniqueID}):`,
+            processedMessage
+          );
+          inputField.value = ""; // Eingabefeld leeren
+
+          document.querySelector(".dropdown-content p").style.display = "none";
+
+          // Direkt das neue Element in die UI einfügen
+          addDropdownItem(uniqueID, topicName);
+        });
+      });
     } else {
       console.log(
         "No div with class 'whitespace-pre-wrap' found within the specified article."
