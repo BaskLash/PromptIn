@@ -40,12 +40,27 @@ setInterval(() => {
       '[role="toolbar"][aria-label="Message tools"]'
     );
 
+    let existingToolbars = new Set(); // Set für bereits verarbeitete Toolbars
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+
     toolbars.forEach((toolbar, index) => {
       // Überprüfen, ob die Toolbar bereits verarbeitet wurde
       if (!existingToolbars.has(toolbar)) {
-        let buttonExists = Array.from(toolbar.querySelectorAll("button")).some(
-          (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
+        // Bestehende Buttons mit der Klasse "save-prompt-button" suchen
+        let existingButtons = toolbar.querySelectorAll(
+          "button[class*='save-prompt-button']"
         );
+
+        // Wenn mehr als ein Button existiert, alle außer dem ersten entfernen
+        if (existingButtons.length > 1) {
+          for (let j = 1; j < existingButtons.length; j++) {
+            existingButtons[j].remove();
+            console.log("Überflüssiger Button entfernt.");
+          }
+        }
+
+        // Prüfen, ob ein Button existiert
+        let buttonExists = existingButtons.length > 0;
 
         // Falls es sich um die erste Toolbar handelt und kein Button existiert → Reset!
         if (index === 0 && !buttonExists) {
@@ -55,10 +70,10 @@ setInterval(() => {
           buttonCounter = 1;
         }
 
-        // Nur bei jedem zweiten Element (index 1, 3, 5, ...) einen Button hinzufügen
+        // Nur bei jedem zweiten Element (index 1, 3, 5, ...) und wenn kein Button existiert
         if (index % 2 === 1 && !buttonExists) {
           const button = document.createElement("button");
-          button.textContent = `Save Prompt`;
+          button.textContent = "Save Prompt"; // Korrigierter String
           button.classList.add(
             "save-prompt-button",
             `save-prompt-button-${buttonCounter}`
@@ -96,22 +111,20 @@ setInterval(() => {
               let buttonNumber = parseInt(match[1], 10);
               console.log(`Button ${buttonNumber} wurde geklickt.`);
 
-              // Text auf "✔ Prompt Saved" setzen
               clickedButton.textContent = "✔ Prompt Saved";
-
-              // Funktion promptGrabber aufrufen
               promptGrabber(buttonNumber);
 
-              // Nach 5 Sekunden zurück auf "Save Prompt" setzen
               setTimeout(() => {
                 clickedButton.textContent = "Save Prompt";
-              }, 5000); // 5000 Millisekunden = 5 Sekunden
+              }, 5000);
             }
           });
 
           toolbar.appendChild(button);
           console.log(`Button ${buttonCounter} hinzugefügt.`);
           buttonCounter++; // Zähler erhöhen
+        } else if (buttonExists) {
+          console.log("Button existiert bereits, überspringe...");
         }
 
         // Toolbar als verarbeitet markieren
@@ -124,7 +137,6 @@ setInterval(() => {
   if (window.location.hostname === "chatgpt.com" && path.startsWith("/c/")) {
     console.log("Your Inside of chatgpt");
 
-    // Alle article-Elemente mit conversation-turn im data-testid finden
     const articleElements = document.querySelectorAll(
       "article[data-testid^='conversation-turn-']"
     );
@@ -140,7 +152,6 @@ setInterval(() => {
         let nextSibling = currentElement.firstElementChild;
         let divElements = [];
 
-        // Sammle alle DIV-Kinder des aktuellen Elements
         while (nextSibling) {
           if (nextSibling.tagName === "DIV") {
             divElements.push(nextSibling);
@@ -148,11 +159,10 @@ setInterval(() => {
           nextSibling = nextSibling.nextElementSibling;
         }
 
-        // Logik zur Auswahl des nächsten DIVs
         if (i === 4) {
-          nextDiv = divElements[1]; // Ab Ebene 5: Zweites DIV, wenn genau 3 vorhanden
+          nextDiv = divElements[1];
         } else if (divElements.length > 0) {
-          nextDiv = divElements[0]; // Standardfall: Erstes DIV, wenn mindestens eines vorhanden
+          nextDiv = divElements[0];
         }
 
         if (nextDiv) {
@@ -162,7 +172,6 @@ setInterval(() => {
             currentElement.classList.contains("flex") &&
             currentElement.classList.contains("items-center")
           ) {
-            // Falls dieses Element schon verarbeitet wurde, überspringen
             if (existingElements.has(currentElement)) {
               console.log(
                 "Dieses Element wurde bereits verarbeitet, überspringe..."
@@ -170,23 +179,25 @@ setInterval(() => {
               break;
             }
 
-            // Überprüfe, ob bereits ein Button existiert
-            let buttonExists = Array.from(
-              currentElement.querySelectorAll("button")
-            ).some((btn) => btn.className.match(/\bsave-prompt-button-\d+\b/));
+            // Bestehende Buttons mit der Klasse "save-prompt-button" suchen
+            let existingButtons = currentElement.querySelectorAll(
+              "button[class*='save-prompt-button']"
+            );
 
-            // Falls es sich um das erste Element handelt und kein Button existiert → Zähler zurücksetzen
-            if (index === 0 && !buttonExists) {
-              console.log(
-                "Erstes Element hat keinen Button – Counter wird zurückgesetzt."
-              );
-              buttonCounter = 1;
+            // Wenn mehr als ein Button existiert, alle außer dem ersten entfernen
+            if (existingButtons.length > 1) {
+              for (let j = 1; j < existingButtons.length; j++) {
+                existingButtons[j].remove();
+                console.log("Überflüssiger Button entfernt.");
+              }
             }
 
-            // Nur wenn kein Button existiert, einen neuen hinzufügen
+            // Prüfen, ob ein Button existiert
+            let buttonExists = existingButtons.length > 0;
+
             if (!buttonExists) {
               const button = document.createElement("button");
-              button.textContent = `Save Prompt`;
+              button.textContent = "Save Prompt"; // String in Anführungszeichen
               button.classList.add(
                 "save-prompt-button",
                 `save-prompt-button-${buttonCounter}`
@@ -224,13 +235,9 @@ setInterval(() => {
                   let buttonNumber = parseInt(match[1], 10);
                   console.log(`Button ${buttonNumber} wurde geklickt.`);
 
-                  // Text auf "✔ Prompt Saved" setzen
                   clickedButton.textContent = "✔ Prompt Saved";
-
-                  // Funktion promptGrabber aufrufen
                   chatGPTButtonClick(buttonNumber);
 
-                  // Nach 5 Sekunden zurück auf "Save Prompt" setzen
                   setTimeout(() => {
                     clickedButton.textContent = "Save Prompt";
                   }, 5000);
@@ -241,12 +248,11 @@ setInterval(() => {
               console.log(
                 `Button ${buttonCounter} auf Ebene ${i + 1} hinzugefügt.`
               );
-              buttonCounter++; // Zähler erhöhen
+              buttonCounter++;
             } else {
               console.log("Button existiert bereits, überspringe...");
             }
 
-            // Element als verarbeitet markieren
             existingElements.add(currentElement);
             break;
           }
@@ -263,6 +269,7 @@ setInterval(() => {
       );
     }
   }
+
   if (
     window.location.hostname === "gemini.google.com" &&
     path.startsWith("/app/")
@@ -291,10 +298,21 @@ setInterval(() => {
               return;
             }
 
-            // Überprüfe, ob bereits ein Button existiert
-            let buttonExists = Array.from(
-              secondDiv.querySelectorAll("button")
-            ).some((btn) => btn.className.match(/\bsave-prompt-button-\d+\b/));
+            // Bestehende Buttons mit der Klasse "save-prompt-button" suchen
+            let existingButtons = secondDiv.querySelectorAll(
+              "button[class*='save-prompt-button']"
+            );
+
+            // Wenn mehr als ein Button existiert, alle außer dem ersten entfernen
+            if (existingButtons.length > 1) {
+              for (let j = 1; j < existingButtons.length; j++) {
+                existingButtons[j].remove();
+                console.log("Überflüssiger Button entfernt.");
+              }
+            }
+
+            // Prüfen, ob ein Button existiert
+            let buttonExists = existingButtons.length > 0;
 
             // Falls es sich um das erste Element handelt und kein Button existiert → Zähler zurücksetzen
             if (index === 0 && !buttonExists) {
@@ -307,7 +325,7 @@ setInterval(() => {
             // Nur wenn kein Button existiert, einen neuen hinzufügen
             if (!buttonExists) {
               const button = document.createElement("button");
-              button.textContent = `Save Prompt`;
+              button.textContent = "Save Prompt"; // Korrigierter String
               button.classList.add(
                 "save-prompt-button",
                 `save-prompt-button-${buttonCounter}`
@@ -345,13 +363,9 @@ setInterval(() => {
                   let buttonNumber = parseInt(match[1], 10);
                   console.log(`Button ${buttonNumber} wurde geklickt.`);
 
-                  // Text auf "✔ Prompt Saved" setzen
                   clickedButton.textContent = "✔ Prompt Saved";
-
-                  // Funktion promptGrabber aufrufen
                   geminiButtonClick(buttonNumber);
 
-                  // Nach 5 Sekunden zurück auf "Save Prompt" setzen
                   setTimeout(() => {
                     clickedButton.textContent = "Save Prompt";
                   }, 5000);
@@ -392,13 +406,27 @@ setInterval(() => {
         const secondDiv = divs[1];
 
         if (existingElements.has(secondDiv)) {
-          console.log("Button existiert bereits, überspringe...");
+          console.log(
+            "Dieses Element wurde bereits verarbeitet, überspringe..."
+          );
           return;
         }
 
-        let buttonExists = Array.from(
-          secondDiv.querySelectorAll("button")
-        ).some((btn) => btn.className.match(/\bsave-prompt-button-\d+\b/));
+        // Bestehende Buttons mit der Klasse "save-prompt-button" suchen
+        let existingButtons = secondDiv.querySelectorAll(
+          "button[class*='save-prompt-button']"
+        );
+
+        // Wenn mehr als ein Button existiert, alle außer dem ersten entfernen
+        if (existingButtons.length > 1) {
+          for (let j = 1; j < existingButtons.length; j++) {
+            existingButtons[j].remove();
+            console.log("Überflüssiger Button entfernt.");
+          }
+        }
+
+        // Prüfen, ob ein Button existiert
+        let buttonExists = existingButtons.length > 0;
 
         if (index === 0 && !buttonExists) {
           console.log(
@@ -456,6 +484,8 @@ setInterval(() => {
           secondDiv.appendChild(button);
           console.log(`Button ${buttonCounter} hinzugefügt.`);
           buttonCounter++;
+        } else {
+          console.log("Button existiert bereits, überspringe...");
         }
 
         existingElements.add(secondDiv);
@@ -482,10 +512,21 @@ setInterval(() => {
 
     // Überprüfen, ob das Ziel-Div existiert
     if (targetDiv) {
-      // Überprüfen, ob bereits ein Button existiert
-      let buttonExists = Array.from(targetDiv.querySelectorAll("button")).some(
-        (btn) => btn.className.match(/\bsave-prompt-button-\d+\b/)
+      // Bestehende Buttons mit der Klasse "save-prompt-button" suchen
+      let existingButtons = targetDiv.querySelectorAll(
+        "button[class*='save-prompt-button']"
       );
+
+      // Wenn mehr als ein Button existiert, alle außer dem ersten entfernen
+      if (existingButtons.length > 1) {
+        for (let j = 1; j < existingButtons.length; j++) {
+          existingButtons[j].remove();
+          console.log("Überflüssiger Button entfernt.");
+        }
+      }
+
+      // Prüfen, ob ein Button existiert
+      let buttonExists = existingButtons.length > 0;
 
       if (!buttonExists) {
         // Button-Zähler initialisieren
