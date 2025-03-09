@@ -8,30 +8,167 @@
     <script src="popup.js" defer></script>
   </head>
   <body>
+    <nav class="navbar">
+      <div class="nav-brand">
+        <h2>PromptIn</h2>
+      </div>
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a class="nav-link" title="Go to overview">↗️</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="settings-btn" title="Go to settings">⚙️</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="faq-btn" title="FAQ">❓</a>
+        </li>
+      </ul>
+    </nav>
+
     <div class="container">
-      <h1>PromptIn</h1>
       <div class="enterage">
-        <input type="text" id="inputField" placeholder="Add a new prompt" />
-        <div class="dropdown">
-          <button title="Select folder" class="folder-icon">📁</button>
-          <div class="dropdown-content">
-            <div class="search">
-              <p>Search through folders</p>
-              <input type="text" id="searchInput" placeholder="Search a folder" />
-            </div>
-          </div>
-        </div>
+        <input type="text" id="inputField" placeholder="Search prompts" />
       </div>
 
       <div class="flexInbox">
         <div class="accordion-container"></div>
-        <button
-          id="clear-storage"
-          class="action-button"
-          title="Remove all the prompts from storage"
-        >
-          Clear Everything
-        </button>
+      </div>
+    </div>
+    <div class="button-container">
+      <button class="action-button new-folder" title="Add folder">📁</button>
+      <button class="action-button new-prompt" title="Add prompts">✏️</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+      <div class="modal-content">
+        <span id="close-modal" class="close">&times;</span>
+        <h2>Einstellungen</h2>
+
+        <div class="settings-option">
+          <label for="theme-select">Theme:</label>
+          <select id="theme-select">
+            <option value="dark">Dark Mode</option>
+            <option value="light">Light Mode</option>
+          </select>
+        </div>
+
+        <div class="settings-option">
+          <button id="import-btn" class="modal-button">
+            Prompts importieren
+          </button>
+        </div>
+
+        <div class="settings-option">
+          <button id="export-btn" class="modal-button">
+            Prompts exportieren
+          </button>
+        </div>
+
+        <div class="settings-option">
+          <label for="language-select">Sprache:</label>
+          <select id="language-select">
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+          </select>
+        </div>
+
+        <div class="settings-option">
+          <label for="language-select">Delete your data:</label>
+          <button
+            id="clear-storage"
+            class="nav-button"
+            title="Clear everything"
+          >
+            🗑️
+          </button>
+        </div>
+
+        <div class="settings-option">
+          <button id="feedback-btn" class="modal-button">
+            Feedback senden
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- FAQ Modal -->
+    <div id="faq-modal" class="modal">
+      <div class="modal-content">
+        <span id="close-faq-modal" class="close">×</span>
+        <h2>FAQ</h2>
+
+        <div class="faq-item">
+          <h3>Was ist PromptIn?</h3>
+          <p>
+            PromptIn ist ein Tool zum Organisieren und Verwalten Ihrer Prompts.
+          </p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Wie erstelle ich einen neuen Ordner?</h3>
+          <p>
+            Klicken Sie auf das 📁-Symbol unten rechts, um einen neuen Ordner
+            hinzuzufügen.
+          </p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Wie kann ich das Theme ändern?</h3>
+          <p>
+            Gehen Sie zu den Einstellungen (⚙️) und wählen Sie zwischen Dark und
+            Light Mode.
+          </p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Wie exportiere ich meine Prompts?</h3>
+          <p>
+            Öffnen Sie die Einstellungen (⚙️) und klicken Sie auf "Prompts
+            exportieren".
+          </p>
+        </div>
+      </div>
+    </div>
+    <!-- New Folder Modal -->
+    <div id="new-folder-modal" class="modal">
+      <div class="modal-content">
+        <span id="close-new-folder-modal" class="close">×</span>
+        <h2>Neuer Ordner</h2>
+
+        <div class="modal-form">
+          <label for="folder-name">Ordnername:</label>
+          <input
+            type="text"
+            id="folder-name"
+            placeholder="Geben Sie einen Namen ein"
+          />
+          <button id="create-folder-btn" class="modal-button">Erstellen</button>
+        </div>
+      </div>
+    </div>
+    <!-- New Prompt Modal -->
+    <div id="new-prompt-modal" class="modal">
+      <div class="modal-content">
+        <span id="close-new-prompt-modal" class="close">×</span>
+        <h2>Neue Prompt</h2>
+
+        <div class="modal-form">
+          <label for="prompt-text">Prompt:</label>
+          <textarea
+            id="prompt-text"
+            placeholder="Geben Sie Ihre Prompt ein"
+            rows="4"
+          ></textarea>
+
+          <label for="folder-select">Ordner:</label>
+          <select id="folder-select">
+            <option value="">-- Ordner auswählen --</option>
+            <!-- Ordner werden dynamisch hinzugefügt -->
+          </select>
+
+          <button id="create-prompt-btn" class="modal-button">Erstellen</button>
+        </div>
       </div>
     </div>
   </body>

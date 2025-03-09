@@ -1,6 +1,6 @@
 # ![PromptIn Logo](icon.png)
 
-# PromptIn: GitHub Copilot Prompt Autofiller and Hider
+# PromptIn: AI Prompt Management System
 
 [![GitHub issues](https://img.shields.io/github/issues/olivierluethy/PromptIn)](https://github.com/olivierluethy/PromptIn/issues)
 [![GitHub stars](https://img.shields.io/github/stars/olivierluethy/PromptIn)](https://github.com/olivierluethy/PromptIn/stargazers)
@@ -22,7 +22,7 @@
 
 ## ✨ Einleitung
 
-**PromptIn** ist eine leistungsstarke, **Chromium-basierte Browser-Erweiterung**, die es ermöglicht, GitHub Copilot-Prompts sicher zu speichern, zu strukturieren und wiederzuverwenden. Statt jedes Mal neue Prompts zu erstellen, können bereits bewährte Prompts genutzt werden, um effizienter zu arbeiten.
+**PromptIn** ist eine leistungsstarke, **Chromium-basierte Browser-Erweiterung**, die es ermöglicht, Prompts sicher zu speichern, zu strukturieren und wiederzuverwenden. Statt jedes Mal neue Prompts zu erstellen, können bereits bewährte Prompts genutzt werden, um effizienter zu arbeiten.
 
 ## 🗓 Historie
 

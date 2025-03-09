@@ -12,6 +12,50 @@ async function generateUniqueID(name) {
   return `${Date.now()}-${hash.substring(0, 8)}`;
 }
 
+// Event Listener für Eingabe
+// inputField.addEventListener("keydown", async function (event) {
+//   if (event.key === "Enter") {
+//     const inputValue = inputField.value.trim();
+//     let baseTopicName = "ExampleName"; // Dynamischer Name möglich
+//     let topicName = baseTopicName;
+
+//     if (inputValue) {
+//       // Hole bestehende Daten
+//       chrome.storage.sync.get(null, async function (data) {
+//         let topics = data || {}; // Sicherstellen, dass ein Objekt existiert
+
+//         // Eindeutige ID generieren
+//         const uniqueID = await generateUniqueID(topicName);
+
+//         // Falls der Name bereits existiert, generiere einen neuen
+//         while (topics.hasOwnProperty(topicName)) {
+//           topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
+//         }
+
+//         // Neues Topic-Objekt erstellen
+//         topics[uniqueID] = {
+//           name: topicName,
+//           prompts: [inputValue],
+//         };
+
+//         // Speichern und UI sofort aktualisieren
+//         chrome.storage.sync.set(topics, function () {
+//           console.log(
+//             `Gespeichert in ${topicName} (ID: ${uniqueID}):`,
+//             inputValue
+//           );
+//           inputField.value = ""; // Eingabefeld leeren
+
+//           document.querySelector(".dropdown-content p").style.display = "none";
+
+//           // Direkt das neue Element in die UI einfügen
+//           addDropdownItem(uniqueID, topicName);
+//         });
+//       });
+//     }
+//   }
+// });
+
 // Funktion zum Hinzufügen eines neuen Dropdown-Elements
 function addDropdownItem(id, topicName) {
   let link = document.createElement("a");
@@ -31,110 +75,6 @@ function addDropdownItem(id, topicName) {
 
     Object.entries(data).forEach(([id, topic]) => {
       createAccordion(id, topic.name, topic.prompts);
-    });
-  });
-}
-
-// Event Listener für Eingabe
-inputField.addEventListener("keydown", async function (event) {
-  if (event.key === "Enter") {
-    const inputValue = inputField.value.trim();
-    let baseTopicName = "ExampleName"; // Dynamischer Name möglich
-    let topicName = baseTopicName;
-
-    if (inputValue) {
-      // Hole bestehende Daten
-      chrome.storage.sync.get(null, async function (data) {
-        let topics = data || {}; // Sicherstellen, dass ein Objekt existiert
-
-        // Eindeutige ID generieren
-        const uniqueID = await generateUniqueID(topicName);
-
-        // Falls der Name bereits existiert, generiere einen neuen
-        while (topics.hasOwnProperty(topicName)) {
-          topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
-        }
-
-        // Neues Topic-Objekt erstellen
-        topics[uniqueID] = {
-          name: topicName,
-          prompts: [inputValue],
-        };
-
-        // Speichern und UI sofort aktualisieren
-        chrome.storage.sync.set(topics, function () {
-          console.log(
-            `Gespeichert in ${topicName} (ID: ${uniqueID}):`,
-            inputValue
-          );
-          inputField.value = ""; // Eingabefeld leeren
-
-          document.querySelector(".dropdown-content p").style.display = "none";
-
-          // Direkt das neue Element in die UI einfügen
-          addDropdownItem(uniqueID, topicName);
-        });
-      });
-    }
-  }
-});
-
-// Funktion zum Laden aller gespeicherten Ordner
-function loadDropdownItems() {
-  chrome.storage.sync.get(null, function (data) {
-    if (chrome.runtime.lastError) {
-      console.error("Fehler beim Abrufen der Daten:", chrome.runtime.lastError);
-      return;
-    }
-
-    let topics = Object.entries(data);
-    let noFoldersMessage = document.querySelector(".no-folders-message");
-
-    // Überprüfen, ob es keine Topics gibt
-    if (topics.length === 0) {
-      // Wenn der Text noch nicht existiert, erstelle ihn
-      if (!noFoldersMessage) {
-        noFoldersMessage = document.createElement("p");
-        noFoldersMessage.classList.add("no-folders-message");
-        noFoldersMessage.style.marginLeft = "1rem";
-        noFoldersMessage.style.color = "red";
-        noFoldersMessage.style.fontWeight = "bold";
-        noFoldersMessage.textContent = "No folders available yet";
-        noFoldersMessage.title =
-          "Enter a prompt or chat with copilot to create some folders";
-        dropdownContent.appendChild(noFoldersMessage);
-      }
-      return;
-    } else {
-      // Wenn Topics vorhanden sind, entferne die Nachricht
-      if (noFoldersMessage) {
-        noFoldersMessage.remove();
-      }
-    }
-
-    // Vorhandene Links entfernen, um Dopplungen zu vermeiden
-    document.querySelectorAll(".dropdown-content a").forEach((a) => a.remove());
-
-    // Ordner als Links hinzufügen
-    topics.forEach(([id, topic]) => {
-      addDropdownItem(id, topic.name);
-    });
-  });
-}
-
-// Speicher leeren, falls Button vorhanden
-if (clearStorageButton) {
-  clearStorageButton.addEventListener("click", function () {
-    chrome.storage.sync.clear(function () {
-      if (chrome.runtime.lastError) {
-        console.error("Error clearing storage:", chrome.runtime.lastError);
-        return;
-      }
-
-      // UI zurücksetzen
-      dropdownContent.innerHTML = ""; // Dropdown zurücksetzen
-      accordionContainer.innerHTML = ""; // Accordion zurücksetzen
-      console.log("Storage cleared");
     });
   });
 }
@@ -521,6 +461,66 @@ function createAccordion(id, topicName, prompts) {
   });
 }
 
+// Funktion zum Laden aller gespeicherten Ordner
+function loadDropdownItems() {
+  chrome.storage.sync.get(null, function (data) {
+    if (chrome.runtime.lastError) {
+      console.error("Fehler beim Abrufen der Daten:", chrome.runtime.lastError);
+      return;
+    }
+
+    let topics = Object.entries(data);
+    let noFoldersMessage = document.querySelector(".no-folders-message");
+
+    // Überprüfen, ob es keine Topics gibt
+    if (topics.length === 0) {
+      // Wenn der Text noch nicht existiert, erstelle ihn
+      if (!noFoldersMessage) {
+        noFoldersMessage = document.createElement("p");
+        noFoldersMessage.classList.add("no-folders-message");
+        noFoldersMessage.style.marginLeft = "1rem";
+        noFoldersMessage.style.color = "red";
+        noFoldersMessage.style.fontWeight = "bold";
+        noFoldersMessage.textContent = "No folders available yet";
+        noFoldersMessage.title =
+          "Enter a prompt or chat with copilot to create some folders";
+        dropdownContent.appendChild(noFoldersMessage);
+      }
+      return;
+    } else {
+      // Wenn Topics vorhanden sind, entferne die Nachricht
+      if (noFoldersMessage) {
+        noFoldersMessage.remove();
+      }
+    }
+
+    // Vorhandene Links entfernen, um Dopplungen zu vermeiden
+    document.querySelectorAll(".dropdown-content a").forEach((a) => a.remove());
+
+    // Ordner als Links hinzufügen
+    topics.forEach(([id, topic]) => {
+      addDropdownItem(id, topic.name);
+    });
+  });
+}
+
+// Speicher leeren, falls Button vorhanden
+if (clearStorageButton) {
+  clearStorageButton.addEventListener("click", function () {
+    chrome.storage.sync.clear(function () {
+      if (chrome.runtime.lastError) {
+        console.error("Error clearing storage:", chrome.runtime.lastError);
+        return;
+      }
+
+      // UI zurücksetzen
+      dropdownContent.innerHTML = ""; // Dropdown zurücksetzen
+      accordionContainer.innerHTML = ""; // Accordion zurücksetzen
+      console.log("Storage cleared");
+    });
+  });
+}
+
 // Schließe Dropdown bei Klick außerhalb
 window.addEventListener("click", (event) => {
   if (!event.target.matches(".dropbtn2")) {
@@ -702,10 +702,6 @@ document.addEventListener("DOMContentLoaded", loadDropdownItems);
 // Load folders on page load
 document.addEventListener("DOMContentLoaded", loadFolders);
 
-document.querySelector(".folder-icon").addEventListener("click", function () {
-  document.querySelector(".dropdown-content").classList.toggle("show");
-});
-
 // Close the dropdown if the user clicks outside of the enterage class
 window.onclick = function (event) {
   // Überprüfen, ob das geklickte Element nicht innerhalb der Klasse "enterage" ist
@@ -720,109 +716,140 @@ window.onclick = function (event) {
   }
 };
 document.addEventListener("DOMContentLoaded", function () {
-  const searchInput = document.getElementById("searchInput");
-
-  searchInput.addEventListener("input", function () {
-    const searchTerm = searchInput.value.toLowerCase();
-    const folders = document.querySelectorAll(".dropdown-content a");
-
-    let results = [];
-    let noResultsMessage = document.querySelector(".no-results-message");
-
-    folders.forEach((folder) => {
-      const folderName = folder.textContent.toLowerCase();
-      const similarity = jaroWinkler(searchTerm, folderName);
-
-      if (folderName.includes(searchTerm) || similarity > 0.8) {
-        results.push({ element: folder, similarity });
-      }
-    });
-
-    // Ergebnisse nach bester Übereinstimmung sortieren (höchste Ähnlichkeit zuerst)
-    results.sort((a, b) => b.similarity - a.similarity);
-
-    // Alle Elemente verstecken
-    folders.forEach((folder) => (folder.style.display = "none"));
-
-    // Beste Treffer anzeigen
-    results.forEach((result) => (result.element.style.display = "block"));
-
-    // Überprüfen, ob es Ergebnisse gibt
-    if (results.length === 0) {
-      // Wenn der Text noch nicht existiert, erstelle ihn
-      if (!noResultsMessage) {
-        noResultsMessage = document.createElement("p");
-        noResultsMessage.classList.add("no-results-message");
-        noResultsMessage.style.color = "red";
-        noResultsMessage.style.marginLeft = "1rem";
-        noResultsMessage.style.fontWeight = "bold";
-        noResultsMessage.textContent = "No results found";
-        dropdownContent.appendChild(noResultsMessage);
-      }
-    } else {
-      // Wenn Ergebnisse vorhanden sind, entferne die Nachricht
-      if (noResultsMessage) {
-        noResultsMessage.remove();
-      }
-    }
+  const showOverview = document.querySelector(".nav-link");
+  showOverview.addEventListener("click", function () {
+    chrome.tabs.create({ url: chrome.runtime.getURL("/pages/app.html") });
   });
+});
+// Settings Modal
+const settingsBtn = document.getElementById("settings-btn");
+const modal = document.getElementById("settings-modal");
+const closeModal = document.getElementById("close-modal");
 
-  // Jaro-Winkler Similarity Function
-  function jaroWinkler(s1, s2) {
-    let m = 0;
+settingsBtn.addEventListener("click", () => {
+  modal.style.display = "block";
+});
 
-    // Kurzer Check, falls einer der Strings leer ist
-    if (s1.length === 0 || s2.length === 0) {
-      return 0;
-    }
+closeModal.addEventListener("click", () => {
+  modal.style.display = "none";
+});
 
-    const matchDistance = Math.floor(Math.max(s1.length, s2.length) / 2) - 1;
-    const s1Matches = new Array(s1.length).fill(false);
-    const s2Matches = new Array(s2.length).fill(false);
-
-    for (let i = 0; i < s1.length; i++) {
-      let start = Math.max(0, i - matchDistance);
-      let end = Math.min(i + matchDistance + 1, s2.length);
-
-      for (let j = start; j < end; j++) {
-        if (s2Matches[j]) continue;
-        if (s1[i] !== s2[j]) continue;
-        s1Matches[i] = true;
-        s2Matches[j] = true;
-        m++;
-        break;
-      }
-    }
-
-    if (m === 0) return 0;
-
-    let t = 0;
-    let k = 0;
-    for (let i = 0; i < s1.length; i++) {
-      if (!s1Matches[i]) continue;
-      while (!s2Matches[k]) k++;
-      if (s1[i] !== s2[k]) t++;
-      k++;
-    }
-
-    t /= 2;
-    let jaro = (m / s1.length + m / s2.length + (m - t) / m) / 3;
-
-    let p = 0.1; // Jaro-Winkler Skalierungsfaktor
-    let l = 0;
-    while (l < 4 && s1[l] === s2[l]) l++;
-    return jaro + l * p * (1 - jaro);
+// Schließe Modal, wenn außerhalb geklickt wird
+window.addEventListener("click", (event) => {
+  if (event.target === modal) {
+    modal.style.display = "none";
   }
 });
-document.addEventListener("DOMContentLoaded", function () {
-  const dropdownContent = document.querySelector(".dropdown-content");
+// FAQ Modal
+const faqBtn = document.getElementById("faq-btn");
+const faqModal = document.getElementById("faq-modal");
+const closeFaqModal = document.getElementById("close-faq-modal");
 
-  dropdownContent.addEventListener("click", function (event) {
-    const clickedAnchor = event.target.closest("a"); // Find the closest <a> in case of nested elements
+faqBtn.addEventListener("click", () => {
+  faqModal.style.display = "block";
+});
 
-    if (clickedAnchor) {
-      console.log("Clicked on:", clickedAnchor.textContent);
-      // You can also do something with clickedAnchor.href or clickedAnchor.dataset
-    }
+closeFaqModal.addEventListener("click", () => {
+  faqModal.style.display = "none";
+});
+
+// Schließe FAQ Modal, wenn außerhalb geklickt wird
+window.addEventListener("click", (event) => {
+  if (event.target === faqModal) {
+    faqModal.style.display = "none";
+  }
+});
+// New Folder Modal
+const newFolderBtn = document.querySelector(".new-folder");
+const newFolderModal = document.getElementById("new-folder-modal");
+const closeNewFolderModal = document.getElementById("close-new-folder-modal");
+const createFolderBtn = document.getElementById("create-folder-btn");
+const folderNameInput = document.getElementById("folder-name");
+
+newFolderBtn.addEventListener("click", () => {
+  newFolderModal.style.display = "block";
+});
+
+closeNewFolderModal.addEventListener("click", () => {
+  newFolderModal.style.display = "none";
+  folderNameInput.value = ""; // Eingabe zurücksetzen
+});
+
+// Schließe Modal, wenn außerhalb geklickt wird
+window.addEventListener("click", (event) => {
+  if (event.target === newFolderModal) {
+    newFolderModal.style.display = "none";
+    folderNameInput.value = ""; // Eingabe zurücksetzen
+  }
+});
+
+// Beim Klick auf "Erstellen" (Platzhalter für Logik)
+createFolderBtn.addEventListener("click", () => {
+  const folderName = folderNameInput.value.trim();
+  if (folderName) {
+    console.log(`Neuer Ordner wird erstellt: ${folderName}`);
+    // Hier kannst du die Logik hinzufügen, um den Ordner tatsächlich zu erstellen
+    newFolderModal.style.display = "none";
+    folderNameInput.value = ""; // Eingabe zurücksetzen
+  } else {
+    alert("Bitte geben Sie einen Ordnernamen ein!");
+  }
+});
+// New Prompt Modal
+const newPromptBtn = document.querySelector(".new-prompt");
+const newPromptModal = document.getElementById("new-prompt-modal");
+const closeNewPromptModal = document.getElementById("close-new-prompt-modal");
+const createPromptBtn = document.getElementById("create-prompt-btn");
+const promptTextInput = document.getElementById("prompt-text");
+const folderSelect = document.getElementById("folder-select");
+
+// Funktion zum Aktualisieren der Ordnerliste
+function updateFolderSelect() {
+  // Beispiel: Hier solltest du deine tatsächlichen Ordner laden
+  const folders = ["Folder 1", "Folder 2", "Folder 3"]; // Platzhalter
+  folderSelect.innerHTML = '<option value="">-- Ordner auswählen --</option>';
+  folders.forEach((folder) => {
+    const option = document.createElement("option");
+    option.value = folder;
+    option.textContent = folder;
+    folderSelect.appendChild(option);
   });
+}
+
+newPromptBtn.addEventListener("click", () => {
+  updateFolderSelect(); // Ordnerliste aktualisieren, bevor das Modal geöffnet wird
+  newPromptModal.style.display = "block";
+});
+
+closeNewPromptModal.addEventListener("click", () => {
+  newPromptModal.style.display = "none";
+  promptTextInput.value = ""; // Eingabe zurücksetzen
+  folderSelect.value = ""; // Auswahl zurücksetzen
+});
+
+// Schließe Modal, wenn außerhalb geklickt wird
+window.addEventListener("click", (event) => {
+  if (event.target === newPromptModal) {
+    newPromptModal.style.display = "none";
+    promptTextInput.value = ""; // Eingabe zurücksetzen
+    folderSelect.value = ""; // Auswahl zurücksetzen
+  }
+});
+
+// Beim Klick auf "Erstellen"
+createPromptBtn.addEventListener("click", () => {
+  const promptText = promptTextInput.value.trim();
+  const selectedFolder = folderSelect.value;
+
+  if (promptText && selectedFolder) {
+    console.log(
+      `Neue Prompt wird erstellt: "${promptText}" im Ordner: "${selectedFolder}"`
+    );
+    // Hier kannst du die Logik hinzufügen, um die Prompt tatsächlich zu erstellen
+    newPromptModal.style.display = "none";
+    promptTextInput.value = ""; // Eingabe zurücksetzen
+    folderSelect.value = ""; // Auswahl zurücksetzen
+  } else {
+    alert("Bitte geben Sie eine Prompt ein und wählen Sie einen Ordner aus!");
+  }
 });

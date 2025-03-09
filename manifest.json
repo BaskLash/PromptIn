@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "PromptIn: GitHub Copilot Prompt Autofiller and Hidder",
+  "name": "PromptIn: AI Prompt Manager",
   "version": "1.0",
   "permissions": ["storage", "activeTab", "scripting"],
   "icons": {
@@ -21,9 +21,10 @@
         "*://*.chatgpt.com/*",
         "*://*.gemini.google.com/*",
         "*://*.grok.com/*",
-        "*://*.blackbox.ai/*"
+        "*://*.blackbox.ai/*",
+        "*://*.claude.ai/*"
       ],
-      "js": ["content.js"],
+      "js": ["content.js", "addButton.js"],
       "run_at": "document_start"
     }
   ],
