@@ -22,7 +22,8 @@
         "*://*.gemini.google.com/*",
         "*://*.grok.com/*",
         "*://*.blackbox.ai/*",
-        "*://*.claude.ai/*"
+        "*://*.claude.ai/*",
+        "*://*.copilot.microsoft.com/*"
       ],
       "js": ["content.js", "addButton.js"],
       "run_at": "document_start"

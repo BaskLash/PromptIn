@@ -69,6 +69,13 @@ setInterval(() => {
   ) {
     addClaudeButton();
   }
+  if (
+    (window.location.hostname === "copilot.microsoft.com" ||
+      window.location.hostname === "www.copilot.microsoft.com") &&
+    path.startsWith("/chats/")
+  ) {
+    addMicrosoftCopilotButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -365,5 +372,70 @@ function claudeButtonClick(index) {
   if (content) {
     promptSaver(content);
     console.log(content);
+  }
+}
+function addMicrosoftCopilotButtonClick(index) {
+  try {
+    // Alle DIVs mit data-tabster, die "groupper" enthalten, auswählen
+    const targetDivs = document.querySelectorAll(
+      'div[data-tabster*="groupper"]'
+    );
+    if (targetDivs.length < 1) {
+      throw new Error("Kein DIV mit data-tabster='groupper' gefunden");
+    }
+
+    // Sicherstellen, dass der übergebene Index gültig ist
+    if (index < 0 || index >= targetDivs.length) {
+      throw new Error(
+        `Ungültiger Index ${index} für ${targetDivs.length} groupper-Elemente`
+      );
+    }
+
+    // Das Ziel-Element basierend auf dem übergebenen Index auswählen
+    const selectedDiv = targetDivs[index];
+    console.log(`Ausgewähltes ${index + 1}. "groupper"-DIV:`, selectedDiv);
+
+    // Index des vorherigen Elements (index - 1), um die Benutzernachricht zu erhalten
+    const userIndex = index - 1;
+    if (userIndex < 0) {
+      console.warn(`Kein vorheriges Element für Index ${index} vorhanden`);
+      return;
+    }
+
+    // Vorheriges groupper-Element auswählen
+    const userTargetDiv = targetDivs[userIndex];
+    console.log(`Vorheriges (${userIndex + 1}.) groupper-DIV:`, userTargetDiv);
+
+    // Einziges direktes DIV im vorherigen groupper auswählen
+    const nestedDiv = userTargetDiv.querySelector(":scope > div");
+    if (!nestedDiv) {
+      console.error("Kein direktes DIV im vorherigen groupper-DIV gefunden");
+      return;
+    }
+    console.log("Direktes DIV im vorherigen groupper:", nestedDiv);
+
+    // Nächstes verschachteltes DIV auswählen (innerhalb von nestedDiv)
+    const nestedDiv2 = nestedDiv.querySelector("div");
+    if (!nestedDiv2) {
+      console.error(
+        "Kein verschachteltes DIV im nestedDiv des vorherigen groupper gefunden"
+      );
+      return;
+    }
+    console.log("Verschachteltes DIV im vorherigen groupper:", nestedDiv2);
+
+    // Textinhalt des innersten DIV ausgeben (Benutzernachricht)
+    const textContent = nestedDiv2.textContent.trim();
+    if (textContent) {
+      console.log(
+        `Benutzernachricht im ${userIndex + 1}. groupper-DIV:`,
+        textContent
+      );
+      promptSaver(textContent);
+    } else {
+      console.warn(`Kein Text im ${userIndex + 1}. groupper-DIV gefunden`);
+    }
+  } catch (error) {
+    console.error("Fehler:", error.message);
   }
 }

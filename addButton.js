@@ -546,6 +546,7 @@ function addGeminiButton() {
     );
   }
 }
+
 function addClaudeButton() {
   // Alle Elemente mit der Klasse font-claude-message auswählen
   let startElements = document.querySelectorAll(".font-claude-message");
@@ -663,4 +664,120 @@ function addClaudeButton() {
     // Index am Ende der Iteration ausgeben
     // console.log(`Verarbeitung abgeschlossen für Element mit Index: ${index}`);
   });
+}
+function addMicrosoftCopilotButton() {
+  try {
+    // Alle DIVs mit data-tabster, die "groupper" enthalten, auswählen
+    const targetDivs = document.querySelectorAll(
+      'div[data-tabster*="groupper"]'
+    );
+    if (targetDivs.length < 2) {
+      throw new Error(
+        "Weniger als 2 DIVs mit data-tabster='groupper' gefunden"
+      );
+    }
+
+    // Schleife über alle groupper-DIVs, nur jedes zweite verarbeiten (Index 1, 3, 5...)
+    targetDivs.forEach((targetDiv, index) => {
+      if (index % 2 !== 1) return; // Nur ungerade Indizes (2., 4., 6. Element) verarbeiten
+
+      // console.log(`Verarbeite das ${index + 1}. "groupper"-DIV:`, targetDiv);
+
+      // Alle direkten DIV-Kinder von targetDiv auswählen
+      const targetDivChildren = targetDiv.querySelectorAll(":scope > div");
+      let nestedDiv;
+
+      if (targetDivChildren.length === 1) {
+        nestedDiv = targetDivChildren[0];
+        // console.log("Nur ein DIV in groupper vorhanden, verwende dieses:", nestedDiv);
+      } else if (targetDivChildren.length === 2) {
+        nestedDiv = targetDivChildren[1];
+        // console.log("Zwei DIVs in groupper, zweites ausgewählt:", nestedDiv);
+      } else if (targetDivChildren.length === 4) {
+        nestedDiv = targetDivChildren[0];
+        // console.log("Vier DIVs in groupper, erstes ausgewählt:", nestedDiv);
+      } else {
+        // console.error(`Unerwartete Anzahl an DIVs (${targetDivChildren.length}) im groupper-DIV gefunden`);
+        return;
+      }
+
+      // Alle direkten DIV-Kinder von nestedDiv auswählen
+      const nestedDivChildren = nestedDiv.querySelectorAll(":scope > div");
+      let nestedDiv2;
+
+      if (nestedDivChildren.length === 2) {
+        nestedDiv2 = nestedDivChildren[1];
+        // console.log("Zwei DIVs in nestedDiv, zweites ausgewählt:", nestedDiv2);
+      } else if (nestedDivChildren.length >= 1) {
+        nestedDiv2 = nestedDivChildren[0];
+        // console.log("Erstes DIV in nestedDiv ausgewählt:", nestedDiv2);
+      } else {
+        // console.error("Kein verschachteltes DIV in nestedDiv gefunden");
+        return;
+      }
+
+      // Prüfen, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+      const buttonExists = nestedDiv2.querySelector(".save-prompt-button");
+      if (buttonExists) {
+        // console.log("Button mit 'save-prompt-button' existiert bereits, überspringe...");
+        return;
+      }
+
+      // Dynamische Button-Klasse und ID basierend auf Index
+      const buttonClass = `save-prompt-button-${index}`;
+      const buttonId = `save-prompt-button-id-${index}`;
+
+      // Neuen Button erstellen
+      const button = document.createElement("button");
+      button.textContent = "Save Prompt";
+      button.classList.add("save-prompt-button", buttonClass); // Allgemeine Klasse + spezifische Klasse
+      button.id = buttonId;
+
+      // Button-Styling
+      Object.assign(button.style, {
+        padding: "5px 10px",
+        marginLeft: "5px",
+        cursor: "pointer",
+        border: "1px solid #ccc",
+        borderRadius: "5px",
+        color: "black",
+        background: "#f0f0f0",
+      });
+      button.title =
+        "Speichere den Prompt, der diese Antwort erzeugt hat, direkt in deinem Gedächtnis.";
+
+      // Hover-Effekte
+      button.addEventListener("mouseover", () => {
+        button.style.backgroundColor = "#e0e0e0";
+        button.style.borderColor = "#bbb";
+      });
+      button.addEventListener("mouseout", () => {
+        button.style.backgroundColor = "#f0f0f0";
+        button.style.borderColor = "#ccc";
+      });
+
+      // Klick-Event
+      button.addEventListener("click", (event) => {
+        const clickedButton = event.target;
+        const match = clickedButton.className.match(/save-prompt-button-(\d+)/);
+        if (match) {
+          const buttonNumber = parseInt(match[1], 10);
+          console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+          clickedButton.textContent = "✔ Prompt Saved";
+          addMicrosoftCopilotButtonClick(buttonNumber); // Übergibt den korrekten Index
+
+          setTimeout(() => {
+            clickedButton.textContent = "Save Prompt";
+          }, 5000);
+        }
+      });
+
+      // Button ans Ende von nestedDiv2 anhängen
+      nestedDiv2.appendChild(button);
+      // console.log("Button ans Ende von nestedDiv2 hinzugefügt");
+    });
+  } catch (error) {
+    // console.error("Fehler:", error.message);
+  }
 }

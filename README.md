@@ -2,10 +2,14 @@
 
 # PromptIn: AI Prompt Management System
 
-[![GitHub issues](https://img.shields.io/github/issues/olivierluethy/PromptIn)](https://github.com/olivierluethy/PromptIn/issues)
-[![GitHub stars](https://img.shields.io/github/stars/olivierluethy/PromptIn)](https://github.com/olivierluethy/PromptIn/stargazers)
-[![GitHub license](https://img.shields.io/github/license/olivierluethy/PromptIn)](https://github.com/olivierluethy/PromptIn/blob/main/LICENSE)
-[![GitHub forks](https://img.shields.io/github/forks/olivierluethy/PromptIn)](https://github.com/olivierluethy/PromptIn/network/members)
+Kompatibel mit:
+[Grok](https://grok.com/)
+[Gemini](https://gemini.google.com/app)
+[ChatGPT](https://chatgpt.com/)
+[Claude](https://claude.ai/)
+[BlackBox](https://blackbox.ai/)
+[Copilot](https://github.com/copilot/)
+[Microsoft Copilot](https://copilot.microsoft.com/)
 
 ## Inhaltsverzeichnis
 
