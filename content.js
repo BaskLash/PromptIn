@@ -76,6 +76,13 @@ setInterval(() => {
   ) {
     addMicrosoftCopilotButton();
   }
+  if (
+    (window.location.hostname === "chat.mistral.ai" ||
+      window.location.hostname === "www.chat.mistral.ai") &&
+    path.startsWith("/chat/")
+  ) {
+    addMistralButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -110,6 +117,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     },
     grok: {
       selector: ".relative.z-10 > textarea",
+      setText: (element, text) => (element.value = text),
+    },
+    claude: {
+      selector: ".ProseMirror > p",
+      setText: (element, text) => (element.innerHTML = text),
+    },
+    microCopilot: {
+      selector: "textarea",
+      setText: (element, text) => (element.value = text),
+    },
+    mistral: {
+      selector: "textarea",
       setText: (element, text) => (element.value = text),
     },
   };
@@ -273,6 +292,31 @@ function chatGPTButtonClick(index) {
   } else {
     console.log(
       `Article with data-testid 'conversation-turn-${index}' not found.`
+    );
+  }
+}
+
+function addMistralButtonClick(index) {
+  index = index - 1;
+  // 1. Zuerst das spezifische Element auswählen (das 6. Kind mit der angegebenen Klasse).
+  let targetElement = document.querySelector(
+    `.group.flex.w-full.gap-3:nth-child(${index})`
+  );
+
+  if (targetElement) {
+    // 2. Innerhalb dieses Elements, gehen wir durch alle Kinder-Elemente (divs)
+    let divs = targetElement.querySelectorAll("div");
+
+    if (divs.length >= 4) {
+      // 3. Wir holen uns den vierten div und lesen den darin enthaltenen Text aus
+      let fourthDiv = divs[3];
+      console.log(fourthDiv.textContent); // Gibt den Text des vierten div aus
+    } else {
+      console.log("Es gibt weniger als 4 div-Elemente in diesem Container.");
+    }
+  } else {
+    console.log(
+      "Das Ziel-Element mit der angegebenen Klasse wurde nicht gefunden."
     );
   }
 }

@@ -97,12 +97,18 @@ function createAccordion(id, topicName, prompts) {
 
   const renameButton = document.createElement("button");
   renameButton.classList.add("rename-button");
-  renameButton.textContent = "✏️ Rename";
+  const renameImg = document.createElement("img");
+  renameImg.src = "icon/edit-solid.svg";
+  renameImg.alt = "";
+  renameButton.appendChild(renameImg);
   renameButton.title = "Rename folder";
 
   const deleteButton = document.createElement("button");
   deleteButton.classList.add("delete-button");
-  deleteButton.textContent = "🗑️ Delete";
+  const deleteImg = document.createElement("img");
+  deleteImg.src = "icon/trash-solid.svg";
+  deleteImg.alt = "";
+  deleteButton.appendChild(deleteImg);
   deleteButton.title = "Delete folder";
 
   // Rename functionality
@@ -155,7 +161,7 @@ function createAccordion(id, topicName, prompts) {
     const promptCell = document.createElement("td");
     const promptText = document.createElement("p");
     promptText.textContent =
-      prompt.length > 10 ? prompt.slice(0, 10) + "..." : prompt;
+      prompt.length > 18 ? prompt.slice(0, 18) + "..." : prompt;
     promptText.title = prompt;
     promptCell.appendChild(promptText);
     row.appendChild(promptCell);

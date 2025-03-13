@@ -23,7 +23,8 @@
         "*://*.grok.com/*",
         "*://*.blackbox.ai/*",
         "*://*.claude.ai/*",
-        "*://*.copilot.microsoft.com/*"
+        "*://*.copilot.microsoft.com/*",
+        "*://*.chat.mistral.ai/*"
       ],
       "js": ["content.js", "addButton.js"],
       "run_at": "document_start"

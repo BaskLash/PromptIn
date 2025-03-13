@@ -781,3 +781,88 @@ function addMicrosoftCopilotButton() {
     // console.error("Fehler:", error.message);
   }
 }
+function addMistralButton() {
+  try {
+    // Alle `.group.flex.w-full.gap-3` Elemente auswählen
+    const groupElements = document.querySelectorAll(".group.flex.w-full.gap-3");
+
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+    let existingElements = new Set();
+
+    // Alle `.group.flex.w-full.gap-3` durchgehen
+    for (let i = 1; i < groupElements.length; i += 2) {
+      let targetElement = groupElements[i];
+
+      let firstLevelDown = targetElement.querySelector("div");
+      if (!firstLevelDown) continue;
+
+      let secondDiv = firstLevelDown.children[1];
+      if (!secondDiv) continue;
+
+      let finalElement = secondDiv.children[1];
+      if (!finalElement) continue;
+
+      // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+      const existingButton = finalElement.querySelector(".save-prompt-button");
+      if (existingButton) {
+        console.log("Button existiert bereits für:", finalElement.className);
+        existingElements.add(finalElement);
+        continue;
+      }
+
+      // Falls wir hier sind, gibt es noch keinen Button
+      existingElements.add(finalElement);
+
+      // Erstelle das neue Button-Element
+      let newButton = document.createElement("button");
+      newButton.textContent = "Save Prompt";
+      newButton.className = `save-prompt-button save-prompt-button-${i} btn-primary`;
+
+      // Button-Styling
+      Object.assign(newButton.style, {
+        padding: "5px 10px",
+        border: "1px solid #ccc",
+        borderRadius: "5px",
+        color: "black",
+        background: "#f0f0f0",
+      });
+      newButton.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+      // Hover-Effekte
+      newButton.addEventListener("mouseover", () => {
+        newButton.style.backgroundColor = "#e0e0e0";
+        newButton.style.borderColor = "#bbb";
+      });
+      newButton.addEventListener("mouseout", () => {
+        newButton.style.backgroundColor = "#f0f0f0";
+        newButton.style.borderColor = "#ccc";
+      });
+
+      // Klick-Event
+      newButton.addEventListener("click", (event) => {
+        if (newButton.classList.contains("save-prompt-button")) {
+          let buttonNumber = i + 1; // Button-Nummer aus der Klasse berechnen
+          console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+          // Text auf "✔ Prompt gespeichert" setzen
+          newButton.textContent = "✔ Prompt Saved";
+
+          addMistralButtonClick(buttonNumber); // Übergibt den korrekten Index
+
+          setTimeout(() => {
+            newButton.textContent = "Save Prompt";
+          }, 5000);
+        }
+      });
+
+      // Button einfügen
+      finalElement.prepend(newButton);
+      console.log(
+        `Button ${buttonCounter} zu ${finalElement.className} hinzugefügt.`
+      );
+      buttonCounter++; // Zähler erhöhen
+    }
+  } catch (error) {
+    console.error("Fehler in addMistralButtons:", error.message);
+  }
+}
