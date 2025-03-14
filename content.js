@@ -310,7 +310,8 @@ function addMistralButtonClick(index) {
     if (divs.length >= 4) {
       // 3. Wir holen uns den vierten div und lesen den darin enthaltenen Text aus
       let fourthDiv = divs[3];
-      console.log(fourthDiv.textContent); // Gibt den Text des vierten div aus
+      // console.log(fourthDiv.textContent); // Gibt den Text des vierten div aus
+      promptSaver(fourthDiv.textContent);
     } else {
       console.log("Es gibt weniger als 4 div-Elemente in diesem Container.");
     }

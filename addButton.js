@@ -332,94 +332,88 @@ function addGrokButton() {
   containers.forEach((container, index) => {
     const divs = container.querySelectorAll(":scope > div");
 
-    if (divs.length === 2) {
-      const secondDiv = divs[1];
+    const secondDiv = divs[2];
 
-      if (existingElements.has(secondDiv)) {
-        console.log("Dieses Element wurde bereits verarbeitet, überspringe...");
-        return;
-      }
-
-      // Bestehende Buttons mit der Klasse "save-prompt-button" suchen
-      let existingButtons = secondDiv.querySelectorAll(
-        "button[class*='save-prompt-button']"
-      );
-
-      // Wenn mehr als ein Button existiert, alle außer dem ersten entfernen
-      if (existingButtons.length > 1) {
-        for (let j = 1; j < existingButtons.length; j++) {
-          existingButtons[j].remove();
-          console.log("Überflüssiger Button entfernt.");
-        }
-      }
-
-      // Prüfen, ob ein Button existiert
-      let buttonExists = existingButtons.length > 0;
-
-      if (index === 0 && !buttonExists) {
-        console.log(
-          "Erstes Element hat keinen Button – Counter wird zurückgesetzt."
-        );
-        buttonCounter = 1;
-      }
-
-      if (!buttonExists) {
-        const button = document.createElement("button");
-        button.textContent = "Save Prompt";
-        button.classList.add(
-          "save-prompt-button",
-          `save-prompt-button-${buttonCounter}`
-        );
-
-        button.style.padding = "5px 10px";
-        button.style.marginLeft = "5px";
-        button.style.cursor = "pointer";
-        button.style.border = "1px solid #ccc";
-        button.style.borderRadius = "5px";
-        button.style.color = "black";
-        button.style.background = "#f0f0f0";
-        button.title =
-          "If you liked the answer, save the prompt that generated it directly to your memory.";
-
-        button.addEventListener("mouseover", () => {
-          button.style.backgroundColor = "#e0e0e0";
-          button.style.borderColor = "#bbb";
-        });
-
-        button.addEventListener("mouseout", () => {
-          button.style.backgroundColor = "#f0f0f0";
-          button.style.borderColor = "#ccc";
-        });
-
-        button.addEventListener("click", (event) => {
-          let clickedButton = event.target;
-          let match = clickedButton.className.match(/save-prompt-button-(\d+)/);
-          if (match) {
-            let buttonNumber = parseInt(match[1], 10);
-            console.log(`Button ${buttonNumber} wurde geklickt.`);
-
-            clickedButton.textContent = "✔ Prompt Saved";
-            grokButtonClick(buttonNumber);
-
-            setTimeout(() => {
-              clickedButton.textContent = "Save Prompt";
-            }, 5000);
-          }
-        });
-
-        secondDiv.appendChild(button);
-        console.log(`Button ${buttonCounter} hinzugefügt.`);
-        buttonCounter++;
-      } else {
-        console.log("Button existiert bereits, überspringe...");
-      }
-
-      existingElements.add(secondDiv);
-    } else {
-      console.log(
-        `Element mit .items-start hat ${divs.length} div(s), erwartet: genau 2`
-      );
+    if (existingElements.has(secondDiv)) {
+      console.log("Dieses Element wurde bereits verarbeitet, überspringe...");
+      return;
     }
+
+    // Bestehende Buttons mit der Klasse "save-prompt-button" suchen
+    let existingButtons = secondDiv.querySelectorAll(
+      "button[class*='save-prompt-button']"
+    );
+
+    // Wenn mehr als ein Button existiert, alle außer dem ersten entfernen
+    if (existingButtons.length > 1) {
+      for (let j = 1; j < existingButtons.length; j++) {
+        existingButtons[j].remove();
+        console.log("Überflüssiger Button entfernt.");
+      }
+    }
+
+    // Prüfen, ob ein Button existiert
+    let buttonExists = existingButtons.length > 0;
+
+    if (index === 0 && !buttonExists) {
+      console.log(
+        "Erstes Element hat keinen Button – Counter wird zurückgesetzt."
+      );
+      buttonCounter = 1;
+    }
+
+    if (!buttonExists) {
+      const button = document.createElement("button");
+      button.textContent = "Save Prompt";
+      button.classList.add(
+        "save-prompt-button",
+        `save-prompt-button-${buttonCounter}`
+      );
+
+      button.style.padding = "5px 10px";
+      button.style.marginLeft = "5px";
+      button.style.cursor = "pointer";
+      button.style.border = "1px solid #ccc";
+      button.style.borderRadius = "5px";
+      button.style.color = "black";
+      button.style.background = "#f0f0f0";
+      button.title =
+        "If you liked the answer, save the prompt that generated it directly to your memory.";
+
+      button.addEventListener("mouseover", () => {
+        button.style.backgroundColor = "#e0e0e0";
+        button.style.borderColor = "#bbb";
+      });
+
+      button.addEventListener("mouseout", () => {
+        button.style.backgroundColor = "#f0f0f0";
+        button.style.borderColor = "#ccc";
+      });
+
+      button.addEventListener("click", (event) => {
+        let clickedButton = event.target;
+        let match = clickedButton.className.match(/save-prompt-button-(\d+)/);
+        if (match) {
+          let buttonNumber = parseInt(match[1], 10);
+          console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+          clickedButton.textContent = "✔ Prompt Saved";
+          grokButtonClick(buttonNumber);
+
+          setTimeout(() => {
+            clickedButton.textContent = "Save Prompt";
+          }, 5000);
+        }
+      });
+
+      secondDiv.appendChild(button);
+      console.log(`Button ${buttonCounter} hinzugefügt.`);
+      buttonCounter++;
+    } else {
+      console.log("Button existiert bereits, überspringe...");
+    }
+
+    existingElements.add(secondDiv);
   });
 
   if (containers.length === 0) {
