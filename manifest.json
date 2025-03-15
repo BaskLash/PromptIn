@@ -24,7 +24,8 @@
         "*://*.blackbox.ai/*",
         "*://*.claude.ai/*",
         "*://*.copilot.microsoft.com/*",
-        "*://*.chat.mistral.ai/*"
+        "*://*.chat.mistral.ai/*",
+        "*://*.duckduckgo.com/*"
       ],
       "js": ["content.js", "addButton.js"],
       "run_at": "document_start"

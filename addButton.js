@@ -860,3 +860,81 @@ function addMistralButton() {
     console.error("Fehler in addMistralButtons:", error.message);
   }
 }
+function addDuckduckGoButton() {
+  try {
+    // Alle div-Elemente mit heading-Attribut auswählen
+    const allDivsWithHeading = document.querySelectorAll("div[heading]");
+    let buttonCounter = 1; // Zähler für Button-Nummerierung
+    let existingElements = new Set(); // Set für bereits bearbeitete Elemente
+
+    // Über jedes div[heading]-Element iterieren
+    allDivsWithHeading.forEach((divWithHeading, index) => {
+      const firstLevelDown = divWithHeading.children[0];
+      if (!firstLevelDown) return;
+
+      const secondLevelDown = firstLevelDown.children[1];
+      if (!secondLevelDown) return;
+
+      // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+      const existingButton = secondLevelDown.querySelector(
+        ".save-prompt-button"
+      );
+      if (existingButton) {
+        console.log("Button existiert bereits für:", secondLevelDown.className);
+        existingElements.add(secondLevelDown);
+        return;
+      }
+
+      // Falls wir hier sind, gibt es noch keinen Button
+      existingElements.add(secondLevelDown);
+
+      // Button-Element erstellen
+      const button = document.createElement("button");
+      button.textContent = "Save Prompt";
+      button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
+
+      // Button-Styling
+      Object.assign(button.style, {
+        padding: "5px 10px",
+        border: "1px solid #ccc",
+        borderRadius: "5px",
+        color: "black",
+        background: "#f0f0f0",
+      });
+      button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+      // Hover-Effekte
+      button.addEventListener("mouseover", () => {
+        button.style.backgroundColor = "#e0e0e0";
+        button.style.borderColor = "#bbb";
+      });
+      button.addEventListener("mouseout", () => {
+        button.style.backgroundColor = "#f0f0f0";
+        button.style.borderColor = "#ccc";
+      });
+
+      // Klick-Event (optional, analog zum zweiten Beispiel)
+      button.addEventListener("click", (event) => {
+        if (button.classList.contains("save-prompt-button")) {
+          let buttonNumber = index + 1;
+          console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+          button.textContent = "✔ Prompt Saved";
+          addDuckduckGoButtonClick(buttonNumber); // Übergibt den korrekten Index
+          setTimeout(() => {
+            button.textContent = "Save Prompt";
+          }, 5000);
+        }
+      });
+
+      // Button als erstes Kind zu secondLevelDown hinzufügen
+      secondLevelDown.prepend(button);
+      console.log(
+        `Button ${buttonCounter} zu ${secondLevelDown.className} hinzugefügt.`
+      );
+      buttonCounter++;
+    });
+  } catch (error) {
+    console.error("Fehler beim Hinzufügen der Buttons:", error.message);
+  }
+}

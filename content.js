@@ -83,6 +83,12 @@ setInterval(() => {
   ) {
     addMistralButton();
   }
+  if (
+    window.location.hostname === "duckduckgo.com" ||
+    window.location.hostname === "www.duckduckgo.com"
+  ) {
+    addDuckduckGoButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -128,6 +134,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       setText: (element, text) => (element.value = text),
     },
     mistral: {
+      selector: "textarea",
+      setText: (element, text) => (element.value = text),
+    },
+    duckduckgo: {
       selector: "textarea",
       setText: (element, text) => (element.value = text),
     },
@@ -417,6 +427,28 @@ function claudeButtonClick(index) {
   if (content) {
     promptSaver(content);
     console.log(content);
+  }
+}
+function addDuckduckGoButtonClick(index) {
+  // Alle div-Elemente mit heading-Attribut auswählen
+  const allDivsWithHeading = document.querySelectorAll("div[heading]");
+  // Das zweite Element (Index 1) auswählen
+  const divWithHeading = allDivsWithHeading[index - 1];
+
+  if (divWithHeading && divWithHeading.parentElement) {
+    const parentDiv = divWithHeading.parentElement;
+
+    const pElement = parentDiv.querySelector("p");
+    if (pElement) {
+      console.log(pElement.textContent);
+      promptSaver(pElement.textContent);
+    } else {
+      console.log("Kein p-Element gefunden");
+    }
+  } else {
+    console.log(
+      "Kein zweites div[heading]-Element oder kein parentElement gefunden"
+    );
   }
 }
 function addMicrosoftCopilotButtonClick(index) {
