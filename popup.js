@@ -150,100 +150,130 @@ function createAccordion(id, topicName, prompts) {
   const table = document.createElement("table");
   const tbody = document.createElement("tbody");
 
-  prompts.forEach((prompt, index) => {
+  if (prompts.length === 0) {
+    // Falls keine Prompts vorhanden sind
     const row = document.createElement("tr");
-    const promptCell = document.createElement("td");
-    const promptText = document.createElement("p");
-    promptText.textContent =
-      prompt.length > 18 ? prompt.slice(0, 18) + "..." : prompt;
-    promptText.title = prompt; // Voller Text als Titel für Tooltip
-    promptCell.appendChild(promptText);
-    row.appendChild(promptCell);
+    const messageCell = document.createElement("td");
+    messageCell.colSpan = 5; // Spannt über alle Spalten (Prompt + Edit/Delete/Use/Relocate)
+    messageCell.style.textAlign = "center";
+    messageCell.style.padding = "10px";
 
-    ["Edit", "Delete", "Use", "Relocate"].forEach((action) => {
-      const actionCell = document.createElement("td");
+    const noPromptsMessage = document.createElement("p");
+    noPromptsMessage.textContent = "No prompts available";
+    noPromptsMessage.style.color = "#888";
+    messageCell.appendChild(noPromptsMessage);
 
-      if (action === "Relocate") {
-        const dropdown = document.createElement("div");
-        dropdown.classList.add("dropdown2");
-
-        const relocateButton = document.createElement("button");
-        relocateButton.classList.add("action-button", "dropbtn2");
-        relocateButton.textContent = "Relocate";
-        relocateButton.title = "Relocate prompt";
-
-        const dropdownContent = document.createElement("div");
-        dropdownContent.classList.add("dropdown-content2");
-        dropdownContent.id = `relocate-dropdown-${index}-${id}`;
-
-        chrome.storage.sync.get(null, function (data) {
-          if (chrome.runtime.lastError) {
-            console.error(
-              "Error fetching storage data:",
-              chrome.runtime.lastError
-            );
-            return;
-          }
-          dropdownContent.innerHTML = "";
-          Object.entries(data).forEach(([folderId, topic]) => {
-            const folderName = topic.name;
-            const folderLink = document.createElement("a");
-            folderLink.href = "#";
-            folderLink.textContent = folderName;
-            folderLink.addEventListener("click", (e) => {
-              e.preventDefault();
-              console.log(
-                `Prompt "${prompt}" wird nach ${folderName} verschoben.`
-              );
-              relocatePrompt(promptText, id, folderName); // promptText für UI, aber Logik verwendet prompt
-              dropdownContent.classList.remove("show2");
-            });
-            dropdownContent.appendChild(folderLink);
-          });
-          if (Object.keys(data).length === 0) {
-            const noFolders = document.createElement("a");
-            noFolders.href = "#";
-            noFolders.textContent = "Keine Ordner vorhanden";
-            noFolders.style.color = "#888";
-            noFolders.style.pointerEvents = "none";
-            dropdownContent.appendChild(noFolders);
-          }
-        });
-
-        relocateButton.addEventListener("click", () => {
-          dropdownContent.classList.toggle("show2");
-        });
-
-        dropdown.appendChild(relocateButton);
-        dropdown.appendChild(dropdownContent);
-        actionCell.appendChild(dropdown);
-      } else {
-        const actionButton = document.createElement("button");
-        actionButton.classList.add("action-button");
-        actionButton.textContent = action;
-        actionButton.title = `${action} prompt`;
-        actionCell.appendChild(actionButton);
-
-        actionButton.addEventListener("click", function () {
-          switch (action) {
-            case "Edit":
-              editPrompt(prompt, id, index); // Originaler Text aus prompts
-              break;
-            case "Delete":
-              deletePrompt(promptText, id, row); // promptText für UI, aber Logik verwendet title
-              break;
-            case "Use":
-              usePrompt(prompt); // Originaler Text aus prompts
-              break;
-          }
-        });
-      }
-
-      row.appendChild(actionCell);
+    const createPromptButton = document.createElement("button");
+    createPromptButton.textContent = "Create Prompt";
+    createPromptButton.classList.add("action-button");
+    createPromptButton.style.marginTop = "10px";
+    createPromptButton.addEventListener("click", () => {
+      // Öffne das New Prompt Modal und wähle den aktuellen Ordner vor
+      newPromptModal.style.display = "block";
+      updateFolderSelect(); // Ordnerliste aktualisieren
+      folderSelect.value = id; // Aktuellen Ordner vorauswählen
     });
+    messageCell.appendChild(createPromptButton);
 
+    row.appendChild(messageCell);
     tbody.appendChild(row);
-  });
+  } else {
+    // Falls Prompts vorhanden sind, normale Darstellung
+    prompts.forEach((prompt, index) => {
+      const row = document.createElement("tr");
+      const promptCell = document.createElement("td");
+      const promptText = document.createElement("p");
+      promptText.textContent =
+        prompt.length > 18 ? prompt.slice(0, 18) + "..." : prompt;
+      promptText.title = prompt; // Voller Text als Titel für Tooltip
+      promptCell.appendChild(promptText);
+      row.appendChild(promptCell);
+
+      ["Edit", "Delete", "Use", "Relocate"].forEach((action) => {
+        const actionCell = document.createElement("td");
+
+        if (action === "Relocate") {
+          const dropdown = document.createElement("div");
+          dropdown.classList.add("dropdown2");
+
+          const relocateButton = document.createElement("button");
+          relocateButton.classList.add("action-button", "dropbtn2");
+          relocateButton.textContent = "Relocate";
+          relocateButton.title = "Relocate prompt";
+
+          const dropdownContent = document.createElement("div");
+          dropdownContent.classList.add("dropdown-content2");
+          dropdownContent.id = `relocate-dropdown-${index}-${id}`;
+
+          chrome.storage.sync.get(null, function (data) {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Error fetching storage data:",
+                chrome.runtime.lastError
+              );
+              return;
+            }
+            dropdownContent.innerHTML = "";
+            Object.entries(data).forEach(([folderId, topic]) => {
+              const folderName = topic.name;
+              const folderLink = document.createElement("a");
+              folderLink.href = "#";
+              folderLink.textContent = folderName;
+              folderLink.addEventListener("click", (e) => {
+                e.preventDefault();
+                console.log(
+                  `Prompt "${prompt}" wird nach ${folderName} verschoben.`
+                );
+                relocatePrompt(promptText, id, folderName);
+                dropdownContent.classList.remove("show2");
+              });
+              dropdownContent.appendChild(folderLink);
+            });
+            if (Object.keys(data).length === 0) {
+              const noFolders = document.createElement("a");
+              noFolders.href = "#";
+              noFolders.textContent = "Keine Ordner vorhanden";
+              noFolders.style.color = "#888";
+              noFolders.style.pointerEvents = "none";
+              dropdownContent.appendChild(noFolders);
+            }
+          });
+
+          relocateButton.addEventListener("click", () => {
+            dropdownContent.classList.toggle("show2");
+          });
+
+          dropdown.appendChild(relocateButton);
+          dropdown.appendChild(dropdownContent);
+          actionCell.appendChild(dropdown);
+        } else {
+          const actionButton = document.createElement("button");
+          actionButton.classList.add("action-button");
+          actionButton.textContent = action;
+          actionButton.title = `${action} prompt`;
+          actionCell.appendChild(actionButton);
+
+          actionButton.addEventListener("click", function () {
+            switch (action) {
+              case "Edit":
+                editPrompt(prompt, id, index); // Originaler Text aus prompts
+                break;
+              case "Delete":
+                deletePrompt(promptText, id, row); // promptText für UI, aber Logik verwendet title
+                break;
+              case "Use":
+                usePrompt(prompt); // Originaler Text aus prompts
+                break;
+            }
+          });
+        }
+
+        row.appendChild(actionCell);
+      });
+
+      tbody.appendChild(row);
+    });
+  }
 
   table.appendChild(tbody);
   panel.appendChild(table);
