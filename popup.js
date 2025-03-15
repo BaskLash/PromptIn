@@ -597,14 +597,49 @@ window.addEventListener("click", (event) => {
   }
 });
 
-// Beim Klick auf "Erstellen" (Platzhalter für Logik)
+// Beim Klick auf "Erstellen"
 createFolderBtn.addEventListener("click", () => {
   const folderName = folderNameInput.value.trim();
   if (folderName) {
     console.log(`Neuer Ordner wird erstellt: ${folderName}`);
-    // Hier kannst du die Logik hinzufügen, um den Ordner tatsächlich zu erstellen
-    newFolderModal.style.display = "none";
-    folderNameInput.value = ""; // Eingabe zurücksetzen
+
+    // Eindeutige ID für den neuen Ordner generieren
+    const folderId = `folder_${Date.now()}`;
+
+    // Bestehende Daten aus chrome.storage.sync abrufen
+    chrome.storage.sync.get(null, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      // Sicherstellen, dass data ein Objekt ist
+      const updatedData = data || {};
+
+      // Neuen Ordner hinzufügen
+      updatedData[folderId] = {
+        name: folderName,
+        prompts: [], // Leeres Array für Prompts
+      };
+
+      // Aktualisierte Daten speichern
+      chrome.storage.sync.set(updatedData, function () {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving data:", chrome.runtime.lastError);
+        } else {
+          console.log(
+            `Neuer Ordner "${folderName}" (ID: ${folderId}) erfolgreich erstellt.`
+          );
+          // Modal schließen und Eingabe zurücksetzen
+          newFolderModal.style.display = "none";
+          folderNameInput.value = "";
+          // Popup-Fenster aktualisieren
+          loadFolders();
+          // Optional: Dropdown für neue Prompts aktualisieren
+          loadDropdownItems();
+        }
+      });
+    });
   } else {
     alert("Bitte geben Sie einen Ordnernamen ein!");
   }
@@ -657,16 +692,52 @@ window.addEventListener("click", (event) => {
 // Beim Klick auf "Erstellen"
 createPromptBtn.addEventListener("click", () => {
   const promptText = promptTextInput.value.trim();
-  const selectedFolder = folderSelect.value;
+  const selectedFolder = folderSelect.value; // Dies ist die folderId aus updateFolderSelect
 
   if (promptText && selectedFolder) {
     console.log(
-      `Neue Prompt wird erstellt: "${promptText}" im Ordner: "${selectedFolder}"`
+      `Neue Prompt wird erstellt: "${promptText}" im Ordner mit ID: "${selectedFolder}"`
     );
-    // Hier kannst du die Logik hinzufügen, um die Prompt tatsächlich zu erstellen
-    newPromptModal.style.display = "none";
-    promptTextInput.value = ""; // Eingabe zurücksetzen
-    folderSelect.value = ""; // Auswahl zurücksetzen
+
+    // Bestehende Daten aus chrome.storage.sync abrufen
+    chrome.storage.sync.get(null, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      // Prüfen, ob der ausgewählte Ordner existiert
+      if (data[selectedFolder]) {
+        // Prompt zum bestehenden Ordner hinzufügen
+        data[selectedFolder].prompts.push(promptText);
+      } else {
+        // Falls der Ordner nicht existiert (sicherheitshalber), neuen Ordner erstellen
+        console.warn(
+          `Ordner mit ID ${selectedFolder} nicht gefunden, erstelle neuen Ordner.`
+        );
+        data[selectedFolder] = {
+          name: selectedFolder, // Name könnte hier angepasst werden, falls nötig
+          prompts: [promptText],
+        };
+      }
+
+      // Aktualisierte Daten speichern
+      chrome.storage.sync.set(data, function () {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving data:", chrome.runtime.lastError);
+        } else {
+          console.log(
+            `Prompt "${promptText}" erfolgreich zum Ordner "${selectedFolder}" hinzugefügt.`
+          );
+          // Modal schließen und Eingaben zurücksetzen
+          newPromptModal.style.display = "none";
+          promptTextInput.value = "";
+          folderSelect.value = "";
+          // Popup-Fenster aktualisieren
+          loadFolders();
+        }
+      });
+    });
   } else {
     alert("Bitte geben Sie eine Prompt ein und wählen Sie einen Ordner aus!");
   }
