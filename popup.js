@@ -168,10 +168,16 @@ function createAccordion(id, topicName, prompts) {
     createPromptButton.classList.add("action-button");
     createPromptButton.style.marginTop = "10px";
     createPromptButton.addEventListener("click", () => {
-      // Öffne das New Prompt Modal und wähle den aktuellen Ordner vor
-      newPromptModal.style.display = "block";
-      updateFolderSelect(); // Ordnerliste aktualisieren
-      folderSelect.value = id; // Aktuellen Ordner vorauswählen
+      // Öffne das neue Modal für diesen spezifischen Ordner
+      const newPromptOnlyModal = document.getElementById(
+        "new-promptonly-modal"
+      );
+      if (newPromptOnlyModal) {
+        newPromptOnlyModal.style.display = "block";
+        newPromptOnlyModal.dataset.folderId = id; // Speichere die folderId im Modal
+      } else {
+        console.error("New Prompt Only Modal nicht gefunden!");
+      }
     });
     messageCell.appendChild(createPromptButton);
 
@@ -185,7 +191,7 @@ function createAccordion(id, topicName, prompts) {
       const promptText = document.createElement("p");
       promptText.textContent =
         prompt.length > 18 ? prompt.slice(0, 18) + "..." : prompt;
-      promptText.title = prompt; // Voller Text als Titel für Tooltip
+      promptText.title = prompt;
       promptCell.appendChild(promptText);
       row.appendChild(promptCell);
 
@@ -256,13 +262,13 @@ function createAccordion(id, topicName, prompts) {
           actionButton.addEventListener("click", function () {
             switch (action) {
               case "Edit":
-                editPrompt(prompt, id, index); // Originaler Text aus prompts
+                editPrompt(prompt, id, index);
                 break;
               case "Delete":
-                deletePrompt(promptText, id, row); // promptText für UI, aber Logik verwendet title
+                deletePrompt(promptText, id, row);
                 break;
               case "Use":
-                usePrompt(prompt); // Originaler Text aus prompts
+                usePrompt(prompt);
                 break;
             }
           });
@@ -558,6 +564,82 @@ document.addEventListener("DOMContentLoaded", function () {
 
   loadDropdownItems();
   loadFolders();
+});
+// Initialisierung des neuen Modals
+document.addEventListener("DOMContentLoaded", function () {
+  const newPromptOnlyModal = document.getElementById("new-promptonly-modal");
+  const closeNewPromptOnlyModal = document.getElementById(
+    "close-new-promptonly-modal"
+  );
+  const createPromptOnlyBtn = document.getElementById("create-promptonly-btn");
+  const promptOnlyTextInput = document.getElementById("promptonly-text");
+
+  // Modal schließen
+  if (closeNewPromptOnlyModal) {
+    closeNewPromptOnlyModal.addEventListener("click", () => {
+      newPromptOnlyModal.style.display = "none";
+      promptOnlyTextInput.value = ""; // Eingabe zurücksetzen
+    });
+  }
+
+  // Schließen bei Klick außerhalb des Modals
+  window.addEventListener("click", (event) => {
+    if (event.target === newPromptOnlyModal) {
+      newPromptOnlyModal.style.display = "none";
+      promptOnlyTextInput.value = "";
+    }
+  });
+
+  // Prompt erstellen und direkt in den Ordner einfügen
+  if (createPromptOnlyBtn) {
+    createPromptOnlyBtn.addEventListener("click", () => {
+      const promptText = promptOnlyTextInput.value.trim();
+      const folderId = newPromptOnlyModal.dataset.folderId; // folderId aus dem Modal holen
+
+      if (promptText && folderId) {
+        console.log(
+          `Neue Prompt "${promptText}" wird zum Ordner ${folderId} hinzugefügt.`
+        );
+
+        // Bestehende Daten aus chrome.storage.sync abrufen
+        chrome.storage.sync.get(null, function (data) {
+          if (chrome.runtime.lastError) {
+            console.error("Error fetching data:", chrome.runtime.lastError);
+            return;
+          }
+
+          // Sicherstellen, dass der Ordner existiert
+          if (data[folderId]) {
+            data[folderId].prompts.push(promptText); // Prompt hinzufügen
+          } else {
+            console.warn(
+              `Ordner ${folderId} nicht gefunden, erstelle neuen Eintrag.`
+            );
+            data[folderId] = {
+              name: "Unnamed Folder", // Fallback-Name
+              prompts: [promptText],
+            };
+          }
+
+          // Daten speichern
+          chrome.storage.sync.set(data, function () {
+            if (chrome.runtime.lastError) {
+              console.error("Error saving data:", chrome.runtime.lastError);
+            } else {
+              console.log(
+                `Prompt "${promptText}" erfolgreich zu ${folderId} hinzugefügt.`
+              );
+              newPromptOnlyModal.style.display = "none";
+              promptOnlyTextInput.value = "";
+              loadFolders(); // UI aktualisieren
+            }
+          });
+        });
+      } else {
+        alert("Bitte geben Sie eine Prompt ein!");
+      }
+    });
+  }
 });
 const showOverview = document.getElementById("overview-btn");
 if (showOverview) {
