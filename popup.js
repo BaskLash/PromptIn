@@ -12,50 +12,6 @@ async function generateUniqueID(name) {
   return `${Date.now()}-${hash.substring(0, 8)}`;
 }
 
-// Event Listener für Eingabe
-// inputField.addEventListener("keydown", async function (event) {
-//   if (event.key === "Enter") {
-//     const inputValue = inputField.value.trim();
-//     let baseTopicName = "ExampleName"; // Dynamischer Name möglich
-//     let topicName = baseTopicName;
-
-//     if (inputValue) {
-//       // Hole bestehende Daten
-//       chrome.storage.sync.get(null, async function (data) {
-//         let topics = data || {}; // Sicherstellen, dass ein Objekt existiert
-
-//         // Eindeutige ID generieren
-//         const uniqueID = await generateUniqueID(topicName);
-
-//         // Falls der Name bereits existiert, generiere einen neuen
-//         while (topics.hasOwnProperty(topicName)) {
-//           topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
-//         }
-
-//         // Neues Topic-Objekt erstellen
-//         topics[uniqueID] = {
-//           name: topicName,
-//           prompts: [inputValue],
-//         };
-
-//         // Speichern und UI sofort aktualisieren
-//         chrome.storage.sync.set(topics, function () {
-//           console.log(
-//             `Gespeichert in ${topicName} (ID: ${uniqueID}):`,
-//             inputValue
-//           );
-//           inputField.value = ""; // Eingabefeld leeren
-
-//           document.querySelector(".dropdown-content p").style.display = "none";
-
-//           // Direkt das neue Element in die UI einfügen
-//           addDropdownItem(uniqueID, topicName);
-//         });
-//       });
-//     }
-//   }
-// });
-
 // Funktion zum Hinzufügen eines neuen Dropdown-Elements
 function addDropdownItem(id, topicName) {
   if (!dropdownContent) {
@@ -853,4 +809,118 @@ createPromptBtn.addEventListener("click", () => {
   } else {
     alert("Bitte geben Sie eine Prompt ein und wählen Sie einen Ordner aus!");
   }
+});
+
+function initializePromptSearch() {
+  const inputField = document.getElementById("inputField");
+  const accordionContainer = document.querySelector(".accordion-container");
+
+  if (!inputField || !accordionContainer) {
+    console.error("Suchfeld oder Accordion-Container nicht gefunden!");
+    return;
+  }
+
+  // Hilfsfunktion zur Berechnung der String-Ähnlichkeit
+  function calculateSimilarity(str1, str2) {
+    str1 = str1.toLowerCase();
+    str2 = str2.toLowerCase();
+
+    let matches = 0;
+    const minLength = Math.min(str1.length, str2.length);
+
+    for (let i = 0; i < minLength; i++) {
+      if (str1[i] === str2[i]) matches++;
+    }
+
+    return matches / Math.max(str1.length, str2.length);
+  }
+
+  // Such-Event-Listener
+  inputField.addEventListener("input", function (e) {
+    const searchTerm = e.target.value.trim();
+
+    chrome.storage.sync.get(null, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching storage data:", chrome.runtime.lastError);
+        return;
+      }
+
+      accordionContainer.innerHTML = "";
+
+      if (!searchTerm) {
+        Object.entries(data).forEach(([id, topic]) => {
+          createAccordion(id, topic.name, topic.prompts || []);
+        });
+        return;
+      }
+
+      const results = [];
+
+      Object.entries(data).forEach(([id, topic]) => {
+        const folderSimilarity = calculateSimilarity(searchTerm, topic.name);
+        const prompts = topic.prompts || [];
+
+        if (folderSimilarity > 0.3) {
+          results.push({
+            id,
+            name: topic.name,
+            prompts,
+            similarity: folderSimilarity,
+            type: "folder",
+          });
+        }
+
+        prompts.forEach((prompt, index) => {
+          const promptSimilarity = calculateSimilarity(searchTerm, prompt);
+          if (promptSimilarity > 0.3) {
+            results.push({
+              id,
+              name: topic.name,
+              prompts: [prompt],
+              similarity: promptSimilarity,
+              type: "prompt",
+              originalPrompts: prompts,
+            });
+          }
+        });
+      });
+
+      results.sort((a, b) => b.similarity - a.similarity);
+
+      results.forEach((result) => {
+        createAccordion(
+          result.id,
+          result.name + (result.type === "prompt" ? " (Prompt-Treffer)" : ""),
+          result.type === "prompt"
+            ? result.prompts
+            : result.originalPrompts || result.prompts
+        );
+      });
+
+      if (results.length === 0) {
+        const noResults = document.createElement("p");
+        noResults.textContent = "Keine Ergebnisse gefunden";
+        noResults.style.color = "#888";
+        noResults.style.textAlign = "center";
+        noResults.style.padding = "20px";
+        accordionContainer.appendChild(noResults);
+      }
+    });
+  });
+
+  // Initialisiere mit allen Ordnern
+  chrome.storage.sync.get(null, function (data) {
+    if (chrome.runtime.lastError) {
+      console.error("Error fetching initial data:", chrome.runtime.lastError);
+      return;
+    }
+    Object.entries(data).forEach(([id, topic]) => {
+      createAccordion(id, topic.name, topic.prompts || []);
+    });
+  });
+}
+
+// Aufruf nach DOM-Laden
+document.addEventListener("DOMContentLoaded", function () {
+  initializePromptSearch();
 });

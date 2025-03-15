@@ -10,6 +10,8 @@ Kompatibel mit:
 [BlackBox](https://blackbox.ai/)
 [Copilot](https://github.com/copilot/)
 [Microsoft Copilot](https://copilot.microsoft.com/)
+[Mistral](chat.mistral.ai)
+[DuckDuckGo](https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1)
 
 ## Inhaltsverzeichnis
 

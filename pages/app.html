@@ -4,9 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="app.css">
-    <title>Document</title>
+    <script src="app.js" defer></script>
+    <title>Prompt Overview</title>
 </head>
 <body>
-    
+    <div class="container">
+        <header>
+            <h1>Prompt Overview</h1>
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Search folders or prompts...">
+                <button id="clearSearch" title="Clear search">×</button>
+            </div>
+        </header>
+        <main>
+            <div id="folderList" class="folder-list"></div>
+            <div id="searchResults" class="search-results hidden"></div>
+        </main>
+    </div>
 </body>
 </html>
