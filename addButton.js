@@ -860,6 +860,7 @@ function addMistralButton() {
     console.error("Fehler in addMistralButtons:", error.message);
   }
 }
+
 function addDuckduckGoButton() {
   try {
     // Alle div-Elemente mit heading-Attribut auswählen
@@ -934,6 +935,115 @@ function addDuckduckGoButton() {
       );
       buttonCounter++;
     });
+  } catch (error) {
+    console.error("Fehler beim Hinzufügen der Buttons:", error.message);
+  }
+}
+function addPerplexityButton() {
+  try {
+    let main = document.querySelector(".gap-xl");
+    if (!main) throw new Error("Main-Element (.gap-xl) nicht gefunden");
+    main = main.parentElement;
+    main = main.parentElement;
+
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+    let existingElements = new Set(); // Set für bereits bearbeitete Elemente
+
+    // Schleife durch alle Kinder des Main-Elements
+    for (let i = 1; i < main.children.length; i += 2) {
+      let firstElement = main.children[i];
+      if (!firstElement) continue;
+
+      let firstLevelDown = firstElement.children[0];
+      if (!firstLevelDown) continue;
+      firstLevelDown = firstLevelDown.children[0];
+      if (!firstLevelDown) continue;
+      firstLevelDown = firstLevelDown.children[1];
+      if (!firstLevelDown) continue;
+      firstLevelDown = firstLevelDown.children[0];
+      if (!firstLevelDown) continue;
+
+      // Prüfe die Anzahl der Kinder an der kritischen Stelle
+      if (firstLevelDown.children.length > 1) {
+        // Mit Webresearch
+        firstLevelDown = firstLevelDown.children[2]; // Mehrere Elemente vorhanden, wähle Index 2
+      } else {
+        // Ohne Websearch
+        firstLevelDown = firstLevelDown.children[0]; // Nur ein Element, wähle Index 0
+      }
+      if (!firstLevelDown) continue;
+
+      // Fortfahren mit dem restlichen Pfad
+      firstLevelDown = firstLevelDown.children[0];
+      if (!firstLevelDown) continue;
+      firstLevelDown = firstLevelDown.children[1];
+      if (!firstLevelDown) continue;
+      firstLevelDown = firstLevelDown.children[1];
+      if (!firstLevelDown) continue;
+      firstLevelDown = firstLevelDown.children[1];
+      if (!firstLevelDown) continue;
+
+      // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+      const existingButton = firstLevelDown.querySelector(
+        ".save-prompt-button"
+      );
+      if (existingButton) {
+        console.log("Button existiert bereits für:", firstLevelDown.className);
+        existingElements.add(firstLevelDown);
+        continue;
+      }
+
+      // Falls wir hier sind, gibt es noch keinen Button
+      existingElements.add(firstLevelDown);
+
+      // Button-Element erstellen
+      let button = document.createElement("button");
+      button.textContent = "Save Prompt";
+      button.className = `save-prompt-button save-prompt-button-${i} btn-primary`;
+
+      // Button-Styling
+      Object.assign(button.style, {
+        padding: "5px 10px",
+        border: "1px solid #ccc",
+        borderRadius: "5px",
+        color: "black",
+        background: "#f0f0f0",
+        fontFamily: "Arial",
+      });
+      button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+      // Hover-Effekte
+      button.addEventListener("mouseover", () => {
+        button.style.backgroundColor = "#e0e0e0";
+        button.style.borderColor = "#bbb";
+      });
+      button.addEventListener("mouseout", () => {
+        button.style.backgroundColor = "#f0f0f0";
+        button.style.borderColor = "#ccc";
+      });
+
+      // Klick-Event
+      button.addEventListener("click", (event) => {
+        if (button.classList.contains("save-prompt-button")) {
+          let buttonNumber = i + 1; // Button-Nummer aus der Schleife berechnen
+          console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+          button.textContent = "✔ Prompt Saved";
+          // Falls eine Funktion wie addDuckduckGoButtonClick existiert:
+          addPerplexityButtonClick(buttonNumber);
+          setTimeout(() => {
+            button.textContent = "Save Prompt";
+          }, 5000);
+        }
+      });
+
+      // Button einfügen
+      firstLevelDown.prepend(button);
+      console.log(
+        `Button ${buttonCounter} zu ${firstLevelDown.className} hinzugefügt.`
+      );
+      buttonCounter++; // Zähler erhöhen
+    }
   } catch (error) {
     console.error("Fehler beim Hinzufügen der Buttons:", error.message);
   }

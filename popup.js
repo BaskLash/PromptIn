@@ -924,3 +924,18 @@ function initializePromptSearch() {
 document.addEventListener("DOMContentLoaded", function () {
   initializePromptSearch();
 });
+document
+  .getElementById("theme-select")
+  .addEventListener("change", function (e) {
+    document.documentElement.setAttribute("data-theme", e.target.value);
+
+    // Save the user's preference
+    localStorage.setItem("theme", e.target.value);
+  });
+
+// Load saved theme preference on page load
+document.addEventListener("DOMContentLoaded", function () {
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  document.getElementById("theme-select").value = savedTheme;
+});
