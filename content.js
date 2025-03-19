@@ -96,6 +96,13 @@ setInterval(() => {
   ) {
     addPerplexityButton();
   }
+  if (
+    window.location.hostname === "chat.deepseek.com" ||
+    (window.location.hostname === "www.chat.deepseek.com" &&
+      path.startsWith("/a/chat/s/"))
+  ) {
+    addDeepSeekButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -555,5 +562,64 @@ function addPerplexityButtonClick(index) {
     promptSaver(currentElement.innerHTML);
   } catch (error) {
     console.error("Error in addPerplexityButtonClick:", error.message);
+  }
+}
+
+function addDeepSeekButtonClick(index) {
+  const root = document.getElementById("root");
+
+  // Check if root exists
+  if (!root) {
+    console.log("Root-Element nicht gefunden.");
+    return;
+  }
+
+  let currentElement = root;
+  const path = [0, 1, 1, 0, 1, 0, 0, 0]; // Path to the desired element
+
+  // Navigate through the path to find the final element
+  for (let i = 0; i < path.length; i++) {
+    const nextIndex = path[i];
+    if (
+      currentElement?.children &&
+      nextIndex < currentElement.children.length
+    ) {
+      currentElement = currentElement.children[nextIndex];
+      console.log(
+        `Element ${i + 1}: ${currentElement.tagName}, Klasse: ${
+          currentElement.className
+        }`
+      );
+    } else {
+      console.log(`Element ${i + 1} nicht gefunden.`);
+      return;
+    }
+  }
+
+  // Check if the final element was found
+  if (!currentElement) {
+    console.log("Finales Element nicht gefunden.");
+    return;
+  }
+
+  console.log(
+    `Finales Element: ${currentElement.tagName}, Klasse: ${currentElement.className}`
+  );
+
+  // Adjust the index (subtract 2 as per original logic)
+  const adjustedIndex = index - 2;
+  const children = currentElement.children;
+
+  // Select and log the specific child element
+  if (children && adjustedIndex >= 0 && adjustedIndex < children.length) {
+    const selectedChild = children[adjustedIndex];
+    console.log(
+      `Ausgewähltes Element ${
+        adjustedIndex + 1
+      }: ${selectedChild.textContent.trim()}`
+    );
+    promptSaver(selectedChild.textContent.trim());
+  } else {
+    console.log(`Element mit Index ${adjustedIndex} nicht gefunden.`);
   }
 }

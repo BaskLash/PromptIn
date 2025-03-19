@@ -27,7 +27,8 @@
         "*://*.copilot.microsoft.com/*",
         "*://*.chat.mistral.ai/*",
         "*://*.duckduckgo.com/*",
-        "*://*.perplexity.ai/*"
+        "*://*.perplexity.ai/*",
+        "*://*.deepseek.com/*"
       ],
       "js": ["content.js", "addButton.js"],
       "run_at": "document_start"

@@ -818,6 +818,7 @@ function addMistralButton() {
         border: "1px solid #ccc",
         borderRadius: "5px",
         color: "black",
+        cursor: "pointer",
         background: "#f0f0f0",
       });
       newButton.title = "Speichert den aktuellen Prompt in der Erinnerung.";
@@ -900,6 +901,7 @@ function addDuckduckGoButton() {
         border: "1px solid #ccc",
         borderRadius: "5px",
         color: "black",
+        cursor: "pointer",
         background: "#f0f0f0",
       });
       button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
@@ -1009,6 +1011,7 @@ function addPerplexityButton() {
         color: "black",
         background: "#f0f0f0",
         fontFamily: "Arial",
+        cursor: "pointer",
       });
       button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
 
@@ -1043,6 +1046,114 @@ function addPerplexityButton() {
         `Button ${buttonCounter} zu ${firstLevelDown.className} hinzugefügt.`
       );
       buttonCounter++; // Zähler erhöhen
+    }
+  } catch (error) {
+    console.error("Fehler beim Hinzufügen der Buttons:", error.message);
+  }
+}
+function addDeepSeekButton() {
+  try {
+    // Für Content Zugriff des Anwenders selbst
+    const root = document.getElementById("root");
+    if (!root) throw new Error("Root-Element nicht gefunden");
+
+    let stage = root;
+    const pathToElement = [0, 1, 1, 0, 1, 0, 0, 0]; // Pfad zu dem gewünschten Element
+
+    // Durch den Pfad navigieren
+    for (let i = 0; i < pathToElement.length; i++) {
+      if (stage && stage.children && stage.children[pathToElement[i]]) {
+        stage = stage.children[pathToElement[i]];
+        console.log(
+          `Element ${i + 1}:`,
+          stage.tagName,
+          "Klasse:",
+          stage.className
+        );
+      } else {
+        throw new Error(`Element ${i + 1} nicht gefunden`);
+      }
+    }
+
+    if (!stage) throw new Error("Finales Element nicht gefunden");
+
+    console.log("Finales Element:", stage.tagName, "Klasse:", stage.className);
+
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+    let existingElements = new Set(); // Set für bereits bearbeitete Elemente
+
+    // Durch jedes children-Element des finalen Elements iterieren
+    const children = stage.children;
+    for (let i = 0; i < children.length; i++) {
+      // Überprüfen, ob es sich um jedes zweite Element handelt
+      if ((i + 1) % 2 === 0) {
+        const child = children[i];
+        if (!child) continue;
+
+        let optionStage = child.children[2];
+        if (!optionStage) continue;
+        optionStage = optionStage.children[0];
+        if (!optionStage) continue;
+
+        // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+        const existingButton = optionStage.querySelector(".save-prompt-button");
+        if (existingButton) {
+          console.log("Button existiert bereits für:", optionStage.className);
+          existingElements.add(optionStage);
+          continue;
+        }
+
+        // Falls wir hier sind, gibt es noch keinen Button
+        existingElements.add(optionStage);
+
+        // Button erstellen
+        const button = document.createElement("button");
+        button.textContent = "Save Prompt";
+        button.className = `save-prompt-button save-prompt-button-${i} btn-primary`;
+
+        // Button-Styling
+        Object.assign(button.style, {
+          padding: "5px 10px",
+          border: "1px solid #ccc",
+          borderRadius: "5px",
+          color: "black",
+          background: "#f0f0f0",
+          fontFamily: "Arial",
+          cursor: "pointer",
+        });
+        button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+        // Hover-Effekte
+        button.addEventListener("mouseover", () => {
+          button.style.backgroundColor = "#e0e0e0";
+          button.style.borderColor = "#bbb";
+        });
+        button.addEventListener("mouseout", () => {
+          button.style.backgroundColor = "#f0f0f0";
+          button.style.borderColor = "#ccc";
+        });
+
+        // Klick-Event
+        button.addEventListener("click", (event) => {
+          if (button.classList.contains("save-prompt-button")) {
+            let buttonNumber = i + 1; // Button-Nummer aus der Schleife berechnen
+            console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+            button.textContent = "✔ Prompt Saved";
+            addDeepSeekButtonClick(buttonNumber);
+            setTimeout(() => {
+              button.textContent = "Save Prompt";
+            }, 5000);
+          }
+        });
+
+        // Button zum aktuellen optionStage-Element hinzufügen
+        optionStage.appendChild(button);
+        console.log(
+          `Button ${buttonCounter} zu ${optionStage.className} hinzugefügt`
+        );
+        buttonCounter++; // Zähler erhöhen
+      }
     }
   } catch (error) {
     console.error("Fehler beim Hinzufügen der Buttons:", error.message);

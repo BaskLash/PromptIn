@@ -12,6 +12,8 @@ Kompatibel mit:
 [Microsoft Copilot](https://copilot.microsoft.com/)
 [Mistral](chat.mistral.ai)
 [DuckDuckGo](https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1)
+[Perplexity](https://www.perplexity.ai/)
+[DeepSeek](https://chat.deepseek.com/)
 
 ## Inhaltsverzeichnis
 
