@@ -98,138 +98,124 @@ function addCopilotButton() {
 }
 
 function addChatGPTButton() {
-  console.log("Your Inside of chatgpt");
+  try {
+    console.log("Your Inside of chatgpt");
 
-  const articleElements = document.querySelectorAll(
-    "article[data-testid^='conversation-turn-']"
-  );
+    const articleElements = document.querySelectorAll(
+      "article[data-testid^='conversation-turn-']"
+    );
+    if (articleElements.length === 0) {
+      throw new Error(
+        "Keine Artikel mit data-testid 'conversation-turn-*' gefunden."
+      );
+    }
 
-  let existingElements = new Set(); // Set für bereits verarbeitete Elemente
-  let buttonCounter = 1; // Startwert für die Button-Nummerierung
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+    let existingElements = new Set(); // Set für bereits verarbeitete Elemente
 
-  articleElements.forEach((articleElement, index) => {
-    let currentElement = articleElement;
+    articleElements.forEach((articleElement, index) => {
+      let currentElement = articleElement;
 
-    for (let i = 0; i < 9; i++) {
-      let nextDiv = null;
-      let nextSibling = currentElement.firstElementChild;
-      let divElements = [];
+      for (let i = 0; i < 9; i++) {
+        let nextDiv = null;
+        let nextSibling = currentElement.firstElementChild;
+        let divElements = [];
 
-      while (nextSibling) {
-        if (nextSibling.tagName === "DIV") {
-          divElements.push(nextSibling);
+        while (nextSibling) {
+          if (nextSibling.tagName === "DIV") {
+            divElements.push(nextSibling);
+          }
+          nextSibling = nextSibling.nextElementSibling;
         }
-        nextSibling = nextSibling.nextElementSibling;
-      }
 
-      if (i === 4) {
-        nextDiv = divElements[1];
-      } else if (divElements.length > 0) {
-        nextDiv = divElements[0];
-      }
+        if (i === 4) {
+          nextDiv = divElements[1];
+        } else if (divElements.length > 0) {
+          nextDiv = divElements[0];
+        }
 
-      if (nextDiv) {
+        if (!nextDiv) {
+          console.log(`Ebene ${i + 1}: Kein DIV-Element gefunden.`);
+          break;
+        }
+
         currentElement = nextDiv;
 
         if (
           currentElement.classList.contains("flex") &&
           currentElement.classList.contains("items-center")
         ) {
-          if (existingElements.has(currentElement)) {
+          // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+          const existingButton = currentElement.querySelector(
+            ".save-prompt-button"
+          );
+          if (existingButton) {
             console.log(
-              "Dieses Element wurde bereits verarbeitet, überspringe..."
+              "Button existiert bereits für:",
+              currentElement.className
             );
+            existingElements.add(currentElement);
             break;
           }
 
-          // Bestehende Buttons mit der Klasse "save-prompt-button" suchen
-          let existingButtons = currentElement.querySelectorAll(
-            "button[class*='save-prompt-button']"
-          );
-
-          // Wenn mehr als ein Button existiert, alle außer dem ersten entfernen
-          if (existingButtons.length > 1) {
-            for (let j = 1; j < existingButtons.length; j++) {
-              existingButtons[j].remove();
-              console.log("Überflüssiger Button entfernt.");
-            }
-          }
-
-          // Prüfen, ob ein Button existiert
-          let buttonExists = existingButtons.length > 0;
-
-          if (!buttonExists) {
-            const button = document.createElement("button");
-            button.textContent = "Save Prompt"; // String in Anführungszeichen
-            button.classList.add(
-              "save-prompt-button",
-              `save-prompt-button-${buttonCounter}`
-            );
-
-            // Button-Styling
-            button.style.padding = "5px 10px";
-            button.style.marginLeft = "5px";
-            button.style.cursor = "pointer";
-            button.style.border = "1px solid #ccc";
-            button.style.borderRadius = "5px";
-            button.style.color = "black";
-            button.style.background = "#f0f0f0";
-            button.title =
-              "If you liked the answer, save the prompt that generated it directly to your memory.";
-
-            // Hover-Effekte
-            button.addEventListener("mouseover", () => {
-              button.style.backgroundColor = "#e0e0e0";
-              button.style.borderColor = "#bbb";
-            });
-
-            button.addEventListener("mouseout", () => {
-              button.style.backgroundColor = "#f0f0f0";
-              button.style.borderColor = "#ccc";
-            });
-
-            // Klick-Event
-            button.addEventListener("click", (event) => {
-              let clickedButton = event.target;
-              let match = clickedButton.className.match(
-                /save-prompt-button-(\d+)/
-              );
-              if (match) {
-                let buttonNumber = parseInt(match[1], 10);
-                console.log(`Button ${buttonNumber} wurde geklickt.`);
-
-                clickedButton.textContent = "✔ Prompt Saved";
-                chatGPTButtonClick(buttonNumber);
-
-                setTimeout(() => {
-                  clickedButton.textContent = "Save Prompt";
-                }, 5000);
-              }
-            });
-
-            currentElement.appendChild(button);
-            console.log(
-              `Button ${buttonCounter} auf Ebene ${i + 1} hinzugefügt.`
-            );
-            buttonCounter++;
-          } else {
-            console.log("Button existiert bereits, überspringe...");
-          }
-
+          // Falls wir hier sind, gibt es noch keinen Button
           existingElements.add(currentElement);
+
+          // Button erstellen
+          const button = document.createElement("button");
+          button.textContent = "Save Prompt";
+          button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
+
+          // Button-Styling
+          Object.assign(button.style, {
+            padding: "5px 10px",
+            marginLeft: "5px",
+            cursor: "pointer",
+            border: "1px solid #ccc",
+            borderRadius: "5px",
+            color: "black",
+            background: "#f0f0f0",
+          });
+          button.title =
+            "If you liked the answer, save the prompt that generated it directly to your memory.";
+
+          // Hover-Effekte
+          button.addEventListener("mouseover", () => {
+            button.style.backgroundColor = "#e0e0e0";
+            button.style.borderColor = "#bbb";
+          });
+          button.addEventListener("mouseout", () => {
+            button.style.backgroundColor = "#f0f0f0";
+            button.style.borderColor = "#ccc";
+          });
+
+          // Klick-Event
+          button.addEventListener("click", (event) => {
+            if (button.classList.contains("save-prompt-button")) {
+              let buttonNumber = index + 1; // Button-Nummer aus dem Index berechnen
+              console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+              button.textContent = "✔ Prompt Saved";
+              chatGPTButtonClick(buttonNumber); // Funktion aus Original beibehalten
+
+              setTimeout(() => {
+                button.textContent = "Save Prompt";
+              }, 5000);
+            }
+          });
+
+          // Button einfügen
+          currentElement.appendChild(button);
+          console.log(
+            `Button ${buttonCounter} zu ${currentElement.className} hinzugefügt.`
+          );
+          buttonCounter++;
           break;
         }
-      } else {
-        console.log(`Ebene ${i + 1}: Kein DIV-Element gefunden.`);
-        break;
       }
-    }
-  });
-
-  if (articleElements.length === 0) {
-    console.log(
-      "Keine Artikel mit data-testid 'conversation-turn-*' gefunden."
-    );
+    });
+  } catch (error) {
+    console.error("Fehler beim Hinzufügen der Buttons:", error.message);
   }
 }
 

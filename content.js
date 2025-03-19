@@ -42,10 +42,9 @@ setInterval(() => {
   ) {
     addCopilotButton();
   }
-  if (window.location.hostname === "chatgpt.com" && path.startsWith("/c/")) {
+  if (window.location.hostname === "chatgpt.com") {
     addChatGPTButton();
   }
-
   if (
     window.location.hostname === "gemini.google.com" &&
     path.startsWith("/app/")
@@ -299,28 +298,32 @@ function geminiButtonClick(index) {
 
 function chatGPTButtonClick(index) {
   // Überprüfen, ob der Index eine positive Zahl ist
-  if (index <= 0) {
-    console.error("Index muss eine positive Zahl sein.");
-    return;
-  }
-  index = index * 2;
+  index = index - 1;
   const articleElement = document.querySelector(
     `article[data-testid='conversation-turn-${index}']`
   );
 
   if (articleElement) {
-    const whitespaceDiv = articleElement.querySelector(
-      "div.whitespace-pre-wrap"
-    );
-
-    if (whitespaceDiv) {
-      console.log(whitespaceDiv.textContent);
-      promptSaver(whitespaceDiv.textContent);
-    } else {
-      console.log(
-        "No div with class 'whitespace-pre-wrap' found within the specified article."
-      );
-    }
+    let stage = articleElement.children[1];
+    stage = stage.children[0];
+    // console.log(stage.className);
+    stage = stage.children[0];
+    // console.log(stage.className);
+    stage = stage.children[0];
+    // console.log(stage.className);
+    stage = stage.children[0];
+    // console.log(stage.className);
+    stage = stage.children[0];
+    // console.log(stage.className);
+    stage = stage.children[0];
+    // console.log(stage.className);
+    stage = stage.children[0];
+    // console.log(stage.className);
+    stage = stage.children[0];
+    // console.log(stage.className);
+    // stage = stage.children[0];
+    // console.log(stage.textContent);
+    promptSaver(stage.textContent);
   } else {
     console.log(
       `Article with data-testid 'conversation-turn-${index}' not found.`
