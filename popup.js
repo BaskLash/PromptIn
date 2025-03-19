@@ -28,9 +28,16 @@ function addDropdownItem(id, topicName) {
 const accordionContainer = document.querySelector(".accordion-container");
 
 // Function to create an accordion for a folder
+// Funktion bleibt größtenteils gleich, aber mit Duplikatprüfung
 function createAccordion(id, topicName, prompts) {
   if (!accordionContainer) {
     console.error("Accordion-Container nicht gefunden!");
+    return;
+  }
+
+  // Prüfe, ob ein Akkordeon mit dieser ID bereits existiert
+  if (accordionContainer.querySelector(`[data-target="${id}"]`)) {
+    // console.log(`Akkordeon für ${topicName} (ID: ${id}) existiert bereits.`);
     return;
   }
 
@@ -107,10 +114,9 @@ function createAccordion(id, topicName, prompts) {
   const tbody = document.createElement("tbody");
 
   if (prompts.length === 0) {
-    // Falls keine Prompts vorhanden sind
     const row = document.createElement("tr");
     const messageCell = document.createElement("td");
-    messageCell.colSpan = 5; // Spannt über alle Spalten (Prompt + Edit/Delete/Use/Relocate)
+    messageCell.colSpan = 5;
     messageCell.style.textAlign = "center";
     messageCell.style.padding = "10px";
 
@@ -124,13 +130,12 @@ function createAccordion(id, topicName, prompts) {
     createPromptButton.classList.add("action-button");
     createPromptButton.style.marginTop = "10px";
     createPromptButton.addEventListener("click", () => {
-      // Öffne das neue Modal für diesen spezifischen Ordner
       const newPromptOnlyModal = document.getElementById(
         "new-promptonly-modal"
       );
       if (newPromptOnlyModal) {
         newPromptOnlyModal.style.display = "block";
-        newPromptOnlyModal.dataset.folderId = id; // Speichere die folderId im Modal
+        newPromptOnlyModal.dataset.folderId = id;
       } else {
         console.error("New Prompt Only Modal nicht gefunden!");
       }
@@ -140,7 +145,6 @@ function createAccordion(id, topicName, prompts) {
     row.appendChild(messageCell);
     tbody.appendChild(row);
   } else {
-    // Falls Prompts vorhanden sind, normale Darstellung
     prompts.forEach((prompt, index) => {
       const row = document.createElement("tr");
       const promptCell = document.createElement("td");
@@ -177,24 +181,26 @@ function createAccordion(id, topicName, prompts) {
             }
             dropdownContent.innerHTML = "";
             Object.entries(data).forEach(([folderId, topic]) => {
+              if (folderId === id) return; // Aktuellen Ordner überspringen
               const folderName = topic.name;
               const folderLink = document.createElement("a");
               folderLink.href = "#";
               folderLink.textContent = folderName;
+              folderLink.dataset.folderId = folderId; // Speichere die folderId im Link
               folderLink.addEventListener("click", (e) => {
                 e.preventDefault();
                 console.log(
-                  `Prompt "${prompt}" wird nach ${folderName} verschoben.`
+                  `Prompt "${prompt}" wird nach Folder ID ${folderId} verschoben.`
                 );
-                relocatePrompt(promptText, id, folderName);
+                relocatePrompt(promptText, id, folderId); // Übergib folderId statt folderName
                 dropdownContent.classList.remove("show2");
               });
               dropdownContent.appendChild(folderLink);
             });
-            if (Object.keys(data).length === 0) {
+            if (Object.keys(data).length <= 1) {
               const noFolders = document.createElement("a");
               noFolders.href = "#";
-              noFolders.textContent = "Keine Ordner vorhanden";
+              noFolders.textContent = "Keine anderen Ordner vorhanden";
               noFolders.style.color = "#888";
               noFolders.style.pointerEvents = "none";
               dropdownContent.appendChild(noFolders);
@@ -392,7 +398,7 @@ function usePrompt(prompt) {
 }
 
 // Die relocatePrompt-Funktion bleibt unverändert
-function relocatePrompt(promptElement, currentFolderId, targetFolderName) {
+function relocatePrompt(promptElement, currentFolderId, targetFolderId) {
   const promptText = promptElement.title || promptElement.textContent.trim(); // Voller Text verwenden
 
   chrome.storage.sync.get(null, function (data) {
@@ -401,17 +407,8 @@ function relocatePrompt(promptElement, currentFolderId, targetFolderName) {
       return;
     }
 
-    let currentFolder = null;
-    let targetFolderId = null;
-
-    Object.entries(data).forEach(([id, topic]) => {
-      if (id === currentFolderId) {
-        currentFolder = topic;
-      }
-      if (topic.name === targetFolderName) {
-        targetFolderId = id;
-      }
-    });
+    let currentFolder = data[currentFolderId];
+    let targetFolder = data[targetFolderId];
 
     if (!currentFolder) {
       console.error(
@@ -420,6 +417,12 @@ function relocatePrompt(promptElement, currentFolderId, targetFolderName) {
       return;
     }
 
+    if (!targetFolder) {
+      console.error(`Zielordner mit ID ${targetFolderId} nicht gefunden.`);
+      return;
+    }
+
+    // Prompt aus dem aktuellen Ordner entfernen
     const updatedCurrentPrompts = currentFolder.prompts.filter(
       (prompt) => prompt !== promptText
     );
@@ -428,25 +431,19 @@ function relocatePrompt(promptElement, currentFolderId, targetFolderName) {
       prompts: updatedCurrentPrompts,
     };
 
-    if (!targetFolderId) {
-      targetFolderId = `folder_${Date.now()}`;
-      const newFolder = {
-        name: targetFolderName,
-        prompts: [promptText],
-      };
-      data[targetFolderId] = newFolder;
-    } else {
-      data[targetFolderId].prompts.push(promptText);
-    }
+    // Prompt zum Zielordner hinzufügen
+    targetFolder.prompts.push(promptText);
 
+    // Daten aktualisieren
     data[currentFolderId] = updatedCurrentFolder;
+    data[targetFolderId] = targetFolder;
 
     chrome.storage.sync.set(data, function () {
       if (chrome.runtime.lastError) {
         console.error("Error saving data:", chrome.runtime.lastError);
       } else {
         console.log(
-          `Prompt "${promptText}" erfolgreich von "${currentFolder.name}" nach "${targetFolderName}" verschoben.`
+          `Prompt "${promptText}" erfolgreich von "${currentFolder.name}" (ID: ${currentFolderId}) nach "${targetFolder.name}" (ID: ${targetFolderId}) verschoben.`
         );
         promptElement.closest("tr")?.remove();
         loadFolders();

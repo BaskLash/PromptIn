@@ -159,6 +159,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       selector: "textarea",
       setText: (element, text) => (element.value = text),
     },
+    deepseek: {
+      selector: "textarea",
+      setText: (element, text) => (element.value = text),
+    },
   };
 
   handlePromptInsertion(inputHandlers, request.text, sendResponse);
