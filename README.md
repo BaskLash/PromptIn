@@ -3,17 +3,17 @@
 # PromptIn: AI Prompt Management System
 
 Kompatibel mit:
-[Grok](https://grok.com/)
-[Gemini](https://gemini.google.com/app)
-[ChatGPT](https://chatgpt.com/)
-[Claude](https://claude.ai/)
-[BlackBox](https://blackbox.ai/)
-[Copilot](https://github.com/copilot/)
-[Microsoft Copilot](https://copilot.microsoft.com/)
-[Mistral](chat.mistral.ai)
-[DuckDuckGo](https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1)
-[Perplexity](https://www.perplexity.ai/)
-[DeepSeek](https://chat.deepseek.com/)
+- [Grok](https://grok.com/)
+- [Gemini](https://gemini.google.com/app)
+- [ChatGPT](https://chatgpt.com/)
+- [Claude](https://claude.ai/)
+- [BlackBox](https://blackbox.ai/)
+- [GitHub Copilot](https://github.com/copilot/)
+- [Microsoft Copilot](https://copilot.microsoft.com/)
+- [Mistral](chat.mistral.ai)
+- [DuckDuckGo](https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1)
+- [Perplexity](https://www.perplexity.ai/)
+- [DeepSeek](https://chat.deepseek.com/)
 
 ## Inhaltsverzeichnis
 

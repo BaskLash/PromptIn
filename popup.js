@@ -482,10 +482,24 @@ function loadFolders() {
       return;
     }
 
+    // Check if data exists and has entries
+    if (!data || Object.keys(data).length === 0) {
+      console.log("No folders or prompts found in chrome.storage.sync");
+      document.getElementById("noData").style.display = "block";
+      document.getElementById("noData").style.textAlign = "center";
+      document.getElementById("inputField").style.display = "none";
+      document.querySelector(".new-prompt").style.display="none";
+      accordionContainer.innerHTML = ""; // Still clear the container
+      return;
+    }
+
     // Clear the existing content before reloading
     accordionContainer.innerHTML = "";
 
     Object.entries(data).forEach(([id, topic]) => {
+      document.getElementById("noData").style.display = "none";
+      document.getElementById("inputField").style.display = "block";
+      document.querySelector(".new-prompt").style.display="block";
       createAccordion(id, topic.name, topic.prompts);
     });
   });

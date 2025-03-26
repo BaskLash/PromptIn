@@ -537,36 +537,27 @@ function addMicrosoftCopilotButtonClick(index) {
 }
 function addPerplexityButtonClick(index) {
   try {
-    // Start at the main container
-    let mainElement = document.querySelector(".gap-xl");
-    if (!mainElement) {
-      throw new Error("Main element with class 'gap-xl' not found");
+    const scrollableContainer = document.querySelector(".scrollable-container");
+    const currentIndex =
+      scrollableContainer?.children[0]?.children[0]?.children[0]?.children[1]
+        ?.children[0]?.[index - 1];
+
+    if (currentIndex) {
+      const chat =
+        currentIndex?.children[0]?.children[1]?.children[0]?.children[0]
+          ?.children[0]?.children[0]?.children[1]?.children[0]?.children[0]
+          ?.children[0];
+
+      if (chat) {
+        // Log and process the content
+        // console.log(chat.innerHTML);
+        promptSaver(chat.innerHTML);
+      } else {
+        console.error("Chat element not found.");
+      }
+    } else {
+      console.error("Current index element not found.");
     }
-
-    // Navigate up two parent levels
-    mainElement = mainElement.parentElement?.parentElement;
-    if (!mainElement) {
-      throw new Error("Required parent elements not found");
-    }
-
-    // Get the target element based on index (adjusted for 0-based indexing)
-    const targetElement = mainElement.children[index - 1];
-    if (!targetElement) {
-      throw new Error(`Target element at index ${index - 1} not found`);
-    }
-
-    // Navigate through the DOM tree to the desired level
-    let currentElement =
-      targetElement.children[0]?.children[0]?.children[0]?.children[0] // First child // Level 1 // Level 2 // Level 3
-        ?.children[1]?.children[0]?.children[0]?.children[0]; // Second child at level 4 // Level 5 // Level 6 // Level 7
-
-    if (!currentElement) {
-      throw new Error("Required child element in DOM structure not found");
-    }
-
-    // Log and process the content
-    console.log(currentElement.innerHTML);
-    promptSaver(currentElement.innerHTML);
   } catch (error) {
     console.error("Error in addPerplexityButtonClick:", error.message);
   }

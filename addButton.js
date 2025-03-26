@@ -929,108 +929,79 @@ function addDuckduckGoButton() {
 }
 function addPerplexityButton() {
   try {
-    let main = document.querySelector(".gap-xl");
-    if (!main) throw new Error("Main-Element (.gap-xl) nicht gefunden");
-    main = main.parentElement;
-    main = main.parentElement;
+    const chatsContainer = document.querySelector(".scrollable-container")
+      .children[0].children[0].children[0].children[1].children[0];
+    if (!chatsContainer) throw new Error("Chats-Container nicht gefunden");
 
     let buttonCounter = 1; // Startwert für die Button-Nummerierung
     let existingElements = new Set(); // Set für bereits bearbeitete Elemente
 
-    // Schleife durch alle Kinder des Main-Elements
-    for (let i = 1; i < main.children.length; i += 2) {
-      let firstElement = main.children[i];
-      if (!firstElement) continue;
+    for (let i = 0; i < chatsContainer.children.length; i++) {
+      let child = chatsContainer.children[i];
+      if (!child) continue;
 
-      let firstLevelDown = firstElement.children[0];
-      if (!firstLevelDown) continue;
-      firstLevelDown = firstLevelDown.children[0];
-      if (!firstLevelDown) continue;
-      firstLevelDown = firstLevelDown.children[1];
-      if (!firstLevelDown) continue;
-      firstLevelDown = firstLevelDown.children[0];
-      if (!firstLevelDown) continue;
-
-      // Prüfe die Anzahl der Kinder an der kritischen Stelle
-      if (firstLevelDown.children.length > 1) {
-        // Mit Webresearch
-        firstLevelDown = firstLevelDown.children[2]; // Mehrere Elemente vorhanden, wähle Index 2
-      } else {
-        // Ohne Websearch
-        firstLevelDown = firstLevelDown.children[0]; // Nur ein Element, wähle Index 0
+      // Accessing deeply nested children
+      child =
+        child.children[0]?.children[1]?.children[0]?.children[2]?.children[0]
+          ?.children[0]?.children[2]?.children[0]?.children[0]?.children[1]
+          ?.children[0];
+      if (!child) {
+        console.log(`Kind-Element ${i} nicht vollständig gefunden`);
+        continue;
       }
-      if (!firstLevelDown) continue;
-
-      // Fortfahren mit dem restlichen Pfad
-      firstLevelDown = firstLevelDown.children[0];
-      if (!firstLevelDown) continue;
-      firstLevelDown = firstLevelDown.children[1];
-      if (!firstLevelDown) continue;
-      firstLevelDown = firstLevelDown.children[1];
-      if (!firstLevelDown) continue;
-      firstLevelDown = firstLevelDown.children[1];
-      if (!firstLevelDown) continue;
 
       // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
-      const existingButton = firstLevelDown.querySelector(
-        ".save-prompt-button"
-      );
+      const existingButton = child.querySelector(".save-prompt-button");
       if (existingButton) {
-        console.log("Button existiert bereits für:", firstLevelDown.className);
-        existingElements.add(firstLevelDown);
+        console.log("Button existiert bereits für:", child.className);
+        existingElements.add(child);
         continue;
       }
 
       // Falls wir hier sind, gibt es noch keinen Button
-      existingElements.add(firstLevelDown);
+      existingElements.add(child);
 
-      // Button-Element erstellen
-      let button = document.createElement("button");
-      button.textContent = "Save Prompt";
-      button.className = `save-prompt-button save-prompt-button-${i} btn-primary`;
+      // Neuen Button erstellen
+      const newButton = document.createElement("button");
+      newButton.textContent = "Save Prompt";
+      newButton.className = `save-prompt-button save-prompt-button-${i} btn-primary`;
 
       // Button-Styling
-      Object.assign(button.style, {
-        padding: "5px 10px",
-        border: "1px solid #ccc",
-        borderRadius: "5px",
-        color: "black",
-        background: "#f0f0f0",
-        fontFamily: "Arial",
+      Object.assign(newButton.style, {
+        padding: "8px 16px",
+        backgroundColor: "#007bff",
+        color: "white",
+        border: "none",
+        borderRadius: "4px",
         cursor: "pointer",
       });
-      button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+      newButton.title = "Speichert den aktuellen Prompt in der Erinnerung.";
 
       // Hover-Effekte
-      button.addEventListener("mouseover", () => {
-        button.style.backgroundColor = "#e0e0e0";
-        button.style.borderColor = "#bbb";
+      newButton.addEventListener("mouseover", () => {
+        newButton.style.backgroundColor = "#0056b3";
       });
-      button.addEventListener("mouseout", () => {
-        button.style.backgroundColor = "#f0f0f0";
-        button.style.borderColor = "#ccc";
+      newButton.addEventListener("mouseout", () => {
+        newButton.style.backgroundColor = "#007bff";
       });
 
       // Klick-Event
-      button.addEventListener("click", (event) => {
-        if (button.classList.contains("save-prompt-button")) {
+      newButton.addEventListener("click", (event) => {
+        if (newButton.classList.contains("save-prompt-button")) {
           let buttonNumber = i + 1; // Button-Nummer aus der Schleife berechnen
           console.log(`Button ${buttonNumber} wurde geklickt.`);
 
-          button.textContent = "✔ Prompt Saved";
-          // Falls eine Funktion wie addDuckduckGoButtonClick existiert:
+          newButton.textContent = "✔ Prompt Saved";
           addPerplexityButtonClick(buttonNumber);
           setTimeout(() => {
-            button.textContent = "Save Prompt";
+            newButton.textContent = "Save Prompt";
           }, 5000);
         }
       });
 
-      // Button einfügen
-      firstLevelDown.prepend(button);
-      console.log(
-        `Button ${buttonCounter} zu ${firstLevelDown.className} hinzugefügt.`
-      );
+      // Button zum Ziel-Element hinzufügen
+      child.appendChild(newButton);
+      console.log(`Button ${buttonCounter} zu ${child.className} hinzugefügt`);
       buttonCounter++; // Zähler erhöhen
     }
   } catch (error) {
