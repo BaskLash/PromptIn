@@ -537,27 +537,19 @@ function addMicrosoftCopilotButtonClick(index) {
 }
 function addPerplexityButtonClick(index) {
   try {
-    const scrollableContainer = document.querySelector(".scrollable-container");
-    const currentIndex =
-      scrollableContainer?.children[0]?.children[0]?.children[0]?.children[1]
-        ?.children[0]?.[index - 1];
+    const currentIndex = document.querySelector(".scrollable-container")
+      .children[0].children[0].children[0].children[1].children[0].children[
+      index - 1
+    ];
 
-    if (currentIndex) {
-      const chat =
-        currentIndex?.children[0]?.children[1]?.children[0]?.children[0]
-          ?.children[0]?.children[0]?.children[1]?.children[0]?.children[0]
-          ?.children[0];
+    const chat =
+      currentIndex.children[0].children[1].children[0].children[0].children[0]
+        .children[0].children[0].children[1].children[0].children[0]
+        .children[0];
 
-      if (chat) {
-        // Log and process the content
-        // console.log(chat.innerHTML);
-        promptSaver(chat.innerHTML);
-      } else {
-        console.error("Chat element not found.");
-      }
-    } else {
-      console.error("Current index element not found.");
-    }
+    // Log and process the content
+    // console.log(chat.innerHTML);
+    promptSaver(chat.innerHTML);
   } catch (error) {
     console.error("Error in addPerplexityButtonClick:", error.message);
   }

@@ -114,103 +114,106 @@ function addChatGPTButton() {
     let existingElements = new Set(); // Set für bereits verarbeitete Elemente
 
     articleElements.forEach((articleElement, index) => {
-      let currentElement = articleElement;
+      // Nur jedes zweite Element (ungerader Index: 1, 3, 5, ...)
+      if (index % 2 !== 0) {
+        let currentElement = articleElement;
 
-      for (let i = 0; i < 9; i++) {
-        let nextDiv = null;
-        let nextSibling = currentElement.firstElementChild;
-        let divElements = [];
+        for (let i = 0; i < 9; i++) {
+          let nextDiv = null;
+          let nextSibling = currentElement.firstElementChild;
+          let divElements = [];
 
-        while (nextSibling) {
-          if (nextSibling.tagName === "DIV") {
-            divElements.push(nextSibling);
+          while (nextSibling) {
+            if (nextSibling.tagName === "DIV") {
+              divElements.push(nextSibling);
+            }
+            nextSibling = nextSibling.nextElementSibling;
           }
-          nextSibling = nextSibling.nextElementSibling;
-        }
 
-        if (i === 4) {
-          nextDiv = divElements[1];
-        } else if (divElements.length > 0) {
-          nextDiv = divElements[0];
-        }
+          if (i === 4) {
+            nextDiv = divElements[1];
+          } else if (divElements.length > 0) {
+            nextDiv = divElements[0];
+          }
 
-        if (!nextDiv) {
-          console.log(`Ebene ${i + 1}: Kein DIV-Element gefunden.`);
-          break;
-        }
-
-        currentElement = nextDiv;
-
-        if (
-          currentElement.classList.contains("flex") &&
-          currentElement.classList.contains("items-center")
-        ) {
-          // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
-          const existingButton = currentElement.querySelector(
-            ".save-prompt-button"
-          );
-          if (existingButton) {
-            console.log(
-              "Button existiert bereits für:",
-              currentElement.className
-            );
-            existingElements.add(currentElement);
+          if (!nextDiv) {
+            console.log(`Ebene ${i + 1}: Kein DIV-Element gefunden.`);
             break;
           }
 
-          // Falls wir hier sind, gibt es noch keinen Button
-          existingElements.add(currentElement);
+          currentElement = nextDiv;
 
-          // Button erstellen
-          const button = document.createElement("button");
-          button.textContent = "Save Prompt";
-          button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
-
-          // Button-Styling
-          Object.assign(button.style, {
-            padding: "5px 10px",
-            marginLeft: "5px",
-            cursor: "pointer",
-            border: "1px solid #ccc",
-            borderRadius: "5px",
-            color: "black",
-            background: "#f0f0f0",
-          });
-          button.title =
-            "If you liked the answer, save the prompt that generated it directly to your memory.";
-
-          // Hover-Effekte
-          button.addEventListener("mouseover", () => {
-            button.style.backgroundColor = "#e0e0e0";
-            button.style.borderColor = "#bbb";
-          });
-          button.addEventListener("mouseout", () => {
-            button.style.backgroundColor = "#f0f0f0";
-            button.style.borderColor = "#ccc";
-          });
-
-          // Klick-Event
-          button.addEventListener("click", (event) => {
-            if (button.classList.contains("save-prompt-button")) {
-              let buttonNumber = index + 1; // Button-Nummer aus dem Index berechnen
-              console.log(`Button ${buttonNumber} wurde geklickt.`);
-
-              button.textContent = "✔ Prompt Saved";
-              chatGPTButtonClick(buttonNumber); // Funktion aus Original beibehalten
-
-              setTimeout(() => {
-                button.textContent = "Save Prompt";
-              }, 5000);
+          if (
+            currentElement.classList.contains("flex") &&
+            currentElement.classList.contains("items-center")
+          ) {
+            // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+            const existingButton = currentElement.querySelector(
+              ".save-prompt-button"
+            );
+            if (existingButton) {
+              console.log(
+                "Button existiert bereits für:",
+                currentElement.className
+              );
+              existingElements.add(currentElement);
+              break;
             }
-          });
 
-          // Button einfügen
-          currentElement.appendChild(button);
-          console.log(
-            `Button ${buttonCounter} zu ${currentElement.className} hinzugefügt.`
-          );
-          buttonCounter++;
-          break;
+            // Falls wir hier sind, gibt es noch keinen Button
+            existingElements.add(currentElement);
+
+            // Button erstellen
+            const button = document.createElement("button");
+            button.textContent = "Save Prompt";
+            button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
+
+            // Button-Styling
+            Object.assign(button.style, {
+              padding: "5px 10px",
+              marginLeft: "5px",
+              cursor: "pointer",
+              border: "1px solid #ccc",
+              borderRadius: "5px",
+              color: "black",
+              background: "#f0f0f0",
+            });
+            button.title =
+              "If you liked the answer, save the prompt that generated it directly to your memory.";
+
+            // Hover-Effekte
+            button.addEventListener("mouseover", () => {
+              button.style.backgroundColor = "#e0e0e0";
+              button.style.borderColor = "#bbb";
+            });
+            button.addEventListener("mouseout", () => {
+              button.style.backgroundColor = "#f0f0f0";
+              button.style.borderColor = "#ccc";
+            });
+
+            // Klick-Event
+            button.addEventListener("click", (event) => {
+              if (button.classList.contains("save-prompt-button")) {
+                let buttonNumber = index + 1; // Button-Nummer aus dem Index berechnen
+                console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+                button.textContent = "✔ Prompt Saved";
+                chatGPTButtonClick(buttonNumber); // Funktion aus Original beibehalten
+
+                setTimeout(() => {
+                  button.textContent = "Save Prompt";
+                }, 5000);
+              }
+            });
+
+            // Button einfügen
+            currentElement.appendChild(button);
+            console.log(
+              `Button ${buttonCounter} zu ${currentElement.className} hinzugefügt.`
+            );
+            buttonCounter++;
+            break;
+          }
         }
       }
     });
