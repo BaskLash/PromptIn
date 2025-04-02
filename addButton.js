@@ -727,7 +727,7 @@ function addMicrosoftCopilotButton() {
         background: "#f0f0f0",
       });
       button.title =
-        "Speichere den Prompt, der diese Antwort erzeugt hat, direkt in deinem Gedächtnis.";
+        "If you liked the answer, save the prompt that generated it directly to your memory.";
 
       // Hover-Effekte
       button.addEventListener("mouseover", () => {
@@ -810,7 +810,8 @@ function addMistralButton() {
         cursor: "pointer",
         background: "#f0f0f0",
       });
-      newButton.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+      newButton.title =
+        "If you liked the answer, save the prompt that generated it directly to your memory.";
 
       // Hover-Effekte
       newButton.addEventListener("mouseover", () => {
@@ -893,7 +894,8 @@ function addDuckduckGoButton() {
         cursor: "pointer",
         background: "#f0f0f0",
       });
-      button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+      button.title =
+        "If you liked the answer, save the prompt that generated it directly to your memory.";
 
       // Hover-Effekte
       button.addEventListener("mouseover", () => {
@@ -975,10 +977,12 @@ function addPerplexityButton() {
         border: "1px solid #ccc",
         borderRadius: "5px",
         color: "black",
+        fontFamily: "Arial",
         background: "#f0f0f0",
         margin: "5px",
       });
-      button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+      button.title =
+        "If you liked the answer, save the prompt that generated it directly to your memory.";
 
       // Hover-Effekte
       button.addEventListener("mouseover", () => {
@@ -1085,7 +1089,8 @@ function addDeepSeekButton() {
           fontFamily: "Arial",
           cursor: "pointer",
         });
-        button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+        button.title =
+          "If you liked the answer, save the prompt that generated it directly to your memory.";
 
         // Hover-Effekte
         button.addEventListener("mouseover", () => {
