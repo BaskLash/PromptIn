@@ -932,81 +932,85 @@ function addDuckduckGoButton() {
 }
 function addPerplexityButton() {
   try {
-    const chatsContainer = document.querySelector(".scrollable-container")
-      .children[0].children[0].children[0].children[1].children[0];
-    if (!chatsContainer) throw new Error("Chats-Container nicht gefunden");
+    const container = document.querySelector(".scrollable-container");
+    if (!container) throw new Error("Scrollable container nicht gefunden");
+
+    const divElement = container.querySelector("div[class='']");
+    if (!divElement)
+      throw new Error("Div-Element mit leerer Klasse nicht gefunden");
+
+    // Hole nur die direkten Kind-Elemente von divElement und wandle sie in ein Array um
+    const divChildren = Array.from(divElement.children);
 
     let buttonCounter = 1; // Startwert für die Button-Nummerierung
     let existingElements = new Set(); // Set für bereits bearbeitete Elemente
 
-    for (let i = 0; i < chatsContainer.children.length; i++) {
-      let child = chatsContainer.children[i];
-      if (!child) continue;
-
-      // Accessing deeply nested children
-      child =
-        child.children[0]?.children[1]?.children[0]?.children[2]?.children[0]
-          ?.children[0]?.children[2]?.children[0]?.children[0]?.children[1]
-          ?.children[0];
-      if (!child) {
-        console.log(`Kind-Element ${i} nicht vollständig gefunden`);
-        continue;
+    divChildren.forEach((child, index) => {
+      // Prüfe, ob dieses Kind-Element ein optionBar enthält
+      const optionBar = child.querySelector(".-ml-sm");
+      if (!optionBar) {
+        console.log("Kein optionBar in diesem Kind-Element gefunden:", child);
+        return;
       }
 
       // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
-      const existingButton = child.querySelector(".save-prompt-button");
+      const existingButton = optionBar.querySelector(".save-prompt-button");
       if (existingButton) {
-        console.log("Button existiert bereits für:", child.className);
-        existingElements.add(child);
-        continue;
+        console.log("Button existiert bereits für:", optionBar.className);
+        existingElements.add(optionBar);
+        return;
       }
 
       // Falls wir hier sind, gibt es noch keinen Button
-      existingElements.add(child);
+      existingElements.add(optionBar);
 
-      // Neuen Button erstellen
-      const newButton = document.createElement("button");
-      newButton.textContent = "Save Prompt";
-      newButton.className = `save-prompt-button save-prompt-button-${i} btn-primary`;
+      // Erstelle einen neuen Button für jedes optionBar
+      const button = document.createElement("button");
+      button.textContent = "Save Prompt";
+      button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
 
       // Button-Styling
-      Object.assign(newButton.style, {
-        padding: "8px 16px",
-        backgroundColor: "#007bff",
-        color: "white",
-        border: "none",
-        borderRadius: "4px",
-        cursor: "pointer",
+      Object.assign(button.style, {
+        padding: "5px 10px",
+        border: "1px solid #ccc",
+        borderRadius: "5px",
+        color: "black",
+        background: "#f0f0f0",
+        margin: "5px",
       });
-      newButton.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+      button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
 
       // Hover-Effekte
-      newButton.addEventListener("mouseover", () => {
-        newButton.style.backgroundColor = "#0056b3";
+      button.addEventListener("mouseover", () => {
+        button.style.backgroundColor = "#e0e0e0";
+        button.style.borderColor = "#bbb";
       });
-      newButton.addEventListener("mouseout", () => {
-        newButton.style.backgroundColor = "#007bff";
+      button.addEventListener("mouseout", () => {
+        button.style.backgroundColor = "#f0f0f0";
+        button.style.borderColor = "#ccc";
       });
 
       // Klick-Event
-      newButton.addEventListener("click", (event) => {
-        if (newButton.classList.contains("save-prompt-button")) {
-          let buttonNumber = i + 1; // Button-Nummer aus der Schleife berechnen
+      button.addEventListener("click", (event) => {
+        if (button.classList.contains("save-prompt-button")) {
+          let buttonNumber = index + 1; // Button-Nummer aus dem Index berechnen
           console.log(`Button ${buttonNumber} wurde geklickt.`);
 
-          newButton.textContent = "✔ Prompt Saved";
+          button.textContent = "✔ Prompt Saved";
           addPerplexityButtonClick(buttonNumber);
           setTimeout(() => {
-            newButton.textContent = "Save Prompt";
+            button.textContent = "Save Prompt";
           }, 5000);
         }
       });
 
-      // Button zum Ziel-Element hinzufügen
-      child.appendChild(newButton);
-      console.log(`Button ${buttonCounter} zu ${child.className} hinzugefügt`);
+      // Füge den Button zu optionBar hinzu
+      optionBar.appendChild(button);
+      console.log(
+        `Button ${buttonCounter} zu ${optionBar.className} hinzugefügt`
+      );
       buttonCounter++; // Zähler erhöhen
-    }
+    });
   } catch (error) {
     console.error("Fehler beim Hinzufügen der Buttons:", error.message);
   }

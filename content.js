@@ -536,23 +536,22 @@ function addMicrosoftCopilotButtonClick(index) {
   }
 }
 function addPerplexityButtonClick(index) {
-  try {
-    const currentIndex = document.querySelector(".scrollable-container")
-      .children[0].children[0].children[0].children[1].children[0].children[
-      index - 1
-    ];
-
-    const chat =
-      currentIndex.children[0].children[1].children[0].children[0].children[0]
-        .children[0].children[0].children[1].children[0].children[0]
-        .children[0];
-
-    // Log and process the content
-    // console.log(chat.innerHTML);
-    promptSaver(chat.innerHTML);
-  } catch (error) {
-    console.error("Error in addPerplexityButtonClick:", error.message);
+  const container = document.querySelector(".scrollable-container");
+  if (!container) {
+    throw new Error("Scrollable container nicht gefunden");
   }
+
+  // Finde das erste div-Element ohne Klasse innerhalb des Containers
+  let divElement = container.querySelector("div[class='']");
+  if (!divElement) {
+    throw new Error("Div-Element ohne Klasse nicht gefunden");
+  }
+  divElement = divElement.children[index - 1];
+  let title = divElement.querySelector(".overflow-hidden");
+  title = title.children[0];
+
+  // console.log(title.innerText);
+  promptSaver(title);
 }
 
 function addDeepSeekButtonClick(index) {
