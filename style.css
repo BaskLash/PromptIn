@@ -8,22 +8,13 @@ body {
   overflow: hidden;
 }
 
-/* Navigation Styles */
+/* Obere Navigation */
 .navbar {
   background-color: #1a1a1a;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 0.5rem; /* Reduziert von 1rem auf 0.5rem für kleinere Höhe */
   border-bottom: 1px solid #333;
   width: 100%;
   box-sizing: border-box;
-}
-
-.nav-brand h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #ffffff;
 }
 
 .nav-menu {
@@ -32,18 +23,24 @@ body {
   padding: 0;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem; /* Reduziert von 1.5rem auf 1rem */
 }
 
 .nav-item {
   display: inline-block;
 }
 
+.nav-brand h2 {
+  margin: 0;
+  font-size: 1.2rem; /* Reduziert von 1.5rem auf 1.2rem */
+  color: #ffffff;
+}
+
 .nav-link {
   color: #ffffff;
   text-decoration: none;
-  font-size: 2.1rem;
-  padding: 0.5rem 1rem;
+  font-size: 1.5rem; /* Reduziert von 2.1rem auf 1.5rem */
+  padding: 0.3rem 0.8rem; /* Reduziert von 0.5rem 1rem */
   transition: color 0.3s ease;
   cursor: pointer;
 }
@@ -52,70 +49,139 @@ body {
   color: #007bff;
 }
 
-.nav-button {
-  background-color: #dc3545;
-  color: white;
+.burger-btn {
+  background: none;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
+  font-size: 1.5rem; /* Reduziert von 2.1rem auf 1.5rem */
+  color: #ffffff;
   cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s ease;
 }
 
-.nav-button:hover {
-  background-color: #c82333;
+.burger-btn:hover {
+  color: #007bff;
 }
 
-/* Container Styles */
-.container {
-  position: relative;
-  z-index: 1;
-  width: 90%;
-  max-width: 500px;
-  padding: 20px;
-  margin: 0 auto;
-}
-
-/* Existing Styles */
-.enterage {
+/* Layout */
+.layout {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.dropdown {
-  margin-left: auto;
+  height: calc(
+    100vh - 40px
+  ); /* Angepasst von 60px auf 40px wegen kleinerer Navbar */
   position: relative;
 }
 
-.dropdown-content {
-  display: none;
-  font-size: 1rem;
-  color: black;
+/* Seitenleiste */
+.sidebar {
+  background-color: #1a1a1a;
+  width: 500px;
+  height: 100%;
   position: absolute;
-  right: 0;
-  background-color: #f9f9f9;
-  min-width: 400px;
-  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
-  z-index: 1;
+  top: 0;
+  left: -500px;
+  transition: left 0.3s ease;
+  z-index: 10;
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
-.show {
+.sidebar.visible {
+  left: 0;
+}
+
+.sidebar .nav-menu {
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Navigationsabschnitte */
+.nav-section {
+  margin: 10px 0;
+}
+
+.collapsible {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  background: #333;
+  border: none;
+  color: #ffffff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 5px;
+  position: relative;
+}
+
+.collapsible:hover {
+  background-color: #444;
+}
+
+.collapsible::after {
+  content: "\25BC"; /* Pfeil nach unten */
+  position: absolute;
+  right: 15px;
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.collapsible.active::after {
+  transform: rotate(180deg); /* Pfeil nach oben */
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.collapsible-content a {
+  display: block;
+  padding: 0.5rem 1.5rem;
+  color: #b0b0ff;
+  text-decoration: none;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.collapsible-content a:hover {
+  background: rgba(0, 212, 255, 0.15);
+  color: #fff;
+}
+
+/* Ordner-spezifisches Styling */
+#folderNavList .folder-item {
+  padding: 0.5rem 1.5rem;
+}
+
+#folderNavList .folder-item .folder-link {
+  color: #b0b0ff;
+  text-decoration: none;
   display: block;
 }
 
-.search {
-  margin: 1rem;
-  display: flex;
-  flex-direction: column;
+#folderNavList .folder-item .folder-link:hover {
+  color: #fff;
+  background: rgba(0, 212, 255, 0.15);
 }
 
-.search input[type="text"] {
-  margin-top: 0.5rem;
-  height: 25px;
-  padding: 5px;
+/* Hauptinhalt */
+.main-content {
+  flex-grow: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.container {
+  width: 90%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.enterage {
+  margin-bottom: 20px;
 }
 
 #inputField {
@@ -128,13 +194,8 @@ body {
   color: #ffffff;
 }
 
-.folder-icon {
-  cursor: pointer; /* Pointer cursor for icon */
-  font-size: 2.2rem;
-  margin-left: 10px;
-  background-color: transparent;
-  border: none;
-  color: #ffffff;
+#noData {
+  text-align: center;
 }
 
 .flexInbox {
@@ -143,189 +204,60 @@ body {
   width: 100%;
 }
 
-/* Rest of your existing styles remain the same */
-.accordion {
+.prompt-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.prompt-item {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(0, 212, 255, 0.1);
+  transition: all 0.3s ease;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: white;
-  outline: none;
-  transition: background-color 0.3s;
-  margin-bottom: 5px;
 }
 
-/* ... Add other existing styles as needed ... */
-
-.topic-name {
-  flex-grow: 1; /* Allow the topic name to take up available space */
-  color: white;
-  font-weight: bold;
-  border: none;
-  font-size: 2rem;
-  background-color: #007bff; /* Primary color for the button */
-  cursor: pointer;
-  margin-right: 1rem;
-  transition-duration: 0.4s;
+.prompt-item:hover {
+  background: rgba(0, 212, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 212, 255, 0.2);
 }
 
-.topic-name:hover {
-  background-color: black;
+.prompt-text {
+  font-size: 16px;
+  color: #fff;
+  word-break: break-word;
+  flex-grow: 1;
+  margin-right: 10px;
 }
 
-.action-links {
-  display: flex; /* Use flexbox for action links */
-  gap: 10px; /* Space between action buttons */
-}
-
-.rename-button {
-  background-color: #04aa6d; /* Green */
-  cursor: pointer;
-}
-
-.rename-button:hover {
-  color: #04aa6d;
-  background-color: white;
-}
-
-.delete-button {
-  background-color: red;
-  cursor: pointer;
-  padding: 11.5px;
-}
-
-.delete-button:hover {
-  background-color: white;
-  color: red;
-}
-
-.rename-button,
-.delete-button {
-  color: white; /* White text */
-  border: none; /* No border */
-  cursor: pointer; /* Pointer cursor on hover */
-  font-size: 14px; /* Smaller font size */
-  transition-duration: 0.4s;
-}
-.rename-button img,
-.delete-button img {
-  width: 16px; /* Feste Größe für Konsistenz */
-  height: 16px;
-  vertical-align: middle;
-}
-
-.topic-name:hover.accordion:hover {
-  background-color: #0056b3; /* Darker blue on hover */
-}
-
-.panel {
-  color: black;
-  background-color: white; /* White background for the panel */
-  border: 1px solid #ddd; /* Light border */
-  border-radius: 5px; /* Rounded corners */
-  margin-bottom: 10px; /* Space below the panel */
-  display: none; /* Initially hidden */
-}
-
-.panel table {
-  width: 100%; /* Full width for table */
-  text-align: right;
-}
-
-.panel table tr td {
-  padding: 10px; /* Padding for table cells */
-  text-align: right;
-}
-
-.panel table tr td p {
-  margin-right: 2rem;
-  margin-left: -1rem;
-}
-
-.panel.show {
-  display: block; /* Show the panel when active */
-}
-
-.action-button {
-  background-color: #28a745; /* Green background for action buttons */
-  color: white; /* White text */
-  border: none; /* No border */
-  border-radius: 5px; /* Rounded corners */
-  padding: 10px 15px; /* Padding for buttons */
-  cursor: pointer; /* Pointer cursor on hover */
-  transition: background-color 0.3s; /* Smooth transition */
-  margin-left: -1rem;
-}
-
-.action-button:hover {
-  background-color: #218838; /* Darker green on hover */
-}
-
-.action-button img {
-  width: 16px; /* Adjust as needed */
-  height: 16px; /* Adjust as needed */
-}
-
-#stored -messages li {
+.prompt-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 5px 0;
-  padding: 10px; /* Padding for list items */
-  background-color: rgba(
-    255,
-    255,
-    255,
-    0.1
-  ); /* Slightly transparent background */
-  border-radius: 5px; /* Rounded corners */
+  gap: 10px;
 }
 
-/* Dropdown-Stile */
-.dropdown2 {
-  position: relative;
-  display: inline-block;
-}
-
-.dropbtn2 {
-  background-color: #3498db;
-  color: white;
-  padding: 8px 12px;
+.prompt-actions .action-btn {
+  background: rgba(0, 212, 255, 0.2);
+  border: 1px solid #00d4ff;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
   font-size: 14px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
-.dropbtn2:hover,
-.dropbtn2:focus {
-  background-color: #2980b9;
+.prompt-actions .action-btn:hover {
+  background: #00d4ff;
+  color: #1a1a1a;
 }
 
-.dropdown-content2 {
-  margin-left: -7.5rem;
-  display: none;
-  position: absolute;
-  background-color: #f1f1f1;
-  min-width: 120px;
-  overflow: auto;
-  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
-  z-index: 1;
-}
-
-.dropdown-content2 a {
-  color: black;
-  padding: 10px 14px;
-  text-decoration: none;
-  display: block;
-}
-
-.dropdown-content2 a:hover {
-  background-color: #ddd;
-}
-
-.show2 {
-  display: block;
-}
 .button-container {
   position: fixed;
   z-index: 100;
@@ -336,27 +268,23 @@ body {
   gap: 10px;
 }
 
-.action-button.new-folder,
 .action-button.new-prompt {
   border: none;
   background-color: #007bff;
   padding: 15px;
-  font-size: 1.5rem; /* Größere Schrift für klarere Icons */
+  font-size: 1.5rem;
   border-radius: 50%;
   width: 60px;
   height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  line-height: 1; /* Verhindert zusätzlichen Abstand durch Zeilenhöhe */
-  transition: transform 0.3s ease, background-color 0.3s ease; /* Transition für Größe und Farbe */
+  transition: transform 0.3s ease, background-color 0.3s ease;
 }
 
-.action-button.new-folder:hover,
 .action-button.new-prompt:hover {
   background-color: #0056b3;
-  transform: scale(1.2); /* Vergrößert den Button um 20% */
+  transform: scale(1.2);
 }
 
 /* Modal Styles */
@@ -452,7 +380,7 @@ body {
 .modal-button:hover {
   background-color: #0056b3;
 }
-/* FAQ spezifische Styles */
+
 .faq-item {
   margin: 15px 0;
 }
@@ -468,7 +396,7 @@ body {
   margin: 5px 0 0;
   font-size: 1rem;
 }
-/* Modal Form Styles */
+
 .modal-form {
   display: flex;
   flex-direction: column;
@@ -481,7 +409,8 @@ body {
   font-size: 1.1rem;
 }
 
-.modal-form input {
+.modal-form input,
+.modal-form textarea {
   background-color: #333;
   color: #ffffff;
   border: none;
@@ -490,20 +419,22 @@ body {
   font-size: 1rem;
 }
 
-.modal-form input::placeholder {
+.modal-form input::placeholder,
+.modal-form textarea::placeholder {
   color: #aaa;
 }
 
-.modal-button {
-  background-color: #007bff;
+.nav-button {
+  background-color: #dc3545;
   color: white;
   border: none;
-  padding: 10px;
+  padding: 0.5rem 1rem;
   border-radius: 5px;
   cursor: pointer;
+  font-size: 1rem;
   transition: background-color 0.3s ease;
 }
 
-.modal-button:hover {
-  background-color: #0056b3;
+.nav-button:hover {
+  background-color: #c82333;
 }

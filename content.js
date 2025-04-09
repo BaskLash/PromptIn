@@ -358,45 +358,234 @@ function addMistralButtonClick(index) {
 }
 
 function promptSaver(message) {
-  message = message.trim(); // Trim entfernt überflüssige Leerzeichen
+  // Create modal elements
+  const modal = document.createElement("div");
+  modal.id = "myModal";
+  modal.className = "modal";
 
-  let baseTopicName = "ExampleName"; // Dynamischer Name möglich
-  let topicName = baseTopicName;
+  const modalContent = document.createElement("div");
+  modalContent.className = "modal-content";
 
-  // Prüfe, ob ein Doppelpunkt im Text vorhanden ist
-  let processedMessage = message;
-  const colonIndex = message.indexOf(":");
-  if (colonIndex !== -1) {
-    // Wenn ein ":" gefunden wird, nimm nur den Teil links davon inklusive ":"
-    processedMessage = message.substring(0, colonIndex + 1).trim();
-  }
+  const modalHeader = document.createElement("div");
+  modalHeader.className = "modal-header";
 
-  // Hole bestehende Daten
-  chrome.storage.sync.get(null, async function (data) {
-    let topics = data || {}; // Sicherstellen, dass ein Objekt existiert
+  const closeSpan = document.createElement("span");
+  closeSpan.className = "close";
+  closeSpan.innerHTML = "×";
 
-    // Eindeutige ID generieren
-    const uniqueID = await generateUniqueID(topicName);
+  const headerTitle = document.createElement("h2");
+  headerTitle.textContent = "Prompt Speichern";
 
-    // Falls der Name bereits existiert, generiere einen neuen
-    while (topics.hasOwnProperty(topicName)) {
-      topicName = `${baseTopicName}_${Math.floor(Math.random() * 10000)}`;
+  const modalBody = document.createElement("div");
+  modalBody.className = "modal-body";
+
+  const bodyText = document.createElement("p");
+  bodyText.textContent = "";
+
+  // Prompt Title input
+  const promptTitleLabel = document.createElement("label");
+  promptTitleLabel.setAttribute("for", "promptTitle");
+  promptTitleLabel.textContent = "Prompt Titel:";
+
+  const promptTitleInput = document.createElement("input");
+  promptTitleInput.type = "text";
+  promptTitleInput.id = "promptTitle";
+  promptTitleInput.name = "promptTitle";
+  promptTitleInput.placeholder = "Gib einen Titel für deine Prompt ein";
+
+  // Folder selection dropdown
+  const folderLabel = document.createElement("label");
+  folderLabel.setAttribute("for", "folderSelect");
+  folderLabel.textContent = "Wähle einen Ordner:";
+
+  const folderSelect = document.createElement("select");
+  folderSelect.id = "folderSelect";
+  folderSelect.name = "folderSelect";
+
+  // // Adding options for folders
+  // folders.forEach((folder) => {
+  //   const folderOption = document.createElement("option");
+  //   folderOption.value = folder;
+  //   folderOption.textContent = folder;
+  //   folderSelect.appendChild(folderOption);
+  // });
+
+  // Option to replace prompt title
+  const replaceTitleLabel = document.createElement("label");
+  replaceTitleLabel.setAttribute("for", "replaceTitle");
+  replaceTitleLabel.textContent = "Titel der bestehenden Prompt ersetzen:";
+
+  const replaceTitleInput = document.createElement("input");
+  replaceTitleInput.type = "checkbox";
+  replaceTitleInput.id = "replaceTitle";
+  replaceTitleInput.name = "replaceTitle";
+
+  const modalFooter = document.createElement("div");
+  modalFooter.className = "modal-footer";
+
+  const footerText = document.createElement("h3");
+  footerText.textContent = "Speichern";
+
+  // Add styles
+  const style = document.createElement("style");
+  style.textContent = `
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(2px);
+        animation: fadeIn 0.3s ease-out;
     }
 
-    // Neues Topic-Objekt erstellen mit der verarbeiteten Nachricht
-    topics[uniqueID] = {
-      name: topicName,
-      prompts: [processedMessage],
-    };
+    .modal-content {
+        position: relative;
+        background: #ffffff;
+        margin: 10% auto;
+        padding: 0;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 12px;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+        animation: slideIn 0.3s ease-out;
+    }
 
-    // Speichern und UI sofort aktualisieren
-    chrome.storage.sync.set(topics, function () {
-      console.log(
-        `Gespeichert in ${topicName} (ID: ${uniqueID}):`,
-        processedMessage
-      );
-    });
-  });
+    .modal-header {
+        padding: 15px 20px;
+        background: linear-gradient(45deg, #4a90e2, #357abd);
+        color: white;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 1.5em;
+        font-weight: 500;
+    }
+
+    .modal-body {
+        padding: 20px;
+        color: #333;
+        line-height: 1.6;
+    }
+
+    .modal-body label {
+        font-weight: bold;
+        margin-top: 10px;
+        display: block;
+    }
+
+    .modal-body input,
+    .modal-body select {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    .modal-footer {
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-radius: 0 0 12px 12px;
+        text-align: right;
+    }
+
+    .modal-footer h3 {
+        margin: 0;
+        font-size: 1em;
+        color: #666;
+        font-weight: 400;
+    }
+
+    .close {
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: #fff;
+        transform: scale(1.2);
+        text-decoration: none;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideIn {
+        from { transform: translateY(-50px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+  `;
+
+  // Assemble the modal
+  modalHeader.appendChild(closeSpan);
+  modalHeader.appendChild(headerTitle);
+
+  modalBody.appendChild(bodyText);
+  modalBody.appendChild(promptTitleLabel);
+  modalBody.appendChild(promptTitleInput);
+  modalBody.appendChild(folderLabel);
+  modalBody.appendChild(folderSelect);
+  modalBody.appendChild(replaceTitleLabel);
+  modalBody.appendChild(replaceTitleInput);
+
+  modalFooter.appendChild(footerText);
+
+  modalContent.appendChild(modalHeader);
+  modalContent.appendChild(modalBody);
+  modalContent.appendChild(modalFooter);
+
+  modal.appendChild(modalContent);
+
+  // Add styles and modal to document
+  document.head.appendChild(style);
+  document.body.appendChild(modal);
+
+  // Show the modal
+  modal.style.display = "block";
+
+  // Add event listeners
+  closeSpan.onclick = function () {
+    modal.style.display = "none";
+    document.body.removeChild(modal);
+    document.head.removeChild(style); // Clean up styles
+  };
+
+  window.onclick = function (event) {
+    if (event.target == modal) {
+      modal.style.display = "none";
+      document.body.removeChild(modal);
+      document.head.removeChild(style); // Clean up styles
+    }
+  };
+
+  // Handle form submission (this part will need customization for saving the prompt)
+  footerText.onclick = function () {
+    const promptTitle = promptTitleInput.value;
+    const selectedFolder = folderSelect.value;
+    const replace = replaceTitleInput.checked;
+
+    console.log("Prompt Title:", promptTitle);
+    console.log("Selected Folder:", selectedFolder);
+    console.log("Replace Title:", replace);
+
+    // Your logic to handle the saving of the prompt goes here...
+  };
 }
 
 // Funktion zum Abrufen des passenden Chat-Elements
