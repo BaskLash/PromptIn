@@ -18,7 +18,7 @@
           <h2>PromptIn</h2>
         </li>
         <li class="nav-item">
-          <a class="nav-link" id="overview-btn" title="Go to overview">↗️</a>
+          <a class="nav-link" id="overview-btn" title="View in tab">↗️</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" id="settings-btn" title="Go to settings">⚙️</a>
@@ -33,19 +33,27 @@
     <div class="layout">
       <!-- Seitenleiste -->
       <nav class="sidebar hidden">
-        <ul class="nav-menu">
+        <ul class="nav-menu sidebar-menu">
           <!-- Collapsible Categories -->
           <li class="nav-section">
-            <button class="collapsible">Categories</button>
+            <button class="collapsible" aria-expanded="false">
+              Categories
+            </button>
             <div class="collapsible-content">
-              <a href="#" id="all-prompts-link">All Prompts</a>
-              <a href="#" id="single-prompts-link">Single Prompts</a>
-              <a href="#" id="categorised-prompts-link">Categorised Prompts</a>
+              <a href="#" id="all-prompts-link" class="sidebar-link"
+                >All Prompts</a
+              >
+              <a href="#" id="single-prompts-link" class="sidebar-link"
+                >Single Prompts</a
+              >
+              <a href="#" id="categorised-prompts-link" class="sidebar-link"
+                >Categorised Prompts</a
+              >
             </div>
           </li>
           <!-- Collapsible Folders -->
           <li class="nav-section">
-            <button class="collapsible">Folders</button>
+            <button class="collapsible" aria-expanded="false">Folders</button>
             <div class="collapsible-content" id="folderNavList">
               <!-- Dynamisch geladene Ordner kommen hier rein -->
             </div>

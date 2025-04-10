@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const inputField = document.getElementById("inputField");
   const promptList = document.getElementById("promptList");
   const noData = document.getElementById("noData");
+
   const burgerBtn = document.querySelector(".burger-btn");
   const sidebar = document.querySelector(".sidebar");
   const allPromptsLink = document.getElementById("all-prompts-link");
@@ -94,6 +95,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Funktion zum Laden der Ordner in der Seitenleiste (nur Foldernamen)
+  // Funktion zum Laden der Ordner (angepasst)
   function loadFolders() {
     chrome.storage.sync.get(null, function (data) {
       folderNavList.innerHTML = "";
@@ -113,7 +115,7 @@ document.addEventListener("DOMContentLoaded", function () {
         folderLink.addEventListener("click", (e) => {
           e.preventDefault();
           showFolder(id);
-          sidebar.classList.remove("visible"); // Sidebar schließen
+          sidebar.classList.remove("visible");
         });
         folderItem.appendChild(folderLink);
 
@@ -121,12 +123,10 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       // Höhe des Folders-Collapsible-Inhalts anpassen
-      const folderCollapsibleContent = folderNavList.closest(
-        ".collapsible-content"
-      );
-      if (folderCollapsibleContent.classList.contains("active")) {
-        folderCollapsibleContent.style.maxHeight =
-          folderCollapsibleContent.scrollHeight + "px";
+      const folderCollapsibleContent = folderNavList.closest(".collapsible-content");
+      const folderCollapsible = folderCollapsibleContent.previousElementSibling;
+      if (folderCollapsible.getAttribute("aria-expanded") === "true") {
+        folderCollapsibleContent.style.maxHeight = folderCollapsibleContent.scrollHeight + "px";
       }
     });
   }
@@ -236,15 +236,19 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Collapsible ein-/ausklappen für alle collapsible-Elemente
+  // Collapsible ein-/ausklappen mit dynamischer Höhe
   collapsibles.forEach((collapsible) => {
     collapsible.addEventListener("click", function () {
-      this.classList.toggle("active");
+      const isActive = this.getAttribute("aria-expanded") === "true";
+      this.setAttribute("aria-expanded", !isActive);
       const content = this.nextElementSibling;
-      if (content.style.maxHeight) {
-        content.style.maxHeight = null;
-      } else {
+
+      if (!isActive) {
+        content.classList.add("active");
         content.style.maxHeight = content.scrollHeight + "px";
+      } else {
+        content.classList.remove("active");
+        content.style.maxHeight = null;
       }
     });
   });

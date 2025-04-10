@@ -374,57 +374,159 @@ function promptSaver(message) {
   closeSpan.innerHTML = "×";
 
   const headerTitle = document.createElement("h2");
-  headerTitle.textContent = "Prompt Speichern";
+  headerTitle.textContent = "Save Prompt";
 
   const modalBody = document.createElement("div");
   modalBody.className = "modal-body";
 
-  const bodyText = document.createElement("p");
-  bodyText.textContent = "";
+  // Step 1: Prompt Title
+  const titleSection = document.createElement("div");
+  titleSection.className = "step-section active";
 
-  // Prompt Title input
   const promptTitleLabel = document.createElement("label");
   promptTitleLabel.setAttribute("for", "promptTitle");
-  promptTitleLabel.textContent = "Prompt Titel:";
+  promptTitleLabel.textContent = "Prompt Title:";
 
   const promptTitleInput = document.createElement("input");
   promptTitleInput.type = "text";
   promptTitleInput.id = "promptTitle";
   promptTitleInput.name = "promptTitle";
-  promptTitleInput.placeholder = "Gib einen Titel für deine Prompt ein";
+  promptTitleInput.placeholder = "Gib einen Titel für deinen Prompt ein";
 
-  // Folder selection dropdown
-  const folderLabel = document.createElement("label");
-  folderLabel.setAttribute("for", "folderSelect");
-  folderLabel.textContent = "Wähle einen Ordner:";
+  const nextToPromptButton = document.createElement("button");
+  nextToPromptButton.textContent = "Next";
+  nextToPromptButton.className = "next-button";
 
-  const folderSelect = document.createElement("select");
-  folderSelect.id = "folderSelect";
-  folderSelect.name = "folderSelect";
+  // Step 2: Prompt Textarea
+  const promptSection = document.createElement("div");
+  promptSection.className = "step-section";
 
-  // // Adding options for folders
-  // folders.forEach((folder) => {
-  //   const folderOption = document.createElement("option");
-  //   folderOption.value = folder;
-  //   folderOption.textContent = folder;
-  //   folderSelect.appendChild(folderOption);
-  // });
+  const promptTextareaLabel = document.createElement("label");
+  promptTextareaLabel.setAttribute("for", "promptTextarea");
+  promptTextareaLabel.textContent = "Your Prompt:";
 
-  // Option to replace prompt title
-  const replaceTitleLabel = document.createElement("label");
-  replaceTitleLabel.setAttribute("for", "replaceTitle");
-  replaceTitleLabel.textContent = "Titel der bestehenden Prompt ersetzen:";
+  const promptTextarea = document.createElement("textarea");
+  promptTextarea.id = "promptTextarea";
+  promptTextarea.name = "promptTextarea";
+  promptTextarea.rows = 10;
+  message = message.trim();
+  const colonIndex = message.indexOf(":");
+  if (colonIndex !== -1) {
+    // Wenn ein ":" gefunden wird, nimm nur den Teil links davon inklusive ":"
+    processedMessage = message.substring(0, colonIndex + 1).trim();
+  }
+  promptTextarea.value = processedMessage;
+  promptTextarea.placeholder = "Bearbeite deinen Prompt hier...";
 
-  const replaceTitleInput = document.createElement("input");
-  replaceTitleInput.type = "checkbox";
-  replaceTitleInput.id = "replaceTitle";
-  replaceTitleInput.name = "replaceTitle";
+  const promptButtons = document.createElement("div");
+  promptButtons.className = "button-group";
+  const backToTitleButton = document.createElement("button");
+  backToTitleButton.textContent = "Back";
+  backToTitleButton.className = "back-button";
+  const nextToOptionsButton = document.createElement("button");
+  nextToOptionsButton.textContent = "Next";
+  nextToOptionsButton.className = "next-button";
 
+  // Step 3: Options
+  const optionsSection = document.createElement("div");
+  optionsSection.className = "step-section";
+
+  const optionsHeader = document.createElement("p");
+  optionsHeader.textContent = "Options:";
+
+  const optionsSwitch = document.createElement("div");
+  optionsSwitch.className = "options-switch";
+
+  const subOptionButtons = [
+    { text: "Create new prompt", id: "create" },
+    { text: "Replace prompt", id: "replace" },
+    { text: "Add prompt to folder", id: "add" },
+  ];
+
+  subOptionButtons.forEach((btn, index) => {
+    const button = document.createElement("button");
+    button.textContent = btn.text;
+    button.setAttribute("data-tab", btn.id);
+    if (index === 0) button.classList.add("active");
+    optionsSwitch.appendChild(button);
+  });
+
+  const createContent = document.createElement("div");
+  createContent.id = "create";
+  createContent.className = "option-content active";
+  const createText = document.createElement("p");
+  createText.textContent =
+    "A new, empty prompt is created. To do this, simply click on 'Save'";
+  createContent.appendChild(createText); // Diese Zeile wurde hinzugefügt
+
+  const replaceContent = document.createElement("div");
+  replaceContent.id = "replace";
+  replaceContent.className = "option-content";
+  const replaceText = document.createElement("p");
+  replaceText.textContent = "Select a prompt to be replaced:";
+  const replaceFolderLabel = document.createElement("label");
+  replaceFolderLabel.setAttribute("for", "replaceFolderSelect");
+  replaceFolderLabel.textContent = "Select folder:";
+  const replaceFolderSelect = document.createElement("select");
+  replaceFolderSelect.id = "replaceFolderSelect";
+  const folders = ["Option Eins", "Option Zwei", "Option Drei"];
+  folders.forEach((folder) => {
+    const option = document.createElement("option");
+    option.value = folder.toLowerCase().replace(" ", "");
+    option.textContent = folder;
+    replaceFolderSelect.appendChild(option);
+  });
+  const replacePromptLabel = document.createElement("label");
+  replacePromptLabel.setAttribute("for", "replacePromptSelect");
+  replacePromptLabel.textContent = "Prompt zum Ersetzen auswählen:";
+  const replacePromptSelect = document.createElement("select");
+  replacePromptSelect.id = "replacePromptSelect";
+  folders.forEach((folder) => {
+    const option = document.createElement("option");
+    option.value = folder.toLowerCase().replace(" ", "");
+    option.textContent = folder;
+    replacePromptSelect.appendChild(option);
+  });
+  replacePromptSelect.disabled = true;
+  replaceFolderSelect.addEventListener("change", function () {
+    replacePromptSelect.disabled = false; // Aktiviere das Prompt-Dropdown, wenn ein Ordner ausgewählt wurde
+  });
+  replaceContent.appendChild(replaceText);
+  replaceContent.appendChild(replaceFolderLabel);
+  replaceContent.appendChild(replaceFolderSelect);
+  replaceContent.appendChild(replacePromptLabel);
+  replaceContent.appendChild(replacePromptSelect);
+
+  const addContent = document.createElement("div");
+  addContent.id = "add";
+  addContent.className = "option-content";
+  const addFolderLabel = document.createElement("label");
+  addFolderLabel.setAttribute("for", "addFolderSelect");
+  addFolderLabel.textContent = "Ordner auswählen:";
+  const addFolderSelect = document.createElement("select");
+  addFolderSelect.id = "addFolderSelect";
+  folders.forEach((folder) => {
+    const option = document.createElement("option");
+    option.value = folder.toLowerCase().replace(" ", "");
+    option.textContent = folder;
+    addFolderSelect.appendChild(option);
+  });
+  addContent.appendChild(addFolderLabel);
+  addContent.appendChild(addFolderSelect);
+
+  const optionsButtons = document.createElement("div");
+  optionsButtons.className = "button-group";
+  const backToPromptButton = document.createElement("button");
+  backToPromptButton.textContent = "Back";
+  backToPromptButton.className = "back-button";
+
+  // Footer
   const modalFooter = document.createElement("div");
   modalFooter.className = "modal-footer";
 
-  const footerText = document.createElement("h3");
-  footerText.textContent = "Speichern";
+  const saveButton = document.createElement("button");
+  saveButton.className = "save-button";
+  saveButton.textContent = "Speichern";
 
   // Add styles
   const style = document.createElement("style");
@@ -438,28 +540,25 @@ function promptSaver(message) {
         width: 100%;
         height: 100%;
         overflow: auto;
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(2px);
-        animation: fadeIn 0.3s ease-out;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(3px);
     }
 
     .modal-content {
-        position: relative;
-        background: #ffffff;
-        margin: 10% auto;
+        background: #fff;
+        margin: 5% auto;
         padding: 0;
         width: 90%;
-        max-width: 500px;
-        border-radius: 12px;
-        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
-        animation: slideIn 0.3s ease-out;
+        max-width: 600px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
     }
 
     .modal-header {
-        padding: 15px 20px;
-        background: linear-gradient(45deg, #4a90e2, #357abd);
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #1e90ff, #4169e1);
         color: white;
-        border-radius: 12px 12px 0 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -467,48 +566,152 @@ function promptSaver(message) {
 
     .modal-header h2 {
         margin: 0;
-        font-size: 1.5em;
-        font-weight: 500;
+        font-size: 1.6em;
+        font-weight: 600;
     }
 
     .modal-body {
-        padding: 20px;
-        color: #333;
-        line-height: 1.6;
+        padding: 24px;
+        color: #2c3e50;
     }
 
-    .modal-body label {
-        font-weight: bold;
-        margin-top: 10px;
+    .step-section {
+        display: none;
+    }
+
+    .step-section.active {
         display: block;
     }
 
+    .options-switch {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 20px;
+        background: #f1f3f5;
+        padding: 4px;
+        border-radius: 6px;
+    }
+
+    .options-switch button {
+        flex: 1;
+        padding: 10px;
+        background: none;
+        border: none;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-radius: 4px;
+    }
+
+    .options-switch button:hover {
+        background: #e9ecef;
+    }
+
+    .options-switch button.active {
+        background: #1e90ff;
+        color: white;
+    }
+
+    .option-content {
+        display: none;
+    }
+
+    .option-content.active {
+        display: block;
+    }
+
+    .modal-body label {
+        font-weight: 600;
+        margin-top: 16px;
+        margin-bottom: 6px;
+        display: block;
+        color: #34495e;
+    }
+
     .modal-body input,
-    .modal-body select {
+    .modal-body select,
+    .modal-body textarea {
         width: 100%;
-        padding: 8px;
-        margin: 5px 0;
-        border: 1px solid #ccc;
-        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 12px;
+        border: 1px solid #dcdcdc;
+        border-radius: 4px;
+        font-size: 14px;
+        box-sizing: border-box;
+        transition: border-color 0.2s ease;
+    }
+
+    .modal-body input:focus,
+    .modal-body select:focus,
+    .modal-body textarea:focus {
+        border-color: #1e90ff;
+        outline: none;
+    }
+
+    .modal-body textarea {
+        resize: vertical;
+        min-height: 120px;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .next-button, .back-button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .next-button {
+        background: #1e90ff;
+        color: white;
+    }
+
+    .next-button:hover {
+        background: #4169e1;
+    }
+
+    .back-button {
+        background: #6c757d;
+        color: white;
+    }
+
+    .back-button:hover {
+        background: #5a6268;
     }
 
     .modal-footer {
-        padding: 15px 20px;
+        padding: 16px 24px;
         background: #f8f9fa;
-        border-radius: 0 0 12px 12px;
         text-align: right;
     }
 
-    .modal-footer h3 {
-        margin: 0;
-        font-size: 1em;
-        color: #666;
-        font-weight: 400;
+    .save-button {
+        padding: 10px 20px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .save-button:hover {
+        background: #218838;
     }
 
     .close {
         color: white;
-        font-size: 24px;
+        font-size: 28px;
         font-weight: bold;
         cursor: pointer;
         transition: transform 0.2s ease;
@@ -516,19 +719,7 @@ function promptSaver(message) {
 
     .close:hover,
     .close:focus {
-        color: #fff;
-        transform: scale(1.2);
-        text-decoration: none;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    @keyframes slideIn {
-        from { transform: translateY(-50px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
+        transform: scale(1.1);
     }
   `;
 
@@ -536,15 +727,29 @@ function promptSaver(message) {
   modalHeader.appendChild(closeSpan);
   modalHeader.appendChild(headerTitle);
 
-  modalBody.appendChild(bodyText);
-  modalBody.appendChild(promptTitleLabel);
-  modalBody.appendChild(promptTitleInput);
-  modalBody.appendChild(folderLabel);
-  modalBody.appendChild(folderSelect);
-  modalBody.appendChild(replaceTitleLabel);
-  modalBody.appendChild(replaceTitleInput);
+  titleSection.appendChild(promptTitleLabel);
+  titleSection.appendChild(promptTitleInput);
+  titleSection.appendChild(nextToPromptButton);
 
-  modalFooter.appendChild(footerText);
+  promptSection.appendChild(promptTextareaLabel);
+  promptSection.appendChild(promptTextarea);
+  promptButtons.appendChild(backToTitleButton);
+  promptButtons.appendChild(nextToOptionsButton);
+  promptSection.appendChild(promptButtons);
+
+  optionsSection.appendChild(optionsHeader);
+  optionsSection.appendChild(optionsSwitch);
+  optionsSection.appendChild(createContent);
+  optionsSection.appendChild(replaceContent);
+  optionsSection.appendChild(addContent);
+  optionsButtons.appendChild(backToPromptButton);
+  optionsSection.appendChild(optionsButtons);
+
+  modalBody.appendChild(titleSection);
+  modalBody.appendChild(promptSection);
+  modalBody.appendChild(optionsSection);
+
+  modalFooter.appendChild(saveButton);
 
   modalContent.appendChild(modalHeader);
   modalContent.appendChild(modalBody);
@@ -559,32 +764,73 @@ function promptSaver(message) {
   // Show the modal
   modal.style.display = "block";
 
-  // Add event listeners
+  // Step navigation
+  nextToPromptButton.onclick = function () {
+    if (promptTitleInput.value.trim() === "") {
+      alert("Bitte gib einen Prompt-Titel ein!");
+      return;
+    }
+    titleSection.classList.remove("active");
+    promptSection.classList.add("active");
+  };
+
+  backToTitleButton.onclick = function () {
+    promptSection.classList.remove("active");
+    titleSection.classList.add("active");
+  };
+
+  nextToOptionsButton.onclick = function () {
+    promptSection.classList.remove("active");
+    optionsSection.classList.add("active");
+  };
+
+  backToPromptButton.onclick = function () {
+    optionsSection.classList.remove("active");
+    promptSection.classList.add("active");
+  };
+
+  // Options Switcher logic
+  const subOptionButtonsElements = optionsSwitch.querySelectorAll("button");
+  const optionContents = optionsSection.querySelectorAll(".option-content");
+  subOptionButtonsElements.forEach((button) => {
+    button.addEventListener("click", () => {
+      subOptionButtonsElements.forEach((btn) => btn.classList.remove("active"));
+      optionContents.forEach((c) => c.classList.remove("active"));
+      button.classList.add("active");
+      document
+        .getElementById(button.getAttribute("data-tab"))
+        .classList.add("active");
+    });
+  });
+
+  // Event listeners
   closeSpan.onclick = function () {
     modal.style.display = "none";
     document.body.removeChild(modal);
-    document.head.removeChild(style); // Clean up styles
+    document.head.removeChild(style);
   };
 
-  window.onclick = function (event) {
-    if (event.target == modal) {
-      modal.style.display = "none";
-      document.body.removeChild(modal);
-      document.head.removeChild(style); // Clean up styles
-    }
-  };
-
-  // Handle form submission (this part will need customization for saving the prompt)
-  footerText.onclick = function () {
+  saveButton.onclick = function () {
     const promptTitle = promptTitleInput.value;
-    const selectedFolder = folderSelect.value;
-    const replace = replaceTitleInput.checked;
+    const promptContent = promptTextarea.value;
+    const activeOption = optionsSwitch
+      .querySelector("button.active")
+      .getAttribute("data-tab");
+    let additionalData = {};
+
+    if (activeOption === "replace") {
+      additionalData = {
+        replaceFolder: replaceFolderSelect.value,
+        replacePrompt: replacePromptSelect.value,
+      };
+    } else if (activeOption === "add") {
+      additionalData = { addFolder: addFolderSelect.value };
+    }
 
     console.log("Prompt Title:", promptTitle);
-    console.log("Selected Folder:", selectedFolder);
-    console.log("Replace Title:", replace);
-
-    // Your logic to handle the saving of the prompt goes here...
+    console.log("Prompt Content:", promptContent);
+    console.log("Save Option:", activeOption);
+    console.log("Additional Data:", additionalData);
   };
 }
 
