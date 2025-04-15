@@ -15,6 +15,12 @@ document.addEventListener("DOMContentLoaded", function () {
     "categorisedPromptsLink"
   );
 
+  if (searchInput.value === "") {
+    clearSearch.style.display = "none";
+  } else {
+    clearSearch.style.display = "block";
+  }
+
   // Funktion zum Laden und Anzeigen der Ordner in der Seitenleiste
   function loadFolderNavigation() {
     chrome.storage.sync.get(null, function (data) {
@@ -24,26 +30,25 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       folderNavList.innerHTML = "";
-      const folders = Object.entries(data).filter(
-        ([, topic]) => topic.prompts.length > 1 // Nur echte Ordner
-      );
-
-      if (folders.length === 0) {
+      if (!data || Object.keys(data).length === 0) {
         const noFolders = document.createElement("a");
         noFolders.textContent = "No folders available";
         noFolders.style.color = "#888";
         noFolders.style.pointerEvents = "none";
         folderNavList.appendChild(noFolders);
       } else {
-        folders.forEach(([id, topic]) => {
-          const folderLink = document.createElement("a");
-          folderLink.href = `#folder-${id}`;
-          folderLink.textContent = topic.name;
-          folderLink.addEventListener("click", (e) => {
-            e.preventDefault();
-            showFolderContent(id);
-          });
-          folderNavList.appendChild(folderLink);
+        Object.entries(data).forEach(([id, topic]) => {
+          if (topic.prompts && Array.isArray(topic.prompts)) {
+            const folderLink = document.createElement("a");
+            folderLink.href = `#folder-${id}`;
+            folderLink.textContent = `${topic.name} (${topic.prompts.length})`;
+            folderLink.dataset.folderId = id;
+            folderLink.addEventListener("click", (e) => {
+              e.preventDefault();
+              showFolderContent(id);
+            });
+            folderNavList.appendChild(folderLink);
+          }
         });
       }
 
@@ -136,72 +141,70 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       folderList.innerHTML = "";
-      const folders = Object.entries(data).filter(
-        ([, topic]) => topic.prompts.length > 1 // Nur echte Ordner
-      );
-
-      if (folders.length === 0) {
+      if (!data || Object.keys(data).length === 0) {
         folderList.innerHTML = '<p class="no-results">No folders available</p>';
         folderTitle.textContent = "Folders";
         return;
       }
 
-      folders.forEach(([id, topic]) => {
-        const folderCard = document.createElement("div");
-        folderCard.classList.add("folder-card");
+      Object.entries(data).forEach(([id, topic]) => {
+        if (topic.prompts && Array.isArray(topic.prompts)) {
+          const folderCard = document.createElement("div");
+          folderCard.classList.add("folder-card");
 
-        const folderHeader = document.createElement("div");
-        folderHeader.classList.add("folder-header");
+          const folderHeader = document.createElement("div");
+          folderHeader.classList.add("folder-header");
 
-        const folderTitleElement = document.createElement("h2");
-        folderTitleElement.textContent = `${topic.name} (${topic.prompts.length})`;
-        folderHeader.appendChild(folderTitleElement);
+          const folderTitleElement = document.createElement("h2");
+          folderTitleElement.textContent = `${topic.name} (${topic.prompts.length})`;
+          folderHeader.appendChild(folderTitleElement);
 
-        const folderActions = document.createElement("div");
-        folderActions.classList.add("folder-actions");
+          const folderActions = document.createElement("div");
+          folderActions.classList.add("folder-actions");
 
-        const renameFolderBtn = document.createElement("button");
-        renameFolderBtn.textContent = "Rename";
-        renameFolderBtn.classList.add("action-btn");
-        renameFolderBtn.addEventListener("click", () =>
-          renameFolder(id, folderTitleElement, topic.name)
-        );
-        folderActions.appendChild(renameFolderBtn);
+          const renameFolderBtn = document.createElement("button");
+          renameFolderBtn.textContent = "Rename";
+          renameFolderBtn.classList.add("action-btn");
+          renameFolderBtn.addEventListener("click", () =>
+            renameFolder(id, folderTitleElement, topic.name)
+          );
+          folderActions.appendChild(renameFolderBtn);
 
-        const deleteFolderBtn = document.createElement("button");
-        deleteFolderBtn.textContent = "Delete";
-        deleteFolderBtn.classList.add("action-btn");
-        deleteFolderBtn.addEventListener("click", () =>
-          deleteFolder(id, folderCard)
-        );
-        folderActions.appendChild(deleteFolderBtn);
+          const deleteFolderBtn = document.createElement("button");
+          deleteFolderBtn.textContent = "Delete";
+          deleteFolderBtn.classList.add("action-btn");
+          deleteFolderBtn.addEventListener("click", () =>
+            deleteFolder(id, folderCard)
+          );
+          folderActions.appendChild(deleteFolderBtn);
 
-        folderHeader.appendChild(folderActions);
-        folderCard.appendChild(folderHeader);
+          folderHeader.appendChild(folderActions);
+          folderCard.appendChild(folderHeader);
 
-        const promptList = document.createElement("ul");
-        promptList.classList.add("prompt-list");
+          const promptList = document.createElement("ul");
+          promptList.classList.add("prompt-list");
 
-        if (topic.prompts.length === 0) {
-          const noPrompts = document.createElement("li");
-          noPrompts.textContent = "No prompts in this folder";
-          noPrompts.style.color = "#888";
-          noPrompts.style.padding = "15px";
-          promptList.appendChild(noPrompts);
-        } else {
-          topic.prompts.forEach((prompt, index) => {
-            const promptItem = createPromptItem(
-              prompt,
-              id,
-              index,
-              topic.prompts.length
-            );
-            promptList.appendChild(promptItem);
-          });
+          if (topic.prompts.length === 0) {
+            const noPrompts = document.createElement("li");
+            noPrompts.textContent = "No prompts in this folder";
+            noPrompts.style.color = "#888";
+            noPrompts.style.padding = "15px";
+            promptList.appendChild(noPrompts);
+          } else {
+            topic.prompts.forEach((prompt, index) => {
+              const promptItem = createPromptItem(
+                prompt,
+                id,
+                index,
+                topic.prompts.length
+              );
+              promptList.appendChild(promptItem);
+            });
+          }
+
+          folderCard.appendChild(promptList);
+          folderList.appendChild(folderCard);
         }
-
-        folderCard.appendChild(promptList);
-        folderList.appendChild(folderCard);
       });
       folderTitle.textContent = "Folders";
     });
@@ -214,7 +217,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const promptText = document.createElement("span");
     promptText.classList.add("prompt-text");
-    promptText.textContent = prompt;
+    // Fallback: Wenn prompt ein String ist, Titel ableiten; sonst prompt.title verwenden
+    promptText.textContent =
+      typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title;
     promptItem.appendChild(promptText);
 
     const promptActions = document.createElement("div");
@@ -230,6 +235,15 @@ document.addEventListener("DOMContentLoaded", function () {
       );
       promptActions.appendChild(moveBtn);
     }
+
+    // Details-Button für Modal
+    const detailsBtn = document.createElement("button");
+    detailsBtn.textContent = "Details";
+    detailsBtn.classList.add("action-btn");
+    detailsBtn.addEventListener("click", () =>
+      showPromptDetails(prompt, folderId, index)
+    );
+    promptActions.appendChild(detailsBtn);
 
     const editBtn = document.createElement("button");
     editBtn.textContent = "Edit";
@@ -251,6 +265,161 @@ document.addEventListener("DOMContentLoaded", function () {
     return promptItem;
   }
 
+  // Funktion zum Anzeigen der Prompt-Details in einem Modal
+  function showPromptDetails(prompt, folderId, index) {
+    const modal = document.createElement("div");
+    modal.className = "modal";
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "modal-header";
+
+    const closeSpan = document.createElement("span");
+    closeSpan.className = "close";
+    closeSpan.innerHTML = "×";
+
+    const headerTitle = document.createElement("h2");
+    headerTitle.textContent = "Prompt Details";
+
+    const modalBody = document.createElement("div");
+    modalBody.className = "modal-body";
+
+    const titleLabel = document.createElement("label");
+    titleLabel.textContent = "Title:";
+    const titleText = document.createElement("p");
+    titleText.textContent =
+      typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title;
+
+    const descLabel = document.createElement("label");
+    descLabel.textContent = "Description:";
+    const descText = document.createElement("p");
+    descText.textContent =
+      typeof prompt === "string"
+        ? "N/A"
+        : prompt.description || "No description";
+
+    const contentLabel = document.createElement("label");
+    contentLabel.textContent = "Content:";
+    const contentText = document.createElement("p");
+    contentText.textContent =
+      typeof prompt === "string" ? prompt : prompt.content;
+
+    // Zusammenbau des Modals
+    modalHeader.appendChild(closeSpan);
+    modalHeader.appendChild(headerTitle);
+    modalBody.appendChild(titleLabel);
+    modalBody.appendChild(titleText);
+    modalBody.appendChild(descLabel);
+    modalBody.appendChild(descText);
+    modalBody.appendChild(contentLabel);
+    modalBody.appendChild(contentText);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modal.appendChild(modalContent);
+
+    // Modal-Stile
+    const style = document.createElement("style");
+    style.textContent = `
+      .modal {
+        display: block;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(3px);
+      }
+
+      .modal-content {
+        background: #fff;
+        margin: 5% auto;
+        padding: 0;
+        width: 90%;
+        max-width: 600px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+      }
+
+      .modal-header {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #1e90ff, #4169e1);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 1.6em;
+        font-weight: 600;
+      }
+
+      .modal-body {
+        padding: 24px;
+        color: #2c3e50;
+      }
+
+      .modal-body label {
+        font-weight: 600;
+        margin-top: 16px;
+        margin-bottom: 6px;
+        display: block;
+        color: #34495e;
+      }
+
+      .modal-body p {
+        margin: 0 0 12px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        word-break: break-word;
+      }
+
+      .close {
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+
+      .close:hover,
+      .close:focus {
+        transform: scale(1.1);
+      }
+    `;
+
+    document.head.appendChild(style);
+    document.body.appendChild(modal);
+
+    // Modal schließen
+    closeSpan.onclick = function () {
+      modal.style.display = "none";
+      document.body.removeChild(modal);
+      document.head.removeChild(style);
+    };
+
+    window.addEventListener(
+      "click",
+      function (event) {
+        if (event.target === modal) {
+          modal.style.display = "none";
+          document.body.removeChild(modal);
+          document.head.removeChild(style);
+        }
+      },
+      { once: true }
+    );
+  }
+
+  // Funktion zum Verschieben einer Prompt
   function movePromptToFolder(currentFolderId, promptIndex, promptItem) {
     chrome.storage.sync.get(null, function (data) {
       if (chrome.runtime.lastError) {
@@ -259,7 +428,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const folders = Object.entries(data).filter(
-        ([id, topic]) => id !== currentFolderId && topic.prompts.length > 1
+        ([id, topic]) => id !== currentFolderId && topic.prompts
       );
 
       if (folders.length === 0) {
@@ -291,9 +460,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const targetFolderId = select.value;
         if (!targetFolderId) return;
 
-        const promptText = data[currentFolderId].prompts[promptIndex];
+        const prompt = data[currentFolderId].prompts[promptIndex];
         data[currentFolderId].prompts.splice(promptIndex, 1);
-        data[targetFolderId].prompts.push(promptText);
+        data[targetFolderId].prompts.push(prompt);
 
         const updates = {};
         if (data[currentFolderId].prompts.length === 0) {
@@ -349,14 +518,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
       let allPrompts = [];
       Object.entries(data).forEach(([id, topic]) => {
-        allPrompts = allPrompts.concat(
-          topic.prompts.map((prompt, index) => ({
-            prompt,
-            folderId: id,
-            index,
-            totalPrompts: topic.prompts.length,
-          }))
-        );
+        if (topic.prompts) {
+          allPrompts = allPrompts.concat(
+            topic.prompts.map((prompt, index) => ({
+              prompt,
+              folderId: id,
+              index,
+              totalPrompts: topic.prompts.length,
+            }))
+          );
+        }
       });
 
       if (allPrompts.length === 0) {
@@ -400,7 +571,7 @@ document.addEventListener("DOMContentLoaded", function () {
       promptList.classList.add("prompt-list");
 
       const singlePrompts = Object.entries(data)
-        .filter(([, topic]) => topic.prompts.length === 1)
+        .filter(([, topic]) => topic.prompts && topic.prompts.length === 1)
         .map(([id, topic]) => ({
           prompt: topic.prompts[0],
           folderId: id,
@@ -450,7 +621,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       let categorisedPrompts = [];
       Object.entries(data)
-        .filter(([, topic]) => topic.prompts.length > 1)
+        .filter(([, topic]) => topic.prompts && topic.prompts.length > 1)
         .forEach(([id, topic]) => {
           categorisedPrompts = categorisedPrompts.concat(
             topic.prompts.map((prompt, index) => ({
@@ -555,22 +726,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Funktion zum Bearbeiten einer Prompt
   function editPrompt(folderId, promptIndex, promptTextElement) {
-    const currentText = promptTextElement.textContent;
+    const currentPrompt = promptTextElement.textContent;
     const input = document.createElement("input");
     input.type = "text";
-    input.value = currentText;
+    input.value = currentPrompt;
     input.classList.add("rename-input");
     promptTextElement.replaceWith(input);
     input.focus();
 
     function saveEdit() {
       const newText = input.value.trim();
-      if (newText && newText !== currentText) {
+      if (newText && newText !== currentPrompt) {
         chrome.storage.sync.get(folderId, function (data) {
           if (data[folderId]) {
-            data[folderId].prompts[promptIndex] = newText;
-            if (data[folderId].prompts.length === 1)
-              data[folderId].name = newText; // Titel anpassen, wenn einzelnes Prompt
+            // Wenn prompt ein Objekt ist, nur title aktualisieren
+            if (typeof data[folderId].prompts[promptIndex] === "object") {
+              data[folderId].prompts[promptIndex].title = newText;
+            } else {
+              data[folderId].prompts[promptIndex] = newText; // Fallback für String
+            }
+            if (data[folderId].prompts.length === 1) {
+              data[folderId].name = newText;
+            }
             chrome.storage.sync.set(data, function () {
               if (chrome.runtime.lastError) {
                 console.error(
@@ -677,10 +854,11 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         }
         topic.prompts.forEach((prompt, index) => {
-          if (prompt.toLowerCase().includes(lowercaseQuery)) {
+          const searchText = typeof prompt === "string" ? prompt : prompt.title;
+          if (searchText.toLowerCase().includes(lowercaseQuery)) {
             results.push({
               type: "prompt",
-              text: prompt,
+              prompt,
               folder: topic.name,
               folderId: id,
               promptIndex: index,
@@ -704,7 +882,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (result.type === "folder") {
           resultItem.textContent = `Folder: ${result.name} (${result.prompts.length} prompts)`;
         } else {
-          resultItem.innerHTML = `Prompt: "${result.text}" <span>(in ${result.folder})</span>`;
+          const promptText =
+            typeof result.prompt === "string"
+              ? result.prompt
+              : result.prompt.title;
+          resultItem.innerHTML = `Prompt: "${promptText}" <span>(in ${result.folder})</span>`;
           const actions = document.createElement("span");
           actions.classList.add("prompt-actions");
 
@@ -724,6 +906,18 @@ document.addEventListener("DOMContentLoaded", function () {
             deletePrompt(result.folderId, result.promptIndex, resultItem)
           );
           actions.appendChild(deleteBtn);
+
+          const detailsBtn = document.createElement("button");
+          detailsBtn.textContent = "Details";
+          detailsBtn.classList.add("action-btn");
+          detailsBtn.addEventListener("click", () =>
+            showPromptDetails(
+              result.prompt,
+              result.folderId,
+              result.promptIndex
+            )
+          );
+          actions.appendChild(detailsBtn);
 
           resultItem.appendChild(actions);
         }

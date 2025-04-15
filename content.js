@@ -358,6 +358,15 @@ function addMistralButtonClick(index) {
 }
 
 function promptSaver(message) {
+  // Sicherstellen, dass der DOM verfügbar ist
+  if (!document.body || !document.head) {
+    console.error("DOM nicht verfügbar: document.body oder document.head fehlt.");
+    alert("Fehler: Seite nicht vollständig geladen. Bitte versuche es erneut.");
+    return;
+  }
+
+  console.log("promptSaver aufgerufen mit message:", message);
+
   // Create modal elements
   const modal = document.createElement("div");
   modal.id = "myModal";
@@ -379,7 +388,7 @@ function promptSaver(message) {
   const modalBody = document.createElement("div");
   modalBody.className = "modal-body";
 
-  // Step 1: Prompt Title
+  // Step 1: Prompt Title and Description
   const titleSection = document.createElement("div");
   titleSection.className = "step-section active";
 
@@ -392,6 +401,16 @@ function promptSaver(message) {
   promptTitleInput.id = "promptTitle";
   promptTitleInput.name = "promptTitle";
   promptTitleInput.placeholder = "Gib einen Titel für deinen Prompt ein";
+
+  const promptDescLabel = document.createElement("label");
+  promptDescLabel.setAttribute("for", "promptDescription");
+  promptDescLabel.textContent = "Prompt Description:";
+
+  const promptDescInput = document.createElement("textarea");
+  promptDescInput.id = "promptDescription";
+  promptDescInput.name = "promptDescription";
+  promptDescInput.rows = 3;
+  promptDescInput.placeholder = "Gib eine Beschreibung für deinen Prompt ein";
 
   const nextToPromptButton = document.createElement("button");
   nextToPromptButton.textContent = "Next";
@@ -409,12 +428,10 @@ function promptSaver(message) {
   promptTextarea.id = "promptTextarea";
   promptTextarea.name = "promptTextarea";
   promptTextarea.rows = 10;
-  message = message.trim();
-  const colonIndex = message.indexOf(":");
-  if (colonIndex !== -1) {
-    // Wenn ein ":" gefunden wird, nimm nur den Teil links davon inklusive ":"
-    processedMessage = message.substring(0, colonIndex + 1).trim();
-  }
+  message = message ? message.trim() : "";
+  let processedMessage = message.includes(":")
+    ? message.split(":").slice(0, -1).join(":").trim()
+    : message;
   promptTextarea.value = processedMessage;
   promptTextarea.placeholder = "Bearbeite deinen Prompt hier...";
 
@@ -451,66 +468,54 @@ function promptSaver(message) {
     optionsSwitch.appendChild(button);
   });
 
+  // Create new prompt option
   const createContent = document.createElement("div");
   createContent.id = "create";
   createContent.className = "option-content active";
   const createText = document.createElement("p");
   createText.textContent =
-    "A new, empty prompt is created. To do this, simply click on 'Save'";
-  createContent.appendChild(createText); // Diese Zeile wurde hinzugefügt
+    "Creates a new prompt without assigning it to a folder. Click 'Save' to confirm.";
+  createContent.appendChild(createText);
 
+  // Replace prompt option
   const replaceContent = document.createElement("div");
   replaceContent.id = "replace";
   replaceContent.className = "option-content";
   const replaceText = document.createElement("p");
-  replaceText.textContent = "Select a prompt to be replaced:";
+  replaceText.textContent =
+    "Select a folder and prompt to replace with the new prompt:";
   const replaceFolderLabel = document.createElement("label");
   replaceFolderLabel.setAttribute("for", "replaceFolderSelect");
   replaceFolderLabel.textContent = "Select folder:";
   const replaceFolderSelect = document.createElement("select");
   replaceFolderSelect.id = "replaceFolderSelect";
-  const folders = ["Option Eins", "Option Zwei", "Option Drei"];
-  folders.forEach((folder) => {
-    const option = document.createElement("option");
-    option.value = folder.toLowerCase().replace(" ", "");
-    option.textContent = folder;
-    replaceFolderSelect.appendChild(option);
-  });
+  replaceFolderSelect.innerHTML = '<option value="">Select a folder</option>';
+
   const replacePromptLabel = document.createElement("label");
   replacePromptLabel.setAttribute("for", "replacePromptSelect");
-  replacePromptLabel.textContent = "Prompt zum Ersetzen auswählen:";
+  replacePromptLabel.textContent = "Select prompt to replace:";
   const replacePromptSelect = document.createElement("select");
   replacePromptSelect.id = "replacePromptSelect";
-  folders.forEach((folder) => {
-    const option = document.createElement("option");
-    option.value = folder.toLowerCase().replace(" ", "");
-    option.textContent = folder;
-    replacePromptSelect.appendChild(option);
-  });
+  replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
   replacePromptSelect.disabled = true;
-  replaceFolderSelect.addEventListener("change", function () {
-    replacePromptSelect.disabled = false; // Aktiviere das Prompt-Dropdown, wenn ein Ordner ausgewählt wurde
-  });
+
   replaceContent.appendChild(replaceText);
   replaceContent.appendChild(replaceFolderLabel);
   replaceContent.appendChild(replaceFolderSelect);
   replaceContent.appendChild(replacePromptLabel);
   replaceContent.appendChild(replacePromptSelect);
 
+  // Add prompt to folder option
   const addContent = document.createElement("div");
   addContent.id = "add";
   addContent.className = "option-content";
   const addFolderLabel = document.createElement("label");
   addFolderLabel.setAttribute("for", "addFolderSelect");
-  addFolderLabel.textContent = "Ordner auswählen:";
+  addFolderLabel.textContent = "Select folder to add prompt to:";
   const addFolderSelect = document.createElement("select");
   addFolderSelect.id = "addFolderSelect";
-  folders.forEach((folder) => {
-    const option = document.createElement("option");
-    option.value = folder.toLowerCase().replace(" ", "");
-    option.textContent = folder;
-    addFolderSelect.appendChild(option);
-  });
+  addFolderSelect.innerHTML = '<option value="">Select a folder</option>';
+
   addContent.appendChild(addFolderLabel);
   addContent.appendChild(addFolderSelect);
 
@@ -532,194 +537,199 @@ function promptSaver(message) {
   const style = document.createElement("style");
   style.textContent = `
     .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(3px);
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(3px);
     }
 
     .modal-content {
-        background: #fff;
-        margin: 5% auto;
-        padding: 0;
-        width: 90%;
-        max-width: 600px;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
+      background: #fff;
+      margin: 5% auto;
+      padding: 0;
+      width: 90%;
+      max-width: 600px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
     }
 
     .modal-header {
-        padding: 16px 24px;
-        background: linear-gradient(135deg, #1e90ff, #4169e1);
-        color: white;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #1e90ff, #4169e1);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .modal-header h2 {
-        margin: 0;
-        font-size: 1.6em;
-        font-weight: 600;
+      margin: 0;
+      font-size: 1.6em;
+      font-weight: 600;
     }
 
     .modal-body {
-        padding: 24px;
-        color: #2c3e50;
+      padding: 24px;
+      color: #2c3e50;
     }
 
     .step-section {
-        display: none;
+      display: none;
     }
 
     .step-section.active {
-        display: block;
+      display: block;
     }
 
     .options-switch {
-        display: flex;
-        gap: 4px;
-        margin-bottom: 20px;
-        background: #f1f3f5;
-        padding: 4px;
-        border-radius: 6px;
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: #f1f3f5;
+      padding: 4px;
+      border-radius: 6px;
     }
 
     .options-switch button {
-        flex: 1;
-        padding: 10px;
-        background: none;
-        border: none;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border-radius: 4px;
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-radius: 4px;
     }
 
     .options-switch button:hover {
-        background: #e9ecef;
+      background: #e9ecef;
     }
 
     .options-switch button.active {
-        background: #1e90ff;
-        color: white;
+      background: #1e90ff;
+      color: white;
     }
 
     .option-content {
-        display: none;
+      display: none;
     }
 
     .option-content.active {
-        display: block;
+      display: block;
     }
 
     .modal-body label {
-        font-weight: 600;
-        margin-top: 16px;
-        margin-bottom: 6px;
-        display: block;
-        color: #34495e;
+      font-weight: 600;
+      margin-top: 16px;
+      margin-bottom: 6px;
+      display: block;
+      color: #34495e;
     }
 
     .modal-body input,
     .modal-body select,
     .modal-body textarea {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 12px;
-        border: 1px solid #dcdcdc;
-        border-radius: 4px;
-        font-size: 14px;
-        box-sizing: border-box;
-        transition: border-color 0.2s ease;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      border: 1px solid #dcdcdc;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease;
     }
 
     .modal-body input:focus,
     .modal-body select:focus,
     .modal-body textarea:focus {
-        border-color: #1e90ff;
-        outline: none;
+      border-color: #1e90ff;
+      outline: none;
     }
 
     .modal-body textarea {
-        resize: vertical;
-        min-height: 120px;
+      resize: vertical;
+      min-height: 120px;
     }
 
     .button-group {
-        display: flex;
-        gap: 12px;
-        margin-top: 12px;
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
     }
 
     .next-button, .back-button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 4px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s ease;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
     }
 
     .next-button {
-        background: #1e90ff;
-        color: white;
+      background: #1e90ff;
+      color: white;
     }
 
     .next-button:hover {
-        background: #4169e1;
+      background: #4169e1;
     }
 
     .back-button {
-        background: #6c757d;
-        color: white;
+      background: #6c757d;
+      color: white;
     }
 
     .back-button:hover {
-        background: #5a6268;
+      background: #5a6268;
     }
 
     .modal-footer {
-        padding: 16px 24px;
-        background: #f8f9fa;
-        text-align: right;
+      padding: 16px 24px;
+      background: #f8f9fa;
+      text-align: right;
     }
 
     .save-button {
-        padding: 10px 20px;
-        background: #28a745;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s ease;
+      padding: 10px 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      display: none;
+    }
+
+    .modal-content.options-active .save-button {
+      display: block;
     }
 
     .save-button:hover {
-        background: #218838;
+      background: #218838;
     }
 
     .close {
-        color: white;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: transform 0.2s ease;
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s ease;
     }
 
     .close:hover,
     .close:focus {
-        transform: scale(1.1);
+      transform: scale(1.1);
     }
   `;
 
@@ -729,6 +739,8 @@ function promptSaver(message) {
 
   titleSection.appendChild(promptTitleLabel);
   titleSection.appendChild(promptTitleInput);
+  titleSection.appendChild(promptDescLabel);
+  titleSection.appendChild(promptDescInput);
   titleSection.appendChild(nextToPromptButton);
 
   promptSection.appendChild(promptTextareaLabel);
@@ -758,16 +770,87 @@ function promptSaver(message) {
   modal.appendChild(modalContent);
 
   // Add styles and modal to document
-  document.head.appendChild(style);
-  document.body.appendChild(modal);
+  try {
+    document.head.appendChild(style);
+    document.body.appendChild(modal);
+    console.log("Modal created and appended to DOM");
+  } catch (error) {
+    console.error("Fehler beim Hinzufügen des Modals zum DOM:", error);
+    alert("Fehler beim Erstellen des Modals. Bitte versuche es erneut.");
+    return;
+  }
 
   // Show the modal
   modal.style.display = "block";
+  console.log("Modal display set to block");
+
+  // Load folders for replace and add options
+  function loadFolders() {
+    chrome.storage.sync.get(null, (data) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      const folders = Object.entries(data).filter(
+        ([, topic]) => topic.prompts && Array.isArray(topic.prompts)
+      );
+
+      // Populate replaceFolderSelect
+      replaceFolderSelect.innerHTML = '<option value="">Select a folder</option>';
+      folders.forEach(([id, topic]) => {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = topic.name;
+        replaceFolderSelect.appendChild(option);
+      });
+
+      // Populate addFolderSelect
+      addFolderSelect.innerHTML = '<option value="">Select a folder</option>';
+      folders.forEach(([id, topic]) => {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = topic.name;
+        addFolderSelect.appendChild(option);
+      });
+    });
+  }
+
+  // Load prompts for selected folder in replace option
+  replaceFolderSelect.addEventListener("change", () => {
+    const folderId = replaceFolderSelect.value;
+    replacePromptSelect.disabled = !folderId;
+    replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
+
+    if (folderId) {
+      chrome.storage.sync.get(folderId, (data) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error fetching folder data:", chrome.runtime.lastError);
+          return;
+        }
+
+        const topic = data[folderId];
+        if (topic && topic.prompts) {
+          topic.prompts.forEach((prompt, index) => {
+            const option = document.createElement("option");
+            option.value = index;
+            option.textContent = prompt.length > 50 ? prompt.slice(0, 50) + "..." : prompt;
+            option.title = prompt;
+            replacePromptSelect.appendChild(option);
+          });
+        }
+      });
+    }
+  });
 
   // Step navigation
   nextToPromptButton.onclick = function () {
     if (promptTitleInput.value.trim() === "") {
       alert("Bitte gib einen Prompt-Titel ein!");
+      return;
+    }
+    if (promptDescInput.value.trim() === "") {
+      alert("Bitte gib eine Prompt-Beschreibung ein!");
       return;
     }
     titleSection.classList.remove("active");
@@ -780,13 +863,20 @@ function promptSaver(message) {
   };
 
   nextToOptionsButton.onclick = function () {
+    if (promptTextarea.value.trim() === "") {
+      alert("Bitte gib einen Prompt-Text ein!");
+      return;
+    }
+    loadFolders();
     promptSection.classList.remove("active");
     optionsSection.classList.add("active");
+    modalContent.classList.add("options-active");
   };
 
   backToPromptButton.onclick = function () {
     optionsSection.classList.remove("active");
     promptSection.classList.add("active");
+    modalContent.classList.remove("options-active");
   };
 
   // Options Switcher logic
@@ -797,41 +887,131 @@ function promptSaver(message) {
       subOptionButtonsElements.forEach((btn) => btn.classList.remove("active"));
       optionContents.forEach((c) => c.classList.remove("active"));
       button.classList.add("active");
-      document
-        .getElementById(button.getAttribute("data-tab"))
-        .classList.add("active");
+      document.getElementById(button.getAttribute("data-tab")).classList.add("active");
     });
   });
 
-  // Event listeners
-  closeSpan.onclick = function () {
-    modal.style.display = "none";
-    document.body.removeChild(modal);
-    document.head.removeChild(style);
-  };
-
+  // Save logic
   saveButton.onclick = function () {
-    const promptTitle = promptTitleInput.value;
-    const promptContent = promptTextarea.value;
-    const activeOption = optionsSwitch
-      .querySelector("button.active")
-      .getAttribute("data-tab");
-    let additionalData = {};
+    const promptTitle = promptTitleInput.value.trim();
+    const promptDescription = promptDescInput.value.trim();
+    const promptContent = promptTextarea.value.trim();
+    const activeOption = optionsSwitch.querySelector("button.active").getAttribute("data-tab");
 
-    if (activeOption === "replace") {
-      additionalData = {
-        replaceFolder: replaceFolderSelect.value,
-        replacePrompt: replacePromptSelect.value,
-      };
-    } else if (activeOption === "add") {
-      additionalData = { addFolder: addFolderSelect.value };
+    if (!promptTitle || !promptDescription || !promptContent) {
+      alert("Bitte fülle alle Felder (Titel, Beschreibung, Prompt) aus!");
+      return;
     }
 
-    console.log("Prompt Title:", promptTitle);
-    console.log("Prompt Content:", promptContent);
-    console.log("Save Option:", activeOption);
-    console.log("Additional Data:", additionalData);
+    if (activeOption === "create") {
+      const promptId = `prompt_${Date.now()}`;
+      const newPrompt = {
+        id: promptId,
+        title: promptTitle,
+        description: promptDescription,
+        content: promptContent,
+        folderId: null,
+      };
+
+      chrome.storage.sync.set({ [promptId]: newPrompt }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving prompt:", chrome.runtime.lastError);
+          alert("Fehler beim Speichern des Prompts.");
+        } else {
+          console.log("New prompt created:", newPrompt);
+          modal.style.display = "none";
+          document.body.removeChild(modal);
+          document.head.removeChild(style);
+        }
+      });
+    } else if (activeOption === "replace") {
+      const folderId = replaceFolderSelect.value;
+      const promptIndex = replacePromptSelect.value;
+
+      if (!folderId || promptIndex === "") {
+        alert("Bitte wähle einen Ordner und eine Prompt aus!");
+        return;
+      }
+
+      chrome.storage.sync.get(folderId, (data) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error fetching folder data:", chrome.runtime.lastError);
+          return;
+        }
+
+        const topic = data[folderId];
+        if (topic && topic.prompts) {
+          topic.prompts[promptIndex] = promptContent;
+          topic.name = topic.prompts.length === 1 ? promptTitle : topic.name;
+
+          chrome.storage.sync.set({ [folderId]: topic }, () => {
+            if (chrome.runtime.lastError) {
+              console.error("Error replacing prompt:", chrome.runtime.lastError);
+              alert("Fehler beim Ersetzen der Prompt.");
+            } else {
+              console.log(`Prompt in folder ${folderId} replaced at index ${promptIndex}`);
+              modal.style.display = "none";
+              document.body.removeChild(modal);
+              document.head.removeChild(style);
+            }
+          });
+        }
+      });
+    } else if (activeOption === "add") {
+      const folderId = addFolderSelect.value;
+
+      if (!folderId) {
+        alert("Bitte wähle einen Ordner aus!");
+        return;
+      }
+
+      chrome.storage.sync.get(folderId, (data) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error fetching folder data:", chrome.runtime.lastError);
+          return;
+        }
+
+        const topic = data[folderId] || { name: promptTitle, prompts: [] };
+        topic.prompts.push(promptContent);
+
+        chrome.storage.sync.set({ [folderId]: topic }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error adding prompt to folder:", chrome.runtime.lastError);
+            alert("Fehler beim Hinzufügen der Prompt zum Ordner.");
+          } else {
+            console.log(`Prompt added to folder ${folderId}`);
+            modal.style.display = "none";
+            document.body.removeChild(modal);
+            document.head.removeChild(style);
+          }
+        });
+      });
+    }
   };
+
+  // Close modal
+  closeSpan.onclick = function () {
+    modal.style.display = "none";
+    try {
+      document.body.removeChild(modal);
+      document.head.removeChild(style);
+    } catch (error) {
+      console.error("Fehler beim Entfernen des Modals:", error);
+    }
+  };
+
+  // Optimierten window.onclick Handler
+  window.addEventListener("click", function (event) {
+    if (event.target === modal) {
+      modal.style.display = "none";
+      try {
+        document.body.removeChild(modal);
+        document.head.removeChild(style);
+      } catch (error) {
+        console.error("Fehler beim Entfernen des Modals:", error);
+      }
+    }
+  }, { once: true }); // Handler wird nur einmal ausgeführt
 }
 
 // Funktion zum Abrufen des passenden Chat-Elements
