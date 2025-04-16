@@ -27,22 +27,24 @@
       <hr />
       <!-- Collapsible Ordner -->
       <div class="nav-section">
-        <button class="collapsible">Folders</button>
+        <button class="collapsible">
+          Folders
+          <span id="createFolderIcon" class="folder-icon" title="Create new folder">+</span>
+        </button>
         <div class="collapsible-content" id="folderNavList"></div>
       </div>
     </div>
 
     <div class="main-content">
       <header class="sticky-header">
-        <h1>Prompt Overview</h1>
+        <h1 id="mainHeaderTitle">Prompt Overview</h1>
+        <button id="addPromptBtn" class="add-prompt-btn" title="Add new prompt">Add Prompt</button>
       </header>
       <main>
         <section id="promptList" class="prompt-list-section hidden">
-          <h2 id="promptListTitle">Prompts</h2>
           <div id="promptsContainer" class="prompt-list"></div>
         </section>
         <section id="folderList" class="folder-list-section">
-          <h2 id="folderTitle">Folders</h2>
           <div id="foldersContainer" class="folder-list"></div>
         </section>
         <div id="searchResults" class="search-results hidden"></div>

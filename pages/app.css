@@ -123,6 +123,23 @@ body {
   background: rgba(0, 212, 255, 0.15);
   padding-left: 45px;
 }
+.folder-icon {
+  margin-left: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  color: #fff;
+  background: #1e90ff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  transition: transform 0.2s ease, background 0.2s ease;
+  line-height: 1;
+}
+
+.folder-icon:hover {
+  transform: scale(1.2);
+  background: #4169e1;
+}
 
 .collapsible-content a::before {
   content: "";
@@ -155,23 +172,78 @@ hr {
 }
 
 .sticky-header {
-  position: sticky;
-  top: 0;
-  padding: 20px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
   background: linear-gradient(
     to bottom,
     rgba(26, 26, 26, 0.95),
     rgba(26, 26, 26, 0.85)
   );
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 10;
-  backdrop-filter: blur(5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.sticky-header h1 {
+  margin: 0;
+  font-size: 1.8em;
+  color: white;
+}
+
+.add-prompt-btn {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #1e90ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-prompt-btn:hover {
+  background: #4169e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.add-prompt-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.add-prompt-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-prompt-btn::before {
+  content: "+";
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .add-prompt-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
 }
 
 h1 {
   font-size: 36px;
   color: #fff;
-  text-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
   letter-spacing: 2px;
   font-weight: bold;
   margin: 0;
@@ -270,7 +342,6 @@ main {
 
 .prompt-item:hover {
   background: rgba(0, 212, 255, 0.15);
-  transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 212, 255, 0.2);
 }
 
@@ -368,5 +439,5 @@ main {
 }
 
 .dropdown-item:hover {
-  background: #f5f5f5;
+  background: lightgray;
 }
