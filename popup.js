@@ -99,12 +99,23 @@ document.addEventListener("DOMContentLoaded", function () {
   function loadFolders() {
     chrome.storage.sync.get(null, function (data) {
       folderNavList.innerHTML = "";
+
       if (!data || Object.keys(data).length === 0) {
         folderNavList.innerHTML = "<p>No folders yet!</p>";
         return;
       }
 
-      Object.entries(data).forEach(([id, topic]) => {
+      const folders = Object.entries(data).filter(
+        ([, topic]) =>
+          topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden
+      );
+
+      if (folders.length === 0) {
+        folderNavList.innerHTML = "<p>No visible folders with prompts!</p>";
+        return;
+      }
+
+      folders.forEach(([id, topic]) => {
         const folderItem = document.createElement("div");
         folderItem.classList.add("folder-item");
 
@@ -112,24 +123,209 @@ document.addEventListener("DOMContentLoaded", function () {
         folderLink.href = "#";
         folderLink.classList.add("folder-link");
         folderLink.textContent = `${topic.name} (${topic.prompts.length})`;
+
         folderLink.addEventListener("click", (e) => {
           e.preventDefault();
           showFolder(id);
           sidebar.classList.remove("visible");
         });
-        folderItem.appendChild(folderLink);
 
+        folderItem.appendChild(folderLink);
         folderNavList.appendChild(folderItem);
       });
 
       // Höhe des Folders-Collapsible-Inhalts anpassen
-      const folderCollapsibleContent = folderNavList.closest(".collapsible-content");
-      const folderCollapsible = folderCollapsibleContent.previousElementSibling;
-      if (folderCollapsible.getAttribute("aria-expanded") === "true") {
-        folderCollapsibleContent.style.maxHeight = folderCollapsibleContent.scrollHeight + "px";
+      const folderCollapsibleContent = folderNavList.closest(
+        ".collapsible-content"
+      );
+      const folderCollapsible =
+        folderCollapsibleContent?.previousElementSibling;
+
+      if (
+        folderCollapsible &&
+        folderCollapsible.getAttribute("aria-expanded") === "true"
+      ) {
+        folderCollapsibleContent.style.maxHeight =
+          folderCollapsibleContent.scrollHeight + "px";
       }
     });
   }
+
+  document.getElementById("export-btn").addEventListener("click", function () {
+    chrome.storage.sync.get(null, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        alert("Fehler beim Abrufen der Daten. Bitte versuche es erneut.");
+        return;
+      }
+
+      // Filter to include only folders with prompts
+      const folders = Object.entries(data)
+        .filter(([, topic]) => topic.prompts && Array.isArray(topic.prompts))
+        .reduce((acc, [id, topic]) => {
+          acc[id] = {
+            name: topic.name,
+            prompts: topic.prompts,
+            isHidden: topic.isHidden || false,
+          };
+          return acc;
+        }, {});
+
+      // Convert to JSON with indentation for readability
+      const jsonData = JSON.stringify(folders, null, 2);
+
+      // Create a Blob with the JSON data
+      const blob = new Blob([jsonData], { type: "application/json" });
+
+      // Create a temporary URL for the Blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary link element to trigger download
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `prompts_backup_${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log("Prompts exported successfully");
+    });
+  });
+
+  document.getElementById("import-btn").addEventListener("click", function () {
+    // Create a file input element
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+
+    input.addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (!file) {
+        alert("Keine Datei ausgewählt. Bitte wähle eine JSON-Datei aus.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+
+          // Validate the imported data
+          if (typeof importedData !== "object" || importedData === null) {
+            alert(
+              "Ungültiges JSON-Format. Bitte lade eine gültige Datei hoch."
+            );
+            return;
+          }
+
+          // Prepare data for storage
+          const validFolders = {};
+          let hasValidData = false;
+
+          for (const [folderId, folder] of Object.entries(importedData)) {
+            // Check if folder has required properties
+            if (
+              folder &&
+              typeof folder === "object" &&
+              folder.name &&
+              Array.isArray(folder.prompts)
+            ) {
+              // Validate prompts
+              const validPrompts = folder.prompts.filter((prompt) => {
+                if (typeof prompt === "string") {
+                  return true; // Support legacy string prompts
+                }
+                return (
+                  prompt &&
+                  typeof prompt === "object" &&
+                  prompt.title &&
+                  prompt.description &&
+                  prompt.content
+                );
+              });
+
+              if (validPrompts.length > 0) {
+                validFolders[folderId] = {
+                  name: folder.name,
+                  prompts: validPrompts,
+                  isHidden: folder.isHidden === true, // Ensure isHidden is boolean
+                };
+                hasValidData = true;
+              }
+            }
+          }
+
+          if (!hasValidData) {
+            alert("Keine gültigen Ordner oder Prompts in der Datei gefunden.");
+            return;
+          }
+
+          // Confirm with user before overwriting existing data
+          if (
+            !confirm(
+              "Das Importieren überschreibt vorhandene Daten. Möchtest du fortfahren?"
+            )
+          ) {
+            return;
+          }
+
+          // Store the imported data
+          chrome.storage.sync.clear(function () {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Error clearing storage:",
+                chrome.runtime.lastError
+              );
+              alert("Fehler beim Löschen der vorhandenen Daten.");
+              return;
+            }
+
+            chrome.storage.sync.set(validFolders, function () {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Error saving imported data:",
+                  chrome.runtime.lastError
+                );
+                alert("Fehler beim Speichern der importierten Daten.");
+              } else {
+                console.log("Prompts imported successfully:", validFolders);
+                alert("Prompts erfolgreich importiert!");
+                // Refresh UI
+                loadFolderNavigation();
+                if (promptListTitle.textContent === "All Prompts")
+                  showAllPrompts();
+                else if (promptListTitle.textContent === "Single Prompts")
+                  showSinglePrompts();
+                else if (promptListTitle.textContent === "Categorised Prompts")
+                  showCategorisedPrompts();
+                else loadFolders();
+              }
+            });
+          });
+        } catch (error) {
+          console.error("Error parsing JSON:", error);
+          alert(
+            "Fehler beim Lesen der JSON-Datei. Bitte überprüfe das Format."
+          );
+        }
+      };
+
+      reader.onerror = function () {
+        console.error("Error reading file:", reader.error);
+        alert("Fehler beim Lesen der Datei. Bitte versuche es erneut.");
+      };
+
+      reader.readAsText(file);
+    });
+
+    // Trigger file selection
+    input.click();
+  });
 
   // Funktion zum Erstellen eines Prompt-Elements
   function createPromptItem(prompt, folderId, index) {

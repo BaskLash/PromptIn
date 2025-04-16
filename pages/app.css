@@ -24,7 +24,7 @@ body {
 
 /* Suchfeld Styling */
 .search-container {
-  padding: 20px;
+  padding: 10px;
   text-align: center;
   position: relative;
   display: flex;
@@ -238,7 +238,6 @@ main {
   background: rgba(0, 212, 255, 0.2);
   border: 1px solid #00d4ff;
   color: #fff;
-  z-index: 50;
   padding: 5px 10px;
   border-radius: 5px;
   cursor: pointer;
@@ -342,7 +341,6 @@ main {
 
 .menu-btn {
   font-weight: bold;
-  z-index: 50;
   padding: 5px 10px;
   min-width: 30px;
   text-align: center;

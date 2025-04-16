@@ -841,9 +841,12 @@ function promptSaver(message) {
           topic.prompts.forEach((prompt, index) => {
             const option = document.createElement("option");
             option.value = index;
+            const promptTitle = prompt.title || "Untitled Prompt";
             option.textContent =
-              prompt.length > 50 ? prompt.slice(0, 50) + "..." : prompt;
-            option.title = prompt;
+              promptTitle.length > 50
+                ? promptTitle.slice(0, 50) + "..."
+                : promptTitle;
+            option.title = promptTitle;
             replacePromptSelect.appendChild(option);
           });
         }

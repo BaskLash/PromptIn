@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const categorisedPromptsLink = document.getElementById(
     "categorisedPromptsLink"
   );
+  const trashLink = document.getElementById("trashLink");
 
   if (searchInput.value === "") {
     clearSearch.style.display = "none";
@@ -215,51 +216,76 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Funktion zum Erstellen eines Prompt-Elements
-  // Replace the existing createPromptItem function in your code
-  // Replace the existing createPromptItem function in your code
   function createPromptItem(prompt, folderId, index, totalPrompts) {
     const promptItem = document.createElement("li");
     promptItem.classList.add("prompt-item");
-
+  
     const promptText = document.createElement("span");
     promptText.classList.add("prompt-text");
     promptText.textContent =
-      typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title;
+      typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title || "Untitled Prompt";
     promptItem.appendChild(promptText);
-
+  
     const promptActions = document.createElement("div");
     promptActions.classList.add("prompt-actions");
-
+  
     const menuBtn = document.createElement("button");
     menuBtn.textContent = "...";
     menuBtn.classList.add("action-btn", "menu-btn");
     const dropdown = document.createElement("div");
     dropdown.classList.add("dropdown-menu");
-
-    const menuItems = [
-      { text: "Copy Prompt", action: () => copyPrompt(prompt) },
-      {
-        text: "Move to Folder",
-        action: () => movePromptToFolder(folderId, index, promptItem),
-      },
-      { text: "Edit", action: () => editPrompt(folderId, index, promptItem) },
-      { text: "Share", action: () => sharePrompt(prompt) },
-      {
-        text: "Move to Trash",
-        action: () => deletePrompt(folderId, index, promptItem),
-      },
-    ];
-
-    // Check if the folder is visible (not hidden)
-    chrome.storage.sync.get(folderId, (data) => {
-      const topic = data[folderId];
-      if (topic && !topic.isHidden) {
-        menuItems.splice(4, 0, {
-          text: "Remove from Folder",
-          action: () => removeFromFolder(folderId, index, promptItem),
+  
+    const menuItems = [];
+    if (folderId === "trash_folder") {
+      // Trash-specific actions
+      menuItems.push(
+        {
+          text: "Restore",
+          action: () => restorePrompt(folderId, index, promptItem)
+        },
+        {
+          text: "Delete Permanently",
+          action: () => permanentlyDeletePrompt(folderId, index, promptItem)
+        }
+      );
+    } else {
+      // Regular prompt actions
+      menuItems.push(
+        { text: "Copy Prompt", action: () => copyPrompt(prompt) },
+        {
+          text: "Move to Folder",
+          action: () => movePromptToFolder(folderId, index, promptItem)
+        },
+        { text: "Edit", action: () => editPrompt(folderId, index, promptItem) },
+        { text: "Share", action: () => sharePrompt(prompt) },
+        {
+          text: "Move to Trash",
+          action: () => deletePrompt(folderId, index, promptItem)
+        }
+      );
+  
+      // Add "Remove from Folder" for visible folders
+      chrome.storage.sync.get(folderId, (data) => {
+        const topic = data[folderId];
+        if (topic && !topic.isHidden && !topic.isTrash) {
+          menuItems.splice(4, 0, {
+            text: "Remove from Folder",
+            action: () => removeFromFolder(folderId, index, promptItem)
+          });
+        }
+  
+        menuItems.forEach((item) => {
+          const menuItem = document.createElement("div");
+          menuItem.classList.add("dropdown-item");
+          menuItem.textContent = item.text;
+          menuItem.addEventListener("click", item.action);
+          dropdown.appendChild(menuItem);
         });
-      }
-
+      });
+    }
+  
+    // Populate dropdown for trash items immediately
+    if (folderId === "trash_folder") {
       menuItems.forEach((item) => {
         const menuItem = document.createElement("div");
         menuItem.classList.add("dropdown-item");
@@ -267,8 +293,8 @@ document.addEventListener("DOMContentLoaded", function () {
         menuItem.addEventListener("click", item.action);
         dropdown.appendChild(menuItem);
       });
-    });
-
+    }
+  
     menuBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const isVisible = dropdown.style.display === "block";
@@ -277,19 +303,118 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       dropdown.style.display = isVisible ? "none" : "block";
     });
-
+  
     promptActions.appendChild(menuBtn);
     promptActions.appendChild(dropdown);
     promptItem.appendChild(promptActions);
-
+  
     document.addEventListener("click", (e) => {
       if (!promptActions.contains(e.target)) {
         dropdown.style.display = "none";
       }
     });
-
+  
     return promptItem;
   }
+
+  // New function to restore a prompt from trash
+function restorePrompt(trashFolderId, promptIndex, promptItem) {
+  if (confirm("Are you sure you want to restore this prompt?")) {
+    chrome.storage.sync.get(trashFolderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching trash data:", chrome.runtime.lastError);
+        return;
+      }
+
+      const trashFolder = data[trashFolderId];
+      if (!trashFolder || !trashFolder.prompts[promptIndex]) return;
+
+      const prompt = trashFolder.prompts[promptIndex];
+      const originalFolderId = prompt.originalFolderId || `hidden_folder_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
+      chrome.storage.sync.get(originalFolderId, function (folderData) {
+        let targetFolder = folderData[originalFolderId] || {
+          name: prompt.title || "Restored Prompt",
+          prompts: [],
+          isHidden: true
+        };
+
+        // If restoring to a visible folder, remove isHidden
+        if (prompt.originalFolderId && folderData[originalFolderId]) {
+          targetFolder.isHidden = false;
+        }
+
+        trashFolder.prompts.splice(promptIndex, 1);
+        delete prompt.originalFolderId;
+        delete prompt.trashedAt;
+        targetFolder.prompts.push(prompt);
+
+        const updates = {};
+        if (trashFolder.prompts.length === 0) {
+          chrome.storage.sync.remove(trashFolderId);
+        } else {
+          updates[trashFolderId] = trashFolder;
+        }
+        updates[originalFolderId] = targetFolder;
+
+        chrome.storage.sync.set(updates, function () {
+          if (chrome.runtime.lastError) {
+            console.error("Error restoring prompt:", chrome.runtime.lastError);
+            alert("Fehler beim Wiederherstellen der Prompt.");
+          } else {
+            console.log(`Prompt restored to ${originalFolderId}`);
+            promptItem.remove();
+            loadFolderNavigation();
+            showTrashedPrompts();
+            if (promptListTitle.textContent === "All Prompts") showAllPrompts();
+            else if (promptListTitle.textContent === "Single Prompts") showSinglePrompts();
+            else if (promptListTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
+          }
+        });
+      });
+    });
+  }
+}
+
+// New function to permanently delete a prompt from trash
+function permanentlyDeletePrompt(trashFolderId, promptIndex, promptItem) {
+  if (confirm("Are you sure you want to permanently delete this prompt? This action cannot be undone.")) {
+    chrome.storage.sync.get(trashFolderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching trash data:", chrome.runtime.lastError);
+        return;
+      }
+
+      const trashFolder = data[trashFolderId];
+      if (!trashFolder || !trashFolder.prompts[promptIndex]) return;
+
+      trashFolder.prompts.splice(promptIndex, 1);
+
+      if (trashFolder.prompts.length === 0) {
+        chrome.storage.sync.remove(trashFolderId, function () {
+          if (chrome.runtime.lastError) {
+            console.error("Error removing trash folder:", chrome.runtime.lastError);
+          }
+          console.log("Trash folder deleted (empty)");
+          promptItem.remove();
+          loadFolderNavigation();
+          showTrashedPrompts();
+        });
+      } else {
+        chrome.storage.sync.set({ [trashFolderId]: trashFolder }, function () {
+          if (chrome.runtime.lastError) {
+            console.error("Error deleting prompt from trash:", chrome.runtime.lastError);
+            alert("Fehler beim endgültigen Löschen der Prompt.");
+          } else {
+            console.log("Prompt permanently deleted from trash");
+            promptItem.remove();
+            showTrashedPrompts();
+          }
+        });
+      }
+    });
+  }
+}
 
   // New function to copy a prompt (example implementation)
   function copyPrompt(prompt) {
@@ -888,6 +1013,41 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function showTrashedPrompts() {
+    chrome.storage.sync.get("trash_folder", function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching trash data:", chrome.runtime.lastError);
+        return;
+      }
+  
+      promptListSection.classList.remove("hidden");
+      folderListSection.classList.add("hidden");
+      searchResults.classList.add("hidden");
+  
+      promptListTitle.textContent = "Trash";
+      promptsContainer.innerHTML = "";
+  
+      const promptList = document.createElement("ul");
+      promptList.classList.add("prompt-list");
+  
+      const trashFolder = data["trash_folder"];
+      if (!trashFolder || !trashFolder.prompts || trashFolder.prompts.length === 0) {
+        const noPrompts = document.createElement("li");
+        noPrompts.textContent = "No prompts in trash";
+        noPrompts.style.color = "#888";
+        noPrompts.style.padding = "15px";
+        promptList.appendChild(noPrompts);
+      } else {
+        trashFolder.prompts.forEach((prompt, index) => {
+          const promptItem = createPromptItem(prompt, "trash_folder", index, trashFolder.prompts.length);
+          promptList.appendChild(promptItem);
+        });
+      }
+  
+      promptsContainer.appendChild(promptList);
+    });
+  }
+
   // Funktion zum Anzeigen kategorisierter Prompts
   function showCategorisedPrompts() {
     chrome.storage.sync.get(null, function (data) {
@@ -1009,6 +1169,8 @@ document.addEventListener("DOMContentLoaded", function () {
             showSinglePrompts();
           else if (promptListTitle.textContent === "Categorised Prompts")
             showCategorisedPrompts();
+          else if (promptListTitle.textContent === "Trash")
+            showTrashedPrompts();
         }
       });
     }
@@ -1283,46 +1445,59 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Funktion zum Löschen einer Prompt
   function deletePrompt(folderId, promptIndex, promptItem) {
-    if (confirm("Are you sure you want to delete this prompt?")) {
-      chrome.storage.sync.get(folderId, function (data) {
-        if (data[folderId]) {
-          data[folderId].prompts.splice(promptIndex, 1);
-          if (data[folderId].prompts.length === 0) {
-            chrome.storage.sync.remove(folderId, function () {
-              if (chrome.runtime.lastError) {
-                console.error(
-                  "Error deleting folder:",
-                  chrome.runtime.lastError
-                );
-              } else {
-                console.log(`Folder ${folderId} deleted (empty)`);
-                promptItem.remove();
-                loadFolderNavigation();
-                loadFolders();
-              }
-            });
-          } else {
-            chrome.storage.sync.set(data, function () {
-              if (chrome.runtime.lastError) {
-                console.error(
-                  "Error deleting prompt:",
-                  chrome.runtime.lastError
-                );
-              } else {
-                console.log(`Prompt in ${folderId} deleted`);
-                promptItem.remove();
-                if (data[folderId].prompts.length > 1)
-                  showFolderContent(folderId);
-                if (promptListTitle.textContent === "All Prompts")
-                  showAllPrompts();
-                else if (promptListTitle.textContent === "Single Prompts")
-                  showSinglePrompts();
-                else if (promptListTitle.textContent === "Categorised Prompts")
-                  showCategorisedPrompts();
-              }
-            });
-          }
+    if (confirm("Are you sure you want to move this prompt to the trash?")) {
+      chrome.storage.sync.get([folderId, "trash_folder"], function (data) {
+        if (chrome.runtime.lastError) {
+          console.error("Error fetching data:", chrome.runtime.lastError);
+          return;
         }
+  
+        const topic = data[folderId];
+        if (!topic || !topic.prompts[promptIndex]) return;
+  
+        const prompt = topic.prompts[promptIndex];
+        topic.prompts.splice(promptIndex, 1);
+  
+        // Initialize or update trash folder
+        const trashFolderId = "trash_folder";
+        let trashFolder = data[trashFolderId] || {
+          name: "Trash",
+          prompts: [],
+          isTrash: true,
+          isHidden: true
+        };
+        trashFolder.prompts.push({
+          ...prompt,
+          originalFolderId: folderId,
+          trashedAt: Date.now()
+        });
+  
+        const updates = {};
+        if (topic.prompts.length === 0) {
+          chrome.storage.sync.remove(folderId, function () {
+            if (chrome.runtime.lastError) {
+              console.error("Error deleting folder:", chrome.runtime.lastError);
+            }
+          });
+        } else {
+          updates[folderId] = topic;
+        }
+        updates[trashFolderId] = trashFolder;
+  
+        chrome.storage.sync.set(updates, function () {
+          if (chrome.runtime.lastError) {
+            console.error("Error moving prompt to trash:", chrome.runtime.lastError);
+            alert("Fehler beim Verschieben der Prompt in den Papierkorb.");
+          } else {
+            console.log(`Prompt moved to trash from ${folderId}`);
+            promptItem.remove();
+            loadFolderNavigation();
+            if (data[folderId].prompts.length > 0) showFolderContent(folderId);
+            if (promptListTitle.textContent === "All Prompts") showAllPrompts();
+            else if (promptListTitle.textContent === "Single Prompts") showSinglePrompts();
+            else if (promptListTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
+          }
+        });
       });
     }
   }
@@ -1496,6 +1671,11 @@ document.addEventListener("DOMContentLoaded", function () {
   categorisedPromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
     showCategorisedPrompts();
+  });
+
+  trashLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    showTrashedPrompts();
   });
 
   // Suche starten bei Eingabe
