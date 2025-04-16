@@ -189,7 +189,7 @@ hr {
 }
 
 .sticky-header h1 {
-  margin: 0;
+  margin-left: -1.5rem;
   font-size: 1.8em;
   color: white;
 }

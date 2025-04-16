@@ -21,6 +21,200 @@ document.addEventListener("DOMContentLoaded", function () {
     clearSearch.style.display = "block";
   }
 
+  document
+    .getElementById("createFolderIcon")
+    .addEventListener("click", function () {
+      createNewFolder();
+    });
+
+  function createNewFolder() {
+    const modal = document.createElement("div");
+    modal.className = "modal";
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "modal-header";
+
+    const closeSpan = document.createElement("span");
+    closeSpan.className = "close";
+    closeSpan.innerHTML = "×";
+
+    const headerTitle = document.createElement("h2");
+    headerTitle.textContent = "Create New Folder";
+
+    const modalBody = document.createElement("div");
+    modalBody.className = "modal-body";
+
+    const nameLabel = document.createElement("label");
+    nameLabel.textContent = "Folder Name:";
+    nameLabel.style.marginBottom = "10px";
+    nameLabel.style.display = "block";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.placeholder = "Enter folder name";
+    nameInput.style.width = "100%";
+    nameInput.style.padding = "8px";
+    nameInput.style.borderRadius = "4px";
+    nameInput.style.border = "1px solid #ddd";
+
+    const createButton = document.createElement("button");
+    createButton.textContent = "Create";
+    createButton.classList.add("action-btn");
+    createButton.style.marginTop = "15px";
+
+    createButton.addEventListener("click", () => {
+      const folderName = nameInput.value.trim();
+      if (!folderName) {
+        alert("Folder name is required.");
+        return;
+      }
+
+      const folderId = `folder_${Date.now()}_${Math.floor(
+        Math.random() * 10000
+      )}`;
+      const newFolder = {
+        name: folderName,
+        prompts: [],
+        isHidden: false,
+      };
+
+      chrome.storage.sync.set({ [folderId]: newFolder }, function () {
+        if (chrome.runtime.lastError) {
+          console.error("Error creating new folder:", chrome.runtime.lastError);
+          alert("Fehler beim Erstellen des neuen Ordners.");
+        } else {
+          console.log(`New folder created with ID: ${folderId}`);
+          loadFolderNavigation(); // Aktualisiere die Ordner-Navigation
+          showFolderContent(folderId); // Zeige den neuen Ordner direkt an
+        }
+      });
+
+      modal.style.display = "none";
+      document.body.removeChild(modal);
+      document.head.removeChild(style);
+    });
+
+    modalHeader.appendChild(closeSpan);
+    modalHeader.appendChild(headerTitle);
+    modalBody.appendChild(nameLabel);
+    modalBody.appendChild(nameInput);
+    modalBody.appendChild(createButton);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modal.appendChild(modalContent);
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .modal {
+        display: block;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(3px);
+      }
+
+      .modal-content {
+        background: #fff;
+        margin: 10% auto;
+        padding: 0;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+      }
+
+      .modal-header {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #1e90ff, #4169e1);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 1.6em;
+        font-weight: 600;
+      }
+
+      .modal-body {
+        padding: 24px;
+        color: #2c3e50;
+      }
+
+      .modal-body label {
+        font-weight: 600;
+        margin-bottom: 10px;
+        display: block;
+        color: #34495e;
+      }
+
+      .modal-body input {
+        margin-bottom: 12px;
+        box-sizing: border-box;
+      }
+
+      .close {
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+
+      .close:hover,
+      .close:focus {
+        transform: scale(1.1);
+      }
+
+      .action-btn {
+        padding: 8px 16px;
+        background: #1e90ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .action-btn:hover {
+        background: #4169e1;
+      }
+    `;
+
+    document.head.appendChild(style);
+    document.body.appendChild(modal);
+
+    closeSpan.onclick = function () {
+      modal.style.display = "none";
+      document.body.removeChild(modal);
+      document.head.removeChild(style);
+    };
+
+    window.addEventListener(
+      "click",
+      function (event) {
+        if (event.target === modal) {
+          modal.style.display = "none";
+          document.body.removeChild(modal);
+          document.head.removeChild(style);
+        }
+      },
+      { once: true }
+    );
+
+    nameInput.focus();
+  }
+
   // Funktion zum Hinzufügen eines neuen Prompts
   function addNewPrompt(currentFolderId = null) {
     chrome.storage.sync.get(null, function (data) {
@@ -326,7 +520,12 @@ document.addEventListener("DOMContentLoaded", function () {
         folderNavList.appendChild(noFolders);
       } else {
         Object.entries(data).forEach(([id, topic]) => {
-          if (topic.prompts && Array.isArray(topic.prompts)) {
+          if (
+            topic.prompts &&
+            Array.isArray(topic.prompts) &&
+            !topic.isHidden &&
+            !topic.isTrash
+          ) {
             const folderLink = document.createElement("a");
             folderLink.href = `#folder-${id}`;
             folderLink.textContent = `${topic.name} (${topic.prompts.length})`;
@@ -335,10 +534,6 @@ document.addEventListener("DOMContentLoaded", function () {
               e.preventDefault();
               showFolderContent(id);
             });
-            if (topic.isHidden) {
-              folderLink.style.opacity = "0.8";
-              folderLink.title = "Hidden folder";
-            }
             folderNavList.appendChild(folderLink);
           }
         });
