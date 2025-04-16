@@ -557,7 +557,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const folders = Object.entries(data).filter(
-        ([id, topic]) => topic.prompts
+        ([, topic]) =>
+          topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden
       );
 
       if (folders.length === 0) {
@@ -1071,7 +1072,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Content
       const contentLabel = document.createElement("label");
-      contentLabel.textContent = "Content:";
+      contentLabel.textContent = "Prompt:";
       const contentInput = document.createElement("textarea");
       contentInput.value =
         typeof prompt === "string" ? prompt : prompt.content || "";

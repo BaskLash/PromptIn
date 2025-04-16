@@ -795,7 +795,8 @@ function promptSaver(message) {
       }
 
       const folders = Object.entries(data).filter(
-        ([, topic]) => topic.prompts && Array.isArray(topic.prompts)
+        ([, topic]) =>
+          topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden
       );
 
       // Populate replaceFolderSelect
