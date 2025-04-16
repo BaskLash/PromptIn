@@ -360,7 +360,9 @@ function addMistralButtonClick(index) {
 function promptSaver(message) {
   // Sicherstellen, dass der DOM verfügbar ist
   if (!document.body || !document.head) {
-    console.error("DOM nicht verfügbar: document.body oder document.head fehlt.");
+    console.error(
+      "DOM nicht verfügbar: document.body oder document.head fehlt."
+    );
     alert("Fehler: Seite nicht vollständig geladen. Bitte versuche es erneut.");
     return;
   }
@@ -797,7 +799,8 @@ function promptSaver(message) {
       );
 
       // Populate replaceFolderSelect
-      replaceFolderSelect.innerHTML = '<option value="">Select a folder</option>';
+      replaceFolderSelect.innerHTML =
+        '<option value="">Select a folder</option>';
       folders.forEach(([id, topic]) => {
         const option = document.createElement("option");
         option.value = id;
@@ -825,7 +828,10 @@ function promptSaver(message) {
     if (folderId) {
       chrome.storage.sync.get(folderId, (data) => {
         if (chrome.runtime.lastError) {
-          console.error("Error fetching folder data:", chrome.runtime.lastError);
+          console.error(
+            "Error fetching folder data:",
+            chrome.runtime.lastError
+          );
           return;
         }
 
@@ -834,7 +840,8 @@ function promptSaver(message) {
           topic.prompts.forEach((prompt, index) => {
             const option = document.createElement("option");
             option.value = index;
-            option.textContent = prompt.length > 50 ? prompt.slice(0, 50) + "..." : prompt;
+            option.textContent =
+              prompt.length > 50 ? prompt.slice(0, 50) + "..." : prompt;
             option.title = prompt;
             replacePromptSelect.appendChild(option);
           });
@@ -887,106 +894,139 @@ function promptSaver(message) {
       subOptionButtonsElements.forEach((btn) => btn.classList.remove("active"));
       optionContents.forEach((c) => c.classList.remove("active"));
       button.classList.add("active");
-      document.getElementById(button.getAttribute("data-tab")).classList.add("active");
+      document
+        .getElementById(button.getAttribute("data-tab"))
+        .classList.add("active");
     });
   });
 
   // Save logic
+  // Inside promptSaver, replace the saveButton.onclick function
   saveButton.onclick = function () {
     const promptTitle = promptTitleInput.value.trim();
     const promptDescription = promptDescInput.value.trim();
     const promptContent = promptTextarea.value.trim();
-    const activeOption = optionsSwitch.querySelector("button.active").getAttribute("data-tab");
+    const activeOption = optionsSwitch
+      .querySelector("button.active")
+      .getAttribute("data-tab");
 
     if (!promptTitle || !promptDescription || !promptContent) {
       alert("Bitte fülle alle Felder (Titel, Beschreibung, Prompt) aus!");
       return;
     }
 
-    if (activeOption === "create") {
-      const promptId = `prompt_${Date.now()}`;
-      const newPrompt = {
-        id: promptId,
+    const savePrompt = () => {
+      const promptObject = {
         title: promptTitle,
         description: promptDescription,
         content: promptContent,
-        folderId: null,
       };
 
-      chrome.storage.sync.set({ [promptId]: newPrompt }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("Error saving prompt:", chrome.runtime.lastError);
-          alert("Fehler beim Speichern des Prompts.");
-        } else {
-          console.log("New prompt created:", newPrompt);
-          modal.style.display = "none";
-          document.body.removeChild(modal);
-          document.head.removeChild(style);
-        }
-      });
-    } else if (activeOption === "replace") {
-      const folderId = replaceFolderSelect.value;
-      const promptIndex = replacePromptSelect.value;
+      if (activeOption === "create") {
+        // Create a hidden folder for the standalone prompt
+        const hiddenFolderId = `hidden_folder_${Date.now()}_${Math.floor(
+          Math.random() * 10000
+        )}`;
+        const hiddenFolder = {
+          name: promptTitle,
+          prompts: [promptObject],
+          isHidden: true, // Mark as hidden
+        };
 
-      if (!folderId || promptIndex === "") {
-        alert("Bitte wähle einen Ordner und eine Prompt aus!");
-        return;
-      }
-
-      chrome.storage.sync.get(folderId, (data) => {
-        if (chrome.runtime.lastError) {
-          console.error("Error fetching folder data:", chrome.runtime.lastError);
-          return;
-        }
-
-        const topic = data[folderId];
-        if (topic && topic.prompts) {
-          topic.prompts[promptIndex] = promptContent;
-          topic.name = topic.prompts.length === 1 ? promptTitle : topic.name;
-
-          chrome.storage.sync.set({ [folderId]: topic }, () => {
-            if (chrome.runtime.lastError) {
-              console.error("Error replacing prompt:", chrome.runtime.lastError);
-              alert("Fehler beim Ersetzen der Prompt.");
-            } else {
-              console.log(`Prompt in folder ${folderId} replaced at index ${promptIndex}`);
-              modal.style.display = "none";
-              document.body.removeChild(modal);
-              document.head.removeChild(style);
-            }
-          });
-        }
-      });
-    } else if (activeOption === "add") {
-      const folderId = addFolderSelect.value;
-
-      if (!folderId) {
-        alert("Bitte wähle einen Ordner aus!");
-        return;
-      }
-
-      chrome.storage.sync.get(folderId, (data) => {
-        if (chrome.runtime.lastError) {
-          console.error("Error fetching folder data:", chrome.runtime.lastError);
-          return;
-        }
-
-        const topic = data[folderId] || { name: promptTitle, prompts: [] };
-        topic.prompts.push(promptContent);
-
-        chrome.storage.sync.set({ [folderId]: topic }, () => {
+        chrome.storage.sync.set({ [hiddenFolderId]: hiddenFolder }, () => {
           if (chrome.runtime.lastError) {
-            console.error("Error adding prompt to folder:", chrome.runtime.lastError);
-            alert("Fehler beim Hinzufügen der Prompt zum Ordner.");
+            console.error("Error saving prompt:", chrome.runtime.lastError);
+            alert("Fehler beim Speichern des Prompts.");
           } else {
-            console.log(`Prompt added to folder ${folderId}`);
+            console.log(
+              "Standalone prompt created in hidden folder:",
+              hiddenFolder
+            );
             modal.style.display = "none";
             document.body.removeChild(modal);
             document.head.removeChild(style);
           }
         });
-      });
-    }
+      } else if (activeOption === "replace") {
+        const folderId = replaceFolderSelect.value;
+        const promptIndex = replacePromptSelect.value;
+
+        if (!folderId || promptIndex === "") {
+          alert("Bitte wähle einen Ordner und eine Prompt aus!");
+          return;
+        }
+
+        chrome.storage.sync.get(folderId, (data) => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Error fetching folder data:",
+              chrome.runtime.lastError
+            );
+            return;
+          }
+
+          const topic = data[folderId];
+          if (topic && topic.prompts) {
+            topic.prompts[promptIndex] = promptObject;
+            topic.name = topic.prompts.length === 1 ? promptTitle : topic.name;
+
+            chrome.storage.sync.set({ [folderId]: topic }, () => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Error replacing prompt:",
+                  chrome.runtime.lastError
+                );
+                alert("Fehler beim Ersetzen der Prompt.");
+              } else {
+                console.log(
+                  `Prompt in folder ${folderId} replaced at index ${promptIndex}`
+                );
+                modal.style.display = "none";
+                document.body.removeChild(modal);
+                document.head.removeChild(style);
+              }
+            });
+          }
+        });
+      } else if (activeOption === "add") {
+        const folderId = addFolderSelect.value;
+
+        if (!folderId) {
+          alert("Bitte wähle einen Ordner aus!");
+          return;
+        }
+
+        chrome.storage.sync.get(folderId, (data) => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Error fetching folder data:",
+              chrome.runtime.lastError
+            );
+            return;
+          }
+
+          const topic = data[folderId] || { name: promptTitle, prompts: [] };
+          topic.prompts.push(promptObject);
+
+          chrome.storage.sync.set({ [folderId]: topic }, () => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Error adding prompt to folder:",
+                chrome.runtime.lastError
+              );
+              alert("Fehler beim Hinzufügen der Prompt zum Ordner.");
+            } else {
+              console.log(`Prompt added to folder ${folderId}`);
+              modal.style.display = "none";
+              document.body.removeChild(modal);
+              document.head.removeChild(style);
+            }
+          });
+        });
+      }
+    };
+
+    savePrompt();
   };
 
   // Close modal
@@ -1001,17 +1041,21 @@ function promptSaver(message) {
   };
 
   // Optimierten window.onclick Handler
-  window.addEventListener("click", function (event) {
-    if (event.target === modal) {
-      modal.style.display = "none";
-      try {
-        document.body.removeChild(modal);
-        document.head.removeChild(style);
-      } catch (error) {
-        console.error("Fehler beim Entfernen des Modals:", error);
+  window.addEventListener(
+    "click",
+    function (event) {
+      if (event.target === modal) {
+        modal.style.display = "none";
+        try {
+          document.body.removeChild(modal);
+          document.head.removeChild(style);
+        } catch (error) {
+          console.error("Fehler beim Entfernen des Modals:", error);
+        }
       }
-    }
-  }, { once: true }); // Handler wird nur einmal ausgeführt
+    },
+    { once: true }
+  ); // Handler wird nur einmal ausgeführt
 }
 
 // Funktion zum Abrufen des passenden Chat-Elements
