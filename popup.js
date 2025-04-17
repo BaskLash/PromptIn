@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const clearStorageBtn = document.getElementById("clear-storage");
 
   // Funktion zum Laden aller Prompts im Hauptinhalt
+  // Replace the existing loadPrompts function
   function loadPrompts(view = "all") {
     chrome.storage.sync.get(null, function (data) {
       if (chrome.runtime.lastError) {
@@ -38,20 +39,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (view === "all") {
         Object.entries(data).forEach(([id, topic]) => {
-          allPrompts = allPrompts.concat(
-            topic.prompts.map((prompt, index) => ({
-              prompt,
-              folderId: id,
-              index,
-            }))
-          );
+          if (topic.prompts && Array.isArray(topic.prompts)) {
+            allPrompts = allPrompts.concat(
+              topic.prompts.map((prompt, index) => ({
+                prompt,
+                folderId: id,
+                index,
+              }))
+            );
+          }
         });
       } else if (view === "single") {
         Object.entries(data).forEach(([id, topic]) => {
-          if (
-            topic.prompts.length === 1 &&
-            topic.name === topic.prompts[0].slice(0, 20)
-          ) {
+          if (topic.prompts && topic.prompts.length === 1 && topic.isHidden) {
             allPrompts.push({
               prompt: topic.prompts[0],
               folderId: id,
@@ -61,10 +61,10 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       } else if (view === "categorised") {
         Object.entries(data).forEach(([id, topic]) => {
-          if (topic.prompts.length > 1) {
+          if (topic.prompts && topic.prompts.length > 1 && !topic.isHidden) {
             allPrompts = allPrompts.concat(
               topic.prompts.map((prompt, index) => ({
-                prompt: `${topic.name}: ${prompt}`,
+                prompt,
                 folderId: id,
                 index,
               }))
@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       } else {
         const folder = data[view];
-        if (folder) {
+        if (folder && folder.prompts) {
           allPrompts = folder.prompts.map((prompt, index) => ({
             prompt,
             folderId: view,
@@ -328,15 +328,20 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // Funktion zum Erstellen eines Prompt-Elements
+  // Replace the existing createPromptItem function
   function createPromptItem(prompt, folderId, index) {
     const promptItem = document.createElement("li");
     promptItem.classList.add("prompt-item");
 
     const promptText = document.createElement("span");
     promptText.classList.add("prompt-text");
+    const displayText =
+      typeof prompt === "string"
+        ? prompt
+        : prompt.title || prompt.content || "Untitled Prompt";
     promptText.textContent =
-      prompt.length > 50 ? prompt.slice(0, 50) + "..." : prompt;
-    promptText.title = prompt;
+      displayText.length > 50 ? displayText.slice(0, 50) + "..." : displayText;
+    promptText.title = displayText;
     promptItem.appendChild(promptText);
 
     const promptActions = document.createElement("div");
@@ -539,17 +544,34 @@ document.addEventListener("DOMContentLoaded", function () {
 
   createPromptBtn.addEventListener("click", () => {
     const promptText = promptTextInput.value.trim();
-    const selectedFolder = folderSelect.value || `prompt_${Date.now()}`;
+    const selectedFolder = folderSelect.value;
 
     if (promptText) {
       chrome.storage.sync.get(null, function (data) {
         const updatedData = data || {};
-        if (selectedFolder in updatedData) {
-          updatedData[selectedFolder].prompts.push(promptText);
+        const promptObj = {
+          title: promptText.slice(0, 50),
+          content: promptText,
+          description: "",
+        };
+        if (selectedFolder) {
+          if (selectedFolder in updatedData) {
+            updatedData[selectedFolder].prompts.push(promptObj);
+          } else {
+            updatedData[selectedFolder] = {
+              name: promptText.slice(0, 20),
+              prompts: [promptObj],
+              isHidden: false,
+            };
+          }
         } else {
-          updatedData[selectedFolder] = {
+          const newFolderId = `prompt_${Date.now()}_${Math.floor(
+            Math.random() * 10000
+          )}`;
+          updatedData[newFolderId] = {
             name: promptText.slice(0, 20),
-            prompts: [promptText],
+            prompts: [promptObj],
+            isHidden: true,
           };
         }
         chrome.storage.sync.set(updatedData, () => {

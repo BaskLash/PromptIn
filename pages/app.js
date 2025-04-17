@@ -21,11 +21,45 @@ document.addEventListener("DOMContentLoaded", function () {
     clearSearch.style.display = "block";
   }
 
+  // Status-Flag, ob das Icon geklickt wurde
+  let iconClicked = false;
+
+  // Click-Handler für das Icon
   document
     .getElementById("createFolderIcon")
-    .addEventListener("click", function () {
+    .addEventListener("click", function (event) {
+      iconClicked = true;
+
+      // Verhindere, dass Klick weitergegeben wird (optional, zur Sicherheit)
+      event.stopPropagation();
+
       createNewFolder();
+
+      // Nach kurzer Zeit zurücksetzen (damit normale Klicks auf collapsibles danach wieder funktionieren)
+      setTimeout(() => {
+        iconClicked = false;
+      }, 100);
     });
+
+  // Collapsible-Logik
+  const collapsibles = document.querySelectorAll(".collapsible");
+  collapsibles.forEach((collapsible) => {
+    collapsible.addEventListener("click", (event) => {
+      if (iconClicked) {
+        // Wenn Icon-Click aktiv war, brich hier ab
+        return;
+      }
+
+      // Normaler Toggle
+      collapsible.classList.toggle("active");
+      const content = collapsible.nextElementSibling;
+      if (content.style.maxHeight) {
+        content.style.maxHeight = null;
+      } else {
+        content.style.maxHeight = content.scrollHeight + "px";
+      }
+    });
+  });
 
   function createNewFolder() {
     const modal = document.createElement("div");
@@ -2245,19 +2279,5 @@ document.addEventListener("DOMContentLoaded", function () {
     searchResults.classList.add("hidden");
     folderListSection.classList.remove("hidden");
     loadFolders();
-  });
-
-  // Collapsible-Logik
-  const collapsibles = document.querySelectorAll(".collapsible");
-  collapsibles.forEach((collapsible) => {
-    collapsible.addEventListener("click", () => {
-      collapsible.classList.toggle("active");
-      const content = collapsible.nextElementSibling;
-      if (content.style.maxHeight) {
-        content.style.maxHeight = null;
-      } else {
-        content.style.maxHeight = content.scrollHeight + "px";
-      }
-    });
   });
 });
