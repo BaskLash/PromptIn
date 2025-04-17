@@ -530,6 +530,126 @@ function addGeminiButton() {
   }
 }
 
+function addV0DevButton() {
+  try {
+    let startElement = document.querySelector(".group\\/message-list");
+    if (!startElement) throw new Error("Message-List-Element nicht gefunden");
+
+    startElement = startElement.children[0];
+    if (!startElement) throw new Error("Erstes Kind-Element nicht gefunden");
+
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+    let existingElements = new Set(); // Set für bereits bearbeitete Elemente
+
+    function addButtons() {
+      for (let i = 0; i < startElement.children.length; i += 2) {
+        let childElement = startElement.children[i];
+        if (!childElement) continue;
+
+        const allCandidates = childElement.querySelectorAll(
+          "div.items-center.gap-1.flex"
+        );
+
+        for (const candidate of allCandidates) {
+          const classList = Array.from(candidate.classList).sort();
+          if (
+            classList.length === 3 &&
+            classList.includes("items-center") &&
+            classList.includes("gap-1") &&
+            classList.includes("flex")
+          ) {
+            // Prüfe auf doppelte Buttons und entferne sie
+            const existingButtons = candidate.querySelectorAll(
+              ".save-prompt-button"
+            );
+            if (existingButtons.length > 1) {
+              for (let j = 1; j < existingButtons.length; j++) {
+                existingButtons[j].remove();
+                // console.log("Überflüssiger Button entfernt.");
+              }
+            }
+
+            // Prüfe, ob ein Button existiert
+            const existingButton = candidate.querySelector(
+              ".save-prompt-button"
+            );
+            if (existingButton) {
+              // console.log("Button existiert bereits für:", candidate.className);
+              existingElements.add(candidate);
+              continue;
+            }
+
+            existingElements.add(candidate);
+
+            const newButton = document.createElement("button");
+            newButton.textContent = "Save Prompt";
+            newButton.className = `save-prompt-button save-prompt-button-${i} btn-primary`;
+
+            Object.assign(newButton.style, {
+              padding: "5px 10px",
+              border: "1px solid #ccc",
+              borderRadius: "5px",
+              color: "black",
+              background: "#f0f0f0",
+            });
+            newButton.title =
+              "Speichert den aktuellen Prompt in der Erinnerung.";
+
+            newButton.addEventListener("mouseover", () => {
+              newButton.style.backgroundColor = "#e0e0e0";
+              newButton.style.borderColor = "#bbb";
+            });
+            newButton.addEventListener("mouseout", () => {
+              newButton.style.backgroundColor = "#f0f0f0";
+              newButton.style.borderColor = "#ccc";
+            });
+
+            newButton.addEventListener("click", () => {
+              if (newButton.classList.contains("save-prompt-button")) {
+                let buttonNumber = i + 1;
+                // console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+                newButton.textContent = "✔ Prompt Saved";
+                addV0ButtonClick(buttonNumber);
+                setTimeout(() => {
+                  newButton.textContent = "Save Prompt";
+                }, 5000);
+              }
+            });
+
+            candidate.appendChild(newButton);
+            // console.log(
+            //   `Button ${buttonCounter} zu ${candidate.className} hinzugefügt`
+            // );
+            buttonCounter++;
+          }
+        }
+      }
+    }
+
+    // Initiale Ausführung
+    addButtons();
+
+    // MutationObserver einrichten
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes.length || mutation.removedNodes.length) {
+          // console.log("DOM-Änderung erkannt, füge Buttons erneut hinzu...");
+          addButtons();
+        }
+      });
+    });
+
+    // Beobachte Änderungen im startElement und seinen Nachkommen
+    observer.observe(startElement, {
+      childList: true,
+      subtree: true,
+    });
+  } catch (error) {
+    // console.error("Fehler beim Hinzufügen der Buttons:", error.message);
+  }
+}
+
 function addClaudeButton() {
   // Alle Elemente mit der Klasse font-claude-message auswählen
   let startElements = document.querySelectorAll(".font-claude-message");

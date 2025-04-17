@@ -28,7 +28,8 @@
         "*://*.chat.mistral.ai/*",
         "*://*.duckduckgo.com/*",
         "*://*.perplexity.ai/*",
-        "*://*.deepseek.com/*"
+        "*://*.deepseek.com/*",
+        "*://*.v0.dev/*"
       ],
       "js": ["content.js", "addButton.js"],
       "run_at": "document_start"

@@ -102,6 +102,12 @@ setInterval(() => {
   ) {
     addDeepSeekButton();
   }
+  if (
+    window.location.hostname === "v0.dev" ||
+    (window.location.hostname === "www.v0.dev" && path.startsWith("/chat/"))
+  ) {
+    addV0DevButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -355,6 +361,24 @@ function addMistralButtonClick(index) {
       "Das Ziel-Element mit der angegebenen Klasse wurde nicht gefunden."
     );
   }
+}
+
+function addV0ButtonClick(index) {
+  index = index - 2;
+  const messageListContainer = document.querySelector(".group\\/message-list")
+    ?.children[0];
+  if (!messageListContainer) {
+    console.error("Nachrichtencontainer nicht gefunden.");
+  }
+
+  // Beachte: Wenn du absichtlich -2 meinst, ok. Normal wäre -1 bei index ab 1.
+  const messageElement = messageListContainer.children[4];
+  if (messageElement) {
+    messageElement =
+      messageElement.children[0].children[0].children[1].children[0]
+        .children[0];
+  }
+  console.log(messageElement);
 }
 
 function promptSaver(message) {
