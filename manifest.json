@@ -31,7 +31,7 @@
         "*://*.deepseek.com/*",
         "*://*.v0.dev/*"
       ],
-      "js": ["content.js", "addButton.js"],
+      "js": ["addButton.js", "addPlatformClickEvent.js", "content.js"],
       "run_at": "document_start"
     }
   ],
