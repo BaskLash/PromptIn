@@ -49,6 +49,7 @@
               <a href="#" id="categorised-prompts-link" class="sidebar-link"
                 >Categorised Prompts</a
               >
+              <a href="#" id="trash-link" class="sidebar-link">Trash</a>
             </div>
           </li>
           <!-- Collapsible Folders -->
@@ -164,21 +165,64 @@
     <!-- New Prompt Modal -->
     <div id="new-prompt-modal" class="modal">
       <div class="modal-content">
-        <span id="close-new-prompt-modal" class="close">×</span>
-        <h2>Neue Prompt</h2>
-        <div class="modal-form">
-          <label for="prompt-text">Prompt:</label>
+        <div class="modal-header">
+          <span id="close-new-prompt-modal" class="close">×</span>
+          <h2>New Prompt</h2>
+        </div>
+        <div class="modal-body">
+          <label for="prompt-title">Title:</label>
+          <input
+            id="prompt-title"
+            type="text"
+            placeholder="Enter prompt title"
+            style="
+              width: 100%;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ddd;
+            "
+          />
+          <label for="prompt-description">Description (optional):</label>
           <textarea
-            id="prompt-text"
-            placeholder="Geben Sie Ihre Prompt ein"
-            rows="4"
+            id="prompt-description"
+            placeholder="Enter prompt description"
+            style="
+              width: 100%;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ddd;
+              min-height: 80px;
+            "
           ></textarea>
-          <label for="folder-select">Ordner (optional):</label>
-          <select id="folder-select">
-            <option value="">-- Kein Ordner --</option>
-            <!-- Ordner werden dynamisch hinzugefügt -->
-          </select>
-          <button id="create-prompt-btn" class="modal-button">Erstellen</button>
+          <label for="prompt-content">Content:</label>
+          <textarea
+            id="prompt-content"
+            placeholder="Enter prompt content"
+            style="
+              width: 100%;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ddd;
+              min-height: 120px;
+            "
+          ></textarea>
+          <label for="folder-select">Folder:</label>
+          <select
+            id="folder-select"
+            style="
+              width: 100%;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ddd;
+            "
+          ></select>
+          <button
+            id="create-prompt-btn"
+            class="action-btn"
+            style="margin-top: 15px"
+          >
+            Create
+          </button>
         </div>
       </div>
     </div>
