@@ -353,13 +353,17 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
               console.log(`Prompt added to folder ${folderId}`);
               loadFolderNavigation();
-              showFolderContent(folderId);
-              if (mainHeaderTitle.textContent === "All Prompts")
+              if (mainHeaderTitle.textContent === "All Prompts") {
                 showAllPrompts();
-              else if (mainHeaderTitle.textContent === "Single Prompts")
+              } else if (mainHeaderTitle.textContent === "Single Prompts") {
                 showSinglePrompts();
-              else if (mainHeaderTitle.textContent === "Categorised Prompts")
+              } else if (
+                mainHeaderTitle.textContent === "Categorised Prompts"
+              ) {
                 showCategorisedPrompts();
+              } else {
+                showFolderContent(folderId);
+              }
             }
           });
         } else {
@@ -378,9 +382,13 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
               console.log(`Prompt added to new hidden folder ${newFolderId}`);
               loadFolderNavigation();
-              showAllPrompts();
-              if (mainHeaderTitle.textContent === "Single Prompts")
+              if (mainHeaderTitle.textContent === "All Prompts") {
+                showAllPrompts();
+              } else if (mainHeaderTitle.textContent === "Single Prompts") {
                 showSinglePrompts();
+              } else {
+                showAllPrompts();
+              }
             }
           });
         }
@@ -551,6 +559,12 @@ document.addEventListener("DOMContentLoaded", function () {
             folderLink.dataset.folderId = id;
             folderLink.addEventListener("click", (e) => {
               e.preventDefault();
+              [
+                allPromptsLink,
+                singlePromptsLink,
+                categorisedPromptsLink,
+                trashLink,
+              ].forEach((link) => link.classList.remove("active"));
               showFolderContent(id);
             });
             folderNavList.appendChild(folderLink);
@@ -2178,21 +2192,49 @@ document.addEventListener("DOMContentLoaded", function () {
 
   allPromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
+    [
+      allPromptsLink,
+      singlePromptsLink,
+      categorisedPromptsLink,
+      trashLink,
+    ].forEach((link) => link.classList.remove("active"));
+    allPromptsLink.classList.add("active");
     showAllPrompts();
   });
 
   singlePromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
+    [
+      allPromptsLink,
+      singlePromptsLink,
+      categorisedPromptsLink,
+      trashLink,
+    ].forEach((link) => link.classList.remove("active"));
+    singlePromptsLink.classList.add("active");
     showSinglePrompts();
   });
 
   categorisedPromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
+    [
+      allPromptsLink,
+      singlePromptsLink,
+      categorisedPromptsLink,
+      trashLink,
+    ].forEach((link) => link.classList.remove("active"));
+    categorisedPromptsLink.classList.add("active");
     showCategorisedPrompts();
   });
 
   trashLink.addEventListener("click", (e) => {
     e.preventDefault();
+    [
+      allPromptsLink,
+      singlePromptsLink,
+      categorisedPromptsLink,
+      trashLink,
+    ].forEach((link) => link.classList.remove("active"));
+    trashLink.classList.add("active");
     showTrashedPrompts();
   });
 
@@ -2216,6 +2258,14 @@ document.addEventListener("DOMContentLoaded", function () {
     folderListSection.classList.remove("hidden");
     loadFolders();
   });
+
   showAllPrompts();
   loadFolderNavigation();
+  [
+    allPromptsLink,
+    singlePromptsLink,
+    categorisedPromptsLink,
+    trashLink,
+  ].forEach((link) => link.classList.remove("active"));
+  allPromptsLink.classList.add("active");
 });
