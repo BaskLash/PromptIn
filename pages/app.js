@@ -10,7 +10,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const allPromptsLink = document.getElementById("allPromptsLink");
   const singlePromptsLink = document.getElementById("singlePromptsLink");
   const mainHeaderTitle = document.getElementById("mainHeaderTitle");
-  const categorisedPromptsLink = document.getElementById("categorisedPromptsLink");
+  const categorisedPromptsLink = document.getElementById(
+    "categorisedPromptsLink"
+  );
   const trashLink = document.getElementById("trashLink");
 
   if (searchInput.value === "") {
@@ -23,14 +25,16 @@ document.addEventListener("DOMContentLoaded", function () {
   let iconClicked = false;
 
   // Click-Handler für das Icon
-  document.getElementById("createFolderIcon").addEventListener("click", function (event) {
-    iconClicked = true;
-    event.stopPropagation();
-    createNewFolder();
-    setTimeout(() => {
-      iconClicked = false;
-    }, 100);
-  });
+  document
+    .getElementById("createFolderIcon")
+    .addEventListener("click", function (event) {
+      iconClicked = true;
+      event.stopPropagation();
+      createNewFolder();
+      setTimeout(() => {
+        iconClicked = false;
+      }, 100);
+    });
 
   // Collapsible-Logik
   const collapsibles = document.querySelectorAll(".collapsible");
@@ -92,7 +96,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      const folderId = `folder_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      const folderId = `folder_${Date.now()}_${Math.floor(
+        Math.random() * 10000
+      )}`;
       const newFolder = {
         name: folderName,
         prompts: [],
@@ -218,13 +224,17 @@ document.addEventListener("DOMContentLoaded", function () {
       document.head.removeChild(style);
     };
 
-    window.addEventListener("click", function (event) {
-      if (event.target === modal) {
-        modal.style.display = "none";
-        document.body.removeChild(modal);
-        document.head.removeChild(style);
-      }
-    }, { once: true });
+    window.addEventListener(
+      "click",
+      function (event) {
+        if (event.target === modal) {
+          modal.style.display = "none";
+          document.body.removeChild(modal);
+          document.head.removeChild(style);
+        }
+      },
+      { once: true }
+    );
 
     nameInput.focus();
   }
@@ -299,7 +309,11 @@ document.addEventListener("DOMContentLoaded", function () {
       folderSelect.appendChild(defaultOption);
 
       const folders = Object.entries(data).filter(
-        ([, topic]) => topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden && !topic.isTrash
+        ([, topic]) =>
+          topic.prompts &&
+          Array.isArray(topic.prompts) &&
+          !topic.isHidden &&
+          !topic.isTrash
       );
       folders.forEach(([id, topic]) => {
         const option = document.createElement("option");
@@ -340,13 +354,18 @@ document.addEventListener("DOMContentLoaded", function () {
               console.log(`Prompt added to folder ${folderId}`);
               loadFolderNavigation();
               showFolderContent(folderId);
-              if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
-              else if (mainHeaderTitle.textContent === "Single Prompts") showSinglePrompts();
-              else if (mainHeaderTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
+              if (mainHeaderTitle.textContent === "All Prompts")
+                showAllPrompts();
+              else if (mainHeaderTitle.textContent === "Single Prompts")
+                showSinglePrompts();
+              else if (mainHeaderTitle.textContent === "Categorised Prompts")
+                showCategorisedPrompts();
             }
           });
         } else {
-          const newFolderId = `hidden_folder_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          const newFolderId = `hidden_folder_${Date.now()}_${Math.floor(
+            Math.random() * 10000
+          )}`;
           const newFolder = {
             name: title.slice(0, 50),
             prompts: [newPrompt],
@@ -360,7 +379,8 @@ document.addEventListener("DOMContentLoaded", function () {
               console.log(`Prompt added to new hidden folder ${newFolderId}`);
               loadFolderNavigation();
               showAllPrompts();
-              if (mainHeaderTitle.textContent === "Single Prompts") showSinglePrompts();
+              if (mainHeaderTitle.textContent === "Single Prompts")
+                showSinglePrompts();
             }
           });
         }
@@ -482,13 +502,17 @@ document.addEventListener("DOMContentLoaded", function () {
         document.head.removeChild(style);
       };
 
-      window.addEventListener("click", function (event) {
-        if (event.target === modal) {
-          modal.style.display = "none";
-          document.body.removeChild(modal);
-          document.head.removeChild(style);
-        }
-      }, { once: true });
+      window.addEventListener(
+        "click",
+        function (event) {
+          if (event.target === modal) {
+            modal.style.display = "none";
+            document.body.removeChild(modal);
+            document.head.removeChild(style);
+          }
+        },
+        { once: true }
+      );
 
       titleInput.focus();
     });
@@ -515,7 +539,12 @@ document.addEventListener("DOMContentLoaded", function () {
         folderNavList.appendChild(noFolders);
       } else {
         Object.entries(data).forEach(([id, topic]) => {
-          if (topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden && !topic.isTrash) {
+          if (
+            topic.prompts &&
+            Array.isArray(topic.prompts) &&
+            !topic.isHidden &&
+            !topic.isTrash
+          ) {
             const folderLink = document.createElement("a");
             folderLink.href = `#folder-${id}`;
             folderLink.textContent = `${topic.name} (${topic.prompts.length})`;
@@ -531,7 +560,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const collapsibleContent = folderNavList.closest(".collapsible-content");
       if (collapsibleContent.classList.contains("active")) {
-        collapsibleContent.style.maxHeight = collapsibleContent.scrollHeight + "px";
+        collapsibleContent.style.maxHeight =
+          collapsibleContent.scrollHeight + "px";
       }
     });
   }
@@ -565,13 +595,17 @@ document.addEventListener("DOMContentLoaded", function () {
       const renameFolderBtn = document.createElement("button");
       renameFolderBtn.textContent = "Rename";
       renameFolderBtn.classList.add("action-btn");
-      renameFolderBtn.addEventListener("click", () => renameFolder(folderId, mainHeaderTitle, topic.name));
+      renameFolderBtn.addEventListener("click", () =>
+        renameFolder(folderId, mainHeaderTitle, topic.name)
+      );
       folderActions.appendChild(renameFolderBtn);
 
       const deleteFolderBtn = document.createElement("button");
       deleteFolderBtn.textContent = "Delete";
       deleteFolderBtn.classList.add("action-btn");
-      deleteFolderBtn.addEventListener("click", () => deleteFolder(folderId, folderCard));
+      deleteFolderBtn.addEventListener("click", () =>
+        deleteFolder(folderId, folderCard)
+      );
       folderActions.appendChild(deleteFolderBtn);
 
       folderHeader.appendChild(folderActions);
@@ -588,7 +622,12 @@ document.addEventListener("DOMContentLoaded", function () {
         promptList.appendChild(noPrompts);
       } else {
         topic.prompts.forEach((prompt, index) => {
-          const promptItem = createPromptItem(prompt, folderId, index, topic.prompts.length);
+          const promptItem = createPromptItem(
+            prompt,
+            folderId,
+            index,
+            topic.prompts.length
+          );
           promptList.appendChild(promptItem);
         });
       }
@@ -638,13 +677,17 @@ document.addEventListener("DOMContentLoaded", function () {
           const renameFolderBtn = document.createElement("button");
           renameFolderBtn.textContent = "Rename";
           renameFolderBtn.classList.add("action-btn");
-          renameFolderBtn.addEventListener("click", () => renameFolder(id, folderTitleElement, topic.name));
+          renameFolderBtn.addEventListener("click", () =>
+            renameFolder(id, folderTitleElement, topic.name)
+          );
           folderActions.appendChild(renameFolderBtn);
 
           const deleteFolderBtn = document.createElement("button");
           deleteFolderBtn.textContent = "Delete";
           deleteFolderBtn.classList.add("action-btn");
-          deleteFolderBtn.addEventListener("click", () => deleteFolder(id, folderCard));
+          deleteFolderBtn.addEventListener("click", () =>
+            deleteFolder(id, folderCard)
+          );
           folderActions.appendChild(deleteFolderBtn);
 
           folderHeader.appendChild(folderActions);
@@ -661,7 +704,12 @@ document.addEventListener("DOMContentLoaded", function () {
             promptList.appendChild(noPrompts);
           } else {
             topic.prompts.forEach((prompt, index) => {
-              const promptItem = createPromptItem(prompt, id, index, topic.prompts.length);
+              const promptItem = createPromptItem(
+                prompt,
+                id,
+                index,
+                topic.prompts.length
+              );
               promptList.appendChild(promptItem);
             });
           }
@@ -684,7 +732,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const promptText = document.createElement("span");
     promptText.classList.add("prompt-text");
-    promptText.textContent = typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title || "Untitled Prompt";
+    promptText.textContent =
+      typeof prompt === "string"
+        ? prompt.slice(0, 50)
+        : prompt.title || "Untitled Prompt";
     promptItem.appendChild(promptText);
 
     const promptActions = document.createElement("div");
@@ -699,16 +750,28 @@ document.addEventListener("DOMContentLoaded", function () {
     const menuItems = [];
     if (folderId === "trash_folder") {
       menuItems.push(
-        { text: "Restore", action: () => restorePrompt(folderId, index, promptItem) },
-        { text: "Delete Permanently", action: () => permanentlyDeletePrompt(folderId, index, promptItem) }
+        {
+          text: "Restore",
+          action: () => restorePrompt(folderId, index, promptItem),
+        },
+        {
+          text: "Delete Permanently",
+          action: () => permanentlyDeletePrompt(folderId, index, promptItem),
+        }
       );
     } else {
       menuItems.push(
         { text: "Copy Prompt", action: () => copyPrompt(prompt) },
-        { text: "Move to Folder", action: () => movePromptToFolder(folderId, index, promptItem) },
+        {
+          text: "Move to Folder",
+          action: () => movePromptToFolder(folderId, index, promptItem),
+        },
         { text: "Edit", action: () => editPrompt(folderId, index, promptItem) },
         { text: "Share", action: () => sharePrompt(prompt) },
-        { text: "Move to Trash", action: () => deletePrompt(folderId, index, promptItem) }
+        {
+          text: "Move to Trash",
+          action: () => deletePrompt(folderId, index, promptItem),
+        }
       );
 
       chrome.storage.sync.get(folderId, (data) => {
@@ -774,7 +837,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!trashFolder || !trashFolder.prompts[promptIndex]) return;
 
         const prompt = trashFolder.prompts[promptIndex];
-        const originalFolderId = prompt.originalFolderId || `hidden_folder_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        const originalFolderId =
+          prompt.originalFolderId ||
+          `hidden_folder_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
         chrome.storage.sync.get(originalFolderId, function (folderData) {
           let targetFolder = folderData[originalFolderId] || {
@@ -798,16 +863,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
           chrome.storage.sync.set(updates, function () {
             if (chrome.runtime.lastError) {
-              console.error("Error restoring prompt:", chrome.runtime.lastError);
+              console.error(
+                "Error restoring prompt:",
+                chrome.runtime.lastError
+              );
               alert("Fehler beim Wiederherstellen der Prompt.");
             } else {
               console.log(`Prompt restored to ${originalFolderId}`);
               promptItem.remove();
               loadFolderNavigation();
               showTrashedPrompts();
-              if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
-              else if (mainHeaderTitle.textContent === "Single Prompts") showSinglePrompts();
-              else if (mainHeaderTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
+              if (mainHeaderTitle.textContent === "All Prompts")
+                showAllPrompts();
+              else if (mainHeaderTitle.textContent === "Single Prompts")
+                showSinglePrompts();
+              else if (mainHeaderTitle.textContent === "Categorised Prompts")
+                showCategorisedPrompts();
             }
           });
         });
@@ -816,7 +887,11 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function permanentlyDeletePrompt(trashFolderId, promptIndex, promptItem) {
-    if (confirm("Are you sure you want to permanently delete this prompt? This action cannot be undone.")) {
+    if (
+      confirm(
+        "Are you sure you want to permanently delete this prompt? This action cannot be undone."
+      )
+    ) {
       chrome.storage.sync.get(trashFolderId, function (data) {
         if (chrome.runtime.lastError) {
           console.error("Error fetching trash data:", chrome.runtime.lastError);
@@ -831,7 +906,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (trashFolder.prompts.length === 0) {
           chrome.storage.sync.remove(trashFolderId, function () {
             if (chrome.runtime.lastError) {
-              console.error("Error removing trash folder:", chrome.runtime.lastError);
+              console.error(
+                "Error removing trash folder:",
+                chrome.runtime.lastError
+              );
             }
             console.log("Trash folder deleted (empty)");
             promptItem.remove();
@@ -839,16 +917,22 @@ document.addEventListener("DOMContentLoaded", function () {
             showTrashedPrompts();
           });
         } else {
-          chrome.storage.sync.set({ [trashFolderId]: trashFolder }, function () {
-            if (chrome.runtime.lastError) {
-              console.error("Error deleting prompt from trash:", chrome.runtime.lastError);
-              alert("Fehler beim endgültigen Löschen der Prompt.");
-            } else {
-              console.log("Prompt permanently deleted from trash");
-              promptItem.remove();
-              showTrashedPrompts();
+          chrome.storage.sync.set(
+            { [trashFolderId]: trashFolder },
+            function () {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Error deleting prompt from trash:",
+                  chrome.runtime.lastError
+                );
+                alert("Fehler beim endgültigen Löschen der Prompt.");
+              } else {
+                console.log("Prompt permanently deleted from trash");
+                promptItem.remove();
+                showTrashedPrompts();
+              }
             }
-          });
+          );
         }
       });
     }
@@ -856,7 +940,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function copyPrompt(prompt) {
     const text = typeof prompt === "string" ? prompt : prompt.content;
-    navigator.clipboard.writeText(text)
+    navigator.clipboard
+      .writeText(text)
       .then(() => {
         alert("Prompt copied to clipboard!");
       })
@@ -868,12 +953,14 @@ document.addEventListener("DOMContentLoaded", function () {
   function sharePrompt(prompt) {
     const text = typeof prompt === "string" ? prompt : prompt.content;
     if (navigator.share) {
-      navigator.share({
-        title: typeof prompt === "string" ? "Prompt" : prompt.title,
-        text: text,
-      }).catch((err) => {
-        console.error("Failed to share prompt:", err);
-      });
+      navigator
+        .share({
+          title: typeof prompt === "string" ? "Prompt" : prompt.title,
+          text: text,
+        })
+        .catch((err) => {
+          console.error("Failed to share prompt:", err);
+        });
     } else {
       alert("Sharing is not supported in this browser.");
     }
@@ -902,17 +989,22 @@ document.addEventListener("DOMContentLoaded", function () {
     const titleLabel = document.createElement("label");
     titleLabel.textContent = "Title:";
     const titleText = document.createElement("p");
-    titleText.textContent = typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title;
+    titleText.textContent =
+      typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title;
 
     const descLabel = document.createElement("label");
     descLabel.textContent = "Description:";
     const descText = document.createElement("p");
-    descText.textContent = typeof prompt === "string" ? "N/A" : prompt.description || "No description";
+    descText.textContent =
+      typeof prompt === "string"
+        ? "N/A"
+        : prompt.description || "No description";
 
     const contentLabel = document.createElement("label");
     contentLabel.textContent = "Content:";
     const contentText = document.createElement("p");
-    contentText.textContent = typeof prompt === "string" ? prompt : prompt.content;
+    contentText.textContent =
+      typeof prompt === "string" ? prompt : prompt.content;
 
     modalHeader.appendChild(closeSpan);
     modalHeader.appendChild(headerTitle);
@@ -1011,17 +1103,23 @@ document.addEventListener("DOMContentLoaded", function () {
       document.head.removeChild(style);
     };
 
-    window.addEventListener("click", function (event) {
-      if (event.target === modal) {
-        modal.style.display = "none";
-        document.body.removeChild(modal);
-        document.head.removeChild(style);
-      }
-    }, { once: true });
+    window.addEventListener(
+      "click",
+      function (event) {
+        if (event.target === modal) {
+          modal.style.display = "none";
+          document.body.removeChild(modal);
+          document.head.removeChild(style);
+        }
+      },
+      { once: true }
+    );
   }
 
   function removeFromFolder(currentFolderId, promptIndex, promptItem) {
-    if (confirm("Are you sure you want to remove this prompt from its folder?")) {
+    if (
+      confirm("Are you sure you want to remove this prompt from its folder?")
+    ) {
       chrome.storage.sync.get(currentFolderId, function (data) {
         if (chrome.runtime.lastError) {
           console.error("Error fetching data:", chrome.runtime.lastError);
@@ -1034,7 +1132,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const prompt = topic.prompts[promptIndex];
         topic.prompts.splice(promptIndex, 1);
 
-        const hiddenFolderId = `hidden_folder_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        const hiddenFolderId = `hidden_folder_${Date.now()}_${Math.floor(
+          Math.random() * 10000
+        )}`;
         let folderName;
         if (typeof prompt === "string") {
           folderName = prompt.slice(0, 50);
@@ -1058,15 +1158,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
         chrome.storage.sync.set(updates, function () {
           if (chrome.runtime.lastError) {
-            console.error("Error moving prompt to hidden folder:", chrome.runtime.lastError);
+            console.error(
+              "Error moving prompt to hidden folder:",
+              chrome.runtime.lastError
+            );
           } else {
-            console.log(`Prompt removed from ${currentFolderId} and moved to hidden folder ${hiddenFolderId}`);
+            console.log(
+              `Prompt removed from ${currentFolderId} and moved to hidden folder ${hiddenFolderId}`
+            );
             promptItem.remove();
             loadFolderNavigation();
             showFolderContent(currentFolderId);
             if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
-            else if (mainHeaderTitle.textContent === "Single Prompts") showSinglePrompts();
-            else if (mainHeaderTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
+            else if (mainHeaderTitle.textContent === "Single Prompts")
+              showSinglePrompts();
+            else if (mainHeaderTitle.textContent === "Categorised Prompts")
+              showCategorisedPrompts();
           }
         });
       });
@@ -1081,7 +1188,11 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const folders = Object.entries(data).filter(
-        ([, topic]) => topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden && !topic.isTrash
+        ([, topic]) =>
+          topic.prompts &&
+          Array.isArray(topic.prompts) &&
+          !topic.isHidden &&
+          !topic.isTrash
       );
 
       if (folders.length === 0) {
@@ -1141,7 +1252,8 @@ document.addEventListener("DOMContentLoaded", function () {
       moveButton.style.marginTop = "15px";
 
       select.addEventListener("change", () => {
-        moveButton.disabled = select.value === "" || select.value === currentFolderId;
+        moveButton.disabled =
+          select.value === "" || select.value === currentFolderId;
       });
 
       moveButton.addEventListener("click", () => {
@@ -1164,13 +1276,17 @@ document.addEventListener("DOMContentLoaded", function () {
           if (chrome.runtime.lastError) {
             console.error("Error moving prompt:", chrome.runtime.lastError);
           } else {
-            console.log(`Prompt moved from ${currentFolderId} to ${targetFolderId}`);
+            console.log(
+              `Prompt moved from ${currentFolderId} to ${targetFolderId}`
+            );
             promptItem.remove();
             loadFolderNavigation();
             showFolderContent(currentFolderId);
             if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
-            else if (mainHeaderTitle.textContent === "Single Prompts") showSinglePrompts();
-            else if (mainHeaderTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
+            else if (mainHeaderTitle.textContent === "Single Prompts")
+              showSinglePrompts();
+            else if (mainHeaderTitle.textContent === "Categorised Prompts")
+              showCategorisedPrompts();
           }
         });
 
@@ -1278,13 +1394,17 @@ document.addEventListener("DOMContentLoaded", function () {
         document.head.removeChild(style);
       };
 
-      window.addEventListener("click", function (event) {
-        if (event.target === modal) {
-          modal.style.display = "none";
-          document.body.removeChild(modal);
-          document.head.removeChild(style);
-        }
-      }, { once: true });
+      window.addEventListener(
+        "click",
+        function (event) {
+          if (event.target === modal) {
+            modal.style.display = "none";
+            document.body.removeChild(modal);
+            document.head.removeChild(style);
+          }
+        },
+        { once: true }
+      );
 
       select.focus();
     });
@@ -1329,14 +1449,22 @@ document.addEventListener("DOMContentLoaded", function () {
         noPrompts.style.padding = "15px";
         promptList.appendChild(noPrompts);
       } else {
-        allPrompts.forEach(({ prompt, folderId, index, totalPrompts, isHidden }) => {
-          const promptItem = createPromptItem(prompt, folderId, index, totalPrompts);
-          if (isHidden) {
-            promptItem.style.opacity = "0.8";
-            promptItem.title = "This prompt is not assigned to a visible folder";
+        allPrompts.forEach(
+          ({ prompt, folderId, index, totalPrompts, isHidden }) => {
+            const promptItem = createPromptItem(
+              prompt,
+              folderId,
+              index,
+              totalPrompts
+            );
+            if (isHidden) {
+              promptItem.style.opacity = "0.8";
+              promptItem.title =
+                "This prompt is not assigned to a visible folder";
+            }
+            promptList.appendChild(promptItem);
           }
-          promptList.appendChild(promptItem);
-        });
+        );
       }
 
       promptsContainer.appendChild(promptList);
@@ -1365,7 +1493,9 @@ document.addEventListener("DOMContentLoaded", function () {
       promptList.classList.add("prompt-list");
 
       const singlePrompts = Object.entries(data)
-        .filter(([, topic]) => topic.prompts && topic.isHidden && !topic.isTrash)
+        .filter(
+          ([, topic]) => topic.prompts && topic.isHidden && !topic.isTrash
+        )
         .map(([id, topic]) => ({
           prompt: topic.prompts[0],
           folderId: id,
@@ -1381,14 +1511,22 @@ document.addEventListener("DOMContentLoaded", function () {
         noPrompts.style.padding = "15px";
         promptList.appendChild(noPrompts);
       } else {
-        singlePrompts.forEach(({ prompt, folderId, index, totalPrompts, isHidden }) => {
-          const promptItem = createPromptItem(prompt, folderId, index, totalPrompts);
-          if (isHidden) {
-            promptItem.style.opacity = "0.8";
-            promptItem.title = "This prompt is not assigned to a visible folder";
+        singlePrompts.forEach(
+          ({ prompt, folderId, index, totalPrompts, isHidden }) => {
+            const promptItem = createPromptItem(
+              prompt,
+              folderId,
+              index,
+              totalPrompts
+            );
+            if (isHidden) {
+              promptItem.style.opacity = "0.8";
+              promptItem.title =
+                "This prompt is not assigned to a visible folder";
+            }
+            promptList.appendChild(promptItem);
           }
-          promptList.appendChild(promptItem);
-        });
+        );
       }
 
       promptsContainer.appendChild(promptList);
@@ -1417,7 +1555,11 @@ document.addEventListener("DOMContentLoaded", function () {
       promptList.classList.add("prompt-list");
 
       const trashFolder = data["trash_folder"];
-      if (!trashFolder || !trashFolder.prompts || trashFolder.prompts.length === 0) {
+      if (
+        !trashFolder ||
+        !trashFolder.prompts ||
+        trashFolder.prompts.length === 0
+      ) {
         const noPrompts = document.createElement("li");
         noPrompts.textContent = "No prompts in trash";
         noPrompts.style.color = "#888";
@@ -1425,7 +1567,12 @@ document.addEventListener("DOMContentLoaded", function () {
         promptList.appendChild(noPrompts);
       } else {
         trashFolder.prompts.forEach((prompt, index) => {
-          const promptItem = createPromptItem(prompt, "trash_folder", index, trashFolder.prompts.length);
+          const promptItem = createPromptItem(
+            prompt,
+            "trash_folder",
+            index,
+            trashFolder.prompts.length
+          );
           promptList.appendChild(promptItem);
         });
       }
@@ -1450,7 +1597,8 @@ document.addEventListener("DOMContentLoaded", function () {
       folderListSection.classList.add("hidden");
       searchResults.classList.add("hidden");
 
-      document.getElementById("mainHeaderTitle").textContent = "Categorised Prompts";
+      document.getElementById("mainHeaderTitle").textContent =
+        "Categorised Prompts";
       promptsContainer.innerHTML = "";
 
       const promptList = document.createElement("ul");
@@ -1458,7 +1606,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       let categorisedPrompts = [];
       Object.entries(data)
-        .filter(([, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash)
+        .filter(
+          ([, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash
+        )
         .forEach(([id, topic]) => {
           categorisedPrompts = categorisedPrompts.concat(
             topic.prompts.map((prompt, index) => ({
@@ -1477,10 +1627,17 @@ document.addEventListener("DOMContentLoaded", function () {
         noPrompts.style.padding = "15px";
         promptList.appendChild(noPrompts);
       } else {
-        categorisedPrompts.forEach(({ prompt, folderId, index, totalPrompts }) => {
-          const promptItem = createPromptItem(prompt, folderId, index, totalPrompts);
-          promptList.appendChild(promptItem);
-        });
+        categorisedPrompts.forEach(
+          ({ prompt, folderId, index, totalPrompts }) => {
+            const promptItem = createPromptItem(
+              prompt,
+              folderId,
+              index,
+              totalPrompts
+            );
+            promptList.appendChild(promptItem);
+          }
+        );
       }
 
       promptsContainer.appendChild(promptList);
@@ -1495,7 +1652,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const input = document.createElement("input");
     input.type = "text";
     input.value = currentName;
-    input.class	="rename-input";
+    input.class = "rename-input";
     folderTitleElement.replaceWith(input);
     input.focus();
 
@@ -1507,7 +1664,10 @@ document.addEventListener("DOMContentLoaded", function () {
             data[folderId].name = newName;
             chrome.storage.sync.set(data, function () {
               if (chrome.runtime.lastError) {
-                console.error("Error renaming folder:", chrome.runtime.lastError);
+                console.error(
+                  "Error renaming folder:",
+                  chrome.runtime.lastError
+                );
               } else {
                 console.log(`Folder ${folderId} renamed to ${newName}`);
                 folderTitleElement.textContent = `${newName} (${data[folderId].prompts.length})`;
@@ -1530,7 +1690,11 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function deleteFolder(folderId, folderCard) {
-    if (confirm("Are you sure you want to delete this folder and all its prompts?")) {
+    if (
+      confirm(
+        "Are you sure you want to delete this folder and all its prompts?"
+      )
+    ) {
       chrome.storage.sync.remove(folderId, function () {
         if (chrome.runtime.lastError) {
           console.error("Error deleting folder:", chrome.runtime.lastError);
@@ -1540,9 +1704,12 @@ document.addEventListener("DOMContentLoaded", function () {
           loadFolderNavigation();
           loadFolders();
           if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
-          else if (mainHeaderTitle.textContent === "Single Prompts") showSinglePrompts();
-          else if (mainHeaderTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
-          else if (mainHeaderTitle.textContent === "Trash") showTrashedPrompts();
+          else if (mainHeaderTitle.textContent === "Single Prompts")
+            showSinglePrompts();
+          else if (mainHeaderTitle.textContent === "Categorised Prompts")
+            showCategorisedPrompts();
+          else if (mainHeaderTitle.textContent === "Trash")
+            showTrashedPrompts();
         }
       });
     }
@@ -1581,7 +1748,8 @@ document.addEventListener("DOMContentLoaded", function () {
       titleLabel.textContent = "Title:";
       const titleInput = document.createElement("input");
       titleInput.type = "text";
-      titleInput.value = typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title || "";
+      titleInput.value =
+        typeof prompt === "string" ? prompt.slice(0, 50) : prompt.title || "";
       titleInput.style.width = "100%";
       titleInput.style.padding = "8px";
       titleInput.style.borderRadius = "4px";
@@ -1590,7 +1758,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const descLabel = document.createElement("label");
       descLabel.textContent = "Description:";
       const descInput = document.createElement("textarea");
-      descInput.value = typeof prompt === "string" ? "" : prompt.description || "";
+      descInput.value =
+        typeof prompt === "string" ? "" : prompt.description || "";
       descInput.style.width = "100%";
       descInput.style.padding = "8px";
       descInput.style.borderRadius = "4px";
@@ -1600,7 +1769,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const contentLabel = document.createElement("label");
       contentLabel.textContent = "Prompt:";
       const contentInput = document.createElement("textarea");
-      contentInput.value = typeof prompt === "string" ? prompt : prompt.content || "";
+      contentInput.value =
+        typeof prompt === "string" ? prompt : prompt.content || "";
       contentInput.style.width = "100%";
       contentInput.style.padding = "8px";
       contentInput.style.borderRadius = "4px";
@@ -1654,9 +1824,11 @@ document.addEventListener("DOMContentLoaded", function () {
             promptItem.querySelector(".prompt-text").textContent = newTitle;
             if (!data[folderId].isHidden) {
               showFolderContent(folderId);
-              if (mainHeaderTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
+              if (mainHeaderTitle.textContent === "Categorised Prompts")
+                showCategorisedPrompts();
             } else {
-              if (mainHeaderTitle.textContent === "Single Prompts") showSinglePrompts();
+              if (mainHeaderTitle.textContent === "Single Prompts")
+                showSinglePrompts();
             }
             if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
           }
@@ -1782,13 +1954,17 @@ document.addEventListener("DOMContentLoaded", function () {
         document.head.removeChild(style);
       };
 
-      window.addEventListener("click", function (event) {
-        if (event.target === modal) {
-          modal.style.display = "none";
-          document.body.removeChild(modal);
-          document.head.removeChild(style);
-        }
-      }, { once: true });
+      window.addEventListener(
+        "click",
+        function (event) {
+          if (event.target === modal) {
+            modal.style.display = "none";
+            document.body.removeChild(modal);
+            document.head.removeChild(style);
+          }
+        },
+        { once: true }
+      );
 
       titleInput.focus();
     });
@@ -1831,7 +2007,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         chrome.storage.sync.set(updates, function () {
           if (chrome.runtime.lastError) {
-            console.error("Error moving prompt to trash:", chrome.runtime.lastError);
+            console.error(
+              "Error moving prompt to trash:",
+              chrome.runtime.lastError
+            );
             alert("Fehler beim Verschieben der Prompt in den Papierkorb.");
           } else {
             console.log(`Prompt moved to trash from ${folderId}`);
@@ -1840,8 +2019,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (topic.prompts.length > 0) showFolderContent(folderId);
             else loadFolders();
             if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
-            else if (mainHeaderTitle.textContent === "Single Prompts") showSinglePrompts();
-            else if (mainHeaderTitle.textContent === "Categorised Prompts") showCategorisedPrompts();
+            else if (mainHeaderTitle.textContent === "Single Prompts")
+              showSinglePrompts();
+            else if (mainHeaderTitle.textContent === "Categorised Prompts")
+              showCategorisedPrompts();
           }
         });
       });
@@ -1865,7 +2046,10 @@ document.addEventListener("DOMContentLoaded", function () {
       const lowercaseQuery = query.toLowerCase();
 
       Object.entries(data).forEach(([id, topic]) => {
-        if (topic.name.toLowerCase().includes(lowercaseQuery) && !topic.isTrash) {
+        if (
+          topic.name.toLowerCase().includes(lowercaseQuery) &&
+          !topic.isTrash
+        ) {
           results.push({
             type: "folder",
             name: topic.name,
@@ -1875,7 +2059,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         topic.prompts.forEach((prompt, index) => {
           const searchText = typeof prompt === "string" ? prompt : prompt.title;
-          if (searchText.toLowerCase().includes(lowercaseQuery) && !topic.isTrash) {
+          if (
+            searchText.toLowerCase().includes(lowercaseQuery) &&
+            !topic.isTrash
+          ) {
             results.push({
               type: "prompt",
               prompt,
@@ -1902,7 +2089,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (result.type === "folder") {
           resultItem.textContent = `Folder: ${result.name} (${result.prompts.length} prompts)`;
         } else {
-          const promptText = typeof result.prompt === "string" ? result.prompt : result.prompt.title;
+          const promptText =
+            typeof result.prompt === "string"
+              ? result.prompt
+              : result.prompt.title;
           resultItem.innerHTML = `Prompt: "${promptText}" <span>(in ${result.folder})</span>`;
 
           const actions = document.createElement("span");
@@ -1916,10 +2106,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
           const menuItems = [
             { text: "Copy Prompt", action: () => copyPrompt(result.prompt) },
-            { text: "Move to Folder", action: () => movePromptToFolder(result.folderId, result.promptIndex, resultItem) },
-            { text: "Edit", action: () => editPrompt(result.folderId, result.promptIndex, resultItem) },
+            {
+              text: "Move to Folder",
+              action: () =>
+                movePromptToFolder(
+                  result.folderId,
+                  result.promptIndex,
+                  resultItem
+                ),
+            },
+            {
+              text: "Edit",
+              action: () =>
+                editPrompt(result.folderId, result.promptIndex, resultItem),
+            },
             { text: "Share", action: () => sharePrompt(result.prompt) },
-            { text: "Move to Trash", action: () => deletePrompt(result.folderId, result.promptIndex, resultItem) },
+            {
+              text: "Move to Trash",
+              action: () =>
+                deletePrompt(result.folderId, result.promptIndex, resultItem),
+            },
           ];
 
           chrome.storage.sync.get(result.folderId, (data) => {
@@ -1927,7 +2133,12 @@ document.addEventListener("DOMContentLoaded", function () {
             if (topic && !topic.isHidden && !topic.isTrash) {
               menuItems.splice(4, 0, {
                 text: "Remove from Folder",
-                action: () => removeFromFolder(result.folderId, result.promptIndex, resultItem),
+                action: () =>
+                  removeFromFolder(
+                    result.folderId,
+                    result.promptIndex,
+                    resultItem
+                  ),
               });
             }
 
@@ -1964,9 +2175,6 @@ document.addEventListener("DOMContentLoaded", function () {
       searchResults.appendChild(resultsList);
     });
   }
-
-  loadFolders();
-  loadFolderNavigation();
 
   allPromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
@@ -2008,4 +2216,6 @@ document.addEventListener("DOMContentLoaded", function () {
     folderListSection.classList.remove("hidden");
     loadFolders();
   });
+  showAllPrompts();
+  loadFolderNavigation();
 });
