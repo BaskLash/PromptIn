@@ -91,7 +91,7 @@ function inputFieldTrigger() {
           Favorites: [], // Placeholder for favorites
           "All Prompts": [],
           "Single Prompts": [],
-          "Categorised Prompts": {}, // Object with folder names as keys and prompt titles as values
+          "Categorised Prompts": { all: [] }, // Object with folder names as keys, prompt titles as values, and 'all' for combined view
         };
 
         // Map prompts to their categories, folders, and full prompt data
@@ -134,6 +134,9 @@ function inputFieldTrigger() {
                   categories["Categorised Prompts"][topic.name] = [];
                 }
                 categories["Categorised Prompts"][topic.name].push(title);
+                categories["Categorised Prompts"].all.push(
+                  `${topic.name}: ${title}`
+                );
                 promptSourceMap.set(title + "_" + id, {
                   category: "Categorised Prompts",
                   folder: topic.name,
@@ -150,10 +153,13 @@ function inputFieldTrigger() {
           if (Array.isArray(categories[key])) {
             categories[key] = [...new Set(categories[key])].sort();
           } else if (key === "Categorised Prompts") {
+            categories[key].all = [...new Set(categories[key].all)].sort();
             Object.keys(categories[key]).forEach((folder) => {
-              categories[key][folder] = [
-                ...new Set(categories[key][folder]),
-              ].sort();
+              if (folder !== "all") {
+                categories[key][folder] = [
+                  ...new Set(categories[key][folder]),
+                ].sort();
+              }
             });
           }
         });
@@ -199,17 +205,23 @@ function inputFieldTrigger() {
               navItem.style.backgroundColor = "#e3e3e3";
 
               contentPanel.innerHTML = "";
+              let items = [];
               if (category === "Categorised Prompts") {
-                // Display message or prompt titles if a folder is selected
+                items = categories[category].all;
+              } else {
+                items = categories[category];
+              }
+
+              if (items.length === 0 && category === "Categorised Prompts") {
                 const message = document.createElement("div");
-                message.textContent = "Select a folder to view prompts";
+                message.textContent = "No prompts in categorised folders";
                 message.style.padding = "10px";
                 message.style.color = "#888";
                 contentPanel.appendChild(message);
               } else {
-                categories[category].forEach((title) => {
+                items.forEach((itemText) => {
                   const contentItem = document.createElement("div");
-                  contentItem.textContent = title;
+                  contentItem.textContent = itemText;
                   contentItem.style.padding = "10px";
                   contentItem.style.cursor = "pointer";
                   contentItem.style.borderRadius = "4px";
@@ -225,6 +237,9 @@ function inputFieldTrigger() {
                   });
 
                   contentItem.addEventListener("click", () => {
+                    const title = itemText.includes(": ")
+                      ? itemText.split(": ")[1]
+                      : itemText;
                     const key = Array.from(promptSourceMap.keys()).find((k) =>
                       k.startsWith(title + "_")
                     );
@@ -251,6 +266,7 @@ function inputFieldTrigger() {
               folderContainer.style.paddingLeft = "10px";
               Object.keys(categories[category])
                 .sort()
+                .filter((key) => key !== "all")
                 .forEach((folder) => {
                   const folderItem = document.createElement("div");
                   folderItem.textContent = folder;
@@ -285,40 +301,48 @@ function inputFieldTrigger() {
                     folderItem.style.backgroundColor = "#e3e3e3";
 
                     contentPanel.innerHTML = "";
-                    categories[category][folder].forEach((title) => {
-                      const contentItem = document.createElement("div");
-                      contentItem.textContent = title;
-                      contentItem.style.padding = "10px";
-                      contentItem.style.cursor = "pointer";
-                      contentItem.style.borderRadius = "4px";
-                      contentItem.style.transition =
-                        "background-color 0.2s ease";
-                      contentItem.className = "dropdown-item";
+                    if (categories[category][folder].length === 0) {
+                      const message = document.createElement("div");
+                      message.textContent = "No prompts in this folder";
+                      message.style.padding = "10px";
+                      message.style.color = "#888";
+                      contentPanel.appendChild(message);
+                    } else {
+                      categories[category][folder].forEach((title) => {
+                        const contentItem = document.createElement("div");
+                        contentItem.textContent = title;
+                        contentItem.style.padding = "10px";
+                        contentItem.style.cursor = "pointer";
+                        contentItem.style.borderRadius = "4px";
+                        contentItem.style.transition =
+                          "background-color 0.2s ease";
+                        contentItem.className = "dropdown-item";
 
-                      contentItem.addEventListener("mouseover", () => {
-                        contentItem.style.backgroundColor = "#f8f8f8";
+                        contentItem.addEventListener("mouseover", () => {
+                          contentItem.style.backgroundColor = "#f8f8f8";
+                        });
+
+                        contentItem.addEventListener("mouseout", () => {
+                          contentItem.style.backgroundColor = "white";
+                        });
+
+                        contentItem.addEventListener("click", () => {
+                          const key = Array.from(promptSourceMap.keys()).find(
+                            (k) => k.startsWith(title + "_")
+                          );
+                          const source = promptSourceMap.get(key);
+                          if (source && source.prompt) {
+                            inputField.innerText =
+                              typeof source.prompt === "string"
+                                ? source.prompt
+                                : source.prompt.content || "";
+                          }
+                          dropdown.style.display = "none";
+                        });
+
+                        contentPanel.appendChild(contentItem);
                       });
-
-                      contentItem.addEventListener("mouseout", () => {
-                        contentItem.style.backgroundColor = "white";
-                      });
-
-                      contentItem.addEventListener("click", () => {
-                        const key = Array.from(promptSourceMap.keys()).find(
-                          (k) => k.startsWith(title + "_")
-                        );
-                        const source = promptSourceMap.get(key);
-                        if (source && source.prompt) {
-                          inputField.innerText =
-                            typeof source.prompt === "string"
-                              ? source.prompt
-                              : source.prompt.content || "";
-                        }
-                        dropdown.style.display = "none";
-                      });
-
-                      contentPanel.appendChild(contentItem);
-                    });
+                    }
                   });
 
                   folderContainer.appendChild(folderItem);
