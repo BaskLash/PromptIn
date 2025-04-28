@@ -1,6 +1,28 @@
 function inputFieldTrigger() {
   console.log("inputFieldTrigger is running!");
 
+  // Levenshtein Distance Funktion
+  function levenshteinDistance(a, b) {
+    const matrix = Array(b.length + 1)
+      .fill()
+      .map(() => Array(a.length + 1).fill(0));
+
+    for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+
+    for (let j = 1; j <= b.length; j++) {
+      for (let i = 1; i <= a.length; i++) {
+        const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1, // Deletion
+          matrix[j - 1][i] + 1, // Insertion
+          matrix[j - 1][i - 1] + indicator // Substitution
+        );
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
   // Warte, bis das DOM geladen ist
   document.addEventListener("DOMContentLoaded", () => {
     // Warte zusätzlich 2 Sekunden nach DOM-Laden
@@ -39,7 +61,7 @@ function inputFieldTrigger() {
       dropdown.style.transition = "opacity 0.3s ease, transform 0.3s ease";
       document.body.appendChild(dropdown);
 
-      // Left nav panel
+      // Left nav panel (used only when no search query)
       const navPanel = document.createElement("div");
       navPanel.style.width = "150px";
       navPanel.style.borderRight = "1px solid #eee";
@@ -66,11 +88,14 @@ function inputFieldTrigger() {
         }
 
         const categories = {
-          Favorites: [], // Placeholder for favorites (extend if favorites logic is added)
+          Favorites: [], // Placeholder for favorites
           "All Prompts": [],
           "Single Prompts": [],
           "Categorised Prompts": [],
         };
+
+        // Map prompts to their categories/folders for display
+        const promptSourceMap = new Map(); // Maps prompt title to { category, folder }
 
         // Process all prompts and folders
         Object.entries(data).forEach(([id, topic]) => {
@@ -82,31 +107,39 @@ function inputFieldTrigger() {
             );
 
             // Add to All Prompts
-            categories["All Prompts"].push(...promptTitles);
+            promptTitles.forEach((title) => {
+              categories["All Prompts"].push(title);
+              promptSourceMap.set(title, {
+                category: "All Prompts",
+                folder: null,
+              });
+            });
 
             // Add to Single Prompts if hidden
             if (topic.isHidden) {
-              categories["Single Prompts"].push(...promptTitles);
+              promptTitles.forEach((title) => {
+                categories["Single Prompts"].push(title);
+                promptSourceMap.set(title, {
+                  category: "Single Prompts",
+                  folder: null,
+                });
+              });
             }
 
             // Add to Categorised Prompts if not hidden
             if (!topic.isHidden) {
-              categories["Categorised Prompts"].push({
-                name: topic.name,
-                prompts: promptTitles,
+              promptTitles.forEach((title) => {
+                categories["Categorised Prompts"].push(
+                  `${topic.name}: ${title}`
+                );
+                promptSourceMap.set(title, {
+                  category: "Categorised Prompts",
+                  folder: topic.name,
+                });
               });
             }
           }
         });
-
-        // Flatten Categorised Prompts for display
-        const categorisedPromptItems = [];
-        categories["Categorised Prompts"].forEach((folder) => {
-          folder.prompts.forEach((promptTitle) => {
-            categorisedPromptItems.push(`${folder.name}: ${promptTitle}`);
-          });
-        });
-        categories["Categorised Prompts"] = categorisedPromptItems;
 
         // Remove duplicates and sort
         Object.keys(categories).forEach((key) => {
@@ -115,43 +148,120 @@ function inputFieldTrigger() {
           }
         });
 
-        // Proceed with category rendering
-        Object.keys(categories).forEach((category) => {
-          const navItem = document.createElement("div");
-          navItem.textContent = category;
-          navItem.style.padding = "10px";
-          navItem.style.cursor = "pointer";
-          navItem.style.borderRadius = "4px";
-          navItem.style.transition =
-            "background-color 0.2s ease, font-weight 0.2s ease";
-          navItem.className = "nav-item";
+        // Function to render category navigation (for / only)
+        function renderCategoryNavigation() {
+          navPanel.style.display = "block";
+          contentPanel.style.width = "250px";
+          navPanel.innerHTML = "";
+          contentPanel.innerHTML = "";
 
-          navItem.addEventListener("mouseover", () => {
-            navItem.style.backgroundColor = "#f0f0f0";
-          });
+          Object.keys(categories).forEach((category) => {
+            const navItem = document.createElement("div");
+            navItem.textContent = category;
+            navItem.style.padding = "10px";
+            navItem.style.cursor = "pointer";
+            navItem.style.borderRadius = "4px";
+            navItem.style.transition =
+              "background-color 0.2s ease, font-weight 0.2s ease";
+            navItem.className = "nav-item";
 
-          navItem.addEventListener("mouseout", () => {
-            if (!navItem.classList.contains("active")) {
-              navItem.style.backgroundColor = "transparent";
-            }
-          });
-
-          navItem.addEventListener("click", () => {
-            document.querySelectorAll(".nav-item").forEach((item) => {
-              item.classList.remove("active");
-              item.style.fontWeight = "normal";
-              item.style.backgroundColor = "transparent";
+            navItem.addEventListener("mouseover", () => {
+              navItem.style.backgroundColor = "#f0f0f0";
             });
 
-            navItem.classList.add("active");
-            navItem.style.fontWeight = "bold";
-            navItem.style.backgroundColor = "#e3e3e3";
+            navItem.addEventListener("mouseout", () => {
+              if (!navItem.classList.contains("active")) {
+                navItem.style.backgroundColor = "transparent";
+              }
+            });
 
-            contentPanel.innerHTML = "";
-            categories[category].forEach((itemText) => {
+            navItem.addEventListener("click", () => {
+              document.querySelectorAll(".nav-item").forEach((item) => {
+                item.classList.remove("active");
+                item.style.fontWeight = "normal";
+                item.style.backgroundColor = "transparent";
+              });
+
+              navItem.classList.add("active");
+              navItem.style.fontWeight = "bold";
+              navItem.style.backgroundColor = "#e3e3e3";
+
+              contentPanel.innerHTML = "";
+              categories[category].forEach((itemText) => {
+                const contentItem = document.createElement("div");
+                contentItem.textContent =
+                  typeof itemText === "string" ? itemText : itemText.name;
+                contentItem.style.padding = "10px";
+                contentItem.style.cursor = "pointer";
+                contentItem.style.borderRadius = "4px";
+                contentItem.style.transition = "background-color 0.2s ease";
+                contentItem.className = "dropdown-item";
+
+                contentItem.addEventListener("mouseover", () => {
+                  contentItem.style.backgroundColor = "#f8f8f8";
+                });
+
+                contentItem.addEventListener("mouseout", () => {
+                  contentItem.style.backgroundColor = "white";
+                });
+
+                contentItem.addEventListener("click", () => {
+                  inputField.innerText = itemText;
+                  dropdown.style.display = "none";
+                });
+
+                contentPanel.appendChild(contentItem);
+              });
+            });
+
+            navPanel.appendChild(navItem);
+          });
+
+          // Select first category by default
+          const firstNavItem = navPanel.querySelector(".nav-item");
+          if (firstNavItem) {
+            firstNavItem.click();
+          }
+        }
+
+        // Function to render filtered search results
+        function renderSearchResults(query) {
+          navPanel.style.display = "none";
+          contentPanel.style.width = "100%";
+          contentPanel.innerHTML = "";
+
+          // Collect all prompt titles with their sources
+          const allPrompts = [];
+          promptSourceMap.forEach((source, title) => {
+            allPrompts.push({ title, source });
+          });
+
+          // Score prompts based on Levenshtein distance
+          const scoredPrompts = allPrompts.map(({ title, source }) => {
+            const distance = levenshteinDistance(
+              title.toLowerCase(),
+              query.toLowerCase()
+            );
+            return { title, source, distance };
+          });
+
+          // Sort by distance (best match first)
+          scoredPrompts.sort((a, b) => a.distance - b.distance);
+
+          // Display results
+          if (scoredPrompts.length === 0) {
+            const noResults = document.createElement("div");
+            noResults.textContent = "No matching prompts found";
+            noResults.style.padding = "10px";
+            noResults.style.color = "#888";
+            contentPanel.appendChild(noResults);
+          } else {
+            scoredPrompts.forEach(({ title, source }) => {
               const contentItem = document.createElement("div");
-              contentItem.textContent =
-                typeof itemText === "string" ? itemText : itemText.name;
+              const displayText = source.folder
+                ? `${title} (${source.folder})`
+                : `${title} (${source.category})`;
+              contentItem.textContent = displayText;
               contentItem.style.padding = "10px";
               contentItem.style.cursor = "pointer";
               contentItem.style.borderRadius = "4px";
@@ -167,134 +277,135 @@ function inputFieldTrigger() {
               });
 
               contentItem.addEventListener("click", () => {
-                inputField.innerText = itemText;
+                inputField.innerText = title;
                 dropdown.style.display = "none";
               });
 
               contentPanel.appendChild(contentItem);
             });
-          });
+          }
+        }
 
-          navPanel.appendChild(navItem);
+        // Initial render of category navigation
+        renderCategoryNavigation();
+
+        // Konfigurierbare Abstände
+        const gapAbove = 2; // Abstand nach oben (in Pixeln), wenn Dropdown oberhalb
+        const gapBelow = 2; // Abstand nach unten (in Pixeln), wenn Dropdown unterhalb
+
+        // Funktion zum Positionieren des Dropdowns
+        function positionDropdown() {
+          const rect = inputField.getBoundingClientRect();
+          const dropdownHeight = parseFloat(dropdown.style.maxHeight) || 300; // Dropdown-Höhe
+          const spaceBelow = window.innerHeight - rect.bottom; // Platz unterhalb des Input-Feldes
+          const spaceNeeded = dropdownHeight + 10; // Etwas Puffer
+
+          dropdown.style.left = `${rect.left + window.scrollX}px`;
+
+          if (spaceBelow < spaceNeeded) {
+            // Nicht genug Platz unten -> Dropdown oberhalb platzieren
+            dropdown.style.top = `${
+              rect.top + window.scrollY - dropdownHeight - gapAbove
+            }px`;
+            dropdown.style.transform = "translateY(-5px)"; // Weniger weit nach oben animieren
+          } else {
+            // Genug Platz unten -> Dropdown unterhalb platzieren
+            dropdown.style.top = `${rect.bottom + window.scrollY + gapBelow}px`;
+            dropdown.style.transform = "translateY(10px)"; // Für Animation nach unten
+          }
+
+          // Sicherstellen, dass das Dropdown nicht über den rechten Rand hinausragt
+          const dropdownRect = dropdown.getBoundingClientRect();
+          if (dropdownRect.right > window.innerWidth) {
+            dropdown.style.left = `${
+              window.innerWidth - dropdownRect.width + window.scrollX - 10
+            }px`;
+          }
+        }
+
+        inputField.addEventListener("keyup", function (e) {
+          const text = inputField.innerText.trim();
+          const slashIndex = text.indexOf("/");
+
+          if (slashIndex !== -1) {
+            const query = text
+              .slice(slashIndex + 1)
+              .trim()
+              .toLowerCase();
+            dropdown.style.display = "flex";
+            positionDropdown();
+
+            // Animate in
+            requestAnimationFrame(() => {
+              dropdown.style.opacity = "1";
+              dropdown.style.transform = "translateY(0)";
+            });
+
+            // Render based on query
+            if (query) {
+              renderSearchResults(query);
+            } else {
+              renderCategoryNavigation();
+            }
+          }
+
+          if (e.key === "Escape" || !text.includes("/")) {
+            dropdown.style.opacity = "0";
+            dropdown.style.transform = "translateY(10px)";
+            setTimeout(() => {
+              dropdown.style.display = "none";
+            }, 300);
+          }
         });
 
-        // Select first category by default
-        const firstNavItem = navPanel.querySelector(".nav-item");
-        if (firstNavItem) {
-          firstNavItem.click();
-        }
-      });
+        // Adjust on resize
+        window.addEventListener("resize", () => {
+          if (dropdown.style.display === "flex") {
+            positionDropdown();
+          }
+        });
 
-      // Konfigurierbare Abstände
-      const gapAbove = 2; // Abstand nach oben (in Pixeln), wenn Dropdown oberhalb
-      const gapBelow = 2; // Abstand nach unten (in Pixeln), wenn Dropdown unterhalb
+        // Adjust on scroll
+        window.addEventListener("scroll", () => {
+          if (dropdown.style.display === "flex") {
+            positionDropdown();
+          }
+        });
 
-      // Funktion zum Positionieren des Dropdowns
-      function positionDropdown() {
-        const rect = inputField.getBoundingClientRect();
-        const dropdownHeight = parseFloat(dropdown.style.maxHeight) || 300; // Dropdown-Höhe
-        const spaceBelow = window.innerHeight - rect.bottom; // Platz unterhalb des Input-Feldes
-        const spaceNeeded = dropdownHeight + 10; // Etwas Puffer
+        /* Plus Button */
+        // Ziel-Element auswählen
+        const container = document.querySelector(
+          "[data-testid='composer-footer-actions']"
+        );
 
-        dropdown.style.left = `${rect.left + window.scrollX}px`;
-
-        if (spaceBelow < spaceNeeded) {
-          // Nicht genug Platz unten -> Dropdown oberhalb platzieren
-          dropdown.style.top = `${
-            rect.top + window.scrollY - dropdownHeight - gapAbove
-          }px`;
-          dropdown.style.transform = "translateY(-5px)"; // Weniger weit nach oben animieren
-        } else {
-          // Genug Platz unten -> Dropdown unterhalb platzieren
-          dropdown.style.top = `${rect.bottom + window.scrollY + gapBelow}px`;
-          dropdown.style.transform = "translateY(10px)"; // Für Animation nach unten
-        }
-
-        // Sicherstellen, dass das Dropdown nicht über den rechten Rand hinausragt
-        const dropdownRect = dropdown.getBoundingClientRect();
-        if (dropdownRect.right > window.innerWidth) {
-          dropdown.style.left = `${
-            window.innerWidth - dropdownRect.width + window.scrollX - 10
-          }px`;
-        }
-      }
-
-      inputField.addEventListener("keyup", function (e) {
-        if (e.key === "/") {
-          dropdown.style.display = "flex";
-          positionDropdown();
-
-          // Animate in
-          requestAnimationFrame(() => {
-            dropdown.style.opacity = "1";
-            dropdown.style.transform = "translateY(0)";
-          });
-        }
-
-        if (e.key === "Escape") {
-          dropdown.style.opacity = "0";
-          dropdown.style.transform = "translateY(10px)";
-          setTimeout(() => {
-            dropdown.style.display = "none";
-          }, 300);
-        }
-
-        if (!inputField.innerText.includes("/")) {
-          dropdown.style.opacity = "0";
-          dropdown.style.transform = "translateY(10px)";
-          setTimeout(() => {
-            dropdown.style.display = "none";
-          }, 300);
-        }
-      });
-
-      // Adjust on resize
-      window.addEventListener("resize", () => {
-        if (dropdown.style.display === "flex") {
-          positionDropdown();
-        }
-      });
-
-      // Adjust on scroll
-      window.addEventListener("scroll", () => {
-        if (dropdown.style.display === "flex") {
-          positionDropdown();
-        }
-      });
-
-      /* Plus Button */
-      // Ziel-Element auswählen
-      const container = document.querySelector(
-        "[data-testid='composer-footer-actions']"
-      );
-
-      // Neuen Button erstellen
-      const button = document.createElement("button");
-      button.textContent = "+"; // "+" Zeichen
-      button.style.width = "40px";
-      button.style.height = "40px";
-      button.style.borderRadius = "50%";
-      button.style.backgroundColor = "white";
-      button.style.color = "black";
-      button.style.border = "none";
-      button.style.cursor = "pointer";
-      button.style.fontSize = "24px";
-      button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-      button.style.transition = "box-shadow 0.3s ease";
-      button.style.display = "flex";
-      button.style.alignItems = "center";
-      button.style.justifyContent = "center";
-
-      // Hover-Effekt mit JavaScript
-      button.addEventListener("mouseover", () => {
-        button.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-      });
-      button.addEventListener("mouseout", () => {
+        // Neuen Button erstellen
+        const button = document.createElement("button");
+        button.textContent = "+"; // "+" Zeichen
+        button.style.width = "40px";
+        button.style.height = "40px";
+        button.style.borderRadius = "50%";
+        button.style.backgroundColor = "white";
+        button.style.color = "black";
+        button.style.border = "none";
+        button.style.cursor = "pointer";
+        button.style.fontSize = "24px";
         button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-      });
+        button.style.transition = "box-shadow 0.3s ease";
+        button.style.display = "flex";
+        button.style.alignItems = "center";
+        button.style.justifyContent = "center";
 
-      // Button dem Container hinzufügen
-      container.appendChild(button);
+        // Hover-Effekt mit JavaScript
+        button.addEventListener("mouseover", () => {
+          button.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
+        });
+        button.addEventListener("mouseout", () => {
+          button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+        });
+
+        // Button dem Container hinzufügen
+        container.appendChild(button);
+      });
     }, 2000); // 2 Sekunden Verzögerung
   });
 }
