@@ -924,4 +924,14 @@ document.addEventListener("DOMContentLoaded", function () {
   // Initiale Anzeige: Alle Prompts laden
   loadPrompts("all");
   loadFolders();
+
+  document.getElementById("feedback-btn").addEventListener("click", () => {
+    window.open("https://forms.gle/9fN4XeUbhFL1xsyx8", "_blank");
+  });
+
+  document
+    .getElementById("feature-request-btn")
+    .addEventListener("click", () => {
+      window.open("https://forms.gle/5EM4tPz9b7d1p6iB7", "_blank");
+    });
 });

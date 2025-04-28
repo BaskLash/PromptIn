@@ -7,13 +7,11 @@ function inputFieldTrigger() {
     setTimeout(() => {
       const inputField = document.getElementById("prompt-textarea");
 
-      // Prüfe, ob inputField existiert
       if (!inputField) {
         console.error("Input field with ID 'prompt-textarea' not found.");
         return;
       }
 
-      // Prüfe, ob document.body existiert
       if (!document.body) {
         console.error("Document body is not available.");
         return;
@@ -23,35 +21,40 @@ function inputFieldTrigger() {
       dropdown.id = "dropdown";
       dropdown.style.position = "absolute";
       dropdown.style.backgroundColor = "white";
-      dropdown.style.color = "black";
-      dropdown.style.border = "1px solid #ccc";
-      dropdown.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
+      dropdown.style.color = "#333";
+      dropdown.style.border = "1px solid #ddd";
+      dropdown.style.borderRadius = "8px";
+      dropdown.style.boxShadow = "0 10px 30px rgba(0, 0, 0, 0.15)";
       dropdown.style.width = "400px";
       dropdown.style.maxHeight = "300px";
-      dropdown.style.overflowY = "auto";
+      dropdown.style.overflow = "hidden";
       dropdown.style.display = "none";
-      dropdown.style.zIndex = "10000"; // Höherer zIndex für Chrome-Erweiterung
+      dropdown.style.zIndex = "10000";
       dropdown.style.display = "flex";
       dropdown.style.flexDirection = "row";
+      dropdown.style.fontFamily = "Segoe UI, sans-serif";
+      dropdown.style.backdropFilter = "blur(6px)";
+      dropdown.style.opacity = "0";
+      dropdown.style.transform = "translateY(10px)";
+      dropdown.style.transition = "opacity 0.3s ease, transform 0.3s ease";
       document.body.appendChild(dropdown);
 
-      // Create navigation panel (left side)
+      // Left nav panel
       const navPanel = document.createElement("div");
       navPanel.style.width = "150px";
-      navPanel.style.borderRight = "1px solid #ccc";
+      navPanel.style.borderRight = "1px solid #eee";
       navPanel.style.padding = "10px";
-      navPanel.style.backgroundColor = "#f9f9f9";
+      navPanel.style.backgroundColor = "#fafafa";
       navPanel.style.overflowY = "auto";
       dropdown.appendChild(navPanel);
 
-      // Create content panel (right side)
+      // Right content panel
       const contentPanel = document.createElement("div");
       contentPanel.style.flex = "1";
       contentPanel.style.padding = "10px";
       contentPanel.style.overflowY = "auto";
       dropdown.appendChild(contentPanel);
 
-      // Define categories and their items
       const categories = {
         Favorites: ["Starred Item 1", "Starred Item 2"],
         All: ["Option 1", "Option 2", "Option 3", "Option 4"],
@@ -59,107 +62,121 @@ function inputFieldTrigger() {
         Settings: ["Setting X", "Setting Y"],
       };
 
-      // Create navigation items
       Object.keys(categories).forEach((category) => {
         const navItem = document.createElement("div");
         navItem.textContent = category;
         navItem.style.padding = "10px";
         navItem.style.cursor = "pointer";
+        navItem.style.borderRadius = "4px";
+        navItem.style.transition =
+          "background-color 0.2s ease, font-weight 0.2s ease";
         navItem.className = "nav-item";
+
         navItem.addEventListener("mouseover", () => {
-          navItem.style.backgroundColor = "#e0e0e0";
+          navItem.style.backgroundColor = "#f0f0f0";
         });
+
         navItem.addEventListener("mouseout", () => {
-          navItem.style.backgroundColor = "transparent";
+          if (!navItem.classList.contains("active")) {
+            navItem.style.backgroundColor = "transparent";
+          }
         });
+
         navItem.addEventListener("click", () => {
-          // Highlight selected nav item
           document.querySelectorAll(".nav-item").forEach((item) => {
+            item.classList.remove("active");
             item.style.fontWeight = "normal";
             item.style.backgroundColor = "transparent";
           });
-          navItem.style.fontWeight = "bold";
-          navItem.style.backgroundColor = "#d0d0d0";
 
-          // Update content panel
+          navItem.classList.add("active");
+          navItem.style.fontWeight = "bold";
+          navItem.style.backgroundColor = "#e3e3e3";
+
           contentPanel.innerHTML = "";
           categories[category].forEach((itemText) => {
             const contentItem = document.createElement("div");
             contentItem.textContent = itemText;
             contentItem.style.padding = "10px";
             contentItem.style.cursor = "pointer";
+            contentItem.style.borderRadius = "4px";
+            contentItem.style.transition = "background-color 0.2s ease";
             contentItem.className = "dropdown-item";
+
             contentItem.addEventListener("mouseover", () => {
-              contentItem.style.backgroundColor = "#f0f0f0";
+              contentItem.style.backgroundColor = "#f8f8f8";
             });
+
             contentItem.addEventListener("mouseout", () => {
               contentItem.style.backgroundColor = "white";
             });
+
+            contentItem.addEventListener("click", () => {
+              inputField.innerText = itemText;
+              dropdown.style.display = "none";
+            });
+
             contentPanel.appendChild(contentItem);
           });
         });
+
         navPanel.appendChild(navItem);
       });
 
-      // Initialize with first category selected
-      if (Object.keys(categories).length > 0) {
-        const firstNavItem = navPanel.querySelector(".nav-item");
-        if (firstNavItem) {
-          firstNavItem.click(); // Simulate click to load first category
-        }
+      // Select first category by default
+      const firstNavItem = navPanel.querySelector(".nav-item");
+      if (firstNavItem) {
+        firstNavItem.click();
       }
 
       inputField.addEventListener("keyup", function (e) {
-        // Zeige das Dropdown bei Eingabe von "/"
         if (e.key === "/") {
           const rect = inputField.getBoundingClientRect();
           dropdown.style.display = "flex";
-          dropdown.style.top = `${rect.bottom + window.scrollY + 2}px`; // Kleiner Abstand
+          dropdown.style.top = `${rect.bottom + window.scrollY + 2}px`;
           dropdown.style.left = `${rect.left + window.scrollX}px`;
-          // Sicherstellen, dass das Dropdown im sichtbaren Bereich bleibt
+
           const dropdownRect = dropdown.getBoundingClientRect();
           if (dropdownRect.right > window.innerWidth) {
             dropdown.style.left = `${
               window.innerWidth - dropdownRect.width + window.scrollX - 10
             }px`;
           }
+
+          // Animate in
+          requestAnimationFrame(() => {
+            dropdown.style.opacity = "1";
+            dropdown.style.transform = "translateY(0)";
+          });
         }
 
-        // Verstecke das Fenster, wenn Escape gedrückt wird
         if (e.key === "Escape") {
-          dropdown.style.display = "none";
+          dropdown.style.opacity = "0";
+          dropdown.style.transform = "translateY(10px)";
+          setTimeout(() => {
+            dropdown.style.display = "none";
+          }, 300);
         }
 
-        // Überprüfe, ob "/" im Eingabefeld vorhanden ist
         if (!inputField.innerText.includes("/")) {
-          dropdown.style.display = "none";
+          dropdown.style.opacity = "0";
+          dropdown.style.transform = "translateY(10px)";
+          setTimeout(() => {
+            dropdown.style.display = "none";
+          }, 300);
         }
       });
 
-      // Klick auf Dropdown-Item
-      dropdown.addEventListener("click", (e) => {
-        if (e.target.classList.contains("dropdown-item")) {
-          inputField.innerText = e.target.textContent;
-          dropdown.style.display = "none";
-        }
-      });
-
-      // Bei Größenänderung des Fensters repositionieren
+      // Adjust on resize
       window.addEventListener("resize", () => {
         if (dropdown.style.display === "flex") {
           const rect = inputField.getBoundingClientRect();
           dropdown.style.top = `${rect.bottom + window.scrollY + 2}px`;
           dropdown.style.left = `${rect.left + window.scrollX}px`;
-          const dropdownRect = dropdown.getBoundingClientRect();
-          if (dropdownRect.right > window.innerWidth) {
-            dropdown.style.left = `${
-              window.innerWidth - dropdownRect.width + window.scrollX - 10
-            }px`;
-          }
         }
       });
 
-      // Bei Scroll repositionieren
+      // Adjust on scroll
       window.addEventListener("scroll", () => {
         if (dropdown.style.display === "flex") {
           const rect = inputField.getBoundingClientRect();
