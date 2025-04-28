@@ -55,79 +55,135 @@ function inputFieldTrigger() {
       contentPanel.style.overflowY = "auto";
       dropdown.appendChild(contentPanel);
 
-      const categories = {
-        Favorites: ["Starred Item 1", "Starred Item 2"],
-        All: ["Option 1", "Option 2", "Option 3", "Option 4"],
-        Tools: ["Tool A", "Tool B"],
-        Settings: ["Setting X", "Setting Y"],
-      };
+      // Fetch categories from Chrome storage
+      chrome.storage.sync.get(null, function (data) {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Error fetching data from Chrome storage:",
+            chrome.runtime.lastError
+          );
+          return;
+        }
 
-      Object.keys(categories).forEach((category) => {
-        const navItem = document.createElement("div");
-        navItem.textContent = category;
-        navItem.style.padding = "10px";
-        navItem.style.cursor = "pointer";
-        navItem.style.borderRadius = "4px";
-        navItem.style.transition =
-          "background-color 0.2s ease, font-weight 0.2s ease";
-        navItem.className = "nav-item";
+        const categories = {
+          Favorites: [], // Placeholder for favorites (extend if favorites logic is added)
+          "All Prompts": [],
+          "Single Prompts": [],
+          "Categorised Prompts": [],
+        };
 
-        navItem.addEventListener("mouseover", () => {
-          navItem.style.backgroundColor = "#f0f0f0";
-        });
+        // Process all prompts and folders
+        Object.entries(data).forEach(([id, topic]) => {
+          if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
+            const promptTitles = topic.prompts.map((prompt) =>
+              typeof prompt === "string"
+                ? prompt.slice(0, 50)
+                : prompt.title || "Untitled Prompt"
+            );
 
-        navItem.addEventListener("mouseout", () => {
-          if (!navItem.classList.contains("active")) {
-            navItem.style.backgroundColor = "transparent";
+            // Add to All Prompts
+            categories["All Prompts"].push(...promptTitles);
+
+            // Add to Single Prompts if hidden
+            if (topic.isHidden) {
+              categories["Single Prompts"].push(...promptTitles);
+            }
+
+            // Add to Categorised Prompts if not hidden
+            if (!topic.isHidden) {
+              categories["Categorised Prompts"].push({
+                name: topic.name,
+                prompts: promptTitles,
+              });
+            }
           }
         });
 
-        navItem.addEventListener("click", () => {
-          document.querySelectorAll(".nav-item").forEach((item) => {
-            item.classList.remove("active");
-            item.style.fontWeight = "normal";
-            item.style.backgroundColor = "transparent";
-          });
-
-          navItem.classList.add("active");
-          navItem.style.fontWeight = "bold";
-          navItem.style.backgroundColor = "#e3e3e3";
-
-          contentPanel.innerHTML = "";
-          categories[category].forEach((itemText) => {
-            const contentItem = document.createElement("div");
-            contentItem.textContent = itemText;
-            contentItem.style.padding = "10px";
-            contentItem.style.cursor = "pointer";
-            contentItem.style.borderRadius = "4px";
-            contentItem.style.transition = "background-color 0.2s ease";
-            contentItem.className = "dropdown-item";
-
-            contentItem.addEventListener("mouseover", () => {
-              contentItem.style.backgroundColor = "#f8f8f8";
-            });
-
-            contentItem.addEventListener("mouseout", () => {
-              contentItem.style.backgroundColor = "white";
-            });
-
-            contentItem.addEventListener("click", () => {
-              inputField.innerText = itemText;
-              dropdown.style.display = "none";
-            });
-
-            contentPanel.appendChild(contentItem);
+        // Flatten Categorised Prompts for display
+        const categorisedPromptItems = [];
+        categories["Categorised Prompts"].forEach((folder) => {
+          folder.prompts.forEach((promptTitle) => {
+            categorisedPromptItems.push(`${folder.name}: ${promptTitle}`);
           });
         });
+        categories["Categorised Prompts"] = categorisedPromptItems;
 
-        navPanel.appendChild(navItem);
+        // Remove duplicates and sort
+        Object.keys(categories).forEach((key) => {
+          if (Array.isArray(categories[key])) {
+            categories[key] = [...new Set(categories[key])].sort();
+          }
+        });
+
+        // Proceed with category rendering
+        Object.keys(categories).forEach((category) => {
+          const navItem = document.createElement("div");
+          navItem.textContent = category;
+          navItem.style.padding = "10px";
+          navItem.style.cursor = "pointer";
+          navItem.style.borderRadius = "4px";
+          navItem.style.transition =
+            "background-color 0.2s ease, font-weight 0.2s ease";
+          navItem.className = "nav-item";
+
+          navItem.addEventListener("mouseover", () => {
+            navItem.style.backgroundColor = "#f0f0f0";
+          });
+
+          navItem.addEventListener("mouseout", () => {
+            if (!navItem.classList.contains("active")) {
+              navItem.style.backgroundColor = "transparent";
+            }
+          });
+
+          navItem.addEventListener("click", () => {
+            document.querySelectorAll(".nav-item").forEach((item) => {
+              item.classList.remove("active");
+              item.style.fontWeight = "normal";
+              item.style.backgroundColor = "transparent";
+            });
+
+            navItem.classList.add("active");
+            navItem.style.fontWeight = "bold";
+            navItem.style.backgroundColor = "#e3e3e3";
+
+            contentPanel.innerHTML = "";
+            categories[category].forEach((itemText) => {
+              const contentItem = document.createElement("div");
+              contentItem.textContent =
+                typeof itemText === "string" ? itemText : itemText.name;
+              contentItem.style.padding = "10px";
+              contentItem.style.cursor = "pointer";
+              contentItem.style.borderRadius = "4px";
+              contentItem.style.transition = "background-color 0.2s ease";
+              contentItem.className = "dropdown-item";
+
+              contentItem.addEventListener("mouseover", () => {
+                contentItem.style.backgroundColor = "#f8f8f8";
+              });
+
+              contentItem.addEventListener("mouseout", () => {
+                contentItem.style.backgroundColor = "white";
+              });
+
+              contentItem.addEventListener("click", () => {
+                inputField.innerText = itemText;
+                dropdown.style.display = "none";
+              });
+
+              contentPanel.appendChild(contentItem);
+            });
+          });
+
+          navPanel.appendChild(navItem);
+        });
+
+        // Select first category by default
+        const firstNavItem = navPanel.querySelector(".nav-item");
+        if (firstNavItem) {
+          firstNavItem.click();
+        }
       });
-
-      // Select first category by default
-      const firstNavItem = navPanel.querySelector(".nav-item");
-      if (firstNavItem) {
-        firstNavItem.click();
-      }
 
       // Konfigurierbare Abstände
       const gapAbove = 2; // Abstand nach oben (in Pixeln), wenn Dropdown oberhalb
