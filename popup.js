@@ -261,7 +261,20 @@ document.addEventListener("DOMContentLoaded", function () {
         (response) => {
           if (chrome.runtime.lastError) {
             console.error("❌ Message failed:", chrome.runtime.lastError);
-            alert("Failed to send prompt to the page. Please try again.");
+            // Copy prompt content to clipboard on failure
+            navigator.clipboard
+              .writeText(prompt.content)
+              .then(() => {
+                alert(
+                  "Failed to send prompt to the page. Prompt has been copied to clipboard."
+                );
+              })
+              .catch((err) => {
+                console.error("❌ Failed to copy to clipboard:", err);
+                alert(
+                  "Failed to send prompt to the page and failed to copy to clipboard."
+                );
+              });
           } else {
             console.log("📨 Response from content.js:", response);
             alert("Prompt successfully sent to the page!");
