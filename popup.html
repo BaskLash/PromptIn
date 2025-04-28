@@ -8,13 +8,17 @@
     <script src="popup.js" defer></script>
   </head>
   <body>
+    <!-- Obere Navigation -->
     <nav class="navbar">
-      <div class="nav-brand">
-        <h2>PromptIn</h2>
-      </div>
       <ul class="nav-menu">
         <li class="nav-item">
-          <a class="nav-link" id="overview-btn" title="Go to overview">↗️</a>
+          <button class="nav-link burger-btn" title="Menu">☰</button>
+        </li>
+        <li class="nav-item nav-brand">
+          <h2>PromptIn</h2>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="overview-btn" title="View in tab">↗️</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" id="settings-btn" title="Go to settings">⚙️</a>
@@ -25,28 +29,61 @@
       </ul>
     </nav>
 
-    <div class="container">
-      <div class="enterage">
-        <input type="text" id="inputField" placeholder="Search prompts" />
-      </div>
+    <!-- Layout mit Seitenleiste und Hauptinhalt -->
+    <div class="layout">
+      <!-- Seitenleiste -->
+      <nav class="sidebar hidden">
+        <ul class="nav-menu sidebar-menu">
+          <!-- Collapsible Categories -->
+          <li class="nav-section">
+            <button class="collapsible" aria-expanded="false">
+              Categories
+            </button>
+            <div class="collapsible-content">
+              <a href="#" id="all-prompts-link" class="sidebar-link"
+                >All Prompts</a
+              >
+              <a href="#" id="single-prompts-link" class="sidebar-link"
+                >Single Prompts</a
+              >
+              <a href="#" id="categorised-prompts-link" class="sidebar-link"
+                >Categorised Prompts</a
+              >
+              <a href="#" id="trash-link" class="sidebar-link">Trash</a>
+            </div>
+          </li>
+          <!-- Collapsible Folders -->
+          <li class="nav-section">
+            <button class="collapsible" aria-expanded="false">Folders</button>
+            <div class="collapsible-content" id="folderNavList">
+              <!-- Dynamisch geladene Ordner kommen hier rein -->
+            </div>
+          </li>
+        </ul>
+      </nav>
 
-      <h1 id="noData">Nothing in here!</h1>
-
-      <div class="flexInbox">
-        <div class="accordion-container"></div>
-      </div>
-    </div>
-    <div class="button-container">
-      <button class="action-button new-folder" title="Add folder">📁</button>
-      <button class="action-button new-prompt" title="Add prompts">✏️</button>
+      <!-- Hauptinhalt -->
+      <main class="main-content">
+        <div class="container">
+          <div class="enterage">
+            <input type="text" id="inputField" placeholder="Search prompts" />
+          </div>
+          <h1 id="noData">Nothing in here!</h1>
+          <div class="flexInbox">
+            <ul class="prompt-list" id="promptList"></ul>
+          </div>
+        </div>
+        <div class="button-container">
+          <button class="action-button new-prompt" title="Add prompt">+</button>
+        </div>
+      </main>
     </div>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
       <div class="modal-content">
-        <span id="close-modal" class="close">&times;</span>
+        <span id="close-modal" class="close">×</span>
         <h2>Einstellungen</h2>
-
         <div class="settings-option">
           <label for="theme-select">Theme:</label>
           <select id="theme-select">
@@ -54,19 +91,16 @@
             <option value="light">Light Mode</option>
           </select>
         </div>
-
         <div class="settings-option">
           <button id="import-btn" class="modal-button">
             Prompts importieren
           </button>
         </div>
-
         <div class="settings-option">
           <button id="export-btn" class="modal-button">
             Prompts exportieren
           </button>
         </div>
-
         <div class="settings-option">
           <label for="language-select">Sprache:</label>
           <select id="language-select">
@@ -75,9 +109,8 @@
             <option value="fr">Français</option>
           </select>
         </div>
-
         <div class="settings-option">
-          <label for="language-select">Delete your data:</label>
+          <label for="clear-storage">Delete your data:</label>
           <button
             id="clear-storage"
             class="nav-button"
@@ -86,7 +119,6 @@
             🗑️
           </button>
         </div>
-
         <div class="settings-option">
           <button id="feedback-btn" class="modal-button">
             Feedback senden
@@ -94,27 +126,25 @@
         </div>
       </div>
     </div>
+
     <!-- FAQ Modal -->
     <div id="faq-modal" class="modal">
       <div class="modal-content">
         <span id="close-faq-modal" class="close">×</span>
         <h2>FAQ</h2>
-
         <div class="faq-item">
           <h3>Was ist PromptIn?</h3>
           <p>
             PromptIn ist ein Tool zum Organisieren und Verwalten Ihrer Prompts.
           </p>
         </div>
-
         <div class="faq-item">
-          <h3>Wie erstelle ich einen neuen Ordner?</h3>
+          <h3>Wie erstelle ich eine neue Prompt?</h3>
           <p>
-            Klicken Sie auf das 📁-Symbol unten rechts, um einen neuen Ordner
+            Klicken Sie auf das ✏️-Symbol unten rechts, um eine neue Prompt
             hinzuzufügen.
           </p>
         </div>
-
         <div class="faq-item">
           <h3>Wie kann ich das Theme ändern?</h3>
           <p>
@@ -122,7 +152,6 @@
             Light Mode.
           </p>
         </div>
-
         <div class="faq-item">
           <h3>Wie exportiere ich meine Prompts?</h3>
           <p>
@@ -132,61 +161,67 @@
         </div>
       </div>
     </div>
-    <!-- New Folder Modal -->
-    <div id="new-folder-modal" class="modal">
-      <div class="modal-content">
-        <span id="close-new-folder-modal" class="close">×</span>
-        <h2>Neuer Ordner</h2>
 
-        <div class="modal-form">
-          <label for="folder-name">Ordnername:</label>
-          <input
-            type="text"
-            id="folder-name"
-            placeholder="Geben Sie einen Namen ein"
-          />
-          <button id="create-folder-btn" class="modal-button">Erstellen</button>
-        </div>
-      </div>
-    </div>
     <!-- New Prompt Modal -->
     <div id="new-prompt-modal" class="modal">
       <div class="modal-content">
-        <span id="close-new-prompt-modal" class="close">×</span>
-        <h2>Neue Prompt</h2>
-
-        <div class="modal-form">
-          <label for="prompt-text">Prompt:</label>
-          <textarea
-            id="prompt-text"
-            placeholder="Geben Sie Ihre Prompt ein"
-            rows="4"
-          ></textarea>
-
-          <label for="folder-select">Ordner:</label>
-          <select id="folder-select">
-            <option value="">-- Ordner auswählen --</option>
-            <!-- Ordner werden dynamisch hinzugefügt -->
-          </select>
-
-          <button id="create-prompt-btn" class="modal-button">Erstellen</button>
+        <div class="modal-header">
+          <span id="close-new-prompt-modal" class="close">×</span>
+          <h2>New Prompt</h2>
         </div>
-      </div>
-    </div>
-    <!-- New Prompt Only Modal -->
-    <div id="new-promptonly-modal" class="modal">
-      <div class="modal-content">
-        <span id="close-new-promptonly-modal" class="close">×</span>
-        <h2>Neue Prompt</h2>
-        <div class="modal-form">
-          <label for="promptonly-text">Prompt:</label>
+        <div class="modal-body">
+          <label for="prompt-title">Title:</label>
+          <input
+            id="prompt-title"
+            type="text"
+            placeholder="Enter prompt title"
+            style="
+              width: 100%;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ddd;
+            "
+          />
+          <label for="prompt-description">Description (optional):</label>
           <textarea
-            id="promptonly-text"
-            placeholder="Geben Sie Ihre Prompt ein"
-            rows="4"
+            id="prompt-description"
+            placeholder="Enter prompt description"
+            style="
+              width: 100%;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ddd;
+              min-height: 80px;
+            "
           ></textarea>
-          <button id="create-promptonly-btn" class="modal-button">
-            Erstellen
+          <label for="prompt-content">Content:</label>
+          <textarea
+            id="prompt-content"
+            placeholder="Enter prompt content"
+            style="
+              width: 100%;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ddd;
+              min-height: 120px;
+            "
+          ></textarea>
+          <label for="folder-select">Folder:</label>
+          <select
+            id="folder-select"
+            style="
+              width: 100%;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ddd;
+            "
+          ></select>
+          <button
+            id="create-prompt-btn"
+            class="action-btn"
+            style="margin-top: 15px"
+          >
+            Create
           </button>
         </div>
       </div>

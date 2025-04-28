@@ -1,25 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="app.css">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="app.css" />
     <script src="app.js" defer></script>
     <title>Prompt Overview</title>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>Prompt Overview</h1>
-            <div class="search-container">
-                <input type="text" id="searchInput" placeholder="Search folders or prompts...">
-                <button id="clearSearch" title="Clear search">×</button>
-            </div>
-        </header>
-        <main>
-            <div id="folderList" class="folder-list"></div>
-            <div id="searchResults" class="search-results hidden"></div>
-        </main>
+  </head>
+  <body>
+    <!-- Seiten-Navigation -->
+    <div class="sidenav">
+      <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search..." />
+        <button id="clearSearch" title="Clear search">×</button>
+      </div>
+      <!-- Collapsible Kategorien -->
+      <div class="nav-section">
+        <button class="collapsible">Categories</button>
+        <div class="collapsible-content">
+          <a href="#home" id="allPromptsLink">All Prompts</a>
+          <a href="#prompts" id="singlePromptsLink">Single Prompts</a>
+          <a href="#folders" id="categorisedPromptsLink">Categorised Prompts</a>
+          <a href="#trash" id="trashLink">Trash</a>
+        </div>
+      </div>
+      <hr />
+      <!-- Collapsible Ordner -->
+      <div class="nav-section">
+        <button class="collapsible">
+          Folders
+          <span id="createFolderIcon" class="folder-icon" title="Create new folder">+</span>
+        </button>
+        <div class="collapsible-content" id="folderNavList"></div>
+      </div>
     </div>
-</body>
+
+    <div class="main-content">
+      <header class="sticky-header">
+        <h1 id="mainHeaderTitle">Prompt Overview</h1>
+        <button id="addPromptBtn" class="add-prompt-btn" title="Add new prompt">Add Prompt</button>
+      </header>
+      <main>
+        <section id="promptList" class="prompt-list-section hidden">
+          <div id="promptsContainer" class="prompt-list"></div>
+        </section>
+        <section id="folderList" class="folder-list-section">
+          <div id="foldersContainer" class="folder-list"></div>
+        </section>
+        <div id="searchResults" class="search-results hidden"></div>
+      </main>
+    </div>
+  </body>
 </html>
