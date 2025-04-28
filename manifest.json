@@ -31,7 +31,13 @@
         "*://*.deepseek.com/*",
         "*://*.v0.dev/*"
       ],
-      "js": ["addButton.js", "addPlatformClickEvent.js", "content.js"],
+      "js": [
+        "inputFieldTrigger.js",
+        "addButton.js",
+        "addPlatformClickEvent.js",
+        "removeGitHubElement.js",
+        "content.js"
+      ],
       "run_at": "document_start"
     }
   ],

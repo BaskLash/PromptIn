@@ -714,12 +714,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Settings Modal
   const settingsModal = document.getElementById("settings-modal");
-  const closeModal = document.getElementById("close-modal");
   settingsBtn.addEventListener("click", () => {
     settingsModal.style.display = "block";
-  });
-  closeModal.addEventListener("click", () => {
-    settingsModal.style.display = "none";
   });
   window.addEventListener("click", (event) => {
     if (event.target === settingsModal) {

@@ -141,6 +141,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true; // Required for asynchronous sendResponse
 });
 
+inputFieldTrigger();
+
 // Helper Functions
 function handlePromptInsertion(handlers, text, sendResponse) {
   let success = false;
