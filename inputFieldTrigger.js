@@ -129,19 +129,44 @@ function inputFieldTrigger() {
         firstNavItem.click();
       }
 
+      // Konfigurierbare Abstände
+      const gapAbove = 2; // Abstand nach oben (in Pixeln), wenn Dropdown oberhalb
+      const gapBelow = 2; // Abstand nach unten (in Pixeln), wenn Dropdown unterhalb
+
+      // Funktion zum Positionieren des Dropdowns
+      function positionDropdown() {
+        const rect = inputField.getBoundingClientRect();
+        const dropdownHeight = parseFloat(dropdown.style.maxHeight) || 300; // Dropdown-Höhe
+        const spaceBelow = window.innerHeight - rect.bottom; // Platz unterhalb des Input-Feldes
+        const spaceNeeded = dropdownHeight + 10; // Etwas Puffer
+
+        dropdown.style.left = `${rect.left + window.scrollX}px`;
+
+        if (spaceBelow < spaceNeeded) {
+          // Nicht genug Platz unten -> Dropdown oberhalb platzieren
+          dropdown.style.top = `${
+            rect.top + window.scrollY - dropdownHeight - gapAbove
+          }px`;
+          dropdown.style.transform = "translateY(-5px)"; // Weniger weit nach oben animieren
+        } else {
+          // Genug Platz unten -> Dropdown unterhalb platzieren
+          dropdown.style.top = `${rect.bottom + window.scrollY + gapBelow}px`;
+          dropdown.style.transform = "translateY(10px)"; // Für Animation nach unten
+        }
+
+        // Sicherstellen, dass das Dropdown nicht über den rechten Rand hinausragt
+        const dropdownRect = dropdown.getBoundingClientRect();
+        if (dropdownRect.right > window.innerWidth) {
+          dropdown.style.left = `${
+            window.innerWidth - dropdownRect.width + window.scrollX - 10
+          }px`;
+        }
+      }
+
       inputField.addEventListener("keyup", function (e) {
         if (e.key === "/") {
-          const rect = inputField.getBoundingClientRect();
           dropdown.style.display = "flex";
-          dropdown.style.top = `${rect.bottom + window.scrollY + 2}px`;
-          dropdown.style.left = `${rect.left + window.scrollX}px`;
-
-          const dropdownRect = dropdown.getBoundingClientRect();
-          if (dropdownRect.right > window.innerWidth) {
-            dropdown.style.left = `${
-              window.innerWidth - dropdownRect.width + window.scrollX - 10
-            }px`;
-          }
+          positionDropdown();
 
           // Animate in
           requestAnimationFrame(() => {
@@ -170,18 +195,14 @@ function inputFieldTrigger() {
       // Adjust on resize
       window.addEventListener("resize", () => {
         if (dropdown.style.display === "flex") {
-          const rect = inputField.getBoundingClientRect();
-          dropdown.style.top = `${rect.bottom + window.scrollY + 2}px`;
-          dropdown.style.left = `${rect.left + window.scrollX}px`;
+          positionDropdown();
         }
       });
 
       // Adjust on scroll
       window.addEventListener("scroll", () => {
         if (dropdown.style.display === "flex") {
-          const rect = inputField.getBoundingClientRect();
-          dropdown.style.top = `${rect.bottom + window.scrollY + 2}px`;
-          dropdown.style.left = `${rect.left + window.scrollX}px`;
+          positionDropdown();
         }
       });
 
@@ -208,7 +229,7 @@ function inputFieldTrigger() {
       button.style.alignItems = "center";
       button.style.justifyContent = "center";
 
-      // Hover-Effekt mit JavaScript (alternativ ginge auch per CSS-Klasse)
+      // Hover-Effekt mit JavaScript
       button.addEventListener("mouseover", () => {
         button.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
       });
