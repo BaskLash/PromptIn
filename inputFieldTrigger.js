@@ -91,53 +91,57 @@ function inputFieldTrigger() {
           Favorites: [], // Placeholder for favorites
           "All Prompts": [],
           "Single Prompts": [],
-          "Categorised Prompts": [],
+          "Categorised Prompts": {}, // Object with folder names as keys and prompt titles as values
         };
 
-        // Map prompts to their categories/folders for display
-        const promptSourceMap = new Map(); // Maps prompt title to { category, folder }
+        // Map prompts to their categories, folders, and full prompt data
+        const promptSourceMap = new Map(); // Maps prompt title to { category, folder, prompt, folderId }
 
         // Process all prompts and folders
         Object.entries(data).forEach(([id, topic]) => {
           if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
-            const promptTitles = topic.prompts.map((prompt) =>
-              typeof prompt === "string"
-                ? prompt.slice(0, 50)
-                : prompt.title || "Untitled Prompt"
-            );
+            topic.prompts.forEach((prompt) => {
+              const title =
+                typeof prompt === "string"
+                  ? prompt.slice(0, 50)
+                  : prompt.title || "Untitled Prompt";
+              const content =
+                typeof prompt === "string" ? prompt : prompt.content || "";
 
-            // Add to All Prompts
-            promptTitles.forEach((title) => {
+              // Add to All Prompts
               categories["All Prompts"].push(title);
-              promptSourceMap.set(title, {
+              promptSourceMap.set(title + "_" + id, {
                 category: "All Prompts",
                 folder: null,
+                prompt: prompt,
+                folderId: id,
               });
-            });
 
-            // Add to Single Prompts if hidden
-            if (topic.isHidden) {
-              promptTitles.forEach((title) => {
+              // Add to Single Prompts if hidden
+              if (topic.isHidden) {
                 categories["Single Prompts"].push(title);
-                promptSourceMap.set(title, {
+                promptSourceMap.set(title + "_" + id, {
                   category: "Single Prompts",
                   folder: null,
+                  prompt: prompt,
+                  folderId: id,
                 });
-              });
-            }
+              }
 
-            // Add to Categorised Prompts if not hidden
-            if (!topic.isHidden) {
-              promptTitles.forEach((title) => {
-                categories["Categorised Prompts"].push(
-                  `${topic.name}: ${title}`
-                );
-                promptSourceMap.set(title, {
+              // Add to Categorised Prompts if not hidden
+              if (!topic.isHidden) {
+                if (!categories["Categorised Prompts"][topic.name]) {
+                  categories["Categorised Prompts"][topic.name] = [];
+                }
+                categories["Categorised Prompts"][topic.name].push(title);
+                promptSourceMap.set(title + "_" + id, {
                   category: "Categorised Prompts",
                   folder: topic.name,
+                  prompt: prompt,
+                  folderId: id,
                 });
-              });
-            }
+              }
+            });
           }
         });
 
@@ -145,6 +149,12 @@ function inputFieldTrigger() {
         Object.keys(categories).forEach((key) => {
           if (Array.isArray(categories[key])) {
             categories[key] = [...new Set(categories[key])].sort();
+          } else if (key === "Categorised Prompts") {
+            Object.keys(categories[key]).forEach((folder) => {
+              categories[key][folder] = [
+                ...new Set(categories[key][folder]),
+              ].sort();
+            });
           }
         });
 
@@ -176,45 +186,145 @@ function inputFieldTrigger() {
             });
 
             navItem.addEventListener("click", () => {
-              document.querySelectorAll(".nav-item").forEach((item) => {
-                item.classList.remove("active");
-                item.style.fontWeight = "normal";
-                item.style.backgroundColor = "transparent";
-              });
+              document
+                .querySelectorAll(".nav-item, .folder-item")
+                .forEach((item) => {
+                  item.classList.remove("active");
+                  item.style.fontWeight = "normal";
+                  item.style.backgroundColor = "transparent";
+                });
 
               navItem.classList.add("active");
               navItem.style.fontWeight = "bold";
               navItem.style.backgroundColor = "#e3e3e3";
 
               contentPanel.innerHTML = "";
-              categories[category].forEach((itemText) => {
-                const contentItem = document.createElement("div");
-                contentItem.textContent =
-                  typeof itemText === "string" ? itemText : itemText.name;
-                contentItem.style.padding = "10px";
-                contentItem.style.cursor = "pointer";
-                contentItem.style.borderRadius = "4px";
-                contentItem.style.transition = "background-color 0.2s ease";
-                contentItem.className = "dropdown-item";
+              if (category === "Categorised Prompts") {
+                // Display message or prompt titles if a folder is selected
+                const message = document.createElement("div");
+                message.textContent = "Select a folder to view prompts";
+                message.style.padding = "10px";
+                message.style.color = "#888";
+                contentPanel.appendChild(message);
+              } else {
+                categories[category].forEach((title) => {
+                  const contentItem = document.createElement("div");
+                  contentItem.textContent = title;
+                  contentItem.style.padding = "10px";
+                  contentItem.style.cursor = "pointer";
+                  contentItem.style.borderRadius = "4px";
+                  contentItem.style.transition = "background-color 0.2s ease";
+                  contentItem.className = "dropdown-item";
 
-                contentItem.addEventListener("mouseover", () => {
-                  contentItem.style.backgroundColor = "#f8f8f8";
+                  contentItem.addEventListener("mouseover", () => {
+                    contentItem.style.backgroundColor = "#f8f8f8";
+                  });
+
+                  contentItem.addEventListener("mouseout", () => {
+                    contentItem.style.backgroundColor = "white";
+                  });
+
+                  contentItem.addEventListener("click", () => {
+                    const key = Array.from(promptSourceMap.keys()).find((k) =>
+                      k.startsWith(title + "_")
+                    );
+                    const source = promptSourceMap.get(key);
+                    if (source && source.prompt) {
+                      inputField.innerText =
+                        typeof source.prompt === "string"
+                          ? source.prompt
+                          : source.prompt.content || "";
+                    }
+                    dropdown.style.display = "none";
+                  });
+
+                  contentPanel.appendChild(contentItem);
                 });
-
-                contentItem.addEventListener("mouseout", () => {
-                  contentItem.style.backgroundColor = "white";
-                });
-
-                contentItem.addEventListener("click", () => {
-                  inputField.innerText = itemText;
-                  dropdown.style.display = "none";
-                });
-
-                contentPanel.appendChild(contentItem);
-              });
+              }
             });
 
             navPanel.appendChild(navItem);
+
+            // Add folder sub-items under Categorised Prompts
+            if (category === "Categorised Prompts") {
+              const folderContainer = document.createElement("div");
+              folderContainer.style.paddingLeft = "10px";
+              Object.keys(categories[category])
+                .sort()
+                .forEach((folder) => {
+                  const folderItem = document.createElement("div");
+                  folderItem.textContent = folder;
+                  folderItem.style.padding = "8px 10px";
+                  folderItem.style.cursor = "pointer";
+                  folderItem.style.borderRadius = "4px";
+                  folderItem.style.transition =
+                    "background-color 0.2s ease, font-weight 0.2s ease";
+                  folderItem.className = "folder-item";
+
+                  folderItem.addEventListener("mouseover", () => {
+                    folderItem.style.backgroundColor = "#f0f0f0";
+                  });
+
+                  folderItem.addEventListener("mouseout", () => {
+                    if (!folderItem.classList.contains("active")) {
+                      folderItem.style.backgroundColor = "transparent";
+                    }
+                  });
+
+                  folderItem.addEventListener("click", () => {
+                    document
+                      .querySelectorAll(".nav-item, .folder-item")
+                      .forEach((item) => {
+                        item.classList.remove("active");
+                        item.style.fontWeight = "normal";
+                        item.style.backgroundColor = "transparent";
+                      });
+
+                    folderItem.classList.add("active");
+                    folderItem.style.fontWeight = "bold";
+                    folderItem.style.backgroundColor = "#e3e3e3";
+
+                    contentPanel.innerHTML = "";
+                    categories[category][folder].forEach((title) => {
+                      const contentItem = document.createElement("div");
+                      contentItem.textContent = title;
+                      contentItem.style.padding = "10px";
+                      contentItem.style.cursor = "pointer";
+                      contentItem.style.borderRadius = "4px";
+                      contentItem.style.transition =
+                        "background-color 0.2s ease";
+                      contentItem.className = "dropdown-item";
+
+                      contentItem.addEventListener("mouseover", () => {
+                        contentItem.style.backgroundColor = "#f8f8f8";
+                      });
+
+                      contentItem.addEventListener("mouseout", () => {
+                        contentItem.style.backgroundColor = "white";
+                      });
+
+                      contentItem.addEventListener("click", () => {
+                        const key = Array.from(promptSourceMap.keys()).find(
+                          (k) => k.startsWith(title + "_")
+                        );
+                        const source = promptSourceMap.get(key);
+                        if (source && source.prompt) {
+                          inputField.innerText =
+                            typeof source.prompt === "string"
+                              ? source.prompt
+                              : source.prompt.content || "";
+                        }
+                        dropdown.style.display = "none";
+                      });
+
+                      contentPanel.appendChild(contentItem);
+                    });
+                  });
+
+                  folderContainer.appendChild(folderItem);
+                });
+              navPanel.appendChild(folderContainer);
+            }
           });
 
           // Select first category by default
@@ -232,7 +342,8 @@ function inputFieldTrigger() {
 
           // Collect all prompt titles with their sources
           const allPrompts = [];
-          promptSourceMap.forEach((source, title) => {
+          promptSourceMap.forEach((source, key) => {
+            const title = key.split("_")[0];
             allPrompts.push({ title, source });
           });
 
@@ -277,7 +388,10 @@ function inputFieldTrigger() {
               });
 
               contentItem.addEventListener("click", () => {
-                inputField.innerText = title;
+                inputField.innerText =
+                  typeof source.prompt === "string"
+                    ? source.prompt
+                    : source.prompt.content || "";
                 dropdown.style.display = "none";
               });
 
