@@ -70,7 +70,6 @@ function inputFieldTrigger() {
 
       // Left nav panel (used only when no search query)
       const navPanel = document.createElement("div");
-      navPanel.style.width = "150px";
       navPanel.style.borderRight = "1px solid #eee";
       navPanel.style.padding = "10px";
       navPanel.style.backgroundColor = "#fafafa";
@@ -111,8 +110,19 @@ function inputFieldTrigger() {
 
       let promptSourceMap = new Map();
       let currentFocusElement = null;
-      let selectedCategoryOrFolder = null; // Track selected category/folder for rendering
-      let isPasting = false; // Flag to track paste events
+      let selectedCategoryOrFolder = null;
+      let isPasting = false;
+      let isEscaped = false; // Neue Flag für Escape-Verhalten
+
+      // Function to set cursor to the end of contenteditable
+      function setCursorToEnd(element) {
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.selectNodeContents(element);
+        range.collapse(false); // Setze den Cursor ans Ende
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
 
       // Function to update dropdown data from Chrome storage
       function updateDropdownData(callback) {
@@ -207,7 +217,7 @@ function inputFieldTrigger() {
 
       // Function to set focus styling
       function setFocus(element) {
-        console.log("Setting focus to:", element?.textContent || "null"); // Debugging
+        console.log("Setting focus to:", element?.textContent || "null");
         if (currentFocusElement) {
           currentFocusElement.style.outline = "none";
           currentFocusElement.style.backgroundColor =
@@ -288,6 +298,9 @@ function inputFieldTrigger() {
             });
 
             contentItem.addEventListener("click", () => {
+              const currentText = inputField.innerText.trim();
+              const slashIndex = currentText.indexOf("/");
+              let newText = "";
               const title = itemText.includes(": ")
                 ? itemText.split(": ")[1]
                 : itemText;
@@ -295,13 +308,39 @@ function inputFieldTrigger() {
                 k.startsWith(title + "_")
               );
               const source = promptSourceMap.get(key);
-              if (source && source.prompt) {
-                inputField.innerText =
-                  typeof source.prompt === "string"
+              const selectedPrompt =
+                source && source.prompt
+                  ? typeof source.prompt === "string"
                     ? source.prompt
-                    : source.prompt.content || "";
-                inputField.focus(); // Set focus to input field
+                    : source.prompt.content || ""
+                  : "";
+
+              if (slashIndex !== -1) {
+                const textBeforeSlash = currentText
+                  .substring(0, slashIndex)
+                  .trim();
+                if (textBeforeSlash === "") {
+                  // Nur "/" oder " /" steht im Eingabefeld
+                  newText = selectedPrompt;
+                } else {
+                  // Text vor "/" existiert (z. B. "Test /" oder "Test/")
+                  const hasSpace =
+                    currentText[slashIndex - 1] === " " ||
+                    currentText[slashIndex + 1] === " ";
+                  newText = hasSpace
+                    ? `${textBeforeSlash} ${selectedPrompt}`
+                    : `${textBeforeSlash}${selectedPrompt}`;
+                }
+              } else {
+                // Kein "/" im Text, füge den Prompt direkt hinzu
+                newText = currentText
+                  ? `${currentText} ${selectedPrompt}`
+                  : selectedPrompt;
               }
+
+              inputField.innerText = newText;
+              inputField.focus();
+              setCursorToEnd(inputField); // Cursor ans Ende setzen
               dropdown.style.display = "none";
               clearFocus();
             });
@@ -425,7 +464,6 @@ function inputFieldTrigger() {
           }
         });
 
-        // Select and focus first category by default
         const firstNavItem = navPanel.querySelector(".nav-item");
         if (firstNavItem) {
           firstNavItem.click();
@@ -488,11 +526,40 @@ function inputFieldTrigger() {
             });
 
             contentItem.addEventListener("click", () => {
-              inputField.innerText =
+              const currentText = inputField.innerText.trim();
+              const slashIndex = currentText.indexOf("/");
+              let newText = "";
+              const selectedPrompt =
                 typeof source.prompt === "string"
                   ? source.prompt
                   : source.prompt.content || "";
-              inputField.focus(); // Set focus to input field
+
+              if (slashIndex !== -1) {
+                const textBeforeSlash = currentText
+                  .substring(0, slashIndex)
+                  .trim();
+                if (textBeforeSlash === "") {
+                  // Nur "/" oder " /" steht im Eingabefeld
+                  newText = selectedPrompt;
+                } else {
+                  // Text vor "/" existiert (z. B. "Test /" oder "Test/")
+                  const hasSpace =
+                    currentText[slashIndex - 1] === " " ||
+                    currentText[slashIndex + 1] === " ";
+                  newText = hasSpace
+                    ? `${textBeforeSlash} ${selectedPrompt}`
+                    : `${textBeforeSlash}${selectedPrompt}`;
+                }
+              } else {
+                // Kein "/" im Text, füge den Prompt direkt hinzu
+                newText = currentText
+                  ? `${currentText} ${selectedPrompt}`
+                  : selectedPrompt;
+              }
+
+              inputField.innerText = newText;
+              inputField.focus();
+              setCursorToEnd(inputField); // Cursor ans Ende setzen
               dropdown.style.display = "none";
               clearFocus();
             });
@@ -501,7 +568,6 @@ function inputFieldTrigger() {
           });
         }
 
-        // Nach dem Rendern Fokus setzen
         requestAnimationFrame(() => {
           const firstResult = contentPanel.querySelector(".dropdown-item");
           if (firstResult) {
@@ -514,7 +580,6 @@ function inputFieldTrigger() {
       function handleKeyboardNavigation(e) {
         if (dropdown.style.display !== "flex") return;
 
-        // Nur für Navigations- und Steuerungstasten abfangen
         const navigationKeys = [
           "ArrowUp",
           "ArrowDown",
@@ -527,7 +592,6 @@ function inputFieldTrigger() {
           e.preventDefault();
           e.stopPropagation();
         } else {
-          // Andere Tasten (z.B. Buchstaben, Zahlen) zum inputField durchlassen
           return;
         }
 
@@ -549,7 +613,6 @@ function inputFieldTrigger() {
             if (currentIndex < items.length - 1) {
               const nextItem = items[currentIndex + 1];
               setFocus(nextItem);
-              // Automatisch Inhalte rendern, wenn ein Nav- oder Folder-Item fokussiert wird
               if (
                 nextItem.classList.contains("nav-item") ||
                 nextItem.classList.contains("folder-item")
@@ -570,7 +633,6 @@ function inputFieldTrigger() {
             }
           } else if (navItems.length > 0) {
             setFocus(navItems[0]);
-            // Erste Kategorie automatisch rendern
             document
               .querySelectorAll(".nav-item, .folder-item")
               .forEach((item) => {
@@ -595,7 +657,6 @@ function inputFieldTrigger() {
             if (currentIndex > 0) {
               const prevItem = items[currentIndex - 1];
               setFocus(prevItem);
-              // Automatisch Inhalte rendern, wenn ein Nav- oder Folder-Item fokussiert wird
               if (
                 prevItem.classList.contains("nav-item") ||
                 prevItem.classList.contains("folder-item")
@@ -616,7 +677,6 @@ function inputFieldTrigger() {
             }
           } else if (navItems.length > 0) {
             setFocus(navItems[0]);
-            // Erste Kategorie automatisch rendern
             document
               .querySelectorAll(".nav-item, .folder-item")
               .forEach((item) => {
@@ -654,7 +714,6 @@ function inputFieldTrigger() {
               setFocus(activeNavItem);
             } else if (navItems.length > 0) {
               setFocus(navItems[0]);
-              // Erste Kategorie automatisch rendern
               document
                 .querySelectorAll(".nav-item, .folder-item")
                 .forEach((item) => {
@@ -677,6 +736,7 @@ function inputFieldTrigger() {
           }
         } else if (e.key === "Escape") {
           hideDropdown();
+          isEscaped = true;
           inputField.focus();
         }
       }
@@ -755,15 +815,15 @@ function inputFieldTrigger() {
             renderSearchResults(query);
             const firstResult = contentPanel.querySelector(".dropdown-item");
             if (firstResult) {
-              firstResult.focus(); // Echter Fokus
-              setFocus(firstResult); // Visueller Fokus
+              firstResult.focus();
+              setFocus(firstResult);
             }
           } else {
             renderCategoryNavigation();
             const firstNavItem = navPanel.querySelector(".nav-item");
             if (firstNavItem) {
-              firstNavItem.focus(); // Echter Fokus
-              setFocus(firstNavItem); // Visueller Fokus
+              firstNavItem.focus();
+              setFocus(firstNavItem);
             }
           }
         });
@@ -780,10 +840,9 @@ function inputFieldTrigger() {
         }, 300);
       }
 
-      // Handle paste events to prevent dropdown from showing
+      // Handle paste events
       inputField.addEventListener("paste", function (e) {
         isPasting = true;
-        // Reset isPasting flag after a short delay to handle async updates
         setTimeout(() => {
           isPasting = false;
         }, 100);
@@ -799,17 +858,26 @@ function inputFieldTrigger() {
             .slice(slashIndex + 1)
             .trim()
             .toLowerCase();
-          showDropdown(query);
+          if (isEscaped && text.lastIndexOf("/") === slashIndex) {
+            if (!query) {
+              isEscaped = false;
+              showDropdown(query);
+            }
+          } else {
+            isEscaped = false;
+            showDropdown(query);
+          }
         } else if (!text.includes("/") && !dropdown.dataset.openedByButton) {
           hideDropdown();
+          isEscaped = false;
         }
       });
 
       // Prevent Enter key from submitting when dropdown is open
       inputField.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && dropdown.style.display === "flex") {
-          e.preventDefault(); // Prevent form submission
-          e.stopPropagation(); // Stop event bubbling
+          e.preventDefault();
+          e.stopPropagation();
         }
       });
 
@@ -834,6 +902,13 @@ function inputFieldTrigger() {
       const container = document.querySelector(
         "[data-testid='composer-footer-actions']"
       );
+
+      if (!container) {
+        console.error(
+          "Container with data-testid='composer-footer-actions' not found."
+        );
+        return;
+      }
 
       const button = document.createElement("button");
       button.textContent = "+";
@@ -866,8 +941,9 @@ function inputFieldTrigger() {
           hideDropdown();
           delete dropdown.dataset.openedByButton;
         } else {
-          inputField.innerText = "/";
+          inputField.innerText = inputField.innerText + "/";
           inputField.focus();
+          setCursorToEnd(inputField); // Cursor ans Ende setzen nach Hinzufügen von "/"
           showDropdown();
           dropdown.dataset.openedByButton = "true";
         }
