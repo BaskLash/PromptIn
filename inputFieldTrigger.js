@@ -300,6 +300,7 @@ function inputFieldTrigger() {
                   typeof source.prompt === "string"
                     ? source.prompt
                     : source.prompt.content || "";
+                inputField.focus(); // Set focus to input field
               }
               dropdown.style.display = "none";
               clearFocus();
@@ -491,6 +492,7 @@ function inputFieldTrigger() {
                 typeof source.prompt === "string"
                   ? source.prompt
                   : source.prompt.content || "";
+              inputField.focus(); // Set focus to input field
               dropdown.style.display = "none";
               clearFocus();
             });
@@ -512,8 +514,22 @@ function inputFieldTrigger() {
       function handleKeyboardNavigation(e) {
         if (dropdown.style.display !== "flex") return;
 
-        e.preventDefault();
-        e.stopPropagation();
+        // Nur für Navigations- und Steuerungstasten abfangen
+        const navigationKeys = [
+          "ArrowUp",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowRight",
+          "Enter",
+          "Escape",
+        ];
+        if (navigationKeys.includes(e.key)) {
+          e.preventDefault();
+          e.stopPropagation();
+        } else {
+          // Andere Tasten (z.B. Buchstaben, Zahlen) zum inputField durchlassen
+          return;
+        }
 
         const navItems = Array.from(
           navPanel.querySelectorAll(".nav-item, .folder-item")
@@ -659,6 +675,9 @@ function inputFieldTrigger() {
               currentFocusElement.click();
             }
           }
+        } else if (e.key === "Escape") {
+          hideDropdown();
+          inputField.focus();
         }
       }
 
@@ -732,14 +751,19 @@ function inputFieldTrigger() {
         requestAnimationFrame(() => {
           dropdown.style.opacity = "1";
           dropdown.style.transform = "translateY(0)";
-          // Fokus setzen, sobald das Dropdown angezeigt wird
           if (query) {
             renderSearchResults(query);
+            const firstResult = contentPanel.querySelector(".dropdown-item");
+            if (firstResult) {
+              firstResult.focus(); // Echter Fokus
+              setFocus(firstResult); // Visueller Fokus
+            }
           } else {
             renderCategoryNavigation();
             const firstNavItem = navPanel.querySelector(".nav-item");
             if (firstNavItem) {
-              setFocus(firstNavItem);
+              firstNavItem.focus(); // Echter Fokus
+              setFocus(firstNavItem); // Visueller Fokus
             }
           }
         });
@@ -765,28 +789,27 @@ function inputFieldTrigger() {
         }, 100);
       });
 
-      // Handle keyup events for showing/hiding dropdown
-      inputField.addEventListener("keyup", function (e) {
+      // Handle input events for dynamic search and dropdown control
+      inputField.addEventListener("input", function (e) {
         const text = inputField.innerText.trim();
+        const slashIndex = text.indexOf("/");
 
-        // Show dropdown only if '/' was typed (not pasted) and not during paste
-        if (e.key === "/" && !isPasting) {
-          const slashIndex = text.indexOf("/");
-          if (slashIndex !== -1) {
-            const query = text
-              .slice(slashIndex + 1)
-              .trim()
-              .toLowerCase();
-            showDropdown(query);
-          }
-        }
-
-        // Hide dropdown on Escape or if no '/' and not opened by button
-        if (
-          e.key === "Escape" ||
-          (!text.includes("/") && !dropdown.dataset.openedByButton)
-        ) {
+        if (slashIndex !== -1 && !isPasting) {
+          const query = text
+            .slice(slashIndex + 1)
+            .trim()
+            .toLowerCase();
+          showDropdown(query);
+        } else if (!text.includes("/") && !dropdown.dataset.openedByButton) {
           hideDropdown();
+        }
+      });
+
+      // Prevent Enter key from submitting when dropdown is open
+      inputField.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && dropdown.style.display === "flex") {
+          e.preventDefault(); // Prevent form submission
+          e.stopPropagation(); // Stop event bubbling
         }
       });
 
@@ -844,6 +867,7 @@ function inputFieldTrigger() {
           delete dropdown.dataset.openedByButton;
         } else {
           inputField.innerText = "/";
+          inputField.focus();
           showDropdown();
           dropdown.dataset.openedByButton = "true";
         }
