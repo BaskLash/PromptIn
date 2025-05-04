@@ -644,17 +644,20 @@ function promptSaver(message) {
           topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden
       );
 
-      // Populate replaceFolderSelect
+      // Populate replaceFolderSelect (only folders with prompts)
       replaceFolderSelect.innerHTML =
         '<option value="">Select a folder</option>';
       folders.forEach(([id, topic]) => {
-        const option = document.createElement("option");
-        option.value = id;
-        option.textContent = topic.name;
-        replaceFolderSelect.appendChild(option);
+        if (topic.prompts.length > 0) {
+          // Nur Ordner mit Prompts
+          const option = document.createElement("option");
+          option.value = id;
+          option.textContent = topic.name;
+          replaceFolderSelect.appendChild(option);
+        }
       });
 
-      // Populate addFolderSelect
+      // Populate addFolderSelect (all folders)
       addFolderSelect.innerHTML = '<option value="">Select a folder</option>';
       folders.forEach(([id, topic]) => {
         const option = document.createElement("option");

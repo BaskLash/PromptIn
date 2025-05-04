@@ -52,7 +52,6 @@ function inputFieldTrigger() {
       dropdown.style.overflow = "hidden";
       dropdown.style.display = "none";
       dropdown.style.zIndex = "10000";
-      dropdown.style.display = "flex";
       dropdown.style.flexDirection = "column";
       dropdown.style.fontFamily = "Segoe UI, sans-serif";
       dropdown.style.backdropFilter = "blur(6px)";
@@ -900,12 +899,12 @@ function inputFieldTrigger() {
 
       /* Plus Button */
       const container = document.querySelector(
-        "[data-testid='composer-footer-actions']"
+        "[data-testid='composer-trailing-actions']"
       );
 
       if (!container) {
         console.error(
-          "Container with data-testid='composer-footer-actions' not found."
+          "Container with data-testid='composer-trailing-actions' not found."
         );
         return;
       }
@@ -919,36 +918,111 @@ function inputFieldTrigger() {
       button.style.color = "black";
       button.style.border = "none";
       button.style.cursor = "pointer";
+      button.style.fontWeight = "bold";
       button.style.fontSize = "24px";
       button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
       button.style.transition = "box-shadow 0.3s ease, transform 0.2s ease";
       button.style.display = "flex";
       button.style.alignItems = "center";
       button.style.justifyContent = "center";
+      button.style.position = "relative"; // Für potenzielle spätere Anpassungen
 
+      // Tooltip-Element erstellen
+      const tooltip = document.createElement("div");
+      tooltip.textContent = "Open the PromptIn Management Menu"; // Deine Nachricht hier
+      tooltip.style.position = "fixed"; // Fixed, um außerhalb des Containers zu rendern
+      tooltip.style.backgroundColor = "black";
+      tooltip.style.color = "white";
+      tooltip.style.padding = "8px 12px";
+      tooltip.style.borderRadius = "4px";
+      tooltip.style.fontSize = "14px";
+      tooltip.style.whiteSpace = "nowrap";
+      tooltip.style.zIndex = "1000"; // Hoher z-index, um über anderen Elementen zu liegen
+      tooltip.style.opacity = "0";
+      tooltip.style.pointerEvents = "none"; // Verhindert Interaktion mit Tooltip
+      tooltip.style.transition = "opacity 0.2s ease";
+
+      // Pfeil für Tooltip (dreieckförmig, nach unten zeigend)
+      tooltip.style.setProperty("--tooltip-arrow-size", "6px");
+      tooltip.innerHTML += `
+  <div style="
+    position: absolute;
+    bottom: calc(-1 * var(--tooltip-arrow-size));
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: var(--tooltip-arrow-size) solid transparent;
+    border-right: var(--tooltip-arrow-size) solid transparent;
+    border-top: var(--tooltip-arrow-size) solid black;
+  "></div>
+`; // Pfeil nach unten (für Tooltip über Button)
+
+      // Funktion zum Positionieren des Tooltips
+      function positionTooltip() {
+        const rect = button.getBoundingClientRect();
+        tooltip.style.left = `${rect.left + rect.width / 2}px`; // Zentriert horizontal
+        tooltip.style.top = `${rect.top - tooltip.offsetHeight - 45}px`; // 40px über dem Button
+        tooltip.style.transform = "translateX(-50%)"; // Zentriert relativ zur Breite
+      }
+
+      // Hover-Effekte für Button und Tooltip
       button.addEventListener("mouseover", () => {
         button.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-        button.style.transform = "scale(1.1)";
+        button.style.color = "white";
+        button.style.backgroundColor = "black";
+        positionTooltip(); // Tooltip positionieren
+        document.body.appendChild(tooltip); // Tooltip zum DOM hinzufügen
+        tooltip.style.opacity = "1"; // Tooltip anzeigen
       });
 
       button.addEventListener("mouseout", () => {
         button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-        button.style.transform = "scale(1)";
+        button.style.color = "black";
+        button.style.backgroundColor = "white";
+        tooltip.style.opacity = "0"; // Tooltip ausblenden
+        setTimeout(() => {
+          if (tooltip.parentNode) {
+            document.body.removeChild(tooltip); // Tooltip nach Transition entfernen
+          }
+        }, 200); // Entspricht der Transition-Dauer
       });
 
-      button.addEventListener("click", () => {
-        if (dropdown.style.display === "flex") {
-          hideDropdown();
-          delete dropdown.dataset.openedByButton;
-        } else {
-          inputField.innerText = inputField.innerText + "/";
-          inputField.focus();
-          setCursorToEnd(inputField); // Cursor ans Ende setzen nach Hinzufügen von "/"
-          showDropdown();
-          dropdown.dataset.openedByButton = "true";
+      // Bei Fenstergrößenänderung oder Scroll repositionieren
+      window.addEventListener("resize", () => {
+        if (tooltip.style.opacity === "1") {
+          positionTooltip();
+        }
+      });
+      window.addEventListener("scroll", () => {
+        if (tooltip.style.opacity === "1") {
+          positionTooltip();
         }
       });
 
+      // Click-Handler bleibt unverändert
+      button.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (dropdown.style.display === "flex") {
+          hideDropdown();
+          delete dropdown.dataset.openedByButton;
+          dropdownClosedByUser = false;
+          tooltip.textContent = "Open the PromptIn Management Menu";
+        } else {
+          const currentText = inputField.innerText.trim();
+          if (!currentText.includes("/")) {
+            inputField.innerText += "/";
+          }
+          inputField.focus();
+          setCursorToEnd(inputField);
+          showDropdown();
+          dropdown.dataset.openedByButton = "true";
+          dropdownClosedByUser = false;
+          tooltip.textContent = "Close the PromptIn Management Menu";
+        }
+      });
+
+      // Button zum DOM hinzufügen
       container.appendChild(button);
     }, 2000);
   });
