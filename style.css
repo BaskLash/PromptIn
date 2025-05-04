@@ -253,6 +253,12 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 212, 255, 0.2);
 }
+.prompt-item.favorite::before {
+  content: "★ ";
+  color: #ffd700;
+  font-size: 1.2em;
+  vertical-align: middle;
+}
 
 .prompt-text {
   font-size: 16px;

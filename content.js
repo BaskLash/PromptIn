@@ -262,19 +262,26 @@ function promptSaver(message) {
   const promptSection = document.createElement("div");
   promptSection.className = "step-section";
 
+  // Label für die Textarea
   const promptTextareaLabel = document.createElement("label");
   promptTextareaLabel.setAttribute("for", "promptTextarea");
   promptTextareaLabel.textContent = "Your Prompt:";
 
+  // Textarea für die Benutzereingabe
   const promptTextarea = document.createElement("textarea");
   promptTextarea.id = "promptTextarea";
   promptTextarea.name = "promptTextarea";
   promptTextarea.rows = 10;
+  promptTextarea.style.width = "100%"; // Optional: Textfeldbreite anpassen
 
   // Sicherstellen, dass message ein String ist
   message =
     typeof message === "string" ? message.trim() : String(message).trim();
 
+  // Originalnachricht speichern
+  const originalMessage = message;
+
+  // Standardmäßig nur Text vor ":" anzeigen, falls ":" vorhanden
   let processedMessage = message.includes(":")
     ? message.split(":")[0].trim()
     : message;
@@ -282,14 +289,64 @@ function promptSaver(message) {
   promptTextarea.value = processedMessage;
   promptTextarea.placeholder = "Bearbeite deinen Prompt hier...";
 
+  // Checkbox-Container für bessere Positionierung
+  const checkboxContainer = document.createElement("div");
+  checkboxContainer.style.marginTop = "10px"; // Abstand zwischen Textfeld und Checkbox
+  checkboxContainer.style.display = "flex"; // Flexbox für bessere Layout-Kontrolle
+  checkboxContainer.style.alignItems = "center"; // Vertikale Ausrichtung
+
+  // Checkbox für vollständigen Inhalt
+  const showFullContentCheckbox = document.createElement("input");
+  showFullContentCheckbox.type = "checkbox";
+  showFullContentCheckbox.id = "showFullContent";
+  showFullContentCheckbox.name = "showFullContent";
+  showFullContentCheckbox.style.width = "16px"; // Kleine Checkbox
+  showFullContentCheckbox.style.height = "16px"; // Kleine Checkbox
+  showFullContentCheckbox.style.marginRight = "10px"; // Abstand zwischen Checkbox und Label
+
+  const checkboxLabel = document.createElement("label");
+  checkboxLabel.setAttribute("for", "showFullContent");
+  checkboxLabel.textContent = "Gesamten Inhalt anzeigen (inkl. Text nach ':')";
+  checkboxLabel.style.fontSize = "14px"; // Optional: Schriftgröße anpassen
+  checkboxLabel.style.marginTop = "5px"; // Abstand zum Text
+
+  // Event-Listener für Checkbox
+  showFullContentCheckbox.addEventListener("change", (e) => {
+    if (e.target.checked) {
+      // Gesamten Inhalt anzeigen
+      promptTextarea.value = originalMessage;
+    } else {
+      // Nur Text vor ":" anzeigen
+      promptTextarea.value = originalMessage.includes(":")
+        ? originalMessage.split(":")[0].trim()
+        : originalMessage;
+    }
+  });
+
+  // Buttons
   const promptButtons = document.createElement("div");
   promptButtons.className = "button-group";
+  promptButtons.style.marginTop = "10px"; // Abstand zwischen Checkbox und Buttons
+
   const backToTitleButton = document.createElement("button");
   backToTitleButton.textContent = "Back";
   backToTitleButton.className = "back-button";
+
   const nextToOptionsButton = document.createElement("button");
   nextToOptionsButton.textContent = "Next";
   nextToOptionsButton.className = "next-button";
+
+  // Elemente zum DOM hinzufügen
+  promptSection.appendChild(promptTextarea); // Textarea direkt unter dem Label
+
+  checkboxContainer.appendChild(showFullContentCheckbox);
+  checkboxContainer.appendChild(checkboxLabel);
+
+  promptButtons.appendChild(backToTitleButton);
+  promptButtons.appendChild(nextToOptionsButton);
+  promptSection.appendChild(promptButtons);
+  promptSection.appendChild(promptTextareaLabel);
+  promptSection.appendChild(checkboxContainer); // Checkbox unter der Textarea
 
   // Step 3: Options
   const optionsSection = document.createElement("div");

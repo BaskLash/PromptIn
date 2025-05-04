@@ -40,6 +40,9 @@
               Categories
             </button>
             <div class="collapsible-content">
+              <a href="#" id="favorites-prompts-link" class="sidebar-link"
+                >Favorites</a
+              >
               <a href="#" id="all-prompts-link" class="sidebar-link"
                 >All Prompts</a
               >
@@ -120,11 +123,14 @@
           </button>
         </div>
         <div class="settings-option">
-          <button id="feedback-btn" class="modal-button">
-            Send Feedback
-          </button>&nbsp;
+          <button id="feedback-btn" class="modal-button">Send Feedback</button
+          >&nbsp;
           <button id="feature-request-btn" class="modal-button">
             Feature Request
+          </button>
+          &nbsp;<br /><br />
+          <button id="rating-request-btn" class="modal-button">
+            Leave us a rating!
           </button>
         </div>
       </div>
@@ -219,6 +225,10 @@
               border: 1px solid #ddd;
             "
           ></select>
+          <div class="form-group">
+            <label for="prompt-favorite">Add to Favorites:</label>
+            <input type="checkbox" id="prompt-favorite" name="favorite" />
+          </div>
           <button
             id="create-prompt-btn"
             class="action-btn"

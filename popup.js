@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const burgerBtn = document.querySelector(".burger-btn");
   const sidebar = document.querySelector(".sidebar");
   const allPromptsLink = document.getElementById("all-prompts-link");
+  const favoritesLink = document.getElementById("favorites-prompts-link");
   const singlePromptsLink = document.getElementById("single-prompts-link");
   const categorisedPromptsLink = document.getElementById(
     "categorised-prompts-link"
@@ -37,7 +38,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
       noData.style.display = "none";
 
-      if (view === "all") {
+      if (view === "favorites") {
+        Object.entries(data).forEach(([id, topic]) => {
+          if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
+            allPrompts = allPrompts.concat(
+              topic.prompts
+                .filter((prompt) => prompt.isFavorite)
+                .map((prompt, index) => ({
+                  prompt,
+                  folderId: id,
+                  index,
+                  isHidden: topic.isHidden || false,
+                }))
+            );
+          }
+        });
+      } else if (view === "all") {
         Object.entries(data).forEach(([id, topic]) => {
           if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
             allPrompts = allPrompts.concat(
@@ -101,7 +117,11 @@ document.addEventListener("DOMContentLoaded", function () {
       if (allPrompts.length === 0) {
         noData.style.display = "block";
         noData.textContent =
-          view === "trash" ? "No prompts in trash" : "No prompts available";
+          view === "trash"
+            ? "No prompts in trash"
+            : view === "favorites"
+            ? "No favorite prompts available"
+            : "No prompts available";
         return;
       }
 
@@ -180,16 +200,27 @@ document.addEventListener("DOMContentLoaded", function () {
   function createPromptItem(prompt, folderId, index, isHidden, isTrash) {
     const promptItem = document.createElement("li");
     promptItem.classList.add("prompt-item");
+    if (prompt.isFavorite) {
+      promptItem.classList.add("favorite");
+    }
 
     const promptText = document.createElement("span");
     promptText.classList.add("prompt-text");
-    const displayText = prompt.title || prompt.content || "Untitled Prompt";
-    promptText.textContent =
-      displayText.length > 50 ? displayText.slice(0, 50) + "..." : displayText;
-    promptText.title = displayText;
+    chrome.storage.sync.get(folderId, (data) => {
+      const topic = data[folderId];
+      const folderName =
+        topic && !topic.isHidden && !topic.isTrash ? topic.name : "";
+      const displayText = prompt.title || prompt.content || "Untitled Prompt";
+      promptText.textContent = folderName
+        ? `${displayText.slice(0, 50)}${
+            displayText.length > 50 ? "..." : ""
+          } (in ${folderName})`
+        : `${displayText.slice(0, 50)}${displayText.length > 50 ? "..." : ""}`;
+      promptText.title = displayText;
+    });
     promptItem.appendChild(promptText);
 
-    if (isHidden) {
+    if (isHidden && !isTrash) {
       promptItem.style.opacity = "0.8";
       promptItem.title = "This prompt is not assigned to a visible folder";
     }
@@ -211,6 +242,16 @@ document.addEventListener("DOMContentLoaded", function () {
         editPrompt(prompt, folderId, index, promptItem)
       );
       promptActions.appendChild(editBtn);
+
+      const favoriteBtn = document.createElement("button");
+      favoriteBtn.textContent = prompt.isFavorite
+        ? "Remove from Favorites"
+        : "Add to Favorites";
+      favoriteBtn.classList.add("action-btn");
+      favoriteBtn.addEventListener("click", () =>
+        toggleFavoritePrompt(folderId, index, promptItem, prompt)
+      );
+      promptActions.appendChild(favoriteBtn);
 
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Move to Trash";
@@ -239,6 +280,48 @@ document.addEventListener("DOMContentLoaded", function () {
 
     promptItem.appendChild(promptActions);
     return promptItem;
+  }
+
+  function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
+    chrome.storage.sync.get(folderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      const topic = data[folderId];
+      if (!topic || !topic.prompts[promptIndex]) return;
+
+      topic.prompts[promptIndex].isFavorite =
+        !topic.prompts[promptIndex].isFavorite;
+
+      chrome.storage.sync.set({ [folderId]: topic }, function () {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Error toggling favorite status:",
+            chrome.runtime.lastError
+          );
+          alert("Fehler beim Umschalten des Favoritenstatus.");
+        } else {
+          console.log(`Favorite status toggled for prompt in ${folderId}`);
+          const currentView =
+            document
+              .getElementById("mainHeaderTitle")
+              ?.textContent.toLowerCase() || "all";
+          if (currentView.includes("favorites")) {
+            loadPrompts("favorites");
+          } else if (currentView.includes("all")) {
+            loadPrompts("all");
+          } else if (currentView.includes("single")) {
+            loadPrompts("single");
+          } else if (currentView.includes("categorised")) {
+            loadPrompts("categorised");
+          } else {
+            loadPrompts(folderId);
+          }
+        }
+      });
+    });
   }
 
   // Funktion zum Anzeigen eines spezifischen Ordners
@@ -335,6 +418,15 @@ document.addEventListener("DOMContentLoaded", function () {
     contentInput.style.border = "1px solid #ddd";
     contentInput.style.minHeight = "120px";
 
+    const favoriteLabel = document.createElement("label");
+    favoriteLabel.textContent = "Add to Favorites:";
+    favoriteLabel.style.marginTop = "10px";
+    favoriteLabel.style.display = "block";
+    const favoriteCheckbox = document.createElement("input");
+    favoriteCheckbox.type = "checkbox";
+    favoriteCheckbox.checked = prompt.isFavorite || false;
+    favoriteCheckbox.style.marginLeft = "10px";
+
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
     saveButton.classList.add("action-btn");
@@ -344,6 +436,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const newTitle = titleInput.value.trim();
       const newDesc = descInput.value.trim();
       const newContent = contentInput.value.trim();
+      const isFavorite = favoriteCheckbox.checked;
 
       if (!newTitle || !newContent) {
         alert("Title and content are required.");
@@ -361,6 +454,7 @@ document.addEventListener("DOMContentLoaded", function () {
           title: newTitle,
           description: newDesc,
           content: newContent,
+          isFavorite,
         };
 
         if (data[folderId].prompts.length === 1 && data[folderId].isHidden) {
@@ -393,6 +487,8 @@ document.addEventListener("DOMContentLoaded", function () {
     modalBody.appendChild(descInput);
     modalBody.appendChild(contentLabel);
     modalBody.appendChild(contentInput);
+    modalBody.appendChild(favoriteLabel);
+    modalBody.appendChild(favoriteCheckbox);
     modalBody.appendChild(saveButton);
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
@@ -412,7 +508,7 @@ document.addEventListener("DOMContentLoaded", function () {
         background: rgba(0, 0, 0, 0.7);
         backdrop-filter: blur(3px);
       }
-
+  
       .modal-content {
         background: #fff;
         margin: 5% auto;
@@ -423,7 +519,7 @@ document.addEventListener("DOMContentLoaded", function () {
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         overflow: hidden;
       }
-
+  
       .modal-header {
         padding: 16px 24px;
         background: linear-gradient(135deg, #1e90ff, #4169e1);
@@ -432,18 +528,18 @@ document.addEventListener("DOMContentLoaded", function () {
         justify-content: space-between;
         align-items: center;
       }
-
+  
       .modal-header h2 {
         margin: 0;
         font-size: 1.6em;
         font-weight: 600;
       }
-
+  
       .modal-body {
         padding: 24px;
         color: #2c3e50;
       }
-
+  
       .modal-body label {
         font-weight: 600;
         margin-top: 16px;
@@ -451,13 +547,13 @@ document.addEventListener("DOMContentLoaded", function () {
         display: block;
         color: #34495e;
       }
-
+  
       .modal-body input,
       .modal-body textarea {
         margin-bottom: 12px;
         box-sizing: border-box;
       }
-
+  
       .close {
         color: white;
         font-size: 28px;
@@ -465,12 +561,12 @@ document.addEventListener("DOMContentLoaded", function () {
         cursor: pointer;
         transition: transform 0.2s ease;
       }
-
+  
       .close:hover,
       .close:focus {
         transform: scale(1.1);
       }
-
+  
       .action-btn {
         padding: 8px 16px;
         background: #1e90ff;
@@ -479,7 +575,7 @@ document.addEventListener("DOMContentLoaded", function () {
         border-radius: 4px;
         cursor: pointer;
       }
-
+  
       .action-btn:hover {
         background: #4169e1;
       }
@@ -697,6 +793,11 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // Links in der Seitenleiste
+  favoritesLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    loadPrompts("favorites");
+    sidebar.classList.remove("visible");
+  });
   allPromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
     loadPrompts("all");

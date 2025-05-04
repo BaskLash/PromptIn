@@ -156,6 +156,7 @@ function inputFieldTrigger() {
                 const content =
                   typeof prompt === "string" ? prompt : prompt.content || "";
 
+                // Add to All Prompts
                 categories["All Prompts"].push(title);
                 promptSourceMap.set(title + "_" + id, {
                   category: "All Prompts",
@@ -164,6 +165,7 @@ function inputFieldTrigger() {
                   folderId: id,
                 });
 
+                // Add to Single Prompts if hidden
                 if (topic.isHidden) {
                   categories["Single Prompts"].push(title);
                   promptSourceMap.set(title + "_" + id, {
@@ -174,6 +176,7 @@ function inputFieldTrigger() {
                   });
                 }
 
+                // Add to Categorised Prompts if not hidden
                 if (!topic.isHidden) {
                   if (!categories["Categorised Prompts"][topic.name]) {
                     categories["Categorised Prompts"][topic.name] = [];
@@ -185,6 +188,17 @@ function inputFieldTrigger() {
                   promptSourceMap.set(title + "_" + id, {
                     category: "Categorised Prompts",
                     folder: topic.name,
+                    prompt: prompt,
+                    folderId: id,
+                  });
+                }
+
+                // Add to Favorites if isFavorite is true
+                if (prompt.isFavorite) {
+                  categories["Favorites"].push(title);
+                  promptSourceMap.set(title + "_" + id, {
+                    category: "Favorites",
+                    folder: topic.isHidden ? null : topic.name,
                     prompt: prompt,
                     folderId: id,
                   });
@@ -269,6 +283,8 @@ function inputFieldTrigger() {
           message.textContent =
             categoryOrFolder === "Categorised Prompts"
               ? "No prompts in categorised folders"
+              : categoryOrFolder === "Favorites"
+              ? "No favorite prompts available"
               : "No prompts in this folder";
           message.style.padding = "10px";
           message.style.color = "#888";
@@ -276,7 +292,20 @@ function inputFieldTrigger() {
         } else {
           items.forEach((itemText) => {
             const contentItem = document.createElement("div");
-            contentItem.textContent = itemText;
+            const title = itemText.includes(": ")
+              ? itemText.split(": ")[1]
+              : itemText;
+            const key = Array.from(promptSourceMap.keys()).find((k) =>
+              k.startsWith(title + "_")
+            );
+            const source = promptSourceMap.get(key);
+            const displayText =
+              source && source.category === "Favorites" && source.folder
+                ? `${title} (in ${source.folder})`
+                : source && source.category === "Categorised Prompts"
+                ? `${title} (${source.folder})`
+                : title;
+            contentItem.textContent = displayText;
             contentItem.style.padding = "10px";
             contentItem.style.cursor = "pointer";
             contentItem.style.borderRadius = "4px";
@@ -300,13 +329,6 @@ function inputFieldTrigger() {
               const currentText = inputField.innerText.trim();
               const slashIndex = currentText.indexOf("/");
               let newText = "";
-              const title = itemText.includes(": ")
-                ? itemText.split(": ")[1]
-                : itemText;
-              const key = Array.from(promptSourceMap.keys()).find((k) =>
-                k.startsWith(title + "_")
-              );
-              const source = promptSourceMap.get(key);
               const selectedPrompt =
                 source && source.prompt
                   ? typeof source.prompt === "string"
@@ -319,10 +341,8 @@ function inputFieldTrigger() {
                   .substring(0, slashIndex)
                   .trim();
                 if (textBeforeSlash === "") {
-                  // Nur "/" oder " /" steht im Eingabefeld
                   newText = selectedPrompt;
                 } else {
-                  // Text vor "/" existiert (z. B. "Test /" oder "Test/")
                   const hasSpace =
                     currentText[slashIndex - 1] === " " ||
                     currentText[slashIndex + 1] === " ";
@@ -331,7 +351,6 @@ function inputFieldTrigger() {
                     : `${textBeforeSlash}${selectedPrompt}`;
                 }
               } else {
-                // Kein "/" im Text, füge den Prompt direkt hinzu
                 newText = currentText
                   ? `${currentText} ${selectedPrompt}`
                   : selectedPrompt;
@@ -339,7 +358,7 @@ function inputFieldTrigger() {
 
               inputField.innerText = newText;
               inputField.focus();
-              setCursorToEnd(inputField); // Cursor ans Ende setzen
+              setCursorToEnd(inputField);
               dropdown.style.display = "none";
               clearFocus();
             });
@@ -502,7 +521,7 @@ function inputFieldTrigger() {
           scoredPrompts.forEach(({ title, source }) => {
             const contentItem = document.createElement("div");
             const displayText = source.folder
-              ? `${title} (${source.folder})`
+              ? `${title} (in ${source.folder})`
               : `${title} (${source.category})`;
             contentItem.textContent = displayText;
             contentItem.style.padding = "10px";
@@ -538,10 +557,8 @@ function inputFieldTrigger() {
                   .substring(0, slashIndex)
                   .trim();
                 if (textBeforeSlash === "") {
-                  // Nur "/" oder " /" steht im Eingabefeld
                   newText = selectedPrompt;
                 } else {
-                  // Text vor "/" existiert (z. B. "Test /" oder "Test/")
                   const hasSpace =
                     currentText[slashIndex - 1] === " " ||
                     currentText[slashIndex + 1] === " ";
@@ -550,7 +567,6 @@ function inputFieldTrigger() {
                     : `${textBeforeSlash}${selectedPrompt}`;
                 }
               } else {
-                // Kein "/" im Text, füge den Prompt direkt hinzu
                 newText = currentText
                   ? `${currentText} ${selectedPrompt}`
                   : selectedPrompt;
@@ -558,7 +574,7 @@ function inputFieldTrigger() {
 
               inputField.innerText = newText;
               inputField.focus();
-              setCursorToEnd(inputField); // Cursor ans Ende setzen
+              setCursorToEnd(inputField);
               dropdown.style.display = "none";
               clearFocus();
             });

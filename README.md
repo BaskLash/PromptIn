@@ -3,6 +3,7 @@
 # PromptIn: AI Prompt Management System
 
 Kompatibel mit:
+
 - [Grok](https://grok.com/)
 - [Gemini](https://gemini.google.com/app)
 - [ChatGPT](https://chatgpt.com/)
@@ -77,6 +78,7 @@ Hier sind einige genutzte Ressourcen zur Implementierung:
 - [W3Schools Multi-Dimensional Arrays](https://www.w3schools.com/c/c_arrays_multi.php)
 - [W3Schools CSS Hover Buttons](https://www.w3schools.com/css/tryit.asp?filename=trycss_buttons_hover)
 - [Emojipedia File Folder](https://emojipedia.org/file-folder)
+- [CSS Tooltip](https://www.w3schools.com/css/css_tooltip.asp)
 
 ## 👨‍💻 Autor
 

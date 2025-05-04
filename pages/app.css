@@ -441,3 +441,9 @@ main {
 .dropdown-item:hover {
   background: lightgray;
 }
+.prompt-item.favorite::before {
+  content: "★ ";
+  color: #ffd700;
+  font-size: 1.2em;
+  vertical-align: middle;
+}
