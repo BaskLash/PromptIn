@@ -29,9 +29,12 @@
         "*://*.duckduckgo.com/*",
         "*://*.perplexity.ai/*",
         "*://*.deepseek.com/*",
-        "*://*.v0.dev/*"
+        "*://*.v0.dev/*",
+        "*://*.deepai.org/*"
       ],
       "js": [
+        "promptProps.js",
+        "promptSaver.js",
         "inputFieldTrigger.js",
         "addButton.js",
         "addPlatformClickEvent.js",

@@ -23,14 +23,114 @@ function inputFieldTrigger() {
     return matrix[b.length][a.length];
   }
 
+  // Hilfsfunktion zur Bestimmung der Zugriffsmethode
+  function getInputFieldAccessMethod(inputField) {
+    if (!inputField) return { read: "innerText", write: "innerText" };
+
+    // Zuordnung basierend auf Selektor und Kommentaren
+    const selectors = [
+      {
+        selector: "#prompt-textarea", // ChatGPT
+        read: "innerText",
+        write: "innerText",
+      },
+      {
+        selector: "textarea", // Grok, Blackbox, Microsoft Copilot, Mistral, Duckduckgo, Perplexity, DeepSeek, Deepai
+        read: "value",
+        write: "value",
+      },
+      {
+        selector: "[role='textbox']", // Gemini
+        read: "value", // Gemini verwendet value gemäß Kommentar
+        write: "value",
+      },
+      {
+        selector: "[enterkeyhint='enter']", // Claude
+        read: "innerText",
+        write: "innerText",
+      },
+      {
+        selector: "textarea#copilot-chat-textarea", // GitHub
+        read: "value",
+        write: "value",
+      },
+    ];
+
+    // Finde den passenden Selektor
+    for (const { selector, read, write } of selectors) {
+      if (inputField.matches(selector)) {
+        return { read, write };
+      }
+    }
+
+    // Fallback: Prüfe den Elementtyp
+    if (inputField.tagName === "TEXTAREA" || inputField.tagName === "INPUT") {
+      return { read: "value", write: "value" };
+    }
+    return { read: "innerText", write: "innerText" };
+  }
+
+  // Hilfsfunktion zum Lesen des Textes
+  function getInputText(inputField) {
+    const { read } = getInputFieldAccessMethod(inputField);
+    return inputField[read]?.trim() || "";
+  }
+
+  // Hilfsfunktion zum Schreiben des Textes
+  function setInputText(inputField, text) {
+    const { write } = getInputFieldAccessMethod(inputField);
+    inputField[write] = text;
+  }
+
+  // Funktion zum Setzen des Cursors ans Ende
+  function setCursorToEnd(element) {
+    const { read } = getInputFieldAccessMethod(element);
+    if (read === "innerText") {
+      // Für contenteditable oder div-Elemente
+      const range = document.createRange();
+      const selection = window.getSelection();
+      range.selectNodeContents(element);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      // Für textarea oder input
+      if (element && typeof element.value === "string") {
+        element.focus();
+        const len = element.value.length;
+        element.setSelectionRange(len, len);
+      } else {
+        console.warn(
+          "Element does not support value-based cursor positioning."
+        );
+        element.focus();
+      }
+    }
+  }
+
   // Warte, bis das DOM geladen ist
   document.addEventListener("DOMContentLoaded", () => {
     // Warte zusätzlich 2 Sekunden nach DOM-Laden
     setTimeout(() => {
-      const inputField = document.getElementById("prompt-textarea");
+      let inputField =
+        // ChatGPT
+        // using innerText
+        document.getElementById("prompt-textarea") ||
+        // Grok, Blackbox, Microsoft Copilot, Mistral, Duckduckgo, Perplexity, DeepSeek, Deepai
+        document.querySelector("textarea") ||
+        // using value
+        // Gemini
+        // using innerText
+        document.querySelector("[role='textbox']") ||
+        // Claude
+        // using innerText
+        document.querySelector("[enterkeyhint='enter']") ||
+        // GitHub
+        // using innerText
+        document.querySelector("textarea#copilot-chat-textarea");
 
       if (!inputField) {
-        console.error("Input field with ID 'prompt-textarea' not found.");
+        console.error("Nothing possible");
         return;
       }
 
@@ -111,17 +211,7 @@ function inputFieldTrigger() {
       let currentFocusElement = null;
       let selectedCategoryOrFolder = null;
       let isPasting = false;
-      let isEscaped = false; // Neue Flag für Escape-Verhalten
-
-      // Function to set cursor to the end of contenteditable
-      function setCursorToEnd(element) {
-        const range = document.createRange();
-        const selection = window.getSelection();
-        range.selectNodeContents(element);
-        range.collapse(false); // Setze den Cursor ans Ende
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
+      let isEscaped = false;
 
       // Function to update dropdown data from Chrome storage
       function updateDropdownData(callback) {
@@ -326,7 +416,7 @@ function inputFieldTrigger() {
             });
 
             contentItem.addEventListener("click", () => {
-              const currentText = inputField.innerText.trim();
+              const currentText = getInputText(inputField);
               const slashIndex = currentText.indexOf("/");
               let newText = "";
               const selectedPrompt =
@@ -356,7 +446,7 @@ function inputFieldTrigger() {
                   : selectedPrompt;
               }
 
-              inputField.innerText = newText;
+              setInputText(inputField, newText);
               inputField.focus();
               setCursorToEnd(inputField);
               dropdown.style.display = "none";
@@ -544,7 +634,7 @@ function inputFieldTrigger() {
             });
 
             contentItem.addEventListener("click", () => {
-              const currentText = inputField.innerText.trim();
+              const currentText = getInputText(inputField);
               const slashIndex = currentText.indexOf("/");
               let newText = "";
               const selectedPrompt =
@@ -572,7 +662,7 @@ function inputFieldTrigger() {
                   : selectedPrompt;
               }
 
-              inputField.innerText = newText;
+              setInputText(inputField, newText);
               inputField.focus();
               setCursorToEnd(inputField);
               dropdown.style.display = "none";
@@ -765,9 +855,8 @@ function inputFieldTrigger() {
           console.log("Chrome storage changed, updating dropdown...");
           updateDropdownData(() => {
             if (dropdown.style.display === "flex") {
-              const query = inputField.innerText
-                .trim()
-                .slice(inputField.innerText.indexOf("/") + 1)
+              const query = getInputText(inputField)
+                .slice(getInputText(inputField).indexOf("/") + 1)
                 .trim();
               if (query) {
                 renderSearchResults(query);
@@ -865,7 +954,7 @@ function inputFieldTrigger() {
 
       // Handle input events for dynamic search and dropdown control
       inputField.addEventListener("input", function (e) {
-        const text = inputField.innerText.trim();
+        const text = getInputText(inputField);
         const slashIndex = text.indexOf("/");
 
         if (slashIndex !== -1 && !isPasting) {
@@ -914,7 +1003,9 @@ function inputFieldTrigger() {
       });
 
       /* Plus Button */
-      const container = document.querySelector(
+
+      // For ChatGPT
+      let container = document.querySelector(
         "[data-testid='composer-trailing-actions']"
       );
 
@@ -922,7 +1013,92 @@ function inputFieldTrigger() {
         console.error(
           "Container with data-testid='composer-trailing-actions' not found."
         );
-        return;
+        // For Perplexity
+        container = document.querySelector("div.bg-background:nth-child(3)");
+        if (!container) {
+          console.error(
+            "Container with data-testid='composer-trailing-actions' not found."
+          );
+          // For GitHub Copilot
+          container = document.querySelector(
+            ".ChatInput-module__trailingActions--q2BNB"
+          );
+          if (!container) {
+            console.error(
+              "Container with data-testid='composer-trailing-actions' not found."
+            );
+            // For Grok
+            container = document.querySelector(
+              ".ml-auto.flex.flex-row.items-end.gap-1"
+            );
+            if (!container) {
+              console.error(
+                "Container with data-testid='composer-trailing-actions' not found."
+              );
+              // For Gemini
+              container = document.querySelector(".trailing-actions-wrapper");
+              if (!container) {
+                console.error(
+                  "Container with data-testid='composer-trailing-actions' not found."
+                );
+                // For Duckai
+                container = document.querySelector(".fTx8kArcxKUd9ZBMcuCc");
+                if (!container) {
+                  console.error(
+                    "Container with data-testid='composer-trailing-actions' not found."
+                  );
+                  // For Mistral
+                  container = document.querySelector(".ms-auto.flex.gap-2");
+                  if (!container) {
+                    console.error(
+                      "Container with data-testid='composer-trailing-actions' not found."
+                    );
+                    // For Claude
+                    container = document.querySelector(
+                      ".flex.gap-2\\.5.w-full.items-center"
+                    );
+                    if (!container) {
+                      console.error(
+                        "Container with data-testid='composer-trailing-actions' not found."
+                      );
+                      // For DeepSeek
+                      container = document.querySelector(".bf38813a");
+                      if (!container) {
+                        console.error(
+                          "Container with data-testid='composer-trailing-actions' not found."
+                        );
+                        // Microsoft Copilot
+                        container = document.querySelector(".flex.gap-2");
+                        if (!container) {
+                          console.error(
+                            "Container with data-testid='composer-trailing-actions' not found."
+                          );
+                          // For blackbox
+                          container = document.querySelector(
+                            ".absolute.right-2.top-4.flex.items-end"
+                          );
+                          if (!container) {
+                            console.error(
+                              "Container with data-testid='composer-trailing-actions' not found."
+                            );
+                            // Deepai
+                            container =
+                              document.querySelector(".button-container");
+                            if (!container) {
+                              console.error(
+                                "Container with data-testid='composer-trailing-actions' not found."
+                              );
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
 
       const button = document.createElement("button");
@@ -941,24 +1117,24 @@ function inputFieldTrigger() {
       button.style.display = "flex";
       button.style.alignItems = "center";
       button.style.justifyContent = "center";
-      button.style.position = "relative"; // Für potenzielle spätere Anpassungen
+      button.style.position = "relative";
 
       // Tooltip-Element erstellen
       const tooltip = document.createElement("div");
-      tooltip.textContent = "Open the PromptIn Management Menu"; // Deine Nachricht hier
-      tooltip.style.position = "fixed"; // Fixed, um außerhalb des Containers zu rendern
+      tooltip.textContent = "Open the PromptIn Management Menu";
+      tooltip.style.position = "fixed";
       tooltip.style.backgroundColor = "black";
       tooltip.style.color = "white";
       tooltip.style.padding = "8px 12px";
       tooltip.style.borderRadius = "4px";
       tooltip.style.fontSize = "14px";
       tooltip.style.whiteSpace = "nowrap";
-      tooltip.style.zIndex = "1000"; // Hoher z-index, um über anderen Elementen zu liegen
+      tooltip.style.zIndex = "1000";
       tooltip.style.opacity = "0";
-      tooltip.style.pointerEvents = "none"; // Verhindert Interaktion mit Tooltip
+      tooltip.style.pointerEvents = "none";
       tooltip.style.transition = "opacity 0.2s ease";
 
-      // Pfeil für Tooltip (dreieckförmig, nach unten zeigend)
+      // Pfeil für Tooltip
       tooltip.style.setProperty("--tooltip-arrow-size", "6px");
       tooltip.innerHTML += `
   <div style="
@@ -972,14 +1148,14 @@ function inputFieldTrigger() {
     border-right: var(--tooltip-arrow-size) solid transparent;
     border-top: var(--tooltip-arrow-size) solid black;
   "></div>
-`; // Pfeil nach unten (für Tooltip über Button)
+`;
 
       // Funktion zum Positionieren des Tooltips
       function positionTooltip() {
         const rect = button.getBoundingClientRect();
-        tooltip.style.left = `${rect.left + rect.width / 2}px`; // Zentriert horizontal
-        tooltip.style.top = `${rect.top - tooltip.offsetHeight - 45}px`; // 40px über dem Button
-        tooltip.style.transform = "translateX(-50%)"; // Zentriert relativ zur Breite
+        tooltip.style.left = `${rect.left + rect.width / 2}px`;
+        tooltip.style.top = `${rect.top - tooltip.offsetHeight - 45}px`;
+        tooltip.style.transform = "translateX(-50%)";
       }
 
       // Hover-Effekte für Button und Tooltip
@@ -987,21 +1163,21 @@ function inputFieldTrigger() {
         button.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
         button.style.color = "white";
         button.style.backgroundColor = "black";
-        positionTooltip(); // Tooltip positionieren
-        document.body.appendChild(tooltip); // Tooltip zum DOM hinzufügen
-        tooltip.style.opacity = "1"; // Tooltip anzeigen
+        positionTooltip();
+        document.body.appendChild(tooltip);
+        tooltip.style.opacity = "1";
       });
 
       button.addEventListener("mouseout", () => {
         button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
         button.style.color = "black";
         button.style.backgroundColor = "white";
-        tooltip.style.opacity = "0"; // Tooltip ausblenden
+        tooltip.style.opacity = "0";
         setTimeout(() => {
           if (tooltip.parentNode) {
-            document.body.removeChild(tooltip); // Tooltip nach Transition entfernen
+            document.body.removeChild(tooltip);
           }
-        }, 200); // Entspricht der Transition-Dauer
+        }, 200);
       });
 
       // Bei Fenstergrößenänderung oder Scroll repositionieren
@@ -1016,7 +1192,7 @@ function inputFieldTrigger() {
         }
       });
 
-      // Click-Handler bleibt unverändert
+      // Click-Handler
       button.addEventListener("click", (e) => {
         e.preventDefault();
         if (dropdown.style.display === "flex") {
@@ -1025,9 +1201,9 @@ function inputFieldTrigger() {
           dropdownClosedByUser = false;
           tooltip.textContent = "Open the PromptIn Management Menu";
         } else {
-          const currentText = inputField.innerText.trim();
+          const currentText = getInputText(inputField);
           if (!currentText.includes("/")) {
-            inputField.innerText += "/";
+            setInputText(inputField, currentText + "/");
           }
           inputField.focus();
           setCursorToEnd(inputField);

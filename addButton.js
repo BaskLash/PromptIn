@@ -1248,3 +1248,82 @@ function addDeepSeekButton() {
     console.error("Fehler beim Hinzufügen der Buttons:", error.message);
   }
 }
+function addDeepaiButton() {
+  try {
+    const form = document.querySelector("form");
+    if (!form) throw new Error("Kein Formular auf der Seite gefunden");
+
+    let buttonCounter = 1;
+    let existingElements = new Set();
+
+    Array.from(form.children).forEach((child, index) => {
+      if (child.classList.contains("outputBox")) {
+        const chatOptionsBox = child.querySelector(".optionsBox");
+        if (!chatOptionsBox) {
+          console.warn("Keine .optionsBox in .outputBox gefunden", child);
+          return;
+        }
+
+        const existingButton = chatOptionsBox.querySelector(
+          ".save-prompt-button"
+        );
+        if (existingButton) {
+          console.log(
+            "Button existiert bereits für:",
+            chatOptionsBox.className
+          );
+          existingElements.add(chatOptionsBox);
+          return;
+        }
+
+        existingElements.add(chatOptionsBox);
+
+        const saveButton = document.createElement("button");
+        saveButton.textContent = "Save Prompt";
+        saveButton.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
+
+        Object.assign(saveButton.style, {
+          padding: "5px 10px",
+          border: "1px solid #ccc",
+          borderRadius: "5px",
+          color: "black",
+          background: "#f0f0f0",
+          marginRight: "8px",
+        });
+        saveButton.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+        saveButton.addEventListener("mouseover", () => {
+          saveButton.style.backgroundColor = "#e0e0e0";
+          saveButton.style.borderColor = "#bbb";
+        });
+        saveButton.addEventListener("mouseout", () => {
+          saveButton.style.backgroundColor = "#f0f0f0";
+          saveButton.style.borderColor = "#ccc";
+        });
+
+        saveButton.addEventListener("click", (event) => {
+          event.stopPropagation(); // Verhindert, dass das Ereignis an Eltern-Elemente weitergeleitet wird
+          event.preventDefault(); // Verhindert Standard-Browser-Verhalten
+          if (saveButton.classList.contains("save-prompt-button")) {
+            let buttonNumber = index + 1;
+            console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+            saveButton.textContent = "✔ Prompt Saved";
+            addDeepAIButtonClick(buttonNumber);
+            setTimeout(() => {
+              saveButton.textContent = "Save Prompt";
+            }, 5000);
+          }
+        });
+
+        chatOptionsBox.insertBefore(saveButton, chatOptionsBox.firstChild);
+        console.log(
+          `Button ${buttonCounter} zu ${chatOptionsBox.className} hinzugefügt`
+        );
+        buttonCounter++;
+      }
+    });
+  } catch (error) {
+    console.error("Fehler beim Hinzufügen der Buttons:", error.message);
+  }
+}

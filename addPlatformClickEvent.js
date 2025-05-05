@@ -369,3 +369,36 @@ function addDeepSeekButtonClick(index) {
     console.log(`Element mit Index ${adjustedIndex} nicht gefunden.`);
   }
 }
+function addDeepAIButtonClick(index) {
+  const form = document.querySelector("form");
+
+  if (!form) {
+    console.warn("No form found on the page.");
+    return;
+  }
+
+  const children = Array.from(form.children);
+
+  if (children.length) {
+    const child = children[index - 2];
+
+    if (
+      child.tagName === "DIV" &&
+      child.classList.contains("chatbox-wrapper")
+    ) {
+      const chatOptionsBox = child.querySelector("textarea.chatbox");
+
+      if (chatOptionsBox) {
+        console.log("Prompt-Wert gefunden:", chatOptionsBox.value);
+        promptSaver(chatOptionsBox.value);
+      } else {
+        console.warn(
+          "Keine .chatbox gefunden in .chatbox-wrapper bei Index",
+          index
+        );
+      }
+    }
+  } else {
+    console.warn("Ungültiger Index:", index);
+  }
+}

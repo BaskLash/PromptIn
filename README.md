@@ -15,6 +15,7 @@ Kompatibel mit:
 - [DuckDuckGo](https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1)
 - [Perplexity](https://www.perplexity.ai/)
 - [DeepSeek](https://chat.deepseek.com/)
+- [Deepai](https://deepai.org/chat)
 
 ## Inhaltsverzeichnis
 
