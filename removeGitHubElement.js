@@ -21,4 +21,16 @@ function removeElement() {
       footer.style.display = "none";
     }
   }
+  if (window.location.hostname === "perplexity.ai") {
+    const allElements = document.querySelectorAll(".relative");
+
+    const targetElements = Array.from(allElements).filter((el) => {
+      return (
+        Array.from(el.classList).some((cls) => cls.startsWith("col-span-")) &&
+        Array.from(el.classList).some((cls) => cls.startsWith("row-span-"))
+      );
+    });
+
+    targetElements.forEach((el) => el.remove()); // or do whatever you need
+  }
 }

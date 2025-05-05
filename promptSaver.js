@@ -1,3 +1,7 @@
+/**
+ * Displays a modal for saving a prompt with a multi-step form.
+ * @param {string} message The initial prompt message to display.
+ */
 function promptSaver(message) {
   // Sicherstellen, dass der DOM verfügbar ist
   if (!document.body || !document.head) {
@@ -12,6 +16,7 @@ function promptSaver(message) {
 
   // Shadow Host erstellen
   const shadowHost = document.createElement("div");
+  shadowHost.id = "prompt-saver-shadow-host";
   document.body.appendChild(shadowHost);
 
   // Shadow Root anfügen
@@ -234,174 +239,174 @@ function promptSaver(message) {
   // Stile definieren
   const style = document.createElement("style");
   style.textContent = `
-      .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(3px);
-      }
-      .modal-content {
-        background: #fff;
-        margin: 5% auto;
-        padding: 0;
-        width: 90%;
-        max-width: 600px;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-      }
-      .modal-header {
-        padding: 16px 24px;
-        background: linear-gradient(135deg, #1e90ff, #4169e1);
-        color: white;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .modal-header h2 {
-        margin: 0;
-        font-size: 1.6em;
-        font-weight: 600;
-      }
-      .modal-body {
-        padding: 24px;
-        color: #2c3e50;
-      }
-      .step-section {
-        display: none;
-      }
-      .step-section.active {
-        display: block;
-      }
-      .options-switch {
-        display: flex;
-        gap: 4px;
-        margin-bottom: 20px;
-        background: #f1f3f5;
-        padding: 4px;
-        border-radius: 6px;
-      }
-      .options-switch button {
-        flex: 1;
-        padding: 10px;
-        background: none;
-        border: none;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border-radius: 4px;
-      }
-      .options-switch button:hover {
-        background: #e9ecef;
-      }
-      .options-switch button.active {
-        background: #1e90ff;
-        color: white;
-      }
-      .option-content {
-        display: none;
-      }
-      .option-content.active {
-        display: block;
-      }
-      .modal-body label {
-        font-weight: 600;
-        margin-top: 16px;
-        margin-bottom: 6px;
-        display: block;
-        color: #34495e;
-      }
-      .modal-body input,
-      .modal-body select,
-      .modal-body textarea {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 12px;
-        border: 1px solid #dcdcdc;
-        border-radius: 4px;
-        font-size: 14px;
-        box-sizing: border-box;
-        transition: border-color 0.2s ease;
-      }
-      .modal-body input:focus,
-      .modal-body select:focus,
-      .modal-body textarea:focus {
-        border-color: #1e90ff;
-        outline: none;
-      }
-      .modal-body textarea {
-        resize: vertical;
-        min-height: 120px;
-      }
-      .button-group {
-        display: flex;
-        gap: 12px;
-        margin-top: 12px;
-      }
-      .next-button, .back-button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 4px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s ease;
-      }
-      .next-button {
-        background: #1e90ff;
-        color: white;
-      }
-      .next-button:hover {
-        background: #4169e1;
-      }
-      .back-button {
-        background: #6c757d;
-        color: white;
-      }
-      .back-button:hover {
-        background: #5a6268;
-      }
-      .modal-footer {
-        padding: 16px 24px;
-        background: #f8f9fa;
-        text-align: right;
-      }
-      .save-button {
-        padding: 10px 20px;
-        background: #28a745;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s ease;
-        display: none;
-      }
-      .modal-content.options-active .save-button {
-        display: block;
-      }
-      .save-button:hover {
-        background: #218838;
-      }
-      .close {
-        color: white;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: transform 0.2s ease;
-      }
-      .close:hover,
-      .close:focus {
-        transform: scale(1.1);
-      }
-    `;
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 10000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(3px);
+    }
+    .modal-content {
+      background: #fff;
+      margin: 5% auto;
+      padding: 0;
+      width: 90%;
+      max-width: 600px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #1e90ff, #4169e1);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.6em;
+      font-weight: 600;
+    }
+    .modal-body {
+      padding: 24px;
+      color: #2c3e50;
+    }
+    .step-section {
+      display: none;
+    }
+    .step-section.active {
+      display: block;
+    }
+    .options-switch {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: #f1f3f5;
+      padding: 4px;
+      border-radius: 6px;
+    }
+    .options-switch button {
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-radius: 4px;
+    }
+    .options-switch button:hover {
+      background: #e9ecef;
+    }
+    .options-switch button.active {
+      background: #1e90ff;
+      color: white;
+    }
+    .option-content {
+      display: none;
+    }
+    .option-content.active {
+      display: block;
+    }
+    .modal-body label {
+      font-weight: 600;
+      margin-top: 16px;
+      margin-bottom: 6px;
+      display: block;
+      color: #34495e;
+    }
+    .modal-body input,
+    .modal-body select,
+    .modal-body textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      border: 1px solid #dcdcdc;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease;
+    }
+    .modal-body input:focus,
+    .modal-body select:focus,
+    .modal-body textarea:focus {
+      border-color: #1e90ff;
+      outline: none;
+    }
+    .modal-body textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .next-button, .back-button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .next-button {
+      background: #1e90ff;
+      color: white;
+    }
+    .next-button:hover {
+      background: #4169e1;
+    }
+    .back-button {
+      background: #6c757d;
+      color: white;
+    }
+    .back-button:hover {
+      background: #5a6268;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      background: #f8f9fa;
+      text-align: right;
+    }
+    .save-button {
+      padding: 10px 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      display: none;
+    }
+    .modal-content.options-active .save-button {
+      display: block;
+    }
+    .save-button:hover {
+      background: #218838;
+    }
+    .close {
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .close:hover,
+    .close:focus {
+      transform: scale(1.1);
+    }
+  `;
 
   // Modal zusammenbauen
   modalHeader.appendChild(closeSpan);
@@ -436,26 +441,44 @@ function promptSaver(message) {
     return;
   }
 
-  // Modal anzeigen
-  modal.style.display = "block";
-  console.log("Modal display set to block");
-
   // Funktion zum Schließen des Modals
   function closeModal() {
     modal.style.display = "none";
     try {
       document.body.removeChild(shadowHost);
+      console.log("Modal closed and shadow host removed");
     } catch (error) {
       console.error("Fehler beim Entfernen des Modals:", error);
     }
   }
 
+  // Modal anzeigen mit Timeout, um DOM-Änderungen zu vermeiden
+  setTimeout(() => {
+    modal.style.display = "block";
+    console.log("Modal display set to block");
+    promptTitleInput.focus(); // Fokus auf das erste Eingabefeld setzen
+  }, 100);
+
   // Modal bei Klick auf Schließen-Button schließen
-  closeSpan.onclick = closeModal;
+  closeSpan.addEventListener("click", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    closeModal();
+  });
 
   // Modal schließen, wenn außerhalb des Modal-Inhalts geklickt wird
-  modal.addEventListener("click", function (event) {
+  modal.addEventListener("click", (event) => {
+    event.stopPropagation();
     if (event.target === modal) {
+      closeModal();
+    }
+  });
+
+  // Verhindern, dass externe Klicks oder Tastatureingaben das Modal schließen
+  modal.addEventListener("mousedown", (e) => e.stopPropagation());
+  modal.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Escape") {
       closeModal();
     }
   });
@@ -495,7 +518,8 @@ function promptSaver(message) {
   }
 
   // Load prompts for selected folder in replace option
-  replaceFolderSelect.addEventListener("change", () => {
+  replaceFolderSelect.addEventListener("change", (e) => {
+    e.stopPropagation();
     const folderId = replaceFolderSelect.value;
     replacePromptSelect.disabled = !folderId;
     replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
@@ -529,7 +553,8 @@ function promptSaver(message) {
   });
 
   // Step navigation
-  nextToPromptButton.onclick = function () {
+  nextToPromptButton.addEventListener("click", (e) => {
+    e.stopPropagation();
     if (promptTitleInput.value.trim() === "") {
       alert("Bitte gib einen Prompt-Titel ein!");
       return;
@@ -540,14 +565,16 @@ function promptSaver(message) {
     }
     titleSection.classList.remove("active");
     promptSection.classList.add("active");
-  };
+  });
 
-  backToTitleButton.onclick = function () {
+  backToTitleButton.addEventListener("click", (e) => {
+    e.stopPropagation();
     promptSection.classList.remove("active");
     titleSection.classList.add("active");
-  };
+  });
 
-  nextToOptionsButton.onclick = function () {
+  nextToOptionsButton.addEventListener("click", (e) => {
+    e.stopPropagation();
     if (promptTextarea.value.trim() === "") {
       alert("Bitte gib einen Prompt-Text ein!");
       return;
@@ -556,19 +583,21 @@ function promptSaver(message) {
     promptSection.classList.remove("active");
     optionsSection.classList.add("active");
     modalContent.classList.add("options-active");
-  };
+  });
 
-  backToPromptButton.onclick = function () {
+  backToPromptButton.addEventListener("click", (e) => {
+    e.stopPropagation();
     optionsSection.classList.remove("active");
     promptSection.classList.add("active");
     modalContent.classList.remove("options-active");
-  };
+  });
 
   // Options Switcher logic
   const subOptionButtonsElements = optionsSwitch.querySelectorAll("button");
   const optionContents = optionsSection.querySelectorAll(".option-content");
   subOptionButtonsElements.forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
       subOptionButtonsElements.forEach((btn) => btn.classList.remove("active"));
       optionContents.forEach((c) => c.classList.remove("active"));
       button.classList.add("active");
@@ -579,7 +608,8 @@ function promptSaver(message) {
   });
 
   // Save logic
-  saveButton.onclick = function () {
+  saveButton.addEventListener("click", (e) => {
+    e.stopPropagation();
     const promptTitle = promptTitleInput.value.trim();
     const promptDescription = promptDescInput.value.trim();
     const promptContent = promptTextarea.value.trim();
@@ -697,5 +727,17 @@ function promptSaver(message) {
     };
 
     savePrompt();
-  };
+  });
+
+  // Verhindern, dass externe Mutationen das Modal schließen
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (modal.style.display !== "block") {
+        console.warn("Modal display changed unexpectedly, restoring...");
+        modal.style.display = "block";
+      }
+    });
+  });
+
+  observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
 }

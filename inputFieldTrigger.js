@@ -1,146 +1,154 @@
 function inputFieldTrigger() {
-  console.log("inputFieldTrigger is running!");
-
-  // Levenshtein Distance Funktion
-  function levenshteinDistance(a, b) {
-    const matrix = Array(b.length + 1)
-      .fill()
-      .map(() => Array(a.length + 1).fill(0));
-
-    for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
-    for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
-
-    for (let j = 1; j <= b.length; j++) {
-      for (let i = 1; i <= a.length; i++) {
-        const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
-        matrix[j][i] = Math.min(
-          matrix[j][i - 1] + 1, // Deletion
-          matrix[j - 1][i] + 1, // Insertion
-          matrix[j - 1][i - 1] + indicator // Substitution
-        );
-      }
-    }
-    return matrix[b.length][a.length];
-  }
-
-  // Hilfsfunktion zur Bestimmung der Zugriffsmethode
-  function getInputFieldAccessMethod(inputField) {
-    if (!inputField) return { read: "innerText", write: "innerText" };
-
-    // Zuordnung basierend auf Selektor und Kommentaren
-    const selectors = [
-      {
-        selector: "#prompt-textarea", // ChatGPT
-        read: "innerText",
-        write: "innerText",
-      },
-      {
-        selector: "textarea", // Grok, Blackbox, Microsoft Copilot, Mistral, Duckduckgo, Perplexity, DeepSeek, Deepai
-        read: "value",
-        write: "value",
-      },
-      {
-        selector: "[role='textbox']", // Gemini
-        read: "value", // Gemini verwendet value gemäß Kommentar
-        write: "value",
-      },
-      {
-        selector: "[enterkeyhint='enter']", // Claude
-        read: "innerText",
-        write: "innerText",
-      },
-      {
-        selector: "textarea#copilot-chat-textarea", // GitHub
-        read: "value",
-        write: "value",
-      },
-    ];
-
-    // Finde den passenden Selektor
-    for (const { selector, read, write } of selectors) {
-      if (inputField.matches(selector)) {
-        return { read, write };
-      }
-    }
-
-    // Fallback: Prüfe den Elementtyp
-    if (inputField.tagName === "TEXTAREA" || inputField.tagName === "INPUT") {
-      return { read: "value", write: "value" };
-    }
-    return { read: "innerText", write: "innerText" };
-  }
-
-  // Hilfsfunktion zum Lesen des Textes
-  function getInputText(inputField) {
-    const { read } = getInputFieldAccessMethod(inputField);
-    return inputField[read]?.trim() || "";
-  }
-
-  // Hilfsfunktion zum Schreiben des Textes
-  function setInputText(inputField, text) {
-    const { write } = getInputFieldAccessMethod(inputField);
-    inputField[write] = text;
-  }
-
-  // Funktion zum Setzen des Cursors ans Ende
-  function setCursorToEnd(element) {
-    const { read } = getInputFieldAccessMethod(element);
-
-    if (read === "innerText") {
-      // Für contenteditable oder div-Elemente
-      const range = document.createRange();
-      const selection = window.getSelection();
-      range.selectNodeContents(element);
-      range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    } else {
-      // Für textarea oder input
-      if (element && typeof element.value === "string") {
-        element.focus();
-        const len = element.value.length;
-
-        // Alternativ zu setSelectionRange
-        element.selectionStart = len;
-        element.selectionEnd = len;
-      } else {
-        console.warn(
-          "Element does not support value-based cursor positioning."
-        );
-        element.focus();
-      }
-    }
-  }
-
   // Warte, bis das DOM geladen ist
   document.addEventListener("DOMContentLoaded", () => {
     // Warte zusätzlich 2 Sekunden nach DOM-Laden
     setTimeout(() => {
-      let inputField =
-        // ChatGPT
-        // using innerText
-        document.getElementById("prompt-textarea") ||
-        // Grok, Blackbox, Microsoft Copilot, Mistral, Duckduckgo, Perplexity, DeepSeek, Deepai
-        document.querySelector("textarea") ||
-        // using value
-        // Gemini
-        // using innerText
-        document.querySelector("[role='textbox']") ||
-        // Claude
-        // using innerText
-        document.querySelector("[enterkeyhint='enter']") ||
-        // GitHub
-        // using innerText
-        document.querySelector("textarea#copilot-chat-textarea");
+      /**
+       * Finds the most likely input field on the page by checking for textareas, contenteditable elements, or inputs.
+       * @returns {HTMLElement|null} The input field element or null if none found.
+       */
+      function findInputField() {
+        // Try specific IDs first (e.g., ChatGPT)
+        let input = document.getElementById("prompt-textarea");
+        if (input) return input;
+
+        // Try common textarea
+        input = document.querySelector(
+          "textarea:not([readonly]):not([disabled])"
+        );
+        if (input) return input;
+
+        // Try contenteditable elements (e.g., Perplexity, Claude)
+        input = document.querySelector(
+          "[contenteditable='true']:not([readonly]):not([disabled])"
+        );
+        if (input) return input;
+
+        // Try role-based textboxes (e.g., Gemini)
+        input = document.querySelector(
+          "[role='textbox']:not([readonly]):not([disabled])"
+        );
+        if (input) return input;
+
+        // Try input elements
+        input = document.querySelector(
+          "input[type='text']:not([readonly]):not([disabled])"
+        );
+        if (input) return input;
+
+        // Try specific selectors for known platforms
+        input =
+          document.querySelector(
+            "[enterkeyhint='enter']:not([readonly]):not([disabled])"
+          ) ||
+          document.querySelector(
+            "textarea#copilot-chat-textarea:not([readonly]):not([disabled])"
+          );
+        if (input) return input;
+
+        return null;
+      }
+
+      /**
+       * Gets the text content from an input field, handling different element types.
+       * @param {HTMLElement} inputField The input field element.
+       * @returns {string} The text content.
+       */
+      function getInputText(inputField) {
+        if (!inputField) return "";
+        if (
+          inputField.tagName === "TEXTAREA" ||
+          inputField.tagName === "INPUT"
+        ) {
+          return inputField.value || "";
+        }
+        if (inputField.isContentEditable) {
+          return inputField.textContent || "";
+        }
+        return inputField.innerText || "";
+      }
+
+      /**
+       * Sets the text content of an input field, handling different element types.
+       * @param {HTMLElement} inputField The input field element.
+       * @param {string} text The text to set.
+       */
+      function setInputText(inputField, text) {
+        if (!inputField) return;
+        if (
+          inputField.tagName === "TEXTAREA" ||
+          inputField.tagName === "INPUT"
+        ) {
+          inputField.value = text;
+        } else if (inputField.isContentEditable) {
+          inputField.textContent = text;
+        } else {
+          inputField.innerText = text;
+        }
+        // Trigger input event to notify the platform of changes
+        const event = new Event("input", { bubbles: true });
+        inputField.dispatchEvent(event);
+      }
+
+      /**
+       * Sets the cursor to the end of the input field.
+       * @param {HTMLElement} inputField The input field element.
+       */
+      function setCursorToEnd(inputField) {
+        if (!inputField) return;
+        if (
+          inputField.tagName === "TEXTAREA" ||
+          inputField.tagName === "INPUT"
+        ) {
+          inputField.selectionStart = inputField.selectionEnd =
+            inputField.value.length;
+        } else if (inputField.isContentEditable) {
+          const range = document.createRange();
+          const selection = window.getSelection();
+          range.selectNodeContents(inputField);
+          range.collapse(false);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+
+      /**
+       * Levenshtein distance for fuzzy matching.
+       * @param {string} a First string.
+       * @param {string} b Second string.
+       * @returns {number} The Levenshtein distance.
+       */
+      function levenshteinDistance(a, b) {
+        const matrix = Array(b.length + 1)
+          .fill()
+          .map(() => Array(a.length + 1).fill(0));
+        for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+        for (let j = 1; j <= b.length; j++) {
+          for (let i = 1; i <= a.length; i++) {
+            const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+              matrix[j][i - 1] + 1,
+              matrix[j - 1][i] + 1,
+              matrix[j - 1][i - 1] + indicator
+            );
+          }
+        }
+        return matrix[b.length][a.length];
+      }
+
+      // Initialize input field
+      const inputField = findInputField();
 
       if (!inputField) {
-        console.error("Nothing possible");
+        console.error("No suitable input field found on the page.");
       }
 
       if (!document.body) {
         console.error("Document body is not available.");
       }
 
+      // Create dropdown
       const dropdown = document.createElement("div");
       dropdown.id = "dropdown";
       dropdown.style.position = "absolute";
@@ -194,11 +202,11 @@ function inputFieldTrigger() {
       footerPanel.style.display = "flex";
       footerPanel.style.justifyContent = "space-between";
       footerPanel.innerHTML = `
-          <span>↑↓: Navigate</span>
-          <span>←→: Switch</span>
-          <span>Enter: Select</span>
-          <span>Esc: Close</span>
-        `;
+    <span>↑↓: Navigate</span>
+    <span>←→: Switch</span>
+    <span>Enter: Select</span>
+    <span>Esc: Close</span>
+`;
       dropdown.appendChild(footerPanel);
 
       // Initialize categories and promptSourceMap
@@ -867,7 +875,7 @@ function inputFieldTrigger() {
                 if (selectedCategoryOrFolder) {
                   renderContentPanel(selectedCategoryOrFolder);
                   const activeNavItem = navPanel.querySelector(
-                    `.nav-item.active, .folder-item.active`
+                    ".nav-item.active, .folder-item.active"
                   );
                   if (activeNavItem) {
                     setFocus(activeNavItem);
@@ -879,11 +887,11 @@ function inputFieldTrigger() {
         }
       });
 
-      // Konfigurierbare Abstände
+      // Configurable gaps
       const gapAbove = 2;
       const gapBelow = 2;
 
-      // Funktion zum Positionieren des Dropdowns
+      // Function to position the dropdown
       function positionDropdown() {
         const rect = inputField.getBoundingClientRect();
         const dropdownHeight = parseFloat(dropdown.style.maxHeight) || 350;
@@ -1005,155 +1013,157 @@ function inputFieldTrigger() {
       });
 
       /* Plus Button */
+      const selectors = [
+        "[data-testid='composer-trailing-actions']", // ChatGPT
+        "div.bg-background:nth-child(3)", // Perplexity
+        ".ChatInput-module__trailingActions--q2BNB", // GitHub Copilot
+        ".ml-auto.flex.flex-row.items-end.gap-1", // Grok
+        ".trailing-actions-wrapper", // Gemini
+        ".fTx8kArcxKUd9ZBMcuCc", // Duckai
+        ".ms-auto.flex.gap-2", // Mistral
+        ".flex.gap-2\\.5.w-full.items-center", // Claude
+        ".bf38813a", // DeepSeek
+        ".flex.gap-2", // Microsoft Copilot
+        ".absolute.right-2.top-4.flex.items-end", // Blackbox
+        ".button-container", // Deepai
+        ".flex.items-end.max-w-10.absolute.right-3", // Qwen
+      ];
 
-      // For ChatGPT
-      let container = document.querySelector(
-        "[data-testid='composer-trailing-actions']"
-      );
+      let container = null;
+      for (const selector of selectors) {
+        container = document.querySelector(selector);
+        if (container) break;
+        console.warn(`Container not found using selector: '${selector}'`);
+      }
 
       if (!container) {
-        console.error(
-          "Container with data-testid='composer-trailing-actions' not found."
-        );
+        console.error("No suitable container found for the plus button.");
+      } else {
+        // Wrapper with shadow root
+        const shadowHost = document.createElement("div");
+        shadowHost.style.display = "inline-block";
+        const shadowRoot = shadowHost.attachShadow({ mode: "closed" });
 
-        const selectors = [
-          "div.bg-background:nth-child(3)", // Perplexity
-          ".ChatInput-module__trailingActions--q2BNB", // GitHub Copilot
-          ".ml-auto.flex.flex-row.items-end.gap-1", // Grok
-          ".trailing-actions-wrapper", // Gemini
-          ".fTx8kArcxKUd9ZBMcuCc", // Duckai
-          ".ms-auto.flex.gap-2", // Mistral
-          ".flex.gap-2\\.5.w-full.items-center", // Claude
-          ".bf38813a", // DeepSeek
-          ".flex.gap-2", // Microsoft Copilot
-          ".absolute.right-2.top-4.flex.items-end", // Blackbox
-          ".button-container", // Deepai
-          ".flex.items-end.max-w-10.absolute.right-3", // Qwen
-        ];
+        // Add styles + button inside shadow DOM
+        shadowRoot.innerHTML = `
+          <style>
+            .plus-button {
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              background-color: white;
+              color: black;
+              border: none;
+              cursor: pointer;
+              font-weight: bold;
+              font-size: 24px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              transition: box-shadow 0.3s ease, transform 0.2s ease;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              position: relative;
+            }
+      
+            .plus-button:hover {
+              background-color: black;
+              color: white;
+              box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            }
+      
+            .tooltip {
+              position: fixed;
+              background-color: black;
+              color: white;
+              padding: 8px 12px;
+              border-radius: 4px;
+              font-size: 14px;
+              white-space: nowrap;
+              z-index: 10000;
+              opacity: 0;
+              pointer-events: none;
+              transition: opacity 0.2s ease;
+            }
+      
+            .tooltip::after {
+              content: '';
+              position: absolute;
+              bottom: -6px;
+              left: 50%;
+              transform: translateX(-50%);
+              border-left: 6px solid transparent;
+              border-right: 6px solid transparent;
+              border-top: 6px solid black;
+            }
+          </style>
+          <button class="plus-button">+</button>
+          <div class="tooltip">Open the PromptIn Management Menu</div>
+        `;
 
-        for (const selector of selectors) {
-          container = document.querySelector(selector);
-          if (container) break;
-          console.error(`Container not found using selector: '${selector}'`);
-        }
-      }
+        const button = shadowRoot.querySelector(".plus-button");
+        const tooltip = shadowRoot.querySelector(".tooltip");
 
-      const button = document.createElement("button");
-      button.textContent = "+";
-      button.style.width = "40px";
-      button.style.height = "40px";
-      button.style.borderRadius = "50%";
-      button.style.backgroundColor = "white";
-      button.style.color = "black";
-      button.style.border = "none";
-      button.style.cursor = "pointer";
-      button.style.objectFit = "contain";
-      button.style.fontWeight = "bold";
-      button.style.fontSize = "24px";
-      button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-      button.style.transition = "box-shadow 0.3s ease, transform 0.2s ease";
-      button.style.display = "flex";
-      button.style.alignItems = "center";
-      button.style.justifyContent = "center";
-      button.style.position = "relative";
+        // Tooltip behavior
+        const positionTooltip = () => {
+          const rect = shadowHost.getBoundingClientRect();
+          tooltip.style.left = `${rect.left + rect.width / 2}px`;
+          tooltip.style.top = `${rect.top - tooltip.offsetHeight - 10}px`;
+          tooltip.style.transform = "translateX(-50%)";
+        };
 
-      // Tooltip-Element erstellen
-      const tooltip = document.createElement("div");
-      tooltip.textContent = "Open the PromptIn Management Menu";
-      tooltip.style.position = "fixed";
-      tooltip.style.backgroundColor = "black";
-      tooltip.style.color = "white";
-      tooltip.style.padding = "8px 12px";
-      tooltip.style.borderRadius = "4px";
-      tooltip.style.fontSize = "14px";
-      tooltip.style.whiteSpace = "nowrap";
-      tooltip.style.zIndex = "1000";
-      tooltip.style.opacity = "0";
-      tooltip.style.pointerEvents = "none";
-      tooltip.style.transition = "opacity 0.2s ease";
-
-      // Pfeil für Tooltip
-      tooltip.style.setProperty("--tooltip-arrow-size", "6px");
-      tooltip.innerHTML += `
-  <div style="
-    position: absolute;
-    bottom: calc(-1 * var(--tooltip-arrow-size));
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: var(--tooltip-arrow-size) solid transparent;
-    border-right: var(--tooltip-arrow-size) solid transparent;
-    border-top: var(--tooltip-arrow-size) solid black;
-  "></div>
-`;
-
-      // Funktion zum Positionieren des Tooltips
-      function positionTooltip() {
-        const rect = button.getBoundingClientRect();
-        tooltip.style.left = `${rect.left + rect.width / 2}px`;
-        tooltip.style.top = `${rect.top - tooltip.offsetHeight - 45}px`;
-        tooltip.style.transform = "translateX(-50%)";
-      }
-
-      // Hover-Effekte für Button und Tooltip
-      button.addEventListener("mouseover", () => {
-        button.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-        button.style.color = "white";
-        button.style.backgroundColor = "black";
-        positionTooltip();
-        document.body.appendChild(tooltip);
-        tooltip.style.opacity = "1";
-      });
-
-      button.addEventListener("mouseout", () => {
-        button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-        button.style.color = "black";
-        button.style.backgroundColor = "white";
-        tooltip.style.opacity = "0";
-        setTimeout(() => {
-          if (tooltip.parentNode) {
-            document.body.removeChild(tooltip);
-          }
-        }, 200);
-      });
-
-      // Bei Fenstergrößenänderung oder Scroll repositionieren
-      window.addEventListener("resize", () => {
-        if (tooltip.style.opacity === "1") {
+        button.addEventListener("mouseover", () => {
+          document.body.appendChild(tooltip);
+          tooltip.style.opacity = "1";
           positionTooltip();
-        }
-      });
-      window.addEventListener("scroll", () => {
-        if (tooltip.style.opacity === "1") {
-          positionTooltip();
-        }
-      });
+        });
 
-      // Click-Handler
-      button.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (dropdown.style.display === "flex") {
-          hideDropdown();
-          delete dropdown.dataset.openedByButton;
-          dropdownClosedByUser = false;
-          tooltip.textContent = "Open the PromptIn Management Menu";
-        } else {
-          const currentText = getInputText(inputField);
-          if (!currentText.includes("/")) {
-            setInputText(inputField, currentText + "/");
+        button.addEventListener("mouseout", () => {
+          tooltip.style.opacity = "0";
+          setTimeout(() => {
+            if (tooltip.parentNode === document.body) {
+              document.body.removeChild(tooltip);
+            }
+          }, 200);
+        });
+
+        window.addEventListener("scroll", () => {
+          if (tooltip.style.opacity === "1") positionTooltip();
+        });
+        window.addEventListener("resize", () => {
+          if (tooltip.style.opacity === "1") positionTooltip();
+        });
+
+        // Click behavior
+        button.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (
+            typeof dropdown === "undefined" ||
+            typeof inputField === "undefined"
+          ) {
+            console.error("Dropdown or inputField not defined.");
+            return;
           }
-          inputField.focus();
-          setCursorToEnd(inputField);
-          showDropdown();
-          dropdown.dataset.openedByButton = "true";
-          dropdownClosedByUser = false;
-          tooltip.textContent = "Close the PromptIn Management Menu";
-        }
-      });
+          if (dropdown.style.display === "flex") {
+            hideDropdown();
+            delete dropdown.dataset.openedByButton;
+            dropdownClosedByUser = false;
+            tooltip.textContent = "Open the PromptIn Management Menu";
+          } else {
+            const currentText = getInputText(inputField);
+            if (!currentText.includes("/")) {
+              setInputText(inputField, currentText + "/");
+            }
+            inputField.focus();
+            setCursorToEnd(inputField);
+            showDropdown();
+            dropdown.dataset.openedByButton = "true";
+            dropdownClosedByUser = false;
+            tooltip.textContent = "Close the PromptIn Management Menu";
+          }
+        });
 
-      // Button zum DOM hinzufügen
-      container.appendChild(button);
+        container.appendChild(shadowHost);
+      }
     }, 2000);
   });
 }
