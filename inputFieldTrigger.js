@@ -85,6 +85,7 @@ function inputFieldTrigger() {
   // Funktion zum Setzen des Cursors ans Ende
   function setCursorToEnd(element) {
     const { read } = getInputFieldAccessMethod(element);
+
     if (read === "innerText") {
       // Für contenteditable oder div-Elemente
       const range = document.createRange();
@@ -98,7 +99,10 @@ function inputFieldTrigger() {
       if (element && typeof element.value === "string") {
         element.focus();
         const len = element.value.length;
-        element.setSelectionRange(len, len);
+
+        // Alternativ zu setSelectionRange
+        element.selectionStart = len;
+        element.selectionEnd = len;
       } else {
         console.warn(
           "Element does not support value-based cursor positioning."
@@ -131,12 +135,10 @@ function inputFieldTrigger() {
 
       if (!inputField) {
         console.error("Nothing possible");
-        return;
       }
 
       if (!document.body) {
         console.error("Document body is not available.");
-        return;
       }
 
       const dropdown = document.createElement("div");
@@ -1013,91 +1015,26 @@ function inputFieldTrigger() {
         console.error(
           "Container with data-testid='composer-trailing-actions' not found."
         );
-        // For Perplexity
-        container = document.querySelector("div.bg-background:nth-child(3)");
-        if (!container) {
-          console.error(
-            "Container with data-testid='composer-trailing-actions' not found."
-          );
-          // For GitHub Copilot
-          container = document.querySelector(
-            ".ChatInput-module__trailingActions--q2BNB"
-          );
-          if (!container) {
-            console.error(
-              "Container with data-testid='composer-trailing-actions' not found."
-            );
-            // For Grok
-            container = document.querySelector(
-              ".ml-auto.flex.flex-row.items-end.gap-1"
-            );
-            if (!container) {
-              console.error(
-                "Container with data-testid='composer-trailing-actions' not found."
-              );
-              // For Gemini
-              container = document.querySelector(".trailing-actions-wrapper");
-              if (!container) {
-                console.error(
-                  "Container with data-testid='composer-trailing-actions' not found."
-                );
-                // For Duckai
-                container = document.querySelector(".fTx8kArcxKUd9ZBMcuCc");
-                if (!container) {
-                  console.error(
-                    "Container with data-testid='composer-trailing-actions' not found."
-                  );
-                  // For Mistral
-                  container = document.querySelector(".ms-auto.flex.gap-2");
-                  if (!container) {
-                    console.error(
-                      "Container with data-testid='composer-trailing-actions' not found."
-                    );
-                    // For Claude
-                    container = document.querySelector(
-                      ".flex.gap-2\\.5.w-full.items-center"
-                    );
-                    if (!container) {
-                      console.error(
-                        "Container with data-testid='composer-trailing-actions' not found."
-                      );
-                      // For DeepSeek
-                      container = document.querySelector(".bf38813a");
-                      if (!container) {
-                        console.error(
-                          "Container with data-testid='composer-trailing-actions' not found."
-                        );
-                        // Microsoft Copilot
-                        container = document.querySelector(".flex.gap-2");
-                        if (!container) {
-                          console.error(
-                            "Container with data-testid='composer-trailing-actions' not found."
-                          );
-                          // For blackbox
-                          container = document.querySelector(
-                            ".absolute.right-2.top-4.flex.items-end"
-                          );
-                          if (!container) {
-                            console.error(
-                              "Container with data-testid='composer-trailing-actions' not found."
-                            );
-                            // Deepai
-                            container =
-                              document.querySelector(".button-container");
-                            if (!container) {
-                              console.error(
-                                "Container with data-testid='composer-trailing-actions' not found."
-                              );
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+
+        const selectors = [
+          "div.bg-background:nth-child(3)", // Perplexity
+          ".ChatInput-module__trailingActions--q2BNB", // GitHub Copilot
+          ".ml-auto.flex.flex-row.items-end.gap-1", // Grok
+          ".trailing-actions-wrapper", // Gemini
+          ".fTx8kArcxKUd9ZBMcuCc", // Duckai
+          ".ms-auto.flex.gap-2", // Mistral
+          ".flex.gap-2\\.5.w-full.items-center", // Claude
+          ".bf38813a", // DeepSeek
+          ".flex.gap-2", // Microsoft Copilot
+          ".absolute.right-2.top-4.flex.items-end", // Blackbox
+          ".button-container", // Deepai
+          ".flex.items-end.max-w-10.absolute.right-3", // Qwen
+        ];
+
+        for (const selector of selectors) {
+          container = document.querySelector(selector);
+          if (container) break;
+          console.error(`Container not found using selector: '${selector}'`);
         }
       }
 
@@ -1110,6 +1047,7 @@ function inputFieldTrigger() {
       button.style.color = "black";
       button.style.border = "none";
       button.style.cursor = "pointer";
+      button.style.objectFit = "contain";
       button.style.fontWeight = "bold";
       button.style.fontSize = "24px";
       button.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";

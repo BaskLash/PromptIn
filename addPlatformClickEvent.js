@@ -402,3 +402,16 @@ function addDeepAIButtonClick(index) {
     console.warn("Ungültiger Index:", index);
   }
 }
+function addQwenAiButtonClick(index) {
+  const container = document.getElementById("chat-message-container");
+  if (!container) {
+    console.warn("No container found with ID 'chat-message-container'.");
+  } else {
+    const children = Array.from(container.children);
+    if (children.length) {
+      const child = children[index - 2];
+
+      promptSaver(child.querySelector("p.whitespace-pre-wrap").innerText);
+    }
+  }
+}

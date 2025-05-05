@@ -30,7 +30,8 @@
         "*://*.perplexity.ai/*",
         "*://*.deepseek.com/*",
         "*://*.v0.dev/*",
-        "*://*.deepai.org/*"
+        "*://*.deepai.org/*",
+        "*://*.chat.qwen.ai/*"
       ],
       "js": [
         "promptProps.js",

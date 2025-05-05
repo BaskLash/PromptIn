@@ -16,6 +16,7 @@ Kompatibel mit:
 - [Perplexity](https://www.perplexity.ai/)
 - [DeepSeek](https://chat.deepseek.com/)
 - [Deepai](https://deepai.org/chat)
+- [Qwen AI](https://chat.qwen.ai/)
 
 ## Inhaltsverzeichnis
 

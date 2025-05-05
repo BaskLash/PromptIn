@@ -1327,3 +1327,96 @@ function addDeepaiButton() {
     console.error("Fehler beim Hinzufügen der Buttons:", error.message);
   }
 }
+function addQwenAiButton() {
+  try {
+    const container = document.getElementById("chat-message-container");
+
+    if (!container) {
+      console.warn("No container found with ID 'chat-message-container'.");
+      return;
+    }
+
+    const children = Array.from(container.children);
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+    let existingElements = new Set();
+
+    children.forEach((child, index) => {
+      // Only target every second child starting at index 1 (i.e., 1, 3, 5, ...)
+      if (index % 2 !== 1) return;
+
+      const messageWrapper = child.querySelector(".message-footer-buttons");
+      if (!messageWrapper) {
+        console.warn(
+          `No '.message-footer-buttons' element found in child ${index}.`
+        );
+        return;
+      }
+
+      // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+      const existingButton = messageWrapper.querySelector(
+        ".save-prompt-button"
+      );
+      if (existingButton) {
+        console.log("Button existiert bereits für:", messageWrapper.className);
+        existingElements.add(messageWrapper);
+        return;
+      }
+
+      // Falls wir hier sind, gibt es noch keinen Button
+      existingElements.add(messageWrapper);
+
+      // Erstelle das neue Button-Element
+      const button = document.createElement("button");
+      button.textContent = "Save Prompt";
+      button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
+
+      // Button-Styling
+      Object.assign(button.style, {
+        padding: "5px 10px",
+        border: "1px solid #ccc",
+        borderRadius: "5px",
+        color: "black",
+        background: "#f0f0f0",
+        marginLeft: "10px",
+      });
+      button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+      // Hover-Effekte
+      button.addEventListener("mouseover", () => {
+        button.style.backgroundColor = "#e0e0e0";
+        button.style.borderColor = "#bbb";
+      });
+      button.addEventListener("mouseout", () => {
+        button.style.backgroundColor = "#f0f0f0";
+        button.style.borderColor = "#ccc";
+      });
+
+      // Klick-Event
+      button.addEventListener("click", (event) => {
+        if (button.classList.contains("save-prompt-button")) {
+          let buttonNumber = index + 1; // Button-Nummer aus der Klasse berechnen
+          // console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+          // Text auf "✔ Prompt gespeichert" setzen
+          button.textContent = "✔ Prompt Saved";
+
+          addQwenAiButtonClick(buttonNumber);
+          // console.log(`Saving prompt for button ${buttonNumber}`);
+
+          setTimeout(() => {
+            button.textContent = "Save Prompt";
+          }, 5000);
+        }
+      });
+
+      // Button einfügen
+      messageWrapper.appendChild(button);
+      // console.log(
+      //   `Button ${buttonCounter} zu ${messageWrapper.className} hinzugefügt.`
+      // );
+      buttonCounter++; // Zähler erhöhen
+    });
+  } catch (error) {
+    // console.error("Fehler in addQwenButtons:", error.message);
+  }
+}

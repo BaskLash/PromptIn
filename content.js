@@ -81,6 +81,12 @@ setInterval(() => {
   ) {
     addDeepaiButton();
   }
+  if (
+    window.location.hostname === "chat.qwen.ai" ||
+    (window.location.hostname === "www.chat.qwen.ai" && path.startsWith("/c/"))
+  ) {
+    addQwenAiButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
