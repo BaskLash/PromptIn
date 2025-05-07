@@ -407,11 +407,21 @@ async function promptSaver(message) {
   replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
   replacePromptSelect.disabled = true;
 
+  const diffOutputLabel = document.createElement("label");
+  diffOutputLabel.setAttribute("for", "promptDiffOutput");
+  diffOutputLabel.textContent = "Prompt Differences:";
+  const diffOutput = document.createElement("div");
+  diffOutput.id = "promptDiffOutput";
+  diffOutput.className =
+    "diff-output border rounded p-2 bg-gray-50 min-h-[100px] text-sm font-mono whitespace-pre-wrap";
+
   replaceContent.appendChild(replaceText);
   replaceContent.appendChild(replaceFolderLabel);
   replaceContent.appendChild(replaceFolderSelect);
   replaceContent.appendChild(replacePromptLabel);
   replaceContent.appendChild(replacePromptSelect);
+  replaceContent.appendChild(diffOutputLabel);
+  replaceContent.appendChild(diffOutput);
 
   const addContent = document.createElement("div");
   addContent.id = "add";
@@ -536,7 +546,8 @@ async function promptSaver(message) {
     }
     .modal-body input,
     .modal-body select,
-    .modal-body textarea {
+    .modal-body textarea,
+    .modal-body .diff-output {
       width: 100%;
       padding: 10px;
       margin-bottom: 12px;
@@ -548,7 +559,8 @@ async function promptSaver(message) {
     }
     .modal-body input:focus,
     .modal-body select:focus,
-    .modal-body textarea:focus {
+    .modal-body textarea:focus,
+    .modal-body .diff-output:focus {
       border-color: #1e90ff;
       outline: none;
     }
@@ -604,7 +616,7 @@ async function promptSaver(message) {
       display: block;
     }
     .save-button:hover {
-      background: #218838;
+      background: #218 Ascendant: #218838;
     }
     .close {
       color: white;
@@ -616,6 +628,36 @@ async function promptSaver(message) {
     .close:hover,
     .close:focus {
       transform: scale(1.1);
+    }
+    .diff-word.added {
+      background-color: #d4fcbc;
+      color: black;
+    }
+    .diff-word.removed {
+      background-color: #fbb6c2;
+      color: black;
+      text-decoration: line-through;
+    }
+    .diff-word.common {
+      background-color: #e5e7eb;
+    }
+    .diff-word {
+      padding: 2px;
+      margin: 2px;
+      border-radius: 2px;
+      transition: background-color 0.2s;
+    }
+    .arrow {
+      color: #1e90ff;
+      font-weight: bold;
+      margin: 0 4px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
     }
   `;
 
@@ -700,6 +742,82 @@ async function promptSaver(message) {
     }
   });
 
+  // Funktion zum Berechnen und Anzeigen der Prompt-Differenz
+  function computePromptDiff(currentPrompt, selectedPrompt) {
+    const diffOutput = shadowRoot.getElementById("promptDiffOutput");
+    diffOutput.innerHTML = "";
+
+    // Split texts into words
+    const words1 = selectedPrompt.split(/\s+/).filter((w) => w);
+    const words2 = currentPrompt.split(/\s+/).filter((w) => w);
+
+    // Compute diff
+    let i = 0,
+      j = 0;
+    const unifiedDiff = [];
+
+    while (i < words1.length || j < words2.length) {
+      if (i < words1.length && j < words2.length && words1[i] === words2[j]) {
+        unifiedDiff.push({ value: words1[i], type: "common" });
+        i++;
+        j++;
+      } else {
+        let foundMatch = false;
+        for (let k = j; k < Math.min(words2.length, j + 3); k++) {
+          for (let m = i; m < Math.min(words1.length, i + 3); m++) {
+            if (words1[m] === words2[k]) {
+              while (i < m) {
+                unifiedDiff.push({ value: words1[i], type: "removed" });
+                i++;
+              }
+              while (j < k) {
+                unifiedDiff.push({ value: words2[j], type: "added" });
+                j++;
+              }
+              unifiedDiff.push({ value: words1[m], type: "common" });
+              i++;
+              j++;
+              foundMatch = true;
+              break;
+            }
+          }
+          if (foundMatch) break;
+        }
+        if (!foundMatch) {
+          if (i < words1.length) {
+            unifiedDiff.push({ value: words1[i], type: "removed" });
+            i++;
+          }
+          if (j < words2.length) {
+            unifiedDiff.push({ value: words2[j], type: "added" });
+            j++;
+          }
+        }
+      }
+    }
+
+    // Render diff
+    let lastWasRemoved = false;
+    unifiedDiff.forEach((part, index) => {
+      const span = document.createElement("span");
+      span.className = `diff-word ${part.type}`;
+      span.textContent = part.value + " ";
+
+      if (lastWasRemoved && part.type === "added") {
+        const prevPart = unifiedDiff[index - 1];
+        if (prevPart && prevPart.type === "removed") {
+          const arrow = document.createElement("span");
+          arrow.textContent = "→ ";
+          arrow.className = "arrow";
+          diffOutput.appendChild(arrow);
+        }
+      }
+
+      diffOutput.appendChild(span);
+      lastWasRemoved = part.type === "removed";
+    });
+  }
+
   // Ordner für Replace- und Add-Optionen laden
   async function loadFolders() {
     try {
@@ -746,6 +864,7 @@ async function promptSaver(message) {
     const folderId = replaceFolderSelect.value;
     replacePromptSelect.disabled = !folderId;
     replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
+    shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
 
     if (folderId) {
       try {
@@ -776,6 +895,39 @@ async function promptSaver(message) {
       } catch (error) {
         console.error("Error fetching folder data:", error);
       }
+    }
+  });
+
+  // Event-Listener für Prompt-Auswahl zum Anzeigen der Differenz
+  replacePromptSelect.addEventListener("change", async (e) => {
+    const folderId = replaceFolderSelect.value;
+    const promptIndex = replacePromptSelect.value;
+
+    if (folderId && promptIndex !== "") {
+      try {
+        const data = await new Promise((resolve, reject) => {
+          chrome.storage.sync.get(folderId, (data) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve(data);
+            }
+          });
+        });
+
+        const topic = data[folderId];
+        if (topic && topic.prompts && topic.prompts[promptIndex]) {
+          const selectedPrompt = topic.prompts[promptIndex].content;
+          const currentPrompt = promptTextarea.value.trim();
+          computePromptDiff(currentPrompt, selectedPrompt);
+        }
+      } catch (error) {
+        console.error("Error fetching prompt data:", error);
+        shadowRoot.getElementById("promptDiffOutput").innerHTML =
+          "Error loading prompt differences.";
+      }
+    } else {
+      shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
     }
   });
 
