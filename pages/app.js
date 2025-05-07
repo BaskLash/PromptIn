@@ -866,14 +866,19 @@ document.addEventListener("DOMContentLoaded", function () {
     promptActions.appendChild(dropdown);
     promptItem.appendChild(promptActions);
 
-    document.addEventListener("click", (e) => {
-      if (!promptActions.contains(e.target)) {
-        dropdown.style.display = "none";
-      }
-    });
-
     return promptItem;
   }
+
+  // Einmaliger globaler Event-Listener für das Schließen der Dropdowns
+  document.addEventListener("click", (e) => {
+    const dropdownMenus = document.querySelectorAll(".dropdown-menu");
+    dropdownMenus.forEach((menu) => {
+      const promptActions = menu.closest(".prompt-actions");
+      if (promptActions && !promptActions.contains(e.target)) {
+        menu.style.display = "none";
+      }
+    });
+  });
 
   function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
     chrome.storage.sync.get(folderId, function (data) {

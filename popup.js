@@ -77,48 +77,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
-    chrome.storage.sync.get(folderId, function (data) {
-      if (chrome.runtime.lastError) {
-        console.error("Error fetching data:", chrome.runtime.lastError);
-        return;
-      }
-
-      const topic = data[folderId];
-      if (!topic || !topic.prompts[promptIndex]) return;
-
-      topic.prompts[promptIndex].isFavorite =
-        !topic.prompts[promptIndex].isFavorite;
-
-      chrome.storage.sync.set({ [folderId]: topic }, function () {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "Error toggling favorite status:",
-            chrome.runtime.lastError
-          );
-          alert("Fehler beim Umschalten des Favoritenstatus.");
-        } else {
-          console.log(`Favorite status toggled for prompt in ${folderId}`);
-          const currentView =
-            document
-              .getElementById("mainHeaderTitle")
-              ?.textContent.toLowerCase() || "all";
-          if (currentView.includes("favorites")) {
-            loadPrompts("favorites");
-          } else if (currentView.includes("all")) {
-            loadPrompts("all");
-          } else if (currentView.includes("single")) {
-            loadPrompts("single");
-          } else if (currentView.includes("categorised")) {
-            loadPrompts("categorised");
-          } else {
-            loadPrompts(folderId);
-          }
-        }
-      });
-    });
-  }
-
   // Funktion zum Anzeigen eines spezifischen Ordners
   function showFolder(folderId) {
     loadPrompts(folderId);

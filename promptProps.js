@@ -1,5 +1,4 @@
-// Funktion zum Erstellen eines Prompt-Elements
-function createPromptItem(prompt, folderId, index, isHidden, isTrash) {
+function createPromptItem(prompt, folderId, index, isHidden, isTrash, view) {
   const promptItem = document.createElement("li");
   promptItem.classList.add("prompt-item");
   if (prompt.isFavorite) {
@@ -27,61 +26,680 @@ function createPromptItem(prompt, folderId, index, isHidden, isTrash) {
     promptItem.title = "This prompt is not assigned to a visible folder";
   }
 
-  const promptActions = document.createElement("div");
-  promptActions.classList.add("prompt-actions");
+  const actionsDiv = document.createElement("div");
+  actionsDiv.classList.add("prompt-actions");
 
-  if (!isTrash) {
-    const useBtn = document.createElement("button");
-    useBtn.textContent = "Use";
-    useBtn.classList.add("action-btn");
-    useBtn.addEventListener("click", () => usePrompt(prompt));
-    promptActions.appendChild(useBtn);
+  const dropdownBtn = document.createElement("button");
+  dropdownBtn.classList.add("dropdown-btn");
+  dropdownBtn.innerHTML = "⋮";
+  dropdownBtn.title = "More actions";
 
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "Edit";
-    editBtn.classList.add("action-btn");
-    editBtn.addEventListener("click", () =>
-      editPrompt(prompt, folderId, index, promptItem)
-    );
-    promptActions.appendChild(editBtn);
+  const dropdownMenu = document.createElement("div");
+  dropdownMenu.classList.add("dropdown-menu");
 
-    const favoriteBtn = document.createElement("button");
-    favoriteBtn.textContent = prompt.isFavorite
-      ? "Remove from Favorites"
-      : "Add to Favorites";
-    favoriteBtn.classList.add("action-btn");
-    favoriteBtn.addEventListener("click", () =>
-      toggleFavoritePrompt(folderId, index, promptItem, prompt)
-    );
-    promptActions.appendChild(favoriteBtn);
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "Move to Trash";
-    deleteBtn.classList.add("action-btn");
-    deleteBtn.addEventListener("click", () =>
-      deletePrompt(folderId, index, promptItem)
-    );
-    promptActions.appendChild(deleteBtn);
+  let actions = [];
+  if (isTrash) {
+    actions = [
+      {
+        text: "Restore",
+        class: "restore-btn",
+        title: "Restore prompt",
+        icon: "↩️",
+      },
+      {
+        text: "Delete Permanently",
+        class: "permanent-delete-btn",
+        title: "Delete prompt permanently",
+        icon: "🗑️",
+      },
+    ];
   } else {
-    const restoreBtn = document.createElement("button");
-    restoreBtn.textContent = "Restore";
-    restoreBtn.classList.add("action-btn");
-    restoreBtn.addEventListener("click", () =>
-      restorePrompt(folderId, index, promptItem)
-    );
-    promptActions.appendChild(restoreBtn);
+    actions = [
+      { text: "Use", class: "use-btn", title: "Use prompt", icon: "▶️" },
+      {
+        text: "Copy Prompt",
+        class: "copy-btn",
+        title: "Copy prompt",
+        icon: "📋",
+      },
+      { text: "Edit", class: "edit-btn", title: "Edit prompt", icon: "✏️" },
+      { text: "Share", class: "share-btn", title: "Share prompt", icon: "🔗" },
+      {
+        text:
+          view === "favorites" ? "Remove from Favorites" : "Add to Favorites",
+        class: "favorite-btn",
+        title:
+          view === "favorites" ? "Remove from favorites" : "Add to favorites",
+        icon: prompt.isFavorite ? "★" : "☆",
+      },
+      {
+        text: "Move to Folder",
+        class: "move-folder-btn",
+        title: "Move to folder",
+        icon: "📁",
+      },
+      {
+        text: "Move to Trash",
+        class: "trash-btn",
+        title: "Move to trash",
+        icon: "🗑️",
+      },
+    ];
 
-    const permanentDeleteBtn = document.createElement("button");
-    permanentDeleteBtn.textContent = "Delete Permanently";
-    permanentDeleteBtn.classList.add("action-btn");
-    permanentDeleteBtn.addEventListener("click", () =>
-      permanentlyDeletePrompt(folderId, index, promptItem)
-    );
-    promptActions.appendChild(permanentDeleteBtn);
+    if (!isHidden) {
+      actions.splice(5, 0, {
+        text: "Remove from Folder",
+        class: "remove-folder-btn",
+        title: "Remove from folder",
+        icon: "📂",
+      });
+    }
   }
 
-  promptItem.appendChild(promptActions);
+  actions.forEach((action) => {
+    const actionItem = document.createElement("div");
+    actionItem.classList.add("dropdown-item", action.class);
+    actionItem.innerHTML = `${action.icon} ${action.text}`;
+    actionItem.title = action.title;
+    dropdownMenu.appendChild(actionItem);
+  });
+
+  actionsDiv.appendChild(dropdownBtn);
+  actionsDiv.appendChild(dropdownMenu);
+  promptItem.appendChild(actionsDiv);
+
+  dropdownBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = dropdownMenu.style.display === "block";
+    document
+      .querySelectorAll(".dropdown-menu")
+      .forEach((menu) => (menu.style.display = "none"));
+    dropdownMenu.style.display = isOpen ? "none" : "block";
+  });
+
+  const useBtn = dropdownMenu.querySelector(".use-btn");
+  const copyBtn = dropdownMenu.querySelector(".copy-btn");
+  const editBtn = dropdownMenu.querySelector(".edit-btn");
+  const shareBtn = dropdownMenu.querySelector(".share-btn");
+  const favoriteBtn = dropdownMenu.querySelector(".favorite-btn");
+  const moveFolderBtn = dropdownMenu.querySelector(".move-folder-btn");
+  const removeFolderBtn = dropdownMenu.querySelector(".remove-folder-btn");
+  const trashBtn = dropdownMenu.querySelector(".trash-btn");
+  const restoreBtn = dropdownMenu.querySelector(".restore-btn");
+  const permanentDeleteBtn = dropdownMenu.querySelector(
+    ".permanent-delete-btn"
+  );
+
+  if (useBtn) {
+    useBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      usePrompt(prompt);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      copyPrompt(prompt);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (editBtn) {
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      editPrompt(prompt, folderId, index, promptItem);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (shareBtn) {
+    shareBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      sharePrompt(prompt);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (favoriteBtn) {
+    favoriteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleFavoritePrompt(folderId, index, promptItem, prompt);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (moveFolderBtn) {
+    moveFolderBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      movePromptToFolder(folderId, index, promptItem);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (removeFolderBtn) {
+    removeFolderBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeFromFolder(folderId, index, promptItem);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (trashBtn) {
+    trashBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deletePrompt(folderId, index, promptItem);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (restoreBtn) {
+    restoreBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      restorePrompt(folderId, index, promptItem);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  if (permanentDeleteBtn) {
+    permanentDeleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      permanentlyDeletePrompt(folderId, index, promptItem);
+      dropdownMenu.style.display = "none";
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+      dropdownMenu.style.display = "none";
+    }
+  });
+
   return promptItem;
+}
+
+// Funktion zum Erstellen eines Prompt-Elements
+function loadPrompts(view = "all") {
+  chrome.storage.sync.get(null, function (data) {
+    if (chrome.runtime.lastError) {
+      console.error("Error fetching data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const promptList = document.getElementById("promptList");
+    const noData = document.getElementById("noData");
+    const mainHeaderTitle = document.getElementById("mainHeaderTitle");
+
+    if (!mainHeaderTitle) {
+      console.error("Element with ID 'mainHeaderTitle' not found in DOM");
+      return;
+    }
+
+    promptList.innerHTML = "";
+    let allPrompts = [];
+
+    if (!data || Object.keys(data).length === 0) {
+      noData.style.display = "block";
+      noData.textContent = "No prompts available";
+      mainHeaderTitle.textContent = "All Prompts";
+      return;
+    }
+
+    noData.style.display = "none";
+
+    if (view === "favorites") {
+      mainHeaderTitle.textContent = "Favorites";
+      Object.entries(data).forEach(([id, topic]) => {
+        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
+          allPrompts = allPrompts.concat(
+            topic.prompts
+              .filter((prompt) => prompt.isFavorite)
+              .map((prompt, index) => ({
+                prompt,
+                folderId: id,
+                index,
+                isHidden: topic.isHidden || false,
+                isTrash: false,
+              }))
+          );
+        }
+      });
+    } else if (view === "all") {
+      mainHeaderTitle.textContent = "All Prompts";
+      Object.entries(data).forEach(([id, topic]) => {
+        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
+          allPrompts = allPrompts.concat(
+            topic.prompts.map((prompt, index) => ({
+              prompt,
+              folderId: id,
+              index,
+              isHidden: topic.isHidden || false,
+              isTrash: false,
+            }))
+          );
+        }
+      });
+    } else if (view === "single") {
+      mainHeaderTitle.textContent = "Single Prompts";
+      Object.entries(data).forEach(([id, topic]) => {
+        if (topic.prompts && topic.isHidden && !topic.isTrash) {
+          allPrompts = allPrompts.concat(
+            topic.prompts.map((prompt, index) => ({
+              prompt,
+              folderId: id,
+              index,
+              isHidden: true,
+              isTrash: false,
+            }))
+          );
+        }
+      });
+    } else if (view === "categorised") {
+      mainHeaderTitle.textContent = "Categorised Prompts";
+      Object.entries(data).forEach(([id, topic]) => {
+        if (topic.prompts && !topic.isHidden && !topic.isTrash) {
+          allPrompts = allPrompts.concat(
+            topic.prompts.map((prompt, index) => ({
+              prompt,
+              folderId: id,
+              index,
+              isHidden: false,
+              isTrash: false,
+            }))
+          );
+        }
+      });
+    } else if (view === "trash") {
+      mainHeaderTitle.textContent = "Trash";
+      const trashFolder = data["trash_folder"];
+      if (trashFolder && trashFolder.prompts) {
+        allPrompts = trashFolder.prompts.map((prompt, index) => ({
+          prompt,
+          folderId: "trash_folder",
+          index,
+          isHidden: false,
+          isTrash: true,
+        }));
+      }
+    } else {
+      const folder = data[view];
+      if (folder && folder.prompts && !folder.isTrash) {
+        mainHeaderTitle.textContent = `${folder.name} (${folder.prompts.length})`;
+        allPrompts = folder.prompts.map((prompt, index) => ({
+          prompt,
+          folderId: view,
+          index,
+          isHidden: folder.isHidden || false,
+          isTrash: false,
+        }));
+      }
+    }
+
+    if (allPrompts.length === 0) {
+      noData.style.display = "block";
+      noData.textContent =
+        view === "trash"
+          ? "No prompts in trash"
+          : view === "favorites"
+          ? "No favorite prompts available"
+          : "No prompts available";
+      return;
+    }
+
+    allPrompts.forEach(({ prompt, folderId, index, isHidden, isTrash }) => {
+      const promptItem = createPromptItem(
+        prompt,
+        folderId,
+        index,
+        isHidden,
+        isTrash,
+        view
+      );
+      promptList.appendChild(promptItem);
+    });
+  });
+}
+function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
+  chrome.storage.sync.get(folderId, function (data) {
+    if (chrome.runtime.lastError) {
+      console.error("Error fetching data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const topic = data[folderId];
+    if (!topic || !topic.prompts[promptIndex]) return;
+
+    topic.prompts[promptIndex].isFavorite =
+      !topic.prompts[promptIndex].isFavorite;
+
+    chrome.storage.sync.set({ [folderId]: topic }, function () {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Error toggling favorite status:",
+          chrome.runtime.lastError
+        );
+        alert("Fehler beim Umschalten des Favoritenstatus.");
+      } else {
+        console.log(`Favorite status toggled for prompt in ${folderId}`);
+        const currentView = document
+          .getElementById("mainHeaderTitle")
+          .textContent.toLowerCase();
+        if (currentView.includes("favorites")) {
+          window.loadPrompts("favorites");
+        } else if (currentView.includes("all")) {
+          window.loadPrompts("all");
+        } else if (currentView.includes("single")) {
+          window.loadPrompts("single");
+        } else if (currentView.includes("categorised")) {
+          window.loadPrompts("categorised");
+        } else if (currentView.includes("trash")) {
+          window.loadPrompts("trash");
+        } else {
+          window.loadPrompts(folderId);
+        }
+      }
+    });
+  });
+}
+function copyPrompt(prompt) {
+  navigator.clipboard.writeText(prompt.content).then(() => {
+    const notification = document.createElement("div");
+    notification.classList.add("notification");
+    notification.textContent = "Prompt copied to clipboard!";
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 2000);
+  });
+}
+
+function sharePrompt(prompt) {
+  if (navigator.share) {
+    navigator
+      .share({
+        title: prompt.title,
+        text: prompt.content,
+      })
+      .catch((err) => {
+        console.error("Failed to share prompt:", err);
+      });
+  } else {
+    alert("Sharing is not supported in this browser.");
+  }
+}
+
+function movePromptToFolder(currentFolderId, promptIndex, promptItem) {
+  chrome.storage.sync.get(null, function (data) {
+    if (chrome.runtime.lastError) {
+      console.error("Error fetching data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const folders = Object.entries(data).filter(
+      ([, topic]) =>
+        topic.prompts &&
+        Array.isArray(topic.prompts) &&
+        !topic.isHidden &&
+        !topic.isTrash
+    );
+
+    if (folders.length === 0) {
+      alert("No folders available to move this prompt to.");
+      return;
+    }
+
+    const modal = document.createElement("div");
+    modal.className = "modal";
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "modal-header";
+
+    const closeSpan = document.createElement("span");
+    closeSpan.className = "close";
+    closeSpan.innerHTML = "×";
+
+    const headerTitle = document.createElement("h2");
+    headerTitle.textContent = "Move Prompt to Folder";
+
+    const modalBody = document.createElement("div");
+    modalBody.className = "modal-body";
+
+    const selectLabel = document.createElement("label");
+    selectLabel.textContent = "Select Folder:";
+    selectLabel.style.marginBottom = "10px";
+    selectLabel.style.display = "block";
+
+    const select = document.createElement("select");
+    select.classList.add("reorder-select");
+    select.style.width = "100%";
+    select.style.padding = "8px";
+    select.style.borderRadius = "4px";
+
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Select a folder";
+    defaultOption.disabled = true;
+    select.appendChild(defaultOption);
+
+    folders.forEach(([id, topic]) => {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = topic.name;
+      if (id === currentFolderId) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+
+    const moveButton = document.createElement("button");
+    moveButton.textContent = "Move";
+    moveButton.classList.add("action-btn");
+    moveButton.style.marginTop = "15px";
+
+    select.addEventListener("change", () => {
+      moveButton.disabled =
+        select.value === "" || select.value === currentFolderId;
+    });
+
+    moveButton.addEventListener("click", () => {
+      const targetFolderId = select.value;
+      if (!targetFolderId || targetFolderId === currentFolderId) return;
+
+      const prompt = data[currentFolderId].prompts[promptIndex];
+      data[currentFolderId].prompts.splice(promptIndex, 1);
+      data[targetFolderId].prompts.push(prompt);
+
+      const updates = {};
+      if (data[currentFolderId].prompts.length === 0) {
+        chrome.storage.sync.remove(currentFolderId);
+      } else {
+        updates[currentFolderId] = data[currentFolderId];
+      }
+      updates[targetFolderId] = data[targetFolderId];
+
+      chrome.storage.sync.set(updates, function () {
+        if (chrome.runtime.lastError) {
+          console.error("Error moving prompt:", chrome.runtime.lastError);
+        } else {
+          console.log(
+            `Prompt moved from ${currentFolderId} to ${targetFolderId}`
+          );
+          promptItem.remove();
+          loadPrompts();
+          loadFolders();
+        }
+      });
+
+      modal.style.display = "none";
+      document.body.removeChild(modal);
+      document.head.removeChild(style);
+    });
+
+    modalHeader.appendChild(closeSpan);
+    modalHeader.appendChild(headerTitle);
+    modalBody.appendChild(selectLabel);
+    modalBody.appendChild(select);
+    modalBody.appendChild(moveButton);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modal.appendChild(modalContent);
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .modal {
+          display: block;
+          position: fixed;
+          z-index: 1000;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          overflow: auto;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(3px);
+      }
+
+      .modal-content {
+          background: #fff;
+          margin: 10% auto;
+          padding: 0;
+          width: 90%;
+          max-width: 500px;
+          border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+          overflow: hidden;
+      }
+
+      .modal-header {
+          padding: 16px 24px;
+          background: linear-gradient(135deg, #1e90ff, #4169e1);
+          color: white;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+      }
+
+      .modal-header h2 {
+          margin: 0;
+          font-size: 1.6em;
+          font-weight: 600;
+      }
+
+      .modal-body {
+          padding: 24px;
+          color: #2c3e50;
+      }
+
+      .modal-body label {
+          font-weight: 600;
+          margin-bottom: 10px;
+          display: block;
+          color: #34495e;
+      }
+
+      .close {
+          color: white;
+          font-size: 28px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: transform 0.2s ease;
+      }
+
+      .close:hover,
+      .close:focus {
+          transform: scale(1.1);
+      }
+
+      .action-btn {
+          padding: 8px 16px;
+          background: #1e90ff;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+      }
+
+      .action-btn:disabled {
+          background: #ccc;
+          cursor: not-allowed;
+      }
+    `;
+
+    document.head.appendChild(style);
+    document.body.appendChild(modal);
+
+    closeSpan.onclick = function () {
+      modal.style.display = "none";
+      document.body.removeChild(modal);
+      document.head.removeChild(style);
+    };
+
+    window.addEventListener(
+      "click",
+      function (event) {
+        if (event.target === modal) {
+          modal.style.display = "none";
+          document.body.removeChild(modal);
+          document.head.removeChild(style);
+        }
+      },
+      { once: true }
+    );
+
+    select.focus();
+  });
+}
+
+function removeFromFolder(currentFolderId, promptIndex, promptItem) {
+  if (confirm("Are you sure you want to remove this prompt from its folder?")) {
+    chrome.storage.sync.get(currentFolderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      const topic = data[currentFolderId];
+      if (!topic || !topic.prompts[promptIndex]) return;
+
+      const prompt = topic.prompts[promptIndex];
+      topic.prompts.splice(promptIndex, 1);
+
+      const hiddenFolderId = `hidden_folder_${Date.now()}_${Math.floor(
+        Math.random() * 10000
+      )}`;
+      const hiddenFolder = {
+        name: prompt.title.slice(0, 50),
+        prompts: [prompt],
+        isHidden: true,
+      };
+
+      const updates = {};
+      if (topic.prompts.length === 0) {
+        chrome.storage.sync.remove(currentFolderId);
+      } else {
+        updates[currentFolderId] = topic;
+      }
+      updates[hiddenFolderId] = hiddenFolder;
+
+      chrome.storage.sync.set(updates, function () {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Error moving prompt to hidden folder:",
+            chrome.runtime.lastError
+          );
+        } else {
+          console.log(
+            `Prompt removed from ${currentFolderId} and moved to hidden folder ${hiddenFolderId}`
+          );
+          promptItem.remove();
+          loadPrompts();
+          loadFolders();
+        }
+      });
+    });
+  }
 }
 // Funktion zum Verwenden eines Prompts
 function usePrompt(prompt) {
@@ -523,12 +1141,14 @@ function loadPrompts(view = "all") {
     if (!data || Object.keys(data).length === 0) {
       noData.style.display = "block";
       noData.textContent = "No prompts available";
+      document.getElementById("mainHeaderTitle").textContent = "All Prompts";
       return;
     }
 
     noData.style.display = "none";
 
     if (view === "favorites") {
+      document.getElementById("mainHeaderTitle").textContent = "Favorites";
       Object.entries(data).forEach(([id, topic]) => {
         if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
           allPrompts = allPrompts.concat(
@@ -539,11 +1159,13 @@ function loadPrompts(view = "all") {
                 folderId: id,
                 index,
                 isHidden: topic.isHidden || false,
+                isTrash: false,
               }))
           );
         }
       });
     } else if (view === "all") {
+      document.getElementById("mainHeaderTitle").textContent = "All Prompts";
       Object.entries(data).forEach(([id, topic]) => {
         if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
           allPrompts = allPrompts.concat(
@@ -552,11 +1174,13 @@ function loadPrompts(view = "all") {
               folderId: id,
               index,
               isHidden: topic.isHidden || false,
+              isTrash: false,
             }))
           );
         }
       });
     } else if (view === "single") {
+      document.getElementById("mainHeaderTitle").textContent = "Single Prompts";
       Object.entries(data).forEach(([id, topic]) => {
         if (topic.prompts && topic.isHidden && !topic.isTrash) {
           allPrompts = allPrompts.concat(
@@ -565,11 +1189,14 @@ function loadPrompts(view = "all") {
               folderId: id,
               index,
               isHidden: true,
+              isTrash: false,
             }))
           );
         }
       });
     } else if (view === "categorised") {
+      document.getElementById("mainHeaderTitle").textContent =
+        "Categorised Prompts";
       Object.entries(data).forEach(([id, topic]) => {
         if (topic.prompts && !topic.isHidden && !topic.isTrash) {
           allPrompts = allPrompts.concat(
@@ -578,28 +1205,35 @@ function loadPrompts(view = "all") {
               folderId: id,
               index,
               isHidden: false,
+              isTrash: false,
             }))
           );
         }
       });
     } else if (view === "trash") {
+      document.getElementById("mainHeaderTitle").textContent = "Trash";
       const trashFolder = data["trash_folder"];
       if (trashFolder && trashFolder.prompts) {
         allPrompts = trashFolder.prompts.map((prompt, index) => ({
           prompt,
           folderId: "trash_folder",
           index,
+          isHidden: false,
           isTrash: true,
         }));
       }
     } else {
       const folder = data[view];
       if (folder && folder.prompts && !folder.isTrash) {
+        document.getElementById(
+          "mainHeaderTitle"
+        ).textContent = `${folder.name} (${folder.prompts.length})`;
         allPrompts = folder.prompts.map((prompt, index) => ({
           prompt,
           folderId: view,
           index,
           isHidden: folder.isHidden || false,
+          isTrash: false,
         }));
       }
     }
@@ -621,7 +1255,8 @@ function loadPrompts(view = "all") {
         folderId,
         index,
         isHidden,
-        isTrash
+        isTrash,
+        view
       );
       promptList.appendChild(promptItem);
     });
