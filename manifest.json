@@ -34,7 +34,6 @@
         "*://*.chat.qwen.ai/*"
       ],
       "js": [
-        "promptSaver.js",
         "inputFieldTrigger.js",
         "addButton.js",
         "addPlatformClickEvent.js",
