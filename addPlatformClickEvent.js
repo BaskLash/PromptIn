@@ -205,28 +205,34 @@ function claudeButtonClick(index) {
     console.log(content);
   }
 }
-function addDuckduckGoButtonClick(index) {
-  // Alle div-Elemente mit heading-Attribut auswählen
-  const allDivsWithHeading = document.querySelectorAll("div[heading]");
-  // Das zweite Element (Index 1) auswählen
-  const divWithHeading = allDivsWithHeading[index - 1];
+function addDuckDuckGoButtonClick(targetIndex) {
+  let container = document.getElementById("react-layout");
 
-  if (divWithHeading && divWithHeading.parentElement) {
-    const parentDiv = divWithHeading.parentElement;
+  // Find the outer container
+  container = container?.querySelector(
+    "section[data-np-checked][data-np-watching][data-np-autofill-form-type]"
+  );
 
-    const pElement = parentDiv.querySelector("p");
-    if (pElement) {
-      console.log(pElement.textContent);
-      promptSaver(pElement.textContent);
-    } else {
-      console.log("Kein p-Element gefunden");
+  if (!container) return;
+
+  // Find the specific inner container
+  container = container.querySelector(".e8hNVcv2hNmgdRTcd0UO");
+  if (!container) return;
+
+  const children = Array.from(container.children);
+  const targetChild = children[targetIndex - 1];
+
+  children.forEach((child) => {
+    if (child === targetChild) {
+      const headingElement = child.querySelector("p");
+      if (headingElement) {
+        // console.log("Matched element text:", headingElement.innerText);
+        promptSaver(headingElement.innerText);
+      }
     }
-  } else {
-    console.log(
-      "Kein zweites div[heading]-Element oder kein parentElement gefunden"
-    );
-  }
+  });
 }
+
 function addMicrosoftCopilotButtonClick(index) {
   try {
     // Alle DIVs mit data-tabster, die "groupper" enthalten, auswählen
@@ -308,7 +314,7 @@ function addPerplexityButtonClick(index) {
   title = title.children[0];
 
   // console.log(title.innerText);
-  promptSaver(title);
+  promptSaver(title.innerText);
 }
 
 function addDeepSeekButtonClick(index) {
@@ -367,5 +373,51 @@ function addDeepSeekButtonClick(index) {
     promptSaver(selectedChild.textContent.trim());
   } else {
     console.log(`Element mit Index ${adjustedIndex} nicht gefunden.`);
+  }
+}
+function addDeepAIButtonClick(index) {
+  const form = document.querySelector("form");
+
+  if (!form) {
+    console.warn("No form found on the page.");
+    return;
+  }
+
+  const children = Array.from(form.children);
+
+  if (children.length) {
+    const child = children[index - 2];
+
+    if (
+      child.tagName === "DIV" &&
+      child.classList.contains("chatbox-wrapper")
+    ) {
+      const chatOptionsBox = child.querySelector("textarea.chatbox");
+
+      if (chatOptionsBox) {
+        console.log("Prompt-Wert gefunden:", chatOptionsBox.value);
+        promptSaver(chatOptionsBox.value);
+      } else {
+        console.warn(
+          "Keine .chatbox gefunden in .chatbox-wrapper bei Index",
+          index
+        );
+      }
+    }
+  } else {
+    console.warn("Ungültiger Index:", index);
+  }
+}
+function addQwenAiButtonClick(index) {
+  const container = document.getElementById("chat-message-container");
+  if (!container) {
+    console.warn("No container found with ID 'chat-message-container'.");
+  } else {
+    const children = Array.from(container.children);
+    if (children.length) {
+      const child = children[index - 2];
+
+      promptSaver(child.querySelector("p.whitespace-pre-wrap").innerText);
+    }
   }
 }

@@ -75,6 +75,18 @@ setInterval(() => {
   ) {
     addV0DevButton();
   }
+  if (
+    window.location.hostname === "deepai.org" ||
+    (window.location.hostname === "www.deepai.org" && path.startsWith("/chat/"))
+  ) {
+    addDeepaiButton();
+  }
+  if (
+    window.location.hostname === "chat.qwen.ai" ||
+    (window.location.hostname === "www.chat.qwen.ai" && path.startsWith("/c/"))
+  ) {
+    addQwenAiButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -141,6 +153,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true; // Required for asynchronous sendResponse
 });
 
+inputFieldTrigger();
+
 // Helper Functions
 function handlePromptInsertion(handlers, text, sendResponse) {
   let success = false;
@@ -195,7 +209,11 @@ function setChatGPTText(startElement, text) {
   }
 }
 
-function promptSaver(message) {
+/**
+ * Displays a modal for saving a prompt with a multi-step form, using Shadow DOM for isolation.
+ * @param {string} message The initial prompt message to display.
+ */
+async function promptSaver(message) {
   // Sicherstellen, dass der DOM verfügbar ist
   if (!document.body || !document.head) {
     console.error(
@@ -207,7 +225,15 @@ function promptSaver(message) {
 
   console.log("promptSaver aufgerufen mit message:", message);
 
-  // Create modal elements
+  // Shadow Host erstellen
+  const shadowHost = document.createElement("div");
+  shadowHost.id = "prompt-saver-shadow-host";
+  document.body.appendChild(shadowHost);
+
+  // Shadow Root anfügen
+  const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+
+  // Modal-Elemente erstellen
   const modal = document.createElement("div");
   modal.id = "myModal";
   modal.className = "modal";
@@ -228,7 +254,7 @@ function promptSaver(message) {
   const modalBody = document.createElement("div");
   modalBody.className = "modal-body";
 
-  // Step 1: Prompt Title and Description
+  // Schritt 1: Prompt-Titel und Beschreibung
   const titleSection = document.createElement("div");
   titleSection.className = "step-section active";
 
@@ -256,7 +282,7 @@ function promptSaver(message) {
   nextToPromptButton.textContent = "Next";
   nextToPromptButton.className = "next-button";
 
-  // Step 2: Prompt Textarea
+  // Schritt 2: Prompt-Textarea
   const promptSection = document.createElement("div");
   promptSection.className = "step-section";
 
@@ -268,11 +294,11 @@ function promptSaver(message) {
   promptTextarea.id = "promptTextarea";
   promptTextarea.name = "promptTextarea";
   promptTextarea.rows = 10;
+  promptTextarea.style.width = "100%";
 
-  // Sicherstellen, dass message ein String ist
   message =
     typeof message === "string" ? message.trim() : String(message).trim();
-
+  const originalMessage = message;
   let processedMessage = message.includes(":")
     ? message.split(":")[0].trim()
     : message;
@@ -280,16 +306,55 @@ function promptSaver(message) {
   promptTextarea.value = processedMessage;
   promptTextarea.placeholder = "Bearbeite deinen Prompt hier...";
 
+  const checkboxContainer = document.createElement("div");
+  checkboxContainer.style.marginTop = "10px";
+  checkboxContainer.style.display = "flex";
+  checkboxContainer.style.alignItems = "center";
+
+  const showFullContentCheckbox = document.createElement("input");
+  showFullContentCheckbox.type = "checkbox";
+  showFullContentCheckbox.id = "showFullContent";
+  showFullContentCheckbox.name = "showFullContent";
+  showFullContentCheckbox.style.width = "16px";
+  showFullContentCheckbox.style.height = "16px";
+  showFullContentCheckbox.style.marginRight = "10px";
+
+  const checkboxLabel = document.createElement("label");
+  checkboxLabel.setAttribute("for", "showFullContent");
+  checkboxLabel.textContent = "Gesamten Inhalt anzeigen (inkl. Text nach ':')";
+  checkboxLabel.style.fontSize = "14px";
+  checkboxLabel.style.marginTop = "5px";
+
+  showFullContentCheckbox.addEventListener("change", (e) => {
+    promptTextarea.value = e.target.checked
+      ? originalMessage
+      : originalMessage.includes(":")
+      ? originalMessage.split(":")[0].trim()
+      : originalMessage;
+  });
+
   const promptButtons = document.createElement("div");
   promptButtons.className = "button-group";
+  promptButtons.style.marginTop = "10px";
+
   const backToTitleButton = document.createElement("button");
   backToTitleButton.textContent = "Back";
   backToTitleButton.className = "back-button";
+
   const nextToOptionsButton = document.createElement("button");
   nextToOptionsButton.textContent = "Next";
   nextToOptionsButton.className = "next-button";
 
-  // Step 3: Options
+  promptSection.appendChild(promptTextareaLabel);
+  promptSection.appendChild(promptTextarea);
+  checkboxContainer.appendChild(showFullContentCheckbox);
+  checkboxContainer.appendChild(checkboxLabel);
+  promptSection.appendChild(checkboxContainer);
+  promptButtons.appendChild(backToTitleButton);
+  promptButtons.appendChild(nextToOptionsButton);
+  promptSection.appendChild(promptButtons);
+
+  // Schritt 3: Optionen
   const optionsSection = document.createElement("div");
   optionsSection.className = "step-section";
 
@@ -313,7 +378,6 @@ function promptSaver(message) {
     optionsSwitch.appendChild(button);
   });
 
-  // Create new prompt option
   const createContent = document.createElement("div");
   createContent.id = "create";
   createContent.className = "option-content active";
@@ -322,7 +386,6 @@ function promptSaver(message) {
     "Creates a new prompt without assigning it to a folder. Click 'Save' to confirm.";
   createContent.appendChild(createText);
 
-  // Replace prompt option
   const replaceContent = document.createElement("div");
   replaceContent.id = "replace";
   replaceContent.className = "option-content";
@@ -344,13 +407,22 @@ function promptSaver(message) {
   replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
   replacePromptSelect.disabled = true;
 
+  const diffOutputLabel = document.createElement("label");
+  diffOutputLabel.setAttribute("for", "promptDiffOutput");
+  diffOutputLabel.textContent = "Prompt Differences:";
+  const diffOutput = document.createElement("div");
+  diffOutput.id = "promptDiffOutput";
+  diffOutput.className =
+    "diff-output border rounded p-2 bg-gray-50 min-h-[100px] text-sm font-mono whitespace-pre-wrap";
+
   replaceContent.appendChild(replaceText);
   replaceContent.appendChild(replaceFolderLabel);
   replaceContent.appendChild(replaceFolderSelect);
   replaceContent.appendChild(replacePromptLabel);
   replaceContent.appendChild(replacePromptSelect);
+  replaceContent.appendChild(diffOutputLabel);
+  replaceContent.appendChild(diffOutput);
 
-  // Add prompt to folder option
   const addContent = document.createElement("div");
   addContent.id = "add";
   addContent.className = "option-content";
@@ -370,7 +442,14 @@ function promptSaver(message) {
   backToPromptButton.textContent = "Back";
   backToPromptButton.className = "back-button";
 
-  // Footer
+  optionsSection.appendChild(optionsHeader);
+  optionsSection.appendChild(optionsSwitch);
+  optionsSection.appendChild(createContent);
+  optionsSection.appendChild(replaceContent);
+  optionsSection.appendChild(addContent);
+  optionsButtons.appendChild(backToPromptButton);
+  optionsSection.appendChild(optionsButtons);
+
   const modalFooter = document.createElement("div");
   modalFooter.className = "modal-footer";
 
@@ -378,13 +457,13 @@ function promptSaver(message) {
   saveButton.className = "save-button";
   saveButton.textContent = "Speichern";
 
-  // Add styles
+  // Stile definieren
   const style = document.createElement("style");
   style.textContent = `
     .modal {
       display: none;
       position: fixed;
-      z-index: 1000;
+      z-index: 10000;
       left: 0;
       top: 0;
       width: 100%;
@@ -393,7 +472,6 @@ function promptSaver(message) {
       background: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(3px);
     }
-
     .modal-content {
       background: #fff;
       margin: 5% auto;
@@ -404,7 +482,6 @@ function promptSaver(message) {
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
       overflow: hidden;
     }
-
     .modal-header {
       padding: 16px 24px;
       background: linear-gradient(135deg, #1e90ff, #4169e1);
@@ -413,26 +490,21 @@ function promptSaver(message) {
       justify-content: space-between;
       align-items: center;
     }
-
     .modal-header h2 {
       margin: 0;
       font-size: 1.6em;
       font-weight: 600;
     }
-
     .modal-body {
       padding: 24px;
       color: #2c3e50;
     }
-
     .step-section {
       display: none;
     }
-
     .step-section.active {
       display: block;
     }
-
     .options-switch {
       display: flex;
       gap: 4px;
@@ -441,7 +513,6 @@ function promptSaver(message) {
       padding: 4px;
       border-radius: 6px;
     }
-
     .options-switch button {
       flex: 1;
       padding: 10px;
@@ -453,24 +524,19 @@ function promptSaver(message) {
       transition: all 0.2s ease;
       border-radius: 4px;
     }
-
     .options-switch button:hover {
       background: #e9ecef;
     }
-
     .options-switch button.active {
       background: #1e90ff;
       color: white;
     }
-
     .option-content {
       display: none;
     }
-
     .option-content.active {
       display: block;
     }
-
     .modal-body label {
       font-weight: 600;
       margin-top: 16px;
@@ -478,10 +544,10 @@ function promptSaver(message) {
       display: block;
       color: #34495e;
     }
-
     .modal-body input,
     .modal-body select,
-    .modal-body textarea {
+    .modal-body textarea,
+    .modal-body .diff-output {
       width: 100%;
       padding: 10px;
       margin-bottom: 12px;
@@ -491,25 +557,22 @@ function promptSaver(message) {
       box-sizing: border-box;
       transition: border-color 0.2s ease;
     }
-
     .modal-body input:focus,
     .modal-body select:focus,
-    .modal-body textarea:focus {
+    .modal-body textarea:focus,
+    .modal-body .diff-output:focus {
       border-color: #1e90ff;
       outline: none;
     }
-
     .modal-body textarea {
       resize: vertical;
       min-height: 120px;
     }
-
     .button-group {
       display: flex;
       gap: 12px;
       margin-top: 12px;
     }
-
     .next-button, .back-button {
       padding: 10px 20px;
       border: none;
@@ -518,31 +581,25 @@ function promptSaver(message) {
       cursor: pointer;
       transition: background 0.2s ease;
     }
-
     .next-button {
       background: #1e90ff;
       color: white;
     }
-
     .next-button:hover {
       background: #4169e1;
     }
-
     .back-button {
       background: #6c757d;
       color: white;
     }
-
     .back-button:hover {
       background: #5a6268;
     }
-
     .modal-footer {
       padding: 16px 24px;
       background: #f8f9fa;
       text-align: right;
     }
-
     .save-button {
       padding: 10px 20px;
       background: #28a745;
@@ -555,15 +612,12 @@ function promptSaver(message) {
       transition: background 0.2s ease;
       display: none;
     }
-
     .modal-content.options-active .save-button {
       display: block;
     }
-
     .save-button:hover {
-      background: #218838;
+      background: #218 Ascendant: #218838;
     }
-
     .close {
       color: white;
       font-size: 28px;
@@ -571,14 +625,43 @@ function promptSaver(message) {
       cursor: pointer;
       transition: transform 0.2s ease;
     }
-
     .close:hover,
     .close:focus {
       transform: scale(1.1);
     }
+    .diff-word.added {
+      background-color: #d4fcbc;
+      color: black;
+    }
+    .diff-word.removed {
+      background-color: #fbb6c2;
+      color: black;
+      text-decoration: line-through;
+    }
+    .diff-word.common {
+      background-color: #e5e7eb;
+    }
+    .diff-word {
+      padding: 2px;
+      margin: 2px;
+      border-radius: 2px;
+      transition: background-color 0.2s;
+    }
+    .arrow {
+      color: #1e90ff;
+      font-weight: bold;
+      margin: 0 4px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
   `;
 
-  // Assemble the modal
+  // Modal zusammenbauen
   modalHeader.appendChild(closeSpan);
   modalHeader.appendChild(headerTitle);
 
@@ -587,20 +670,6 @@ function promptSaver(message) {
   titleSection.appendChild(promptDescLabel);
   titleSection.appendChild(promptDescInput);
   titleSection.appendChild(nextToPromptButton);
-
-  promptSection.appendChild(promptTextareaLabel);
-  promptSection.appendChild(promptTextarea);
-  promptButtons.appendChild(backToTitleButton);
-  promptButtons.appendChild(nextToOptionsButton);
-  promptSection.appendChild(promptButtons);
-
-  optionsSection.appendChild(optionsHeader);
-  optionsSection.appendChild(optionsSwitch);
-  optionsSection.appendChild(createContent);
-  optionsSection.appendChild(replaceContent);
-  optionsSection.appendChild(addContent);
-  optionsButtons.appendChild(backToPromptButton);
-  optionsSection.appendChild(optionsButtons);
 
   modalBody.appendChild(titleSection);
   modalBody.appendChild(promptSection);
@@ -614,45 +683,170 @@ function promptSaver(message) {
 
   modal.appendChild(modalContent);
 
-  // Add styles and modal to document
+  // Stile und Modal zum Shadow Root hinzufügen
   try {
-    document.head.appendChild(style);
-    document.body.appendChild(modal);
-    console.log("Modal created and appended to DOM");
+    shadowRoot.appendChild(style);
+    shadowRoot.appendChild(modal);
+    console.log("Modal created and appended to shadow root");
   } catch (error) {
-    console.error("Fehler beim Hinzufügen des Modals zum DOM:", error);
+    console.error("Fehler beim Hinzufügen des Modals zum Shadow Root:", error);
     alert("Fehler beim Erstellen des Modals. Bitte versuche es erneut.");
     return;
   }
 
-  // Show the modal
-  modal.style.display = "block";
-  console.log("Modal display set to block");
+  // Funktion zum Schließen des Modals
+  function closeModal() {
+    modal.style.display = "none";
+    observer.disconnect(); // Observer stoppen
+    try {
+      document.body.removeChild(shadowHost);
+    } catch (error) {
+      console.error("Fehler beim Entfernen des Shadow Hosts:", error);
+    }
+  }
 
-  // Load folders for replace and add options
-  function loadFolders() {
-    chrome.storage.sync.get(null, (data) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error fetching data:", chrome.runtime.lastError);
-        return;
+  // Modal asynchron anzeigen
+  setTimeout(() => {
+    modal.style.display = "block";
+    console.log("Modal display set to block");
+    if (promptTitleInput) {
+      promptTitleInput.focus(); // Fokus auf das erste Eingabefeld setzen
+    }
+  }, 100);
+
+  // MutationObserver zum Schutz vor DOM-Mutationen
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (modal.style.display !== "block") {
+        console.warn("Modal display changed unexpectedly, restoring...");
+        modal.style.display = "block";
       }
+    });
+  });
+  observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
+
+  // Modal schließen bei Klick auf Schließen-Span
+  closeSpan.addEventListener("click", closeModal);
+
+  // Modal schließen bei Klick außerhalb
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+
+  // Modal schließen bei Escape-Taste
+  modal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeModal();
+    }
+  });
+
+  // Funktion zum Berechnen und Anzeigen der Prompt-Differenz
+  function computePromptDiff(currentPrompt, selectedPrompt) {
+    const diffOutput = shadowRoot.getElementById("promptDiffOutput");
+    diffOutput.innerHTML = "";
+
+    // Split texts into words
+    const words1 = selectedPrompt.split(/\s+/).filter((w) => w);
+    const words2 = currentPrompt.split(/\s+/).filter((w) => w);
+
+    // Compute diff
+    let i = 0,
+      j = 0;
+    const unifiedDiff = [];
+
+    while (i < words1.length || j < words2.length) {
+      if (i < words1.length && j < words2.length && words1[i] === words2[j]) {
+        unifiedDiff.push({ value: words1[i], type: "common" });
+        i++;
+        j++;
+      } else {
+        let foundMatch = false;
+        for (let k = j; k < Math.min(words2.length, j + 3); k++) {
+          for (let m = i; m < Math.min(words1.length, i + 3); m++) {
+            if (words1[m] === words2[k]) {
+              while (i < m) {
+                unifiedDiff.push({ value: words1[i], type: "removed" });
+                i++;
+              }
+              while (j < k) {
+                unifiedDiff.push({ value: words2[j], type: "added" });
+                j++;
+              }
+              unifiedDiff.push({ value: words1[m], type: "common" });
+              i++;
+              j++;
+              foundMatch = true;
+              break;
+            }
+          }
+          if (foundMatch) break;
+        }
+        if (!foundMatch) {
+          if (i < words1.length) {
+            unifiedDiff.push({ value: words1[i], type: "removed" });
+            i++;
+          }
+          if (j < words2.length) {
+            unifiedDiff.push({ value: words2[j], type: "added" });
+            j++;
+          }
+        }
+      }
+    }
+
+    // Render diff
+    let lastWasRemoved = false;
+    unifiedDiff.forEach((part, index) => {
+      const span = document.createElement("span");
+      span.className = `diff-word ${part.type}`;
+      span.textContent = part.value + " ";
+
+      if (lastWasRemoved && part.type === "added") {
+        const prevPart = unifiedDiff[index - 1];
+        if (prevPart && prevPart.type === "removed") {
+          const arrow = document.createElement("span");
+          arrow.textContent = "→ ";
+          arrow.className = "arrow";
+          diffOutput.appendChild(arrow);
+        }
+      }
+
+      diffOutput.appendChild(span);
+      lastWasRemoved = part.type === "removed";
+    });
+  }
+
+  // Ordner für Replace- und Add-Optionen laden
+  async function loadFolders() {
+    try {
+      const data = await new Promise((resolve, reject) => {
+        chrome.storage.sync.get(null, (data) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(data);
+          }
+        });
+      });
 
       const folders = Object.entries(data).filter(
         ([, topic]) =>
           topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden
       );
 
-      // Populate replaceFolderSelect
       replaceFolderSelect.innerHTML =
         '<option value="">Select a folder</option>';
       folders.forEach(([id, topic]) => {
-        const option = document.createElement("option");
-        option.value = id;
-        option.textContent = topic.name;
-        replaceFolderSelect.appendChild(option);
+        if (topic.prompts.length > 0) {
+          const option = document.createElement("option");
+          option.value = id;
+          option.textContent = topic.name;
+          replaceFolderSelect.appendChild(option);
+        }
       });
 
-      // Populate addFolderSelect
       addFolderSelect.innerHTML = '<option value="">Select a folder</option>';
       folders.forEach(([id, topic]) => {
         const option = document.createElement("option");
@@ -660,24 +854,29 @@ function promptSaver(message) {
         option.textContent = topic.name;
         addFolderSelect.appendChild(option);
       });
-    });
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   }
 
-  // Load prompts for selected folder in replace option
-  replaceFolderSelect.addEventListener("change", () => {
+  // Prompts für ausgewählten Ordner in Replace-Option laden
+  replaceFolderSelect.addEventListener("change", async (e) => {
     const folderId = replaceFolderSelect.value;
     replacePromptSelect.disabled = !folderId;
     replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
+    shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
 
     if (folderId) {
-      chrome.storage.sync.get(folderId, (data) => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "Error fetching folder data:",
-            chrome.runtime.lastError
-          );
-          return;
-        }
+      try {
+        const data = await new Promise((resolve, reject) => {
+          chrome.storage.sync.get(folderId, (data) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve(data);
+            }
+          });
+        });
 
         const topic = data[folderId];
         if (topic && topic.prompts) {
@@ -693,12 +892,47 @@ function promptSaver(message) {
             replacePromptSelect.appendChild(option);
           });
         }
-      });
+      } catch (error) {
+        console.error("Error fetching folder data:", error);
+      }
     }
   });
 
-  // Step navigation
-  nextToPromptButton.onclick = function () {
+  // Event-Listener für Prompt-Auswahl zum Anzeigen der Differenz
+  replacePromptSelect.addEventListener("change", async (e) => {
+    const folderId = replaceFolderSelect.value;
+    const promptIndex = replacePromptSelect.value;
+
+    if (folderId && promptIndex !== "") {
+      try {
+        const data = await new Promise((resolve, reject) => {
+          chrome.storage.sync.get(folderId, (data) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve(data);
+            }
+          });
+        });
+
+        const topic = data[folderId];
+        if (topic && topic.prompts && topic.prompts[promptIndex]) {
+          const selectedPrompt = topic.prompts[promptIndex].content;
+          const currentPrompt = promptTextarea.value.trim();
+          computePromptDiff(currentPrompt, selectedPrompt);
+        }
+      } catch (error) {
+        console.error("Error fetching prompt data:", error);
+        shadowRoot.getElementById("promptDiffOutput").innerHTML =
+          "Error loading prompt differences.";
+      }
+    } else {
+      shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
+    }
+  });
+
+  // Schritt-Navigation
+  nextToPromptButton.addEventListener("click", (e) => {
     if (promptTitleInput.value.trim() === "") {
       alert("Bitte gib einen Prompt-Titel ein!");
       return;
@@ -709,201 +943,188 @@ function promptSaver(message) {
     }
     titleSection.classList.remove("active");
     promptSection.classList.add("active");
-  };
+  });
 
-  backToTitleButton.onclick = function () {
+  backToTitleButton.addEventListener("click", (e) => {
     promptSection.classList.remove("active");
     titleSection.classList.add("active");
-  };
+  });
 
-  nextToOptionsButton.onclick = function () {
+  nextToOptionsButton.addEventListener("click", async (e) => {
     if (promptTextarea.value.trim() === "") {
       alert("Bitte gib einen Prompt-Text ein!");
       return;
     }
-    loadFolders();
+    await loadFolders();
     promptSection.classList.remove("active");
     optionsSection.classList.add("active");
     modalContent.classList.add("options-active");
-  };
+  });
 
-  backToPromptButton.onclick = function () {
+  backToPromptButton.addEventListener("click", (e) => {
     optionsSection.classList.remove("active");
     promptSection.classList.add("active");
     modalContent.classList.remove("options-active");
-  };
-
-  // Options Switcher logic
-  const subOptionButtonsElements = optionsSwitch.querySelectorAll("button");
-  const optionContents = optionsSection.querySelectorAll(".option-content");
-  subOptionButtonsElements.forEach((button) => {
-    button.addEventListener("click", () => {
-      subOptionButtonsElements.forEach((btn) => btn.classList.remove("active"));
-      optionContents.forEach((c) => c.classList.remove("active"));
-      button.classList.add("active");
-      document
-        .getElementById(button.getAttribute("data-tab"))
-        .classList.add("active");
-    });
   });
 
-  // Save logic
-  // Inside promptSaver, replace the saveButton.onclick function
-  saveButton.onclick = function () {
+  // Options-Switcher-Logik mit Event-Delegation
+  optionsSwitch.addEventListener("click", (e) => {
+    if (e.target.tagName === "BUTTON") {
+      const buttons = shadowRoot.querySelectorAll(".options-switch button");
+      const contents = shadowRoot.querySelectorAll(".option-content");
+      buttons.forEach((btn) => {
+        if (btn) btn.classList.remove("active");
+      });
+      contents.forEach((c) => {
+        if (c) c.classList.remove("active");
+      });
+      e.target.classList.add("active");
+      const tabContent = shadowRoot.getElementById(
+        e.target.getAttribute("data-tab")
+      );
+      if (tabContent) {
+        tabContent.classList.add("active");
+      } else {
+        console.warn(
+          "Tab content not found for data-tab:",
+          e.target.getAttribute("data-tab")
+        );
+      }
+    }
+  });
+
+  // Speicher-Logik mit asynchroner Behandlung
+  saveButton.addEventListener("click", async (e) => {
     const promptTitle = promptTitleInput.value.trim();
     const promptDescription = promptDescInput.value.trim();
     const promptContent = promptTextarea.value.trim();
-    const activeOption = optionsSwitch
-      .querySelector("button.active")
-      .getAttribute("data-tab");
+    const activeOption = shadowRoot
+      .querySelector(".options-switch button.active")
+      ?.getAttribute("data-tab");
 
     if (!promptTitle || !promptDescription || !promptContent) {
       alert("Bitte fülle alle Felder (Titel, Beschreibung, Prompt) aus!");
       return;
     }
 
-    const savePrompt = () => {
+    if (!activeOption) {
+      alert("Bitte wähle eine Option aus!");
+      return;
+    }
+
+    async function savePrompt() {
       const promptObject = {
         title: promptTitle,
         description: promptDescription,
         content: promptContent,
       };
 
-      if (activeOption === "create") {
-        // Create a hidden folder for the standalone prompt
-        const hiddenFolderId = `hidden_folder_${Date.now()}_${Math.floor(
-          Math.random() * 10000
-        )}`;
-        const hiddenFolder = {
-          name: promptTitle,
-          prompts: [promptObject],
-          isHidden: true, // Mark as hidden
-        };
+      try {
+        if (activeOption === "create") {
+          const hiddenFolderId = `hidden_folder_${Date.now()}_${Math.floor(
+            Math.random() * 10000
+          )}`;
+          const hiddenFolder = {
+            name: promptTitle,
+            prompts: [promptObject],
+            isHidden: true,
+          };
 
-        chrome.storage.sync.set({ [hiddenFolderId]: hiddenFolder }, () => {
-          if (chrome.runtime.lastError) {
-            console.error("Error saving prompt:", chrome.runtime.lastError);
-            alert("Fehler beim Speichern des Prompts.");
-          } else {
-            console.log(
-              "Standalone prompt created in hidden folder:",
-              hiddenFolder
-            );
-            modal.style.display = "none";
-            document.body.removeChild(modal);
-            document.head.removeChild(style);
-          }
-        });
-      } else if (activeOption === "replace") {
-        const folderId = replaceFolderSelect.value;
-        const promptIndex = replacePromptSelect.value;
+          await new Promise((resolve, reject) => {
+            chrome.storage.sync.set({ [hiddenFolderId]: hiddenFolder }, () => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                console.log(
+                  "Standalone prompt created in hidden folder:",
+                  hiddenFolder
+                );
+                resolve();
+              }
+            });
+          });
+          closeModal();
+        } else if (activeOption === "replace") {
+          const folderId = replaceFolderSelect.value;
+          const promptIndex = replacePromptSelect.value;
 
-        if (!folderId || promptIndex === "") {
-          alert("Bitte wähle einen Ordner und eine Prompt aus!");
-          return;
-        }
-
-        chrome.storage.sync.get(folderId, (data) => {
-          if (chrome.runtime.lastError) {
-            console.error(
-              "Error fetching folder data:",
-              chrome.runtime.lastError
-            );
+          if (!folderId || promptIndex === "") {
+            alert("Bitte wähle einen Ordner und eine Prompt aus!");
             return;
           }
+
+          const data = await new Promise((resolve, reject) => {
+            chrome.storage.sync.get(folderId, (data) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(data);
+              }
+            });
+          });
 
           const topic = data[folderId];
           if (topic && topic.prompts) {
             topic.prompts[promptIndex] = promptObject;
             topic.name = topic.prompts.length === 1 ? promptTitle : topic.name;
 
-            chrome.storage.sync.set({ [folderId]: topic }, () => {
-              if (chrome.runtime.lastError) {
-                console.error(
-                  "Error replacing prompt:",
-                  chrome.runtime.lastError
-                );
-                alert("Fehler beim Ersetzen der Prompt.");
-              } else {
-                console.log(
-                  `Prompt in folder ${folderId} replaced at index ${promptIndex}`
-                );
-                modal.style.display = "none";
-                document.body.removeChild(modal);
-                document.head.removeChild(style);
-              }
+            await new Promise((resolve, reject) => {
+              chrome.storage.sync.set({ [folderId]: topic }, () => {
+                if (chrome.runtime.lastError) {
+                  reject(chrome.runtime.lastError);
+                } else {
+                  console.log(
+                    `Prompt in folder ${folderId} replaced at index ${promptIndex}`
+                  );
+                  resolve();
+                }
+              });
             });
+            closeModal();
           }
-        });
-      } else if (activeOption === "add") {
-        const folderId = addFolderSelect.value;
+        } else if (activeOption === "add") {
+          const folderId = addFolderSelect.value;
 
-        if (!folderId) {
-          alert("Bitte wähle einen Ordner aus!");
-          return;
-        }
-
-        chrome.storage.sync.get(folderId, (data) => {
-          if (chrome.runtime.lastError) {
-            console.error(
-              "Error fetching folder data:",
-              chrome.runtime.lastError
-            );
+          if (!folderId) {
+            alert("Bitte wähle einen Ordner aus!");
             return;
           }
+
+          const data = await new Promise((resolve, reject) => {
+            chrome.storage.sync.get(folderId, (data) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(data);
+              }
+            });
+          });
 
           const topic = data[folderId] || { name: promptTitle, prompts: [] };
           topic.prompts.push(promptObject);
 
-          chrome.storage.sync.set({ [folderId]: topic }, () => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "Error adding prompt to folder:",
-                chrome.runtime.lastError
-              );
-              alert("Fehler beim Hinzufügen der Prompt zum Ordner.");
-            } else {
-              console.log(`Prompt added to folder ${folderId}`);
-              modal.style.display = "none";
-              document.body.removeChild(modal);
-              document.head.removeChild(style);
-            }
+          await new Promise((resolve, reject) => {
+            chrome.storage.sync.set({ [folderId]: topic }, () => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                console.log(`Prompt added to folder ${folderId}`);
+                resolve();
+              }
+            });
           });
-        });
-      }
-    };
-
-    savePrompt();
-  };
-
-  // Close modal
-  closeSpan.onclick = function () {
-    modal.style.display = "none";
-    try {
-      document.body.removeChild(modal);
-      document.head.removeChild(style);
-    } catch (error) {
-      console.error("Fehler beim Entfernen des Modals:", error);
-    }
-  };
-
-  // Optimierten window.onclick Handler
-  window.addEventListener(
-    "click",
-    function (event) {
-      if (event.target === modal) {
-        modal.style.display = "none";
-        try {
-          document.body.removeChild(modal);
-          document.head.removeChild(style);
-        } catch (error) {
-          console.error("Fehler beim Entfernen des Modals:", error);
+          closeModal();
         }
+      } catch (error) {
+        console.error("Error in savePrompt:", error);
+        alert("Fehler beim Speichern des Prompts.");
       }
-    },
-    { once: true }
-  ); // Handler wird nur einmal ausgeführt
+    }
+
+    await savePrompt();
+  });
 }
+
 document.addEventListener("DOMContentLoaded", removeElement);
 
 // Hilfsfunktion zur Generierung einer eindeutigen ID

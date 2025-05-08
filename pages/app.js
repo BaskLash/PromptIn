@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const folderListSection = document.getElementById("folderList");
   const promptsContainer = document.getElementById("promptsContainer");
   const allPromptsLink = document.getElementById("allPromptsLink");
+  const favoritesLink = document.getElementById("favoritesLink");
   const singlePromptsLink = document.getElementById("singlePromptsLink");
   const mainHeaderTitle = document.getElementById("mainHeaderTitle");
   const categorisedPromptsLink = document.getElementById(
@@ -325,6 +326,14 @@ document.addEventListener("DOMContentLoaded", function () {
         folderSelect.appendChild(option);
       });
 
+      const favoriteLabel = document.createElement("label");
+      favoriteLabel.textContent = "Add to Favorites:";
+      favoriteLabel.style.marginTop = "10px";
+      favoriteLabel.style.display = "block";
+      const favoriteCheckbox = document.createElement("input");
+      favoriteCheckbox.type = "checkbox";
+      favoriteCheckbox.style.marginLeft = "10px";
+
       const saveButton = document.createElement("button");
       saveButton.textContent = "Save Prompt";
       saveButton.classList.add("action-btn");
@@ -335,13 +344,14 @@ document.addEventListener("DOMContentLoaded", function () {
         const description = descInput.value.trim();
         const content = contentInput.value.trim();
         const folderId = folderSelect.value;
+        const isFavorite = favoriteCheckbox.checked;
 
         if (!title || !content) {
           alert("Title and content are required.");
           return;
         }
 
-        const newPrompt = { title, content };
+        const newPrompt = { title, content, isFavorite };
         if (description) newPrompt.description = description;
 
         if (folderId) {
@@ -361,6 +371,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 mainHeaderTitle.textContent === "Categorised Prompts"
               ) {
                 showCategorisedPrompts();
+              } else if (mainHeaderTitle.textContent === "Favorites") {
+                showFavoritePrompts();
               } else {
                 showFolderContent(folderId);
               }
@@ -386,6 +398,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 showAllPrompts();
               } else if (mainHeaderTitle.textContent === "Single Prompts") {
                 showSinglePrompts();
+              } else if (mainHeaderTitle.textContent === "Favorites") {
+                showFavoritePrompts();
               } else {
                 showAllPrompts();
               }
@@ -408,6 +422,8 @@ document.addEventListener("DOMContentLoaded", function () {
       modalBody.appendChild(contentInput);
       modalBody.appendChild(folderLabel);
       modalBody.appendChild(folderSelect);
+      modalBody.appendChild(favoriteLabel);
+      modalBody.appendChild(favoriteCheckbox);
       modalBody.appendChild(saveButton);
       modalContent.appendChild(modalHeader);
       modalContent.appendChild(modalBody);
@@ -427,7 +443,7 @@ document.addEventListener("DOMContentLoaded", function () {
           background: rgba(0, 0, 0, 0.7);
           backdrop-filter: blur(3px);
         }
-
+  
         .modal-content {
           background: #fff;
           margin: 5% auto;
@@ -438,7 +454,7 @@ document.addEventListener("DOMContentLoaded", function () {
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
           overflow: hidden;
         }
-
+  
         .modal-header {
           padding: 16px 24px;
           background: linear-gradient(135deg, #1e90ff, #4169e1);
@@ -447,18 +463,18 @@ document.addEventListener("DOMContentLoaded", function () {
           justify-content: space-between;
           align-items: center;
         }
-
+  
         .modal-header h2 {
           margin: 0;
           font-size: 1.6em;
           font-weight: 600;
         }
-
+  
         .modal-body {
           padding: 24px;
           color: #2c3e50;
         }
-
+  
         .modal-body label {
           font-weight: 600;
           margin-top: 16px;
@@ -466,14 +482,14 @@ document.addEventListener("DOMContentLoaded", function () {
           display: block;
           color: #34495e;
         }
-
+  
         .modal-body input,
         .modal-body textarea,
         .modal-body select {
           margin-bottom: 12px;
           box-sizing: border-box;
         }
-
+  
         .close {
           color: white;
           font-size: 28px;
@@ -481,12 +497,12 @@ document.addEventListener("DOMContentLoaded", function () {
           cursor: pointer;
           transition: transform 0.2s ease;
         }
-
+  
         .close:hover,
         .close:focus {
           transform: scale(1.1);
         }
-
+  
         .action-btn {
           padding: 8px 16px;
           background: #1e90ff;
@@ -495,7 +511,7 @@ document.addEventListener("DOMContentLoaded", function () {
           border-radius: 4px;
           cursor: pointer;
         }
-
+  
         .action-btn:hover {
           background: #4169e1;
         }
@@ -560,6 +576,7 @@ document.addEventListener("DOMContentLoaded", function () {
             folderLink.addEventListener("click", (e) => {
               e.preventDefault();
               [
+                favoritesLink,
                 allPromptsLink,
                 singlePromptsLink,
                 categorisedPromptsLink,
@@ -743,13 +760,25 @@ document.addEventListener("DOMContentLoaded", function () {
   function createPromptItem(prompt, folderId, index, totalPrompts) {
     const promptItem = document.createElement("li");
     promptItem.classList.add("prompt-item");
+    if (prompt.isFavorite) {
+      promptItem.classList.add("favorite");
+    }
 
     const promptText = document.createElement("span");
     promptText.classList.add("prompt-text");
-    promptText.textContent =
-      typeof prompt === "string"
-        ? prompt.slice(0, 50)
-        : prompt.title || "Untitled Prompt";
+
+    chrome.storage.sync.get(folderId, (data) => {
+      const topic = data[folderId];
+      const folderName =
+        topic && !topic.isHidden && !topic.isTrash ? topic.name : "";
+      promptText.textContent =
+        typeof prompt === "string"
+          ? prompt.slice(0, 50)
+          : folderName
+          ? `${prompt.title} (in ${folderName})`
+          : prompt.title || "Untitled Prompt";
+    });
+
     promptItem.appendChild(promptText);
 
     const promptActions = document.createElement("div");
@@ -783,6 +812,13 @@ document.addEventListener("DOMContentLoaded", function () {
         { text: "Edit", action: () => editPrompt(folderId, index, promptItem) },
         { text: "Share", action: () => sharePrompt(prompt) },
         {
+          text: prompt.isFavorite
+            ? "Remove from Favorites"
+            : "Add to Favorites",
+          action: () =>
+            toggleFavoritePrompt(folderId, index, promptItem, prompt),
+        },
+        {
           text: "Move to Trash",
           action: () => deletePrompt(folderId, index, promptItem),
         }
@@ -791,7 +827,7 @@ document.addEventListener("DOMContentLoaded", function () {
       chrome.storage.sync.get(folderId, (data) => {
         const topic = data[folderId];
         if (topic && !topic.isHidden && !topic.isTrash) {
-          menuItems.splice(4, 0, {
+          menuItems.splice(5, 0, {
             text: "Remove from Folder",
             action: () => removeFromFolder(folderId, index, promptItem),
           });
@@ -830,13 +866,57 @@ document.addEventListener("DOMContentLoaded", function () {
     promptActions.appendChild(dropdown);
     promptItem.appendChild(promptActions);
 
-    document.addEventListener("click", (e) => {
-      if (!promptActions.contains(e.target)) {
-        dropdown.style.display = "none";
+    return promptItem;
+  }
+
+  // Einmaliger globaler Event-Listener für das Schließen der Dropdowns
+  document.addEventListener("click", (e) => {
+    const dropdownMenus = document.querySelectorAll(".dropdown-menu");
+    dropdownMenus.forEach((menu) => {
+      const promptActions = menu.closest(".prompt-actions");
+      if (promptActions && !promptActions.contains(e.target)) {
+        menu.style.display = "none";
       }
     });
+  });
 
-    return promptItem;
+  function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
+    chrome.storage.sync.get(folderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      const topic = data[folderId];
+      if (!topic || !topic.prompts[promptIndex]) return;
+
+      topic.prompts[promptIndex].isFavorite =
+        !topic.prompts[promptIndex].isFavorite;
+
+      chrome.storage.sync.set({ [folderId]: topic }, function () {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Error toggling favorite status:",
+            chrome.runtime.lastError
+          );
+          alert("Fehler beim Umschalten des Favoritenstatus.");
+        } else {
+          console.log(`Favorite status toggled for prompt in ${folderId}`);
+          promptItem.remove();
+          if (mainHeaderTitle.textContent === "Favorites") {
+            showFavoritePrompts();
+          } else if (mainHeaderTitle.textContent === "All Prompts") {
+            showAllPrompts();
+          } else if (mainHeaderTitle.textContent === "Single Prompts") {
+            showSinglePrompts();
+          } else if (mainHeaderTitle.textContent === "Categorised Prompts") {
+            showCategorisedPrompts();
+          } else {
+            showFolderContent(folderId);
+          }
+        }
+      });
+    });
   }
 
   function restorePrompt(trashFolderId, promptIndex, promptItem) {
@@ -1662,6 +1742,74 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  function showFavoritePrompts() {
+    chrome.storage.sync.get(null, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      promptListSection.classList.remove("hidden");
+      folderListSection.classList.add("hidden");
+      searchResults.classList.add("hidden");
+
+      document.getElementById("mainHeaderTitle").textContent = "Favorites";
+      promptsContainer.innerHTML = "";
+
+      const promptList = document.createElement("ul");
+      promptList.classList.add("prompt-list");
+
+      let favoritePrompts = [];
+      Object.entries(data).forEach(([id, topic]) => {
+        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
+          topic.prompts.forEach((prompt, index) => {
+            if (prompt.isFavorite) {
+              favoritePrompts.push({
+                prompt,
+                folderId: id,
+                index,
+                totalPrompts: topic.prompts.length,
+                isHidden: topic.isHidden || false,
+              });
+            }
+          });
+        }
+      });
+
+      if (favoritePrompts.length === 0) {
+        const noPrompts = document.createElement("li");
+        noPrompts.textContent = "No favorite prompts available";
+        noPrompts.style.color = "#888";
+        noPrompts.style.padding = "15px";
+        promptList.appendChild(noPrompts);
+      } else {
+        favoritePrompts.forEach(
+          ({ prompt, folderId, index, totalPrompts, isHidden }) => {
+            const promptItem = createPromptItem(
+              prompt,
+              folderId,
+              index,
+              totalPrompts
+            );
+            if (isHidden) {
+              promptItem.style.opacity = "0.8";
+              promptItem.title =
+                "This prompt is not assigned to a visible folder";
+            }
+            promptList.appendChild(promptItem);
+          }
+        );
+      }
+
+      promptsContainer.appendChild(promptList);
+
+      const addPromptBtn = document.getElementById("addPromptBtn");
+      if (addPromptBtn) {
+        addPromptBtn.disabled = false;
+      }
+    });
+  }
+
   function renameFolder(folderId, folderTitleElement, currentName) {
     const input = document.createElement("input");
     input.type = "text";
@@ -1717,7 +1865,10 @@ document.addEventListener("DOMContentLoaded", function () {
           folderCard.remove();
           loadFolderNavigation();
           loadFolders();
-          if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
+          if (mainHeaderTitle.textContent === "Favorites")
+            showFavoritePrompts();
+          else if (mainHeaderTitle.textContent === "All Prompts")
+            showAllPrompts();
           else if (mainHeaderTitle.textContent === "Single Prompts")
             showSinglePrompts();
           else if (mainHeaderTitle.textContent === "Categorised Prompts")
@@ -1799,6 +1950,15 @@ document.addEventListener("DOMContentLoaded", function () {
       folderText.style.background = "#f8f9fa";
       folderText.style.borderRadius = "4px";
 
+      const favoriteLabel = document.createElement("label");
+      favoriteLabel.textContent = "Add to Favorites:";
+      favoriteLabel.style.marginTop = "10px";
+      favoriteLabel.style.display = "block";
+      const favoriteCheckbox = document.createElement("input");
+      favoriteCheckbox.type = "checkbox";
+      favoriteCheckbox.checked = prompt.isFavorite || false;
+      favoriteCheckbox.style.marginLeft = "10px";
+
       const saveButton = document.createElement("button");
       saveButton.textContent = "Save";
       saveButton.classList.add("action-btn");
@@ -1808,6 +1968,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const newTitle = titleInput.value.trim();
         const newDesc = descInput.value.trim();
         const newContent = contentInput.value.trim();
+        const isFavorite = favoriteCheckbox.checked;
 
         if (!newTitle || !newContent) {
           alert("Title and content are required.");
@@ -1819,11 +1980,13 @@ document.addEventListener("DOMContentLoaded", function () {
             title: newTitle,
             description: newDesc,
             content: newContent,
+            isFavorite,
           };
         } else {
           data[folderId].prompts[promptIndex].title = newTitle;
           data[folderId].prompts[promptIndex].description = newDesc;
           data[folderId].prompts[promptIndex].content = newContent;
+          data[folderId].prompts[promptIndex].isFavorite = isFavorite;
         }
 
         if (data[folderId].prompts.length === 1 && data[folderId].isHidden) {
@@ -1845,6 +2008,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 showSinglePrompts();
             }
             if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
+            if (mainHeaderTitle.textContent === "Favorites")
+              showFavoritePrompts();
           }
         });
 
@@ -1863,6 +2028,8 @@ document.addEventListener("DOMContentLoaded", function () {
       modalBody.appendChild(contentInput);
       modalBody.appendChild(folderLabel);
       modalBody.appendChild(folderText);
+      modalBody.appendChild(favoriteLabel);
+      modalBody.appendChild(favoriteCheckbox);
       modalBody.appendChild(saveButton);
       modalContent.appendChild(modalHeader);
       modalContent.appendChild(modalBody);
@@ -1870,93 +2037,93 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const style = document.createElement("style");
       style.textContent = `
-          .modal {
-              display: block;
-              position: fixed;
-              z-index: 1000;
-              left: 0;
-              top: 0;
-              width: 100%;
-              height: 100%;
-              overflow: auto;
-              background: rgba(0, 0, 0, 0.7);
-              backdrop-filter: blur(3px);
-          }
-
-          .modal-content {
-              background: #fff;
-              margin: 5% auto;
-              padding: 0;
-              width: 90%;
-              max-width: 600px;
-              border-radius: 8px;
-              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-              overflow: hidden;
-          }
-
-          .modal-header {
-              padding: 16px 24px;
-              background: linear-gradient(135deg, #1e90ff, #4169e1);
-              color: white;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-          }
-
-          .modal-header h2 {
-              margin: 0;
-              font-size: 1.6em;
-              font-weight: 600;
-          }
-
-          .modal-body {
-              padding: 24px;
-              color: #2c3e50;
-          }
-
-          .modal-body label {
-              font-weight: 600;
-              margin-top: 16px;
-              margin-bottom: 6px;
-              display: block;
-              color: #34495e;
-          }
-
-          .modal-body input,
-          .modal-body textarea {
-              margin-bottom: 12px;
-              box-sizing: border-box;
-          }
-
-          .modal-body p {
-              margin: 0 0 12px;
-              padding: 10px;
-              background: #f8f9fa;
-              border-radius: 4px;
-              word-break: break-word;
-          }
-
-          .close {
-              color: white;
-              font-size: 28px;
-              font-weight: bold;
-              cursor: pointer;
-              transition: transform 0.2s ease;
-          }
-
-          .close:hover,
-          .close:focus {
-              transform: scale(1.1);
-          }
-
-          .action-btn {
-              padding: 8px 16px;
-              background: #1e90ff;
-              color: white;
-              border: none;
-              border-radius: 4px;
-              cursor: pointer;
-          }
+        .modal {
+          display: block;
+          position: fixed;
+          z-index: 1000;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          overflow: auto;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(3px);
+        }
+  
+        .modal-content {
+          background: #fff;
+          margin: 5% auto;
+          padding: 0;
+          width: 90%;
+          max-width: 600px;
+          border-radius: 8px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+          overflow: hidden;
+        }
+  
+        .modal-header {
+          padding: 16px 24px;
+          background: linear-gradient(135deg, #1e90ff, #4169e1);
+          color: white;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+  
+        .modal-header h2 {
+          margin: 0;
+          font-size: 1.6em;
+          font-weight: 600;
+        }
+  
+        .modal-body {
+          padding: 24px;
+          color: #2c3e50;
+        }
+  
+        .modal-body label {
+          font-weight: 600;
+          margin-top: 16px;
+          margin-bottom: 6px;
+          display: block;
+          color: #34495e;
+        }
+  
+        .modal-body input,
+        .modal-body textarea {
+          margin-bottom: 12px;
+          box-sizing: border-box;
+        }
+  
+        .modal-body p {
+          margin: 0 0 12px;
+          padding: 10px;
+          background: #f8f9fa;
+          border-radius: 4px;
+          word-break: break-word;
+        }
+  
+        .close {
+          color: white;
+          font-size: 28px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+  
+        .close:hover,
+        .close:focus {
+          transform: scale(1.1);
+        }
+  
+        .action-btn {
+          padding: 8px 16px;
+          background: #1e90ff;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
       `;
 
       document.head.appendChild(style);
@@ -2032,6 +2199,8 @@ document.addEventListener("DOMContentLoaded", function () {
             loadFolderNavigation();
             if (topic.prompts.length > 0) showFolderContent(folderId);
             else loadFolders();
+            if (mainHeaderTitle.textContent === "Favorites")
+              showFavoritePrompts();
             if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
             else if (mainHeaderTitle.textContent === "Single Prompts")
               showSinglePrompts();
@@ -2083,6 +2252,7 @@ document.addEventListener("DOMContentLoaded", function () {
               folder: topic.name,
               folderId: id,
               promptIndex: index,
+              isHidden: topic.isHidden || false,
             });
           }
         });
@@ -2107,7 +2277,9 @@ document.addEventListener("DOMContentLoaded", function () {
             typeof result.prompt === "string"
               ? result.prompt
               : result.prompt.title;
-          resultItem.innerHTML = `Prompt: "${promptText}" <span>(in ${result.folder})</span>`;
+          resultItem.innerHTML = result.isHidden
+            ? `Prompt: "${promptText}"`
+            : `Prompt: "${promptText}" <span>(in ${result.folder})</span>`;
 
           const actions = document.createElement("span");
           actions.classList.add("prompt-actions");
@@ -2136,6 +2308,18 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             { text: "Share", action: () => sharePrompt(result.prompt) },
             {
+              text: result.prompt.isFavorite
+                ? "Remove from Favorites"
+                : "Add to Favorites",
+              action: () =>
+                toggleFavoritePrompt(
+                  result.folderId,
+                  result.promptIndex,
+                  resultItem,
+                  result.prompt
+                ),
+            },
+            {
               text: "Move to Trash",
               action: () =>
                 deletePrompt(result.folderId, result.promptIndex, resultItem),
@@ -2145,7 +2329,7 @@ document.addEventListener("DOMContentLoaded", function () {
           chrome.storage.sync.get(result.folderId, (data) => {
             const topic = data[result.folderId];
             if (topic && !topic.isHidden && !topic.isTrash) {
-              menuItems.splice(4, 0, {
+              menuItems.splice(5, 0, {
                 text: "Remove from Folder",
                 action: () =>
                   removeFromFolder(
@@ -2190,9 +2374,23 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  favoritesLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    [
+      favoritesLink,
+      allPromptsLink,
+      singlePromptsLink,
+      categorisedPromptsLink,
+      trashLink,
+    ].forEach((link) => link.classList.remove("active"));
+    favoritesLink.classList.add("active");
+    showFavoritePrompts();
+  });
+
   allPromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
     [
+      favoritesLink,
       allPromptsLink,
       singlePromptsLink,
       categorisedPromptsLink,
@@ -2205,6 +2403,7 @@ document.addEventListener("DOMContentLoaded", function () {
   singlePromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
     [
+      favoritesLink,
       allPromptsLink,
       singlePromptsLink,
       categorisedPromptsLink,
@@ -2217,6 +2416,7 @@ document.addEventListener("DOMContentLoaded", function () {
   categorisedPromptsLink.addEventListener("click", (e) => {
     e.preventDefault();
     [
+      favoritesLink,
       allPromptsLink,
       singlePromptsLink,
       categorisedPromptsLink,
@@ -2229,6 +2429,7 @@ document.addEventListener("DOMContentLoaded", function () {
   trashLink.addEventListener("click", (e) => {
     e.preventDefault();
     [
+      favoritesLink,
       allPromptsLink,
       singlePromptsLink,
       categorisedPromptsLink,

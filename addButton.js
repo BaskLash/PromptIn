@@ -974,84 +974,105 @@ function addMistralButton() {
 
 function addDuckduckGoButton() {
   try {
-    // Alle div-Elemente mit heading-Attribut auswählen
-    const allDivsWithHeading = document.querySelectorAll("div[heading]");
-    let buttonCounter = 1; // Zähler für Button-Nummerierung
-    let existingElements = new Set(); // Set für bereits bearbeitete Elemente
+        let container = document.getElementById("react-layout");
+        if (!container) throw new Error("React-Layout-Element nicht gefunden");
 
-    // Über jedes div[heading]-Element iterieren
-    allDivsWithHeading.forEach((divWithHeading, index) => {
-      const firstLevelDown = divWithHeading.children[0];
-      if (!firstLevelDown) return;
+        // Finde den äußeren Container
+        container = container.querySelector(
+            "section[data-np-checked][data-np-watching][data-np-autofill-form-type]"
+        );
+        if (!container) throw new Error("Äußerer Container nicht gefunden");
 
-      const secondLevelDown = firstLevelDown.children[1];
-      if (!secondLevelDown) return;
+        // Finde den spezifischen inneren Container
+        container = container.querySelector(".e8hNVcv2hNmgdRTcd0UO");
+        if (!container) throw new Error("Innerer Container nicht gefunden");
 
-      // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
-      const existingButton = secondLevelDown.querySelector(
-        ".save-prompt-button"
-      );
-      if (existingButton) {
-        console.log("Button existiert bereits für:", secondLevelDown.className);
-        existingElements.add(secondLevelDown);
-        return;
-      }
+        let buttonCounter = 1; // Startwert für die Button-Nummerierung
+        let existingElements = new Set(); // Set für bereits bearbeitete Elemente
 
-      // Falls wir hier sind, gibt es noch keinen Button
-      existingElements.add(secondLevelDown);
+        // Iteriere durch jedes Kind-Element
+        Array.from(container.children).forEach((child, index) => {
+            // Suche nach einem Element mit einer ID, die "heading" enthält
+            const headingElement = child.querySelector('[id*="heading"]');
+            if (!headingElement) {
+                console.log(`Kein Heading-Element in Kind ${index} gefunden`);
+                return;
+            }
 
-      // Button-Element erstellen
-      const button = document.createElement("button");
-      button.textContent = "Save Prompt";
-      button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
+            const parent = headingElement.parentElement;
+            if (!parent) {
+                console.log(`Kein Eltern-Element für Heading in Kind ${index} gefunden`);
+                return;
+            }
 
-      // Button-Styling
-      Object.assign(button.style, {
-        padding: "5px 10px",
-        border: "1px solid #ccc",
-        borderRadius: "5px",
-        color: "black",
-        cursor: "pointer",
-        background: "#f0f0f0",
-      });
-      button.title =
-        "If you liked the answer, save the prompt that generated it directly to your memory.";
+            // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+            const existingButton = parent.querySelector(".save-prompt-button");
+            if (existingButton) {
+                console.log("Button existiert bereits für:", parent.className);
+                existingElements.add(parent);
+                return;
+            }
 
-      // Hover-Effekte
-      button.addEventListener("mouseover", () => {
-        button.style.backgroundColor = "#e0e0e0";
-        button.style.borderColor = "#bbb";
-      });
-      button.addEventListener("mouseout", () => {
-        button.style.backgroundColor = "#f0f0f0";
-        button.style.borderColor = "#ccc";
-      });
+            // Falls wir hier sind, gibt es noch keinen Button
+            existingElements.add(parent);
 
-      // Klick-Event (optional, analog zum zweiten Beispiel)
-      button.addEventListener("click", (event) => {
-        if (button.classList.contains("save-prompt-button")) {
-          let buttonNumber = index + 1;
-          console.log(`Button ${buttonNumber} wurde geklickt.`);
-
-          button.textContent = "✔ Prompt Saved";
-          addDuckduckGoButtonClick(buttonNumber); // Übergibt den korrekten Index
-          setTimeout(() => {
+            // Erstelle und konfiguriere den Button
+            const button = document.createElement("button");
             button.textContent = "Save Prompt";
-          }, 5000);
-        }
-      });
+            button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
 
-      // Button als erstes Kind zu secondLevelDown hinzufügen
-      secondLevelDown.prepend(button);
-      console.log(
-        `Button ${buttonCounter} zu ${secondLevelDown.className} hinzugefügt.`
-      );
-      buttonCounter++;
-    });
-  } catch (error) {
-    console.error("Fehler beim Hinzufügen der Buttons:", error.message);
-  }
+            // Button-Styling
+            Object.assign(button.style, {
+                padding: "5px 10px",
+                border: "1px solid #ccc",
+                borderRadius: "5px",
+                color: "black",
+                background: "#f0f0f0",
+                marginLeft: "10px", // Original-Styling beibehalten
+            });
+            button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+            // Hover-Effekte
+            button.addEventListener("mouseover", () => {
+                button.style.backgroundColor = "#e0e0e0";
+                button.style.borderColor = "#bbb";
+            });
+            button.addEventListener("mouseout", () => {
+                button.style.backgroundColor = "#f0f0f0";
+                button.style.borderColor = "#ccc";
+            });
+
+            // Klick-Event
+            button.addEventListener("click", (event) => {
+                if (button.classList.contains("save-prompt-button")) {
+                    let buttonNumber = index + 1; // Button-Nummer aus dem Index berechnen
+                    console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+                    button.textContent = "✔ Prompt Saved";
+                    // Original-Logik angepasst, falls eine Funktion wie addDuckDuckGoButtonClick existiert:
+                    console.log(
+                        "Prompt saved (child " + index + "):",
+                        child.textContent.trim()
+                    );
+                    addDuckDuckGoButtonClick(buttonNumber);
+                    setTimeout(() => {
+                        button.textContent = "Save Prompt";
+                    }, 5000);
+                }
+            });
+
+            // Button an das Eltern-Element anhängen
+            parent.appendChild(button);
+            console.log(
+                `Button ${buttonCounter} zu ${parent.className} hinzugefügt`
+            );
+            buttonCounter++; // Zähler erhöhen
+        });
+    } catch (error) {
+        console.error("Fehler beim Hinzufügen der Buttons:", error.message);
+    }
 }
+
 function addPerplexityButton() {
   try {
     const container = document.querySelector(".scrollable-container");
@@ -1246,5 +1267,177 @@ function addDeepSeekButton() {
     }
   } catch (error) {
     console.error("Fehler beim Hinzufügen der Buttons:", error.message);
+  }
+}
+function addDeepaiButton() {
+  try {
+    const form = document.querySelector("form");
+    if (!form) throw new Error("Kein Formular auf der Seite gefunden");
+
+    let buttonCounter = 1;
+    let existingElements = new Set();
+
+    Array.from(form.children).forEach((child, index) => {
+      if (child.classList.contains("outputBox")) {
+        const chatOptionsBox = child.querySelector(".optionsBox");
+        if (!chatOptionsBox) {
+          console.warn("Keine .optionsBox in .outputBox gefunden", child);
+          return;
+        }
+
+        const existingButton = chatOptionsBox.querySelector(
+          ".save-prompt-button"
+        );
+        if (existingButton) {
+          console.log(
+            "Button existiert bereits für:",
+            chatOptionsBox.className
+          );
+          existingElements.add(chatOptionsBox);
+          return;
+        }
+
+        existingElements.add(chatOptionsBox);
+
+        const saveButton = document.createElement("button");
+        saveButton.textContent = "Save Prompt";
+        saveButton.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
+
+        Object.assign(saveButton.style, {
+          padding: "5px 10px",
+          border: "1px solid #ccc",
+          borderRadius: "5px",
+          color: "black",
+          background: "#f0f0f0",
+          marginRight: "8px",
+        });
+        saveButton.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+        saveButton.addEventListener("mouseover", () => {
+          saveButton.style.backgroundColor = "#e0e0e0";
+          saveButton.style.borderColor = "#bbb";
+        });
+        saveButton.addEventListener("mouseout", () => {
+          saveButton.style.backgroundColor = "#f0f0f0";
+          saveButton.style.borderColor = "#ccc";
+        });
+
+        saveButton.addEventListener("click", (event) => {
+          event.stopPropagation(); // Verhindert, dass das Ereignis an Eltern-Elemente weitergeleitet wird
+          event.preventDefault(); // Verhindert Standard-Browser-Verhalten
+          if (saveButton.classList.contains("save-prompt-button")) {
+            let buttonNumber = index + 1;
+            console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+            saveButton.textContent = "✔ Prompt Saved";
+            addDeepAIButtonClick(buttonNumber);
+            setTimeout(() => {
+              saveButton.textContent = "Save Prompt";
+            }, 5000);
+          }
+        });
+
+        chatOptionsBox.insertBefore(saveButton, chatOptionsBox.firstChild);
+        console.log(
+          `Button ${buttonCounter} zu ${chatOptionsBox.className} hinzugefügt`
+        );
+        buttonCounter++;
+      }
+    });
+  } catch (error) {
+    console.error("Fehler beim Hinzufügen der Buttons:", error.message);
+  }
+}
+function addQwenAiButton() {
+  try {
+    const container = document.getElementById("chat-message-container");
+
+    if (!container) {
+      console.warn("No container found with ID 'chat-message-container'.");
+      return;
+    }
+
+    const children = Array.from(container.children);
+    let buttonCounter = 1; // Startwert für die Button-Nummerierung
+    let existingElements = new Set();
+
+    children.forEach((child, index) => {
+      // Only target every second child starting at index 1 (i.e., 1, 3, 5, ...)
+      if (index % 2 !== 1) return;
+
+      const messageWrapper = child.querySelector(".message-footer-buttons");
+      if (!messageWrapper) {
+        console.warn(
+          `No '.message-footer-buttons' element found in child ${index}.`
+        );
+        return;
+      }
+
+      // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
+      const existingButton = messageWrapper.querySelector(
+        ".save-prompt-button"
+      );
+      if (existingButton) {
+        console.log("Button existiert bereits für:", messageWrapper.className);
+        existingElements.add(messageWrapper);
+        return;
+      }
+
+      // Falls wir hier sind, gibt es noch keinen Button
+      existingElements.add(messageWrapper);
+
+      // Erstelle das neue Button-Element
+      const button = document.createElement("button");
+      button.textContent = "Save Prompt";
+      button.className = `save-prompt-button save-prompt-button-${index} btn-primary`;
+
+      // Button-Styling
+      Object.assign(button.style, {
+        padding: "5px 10px",
+        border: "1px solid #ccc",
+        borderRadius: "5px",
+        color: "black",
+        background: "#f0f0f0",
+        marginLeft: "10px",
+      });
+      button.title = "Speichert den aktuellen Prompt in der Erinnerung.";
+
+      // Hover-Effekte
+      button.addEventListener("mouseover", () => {
+        button.style.backgroundColor = "#e0e0e0";
+        button.style.borderColor = "#bbb";
+      });
+      button.addEventListener("mouseout", () => {
+        button.style.backgroundColor = "#f0f0f0";
+        button.style.borderColor = "#ccc";
+      });
+
+      // Klick-Event
+      button.addEventListener("click", (event) => {
+        if (button.classList.contains("save-prompt-button")) {
+          let buttonNumber = index + 1; // Button-Nummer aus der Klasse berechnen
+          // console.log(`Button ${buttonNumber} wurde geklickt.`);
+
+          // Text auf "✔ Prompt gespeichert" setzen
+          button.textContent = "✔ Prompt Saved";
+
+          addQwenAiButtonClick(buttonNumber);
+          // console.log(`Saving prompt for button ${buttonNumber}`);
+
+          setTimeout(() => {
+            button.textContent = "Save Prompt";
+          }, 5000);
+        }
+      });
+
+      // Button einfügen
+      messageWrapper.appendChild(button);
+      // console.log(
+      //   `Button ${buttonCounter} zu ${messageWrapper.className} hinzugefügt.`
+      // );
+      buttonCounter++; // Zähler erhöhen
+    });
+  } catch (error) {
+    // console.error("Fehler in addQwenButtons:", error.message);
   }
 }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PromptIn</title>
     <link rel="stylesheet" href="style.css" />
+    <script src="promptProps.js" defer></script>
     <script src="popup.js" defer></script>
   </head>
   <body>
@@ -40,6 +41,9 @@
               Categories
             </button>
             <div class="collapsible-content">
+              <a href="#" id="favorites-prompts-link" class="sidebar-link"
+                >Favorites</a
+              >
               <a href="#" id="all-prompts-link" class="sidebar-link"
                 >All Prompts</a
               >
@@ -68,7 +72,9 @@
           <div class="enterage">
             <input type="text" id="inputField" placeholder="Search prompts" />
           </div>
-          <h1 id="noData">Nothing in here!</h1>
+          <h2 id="mainHeaderTitle">All Prompts</h2>
+          <!-- Neues Element -->
+          <h1 id="noData" style="display: none">Nothing in here!</h1>
           <div class="flexInbox">
             <ul class="prompt-list" id="promptList"></ul>
           </div>
@@ -120,8 +126,13 @@
           </button>
         </div>
         <div class="settings-option">
-          <button id="feedback-btn" class="modal-button">
-            Feedback senden
+          <button id="feedback-btn" class="modal-button">Send Feedback</button> 
+          <button id="feature-request-btn" class="modal-button">
+            Feature Request
+          </button>
+           <br /><br />
+          <button id="rating-request-btn" class="modal-button">
+            Leave us a rating!
           </button>
         </div>
       </div>
@@ -216,6 +227,10 @@
               border: 1px solid #ddd;
             "
           ></select>
+          <div class="form-group">
+            <label for="prompt-favorite">Add to Favorites:</label>
+            <input type="checkbox" id="prompt-favorite" name="favorite" />
+          </div>
           <button
             id="create-prompt-btn"
             class="action-btn"
