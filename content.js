@@ -754,7 +754,6 @@ async function promptSaver(message) {
     font-size: 13px;
   }
   .dropdown-item-content {
-    display: none;
     margin-top: 8px;
     padding: 10px;
     background: #f8f9fa !important;
