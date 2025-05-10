@@ -403,7 +403,7 @@ async function promptSaver(message) {
 
   const similarPromptsLabel = document.createElement("label");
   similarPromptsLabel.setAttribute("for", "similarPromptsDropdown");
-  similarPromptsLabel.textContent = "Similar Prompts (Top 5):";
+  similarPromptsLabel.textContent = "Similar Prompts:";
 
   const similarPromptsDropdown = document.createElement("div");
   similarPromptsDropdown.id = "similarPromptsDropdown";
@@ -1028,9 +1028,17 @@ async function promptSaver(message) {
   ) {
     diffContainer.innerHTML = ""; // Leere den Container
 
-    // Split texts into words
-    const words1 = selectedPrompt.split(/\s+/).filter((w) => w);
-    const words2 = currentPrompt.split(/\s+/).filter((w) => w);
+    // Normalize whitespace and split into words
+    const words1 = (selectedPrompt || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w);
+    const words2 = (currentPrompt || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w);
 
     // Compute diff
     let i = 0,
@@ -1050,12 +1058,12 @@ async function promptSaver(message) {
             if (words1[m] === words2[k]) {
               while (i < m) {
                 unifiedDiff.push({ value: words1[i], type: "removed" });
-                diffCount++; // Entferntes Wort
+                diffCount++;
                 i++;
               }
               while (j < k) {
                 unifiedDiff.push({ value: words2[j], type: "added" });
-                diffCount++; // Hinzugefügtes Wort
+                diffCount++;
                 j++;
               }
               unifiedDiff.push({ value: words1[m], type: "common" });
@@ -1117,6 +1125,15 @@ async function promptSaver(message) {
     similarPromptsDropdown.style.display = "none"; // Standardmäßig ausblenden
     similarPromptsLabel.style.display = "none"; // Standardmäßig ausblenden
 
+    if (!currentPrompt || currentPrompt.trim() === "") {
+      console.log("Leerer Prompt, Dropdown bleibt leer.");
+      dropdownContent.innerHTML =
+        "<div class='dropdown-item'>Kein Prompt eingegeben.</div>";
+      similarPromptsDropdown.style.display = "block";
+      similarPromptsLabel.style.display = "block";
+      return;
+    }
+
     try {
       const data = await new Promise((resolve, reject) => {
         chrome.storage.sync.get(null, (data) => {
@@ -1135,14 +1152,20 @@ async function promptSaver(message) {
           topic.prompts.forEach((prompt, index) => {
             const similarity = computeCosineSimilarity(
               currentPrompt,
-              prompt.content
+              prompt.content || ""
+            );
+            const { diffCount } = computePromptDiffForItem(
+              currentPrompt,
+              prompt.content || "",
+              document.createElement("div")
             );
             allPrompts.push({
               folderId,
               index,
               title: prompt.title || "Untitled Prompt",
-              content: prompt.content,
+              content: prompt.content || "",
               similarity,
+              diffCount,
             });
           });
         }
@@ -1150,8 +1173,7 @@ async function promptSaver(message) {
 
       const similarPrompts = allPrompts
         .filter((p) => p.similarity > 0.1)
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 5);
+        .sort((a, b) => a.diffCount - b.diffCount); // Sortiere nach geringstem Unterschied
 
       if (similarPrompts.length === 0) {
         console.log("Keine ähnlichen Prompts mit Ähnlichkeit > 0.1 gefunden.");
@@ -1180,7 +1202,7 @@ async function promptSaver(message) {
           prompt.title.length > 50
             ? prompt.title.slice(0, 50) + "..."
             : prompt.title;
-        title.title = prompt.title;
+        title.title = `${prompt.title} (Differences: ${prompt.diffCount} words)`;
 
         const toggle = document.createElement("span");
         toggle.className = "dropdown-item-toggle";
@@ -1208,13 +1230,7 @@ async function promptSaver(message) {
         content.style.fontSize = "13px";
         content.style.color = "#2c3e50";
         content.style.whiteSpace = "pre-wrap";
-        console.log(
-          "Setze Prompt-Inhalt für",
-          prompt.title,
-          ":",
-          prompt.content
-        ); // Debugging
-        content.textContent = prompt.content || "Kein Inhalt verfügbar"; // Sicherstellen, dass etwas angezeigt wird
+        content.textContent = prompt.content || "Kein Inhalt verfügbar";
 
         // Differenzbereich mit Label
         const diffLabel = document.createElement("div");
