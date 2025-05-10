@@ -392,16 +392,53 @@ async function promptSaver(message) {
   const replaceText = document.createElement("p");
   replaceText.textContent =
     "Select a folder and prompt to replace with the new prompt:";
+
   const replaceFolderLabel = document.createElement("label");
   replaceFolderLabel.setAttribute("for", "replaceFolderSelect");
   replaceFolderLabel.textContent = "Select folder:";
+
   const replaceFolderSelect = document.createElement("select");
   replaceFolderSelect.id = "replaceFolderSelect";
   replaceFolderSelect.innerHTML = '<option value="">Select a folder</option>';
 
+  const similarPromptsLabel = document.createElement("label");
+  similarPromptsLabel.setAttribute("for", "similarPromptsDropdown");
+  similarPromptsLabel.textContent = "Similar Prompts (Top 5):";
+
+  const similarPromptsDropdown = document.createElement("div");
+  similarPromptsDropdown.id = "similarPromptsDropdown";
+  similarPromptsDropdown.className = "dropdown";
+
+  const dropdownButton = document.createElement("button");
+  dropdownButton.className = "dropdown-button";
+  dropdownButton.textContent = "Select a similar prompt";
+  dropdownButton.style.width = "100%";
+  dropdownButton.style.padding = "10px";
+  dropdownButton.style.border = "1px solid #dcdcdc";
+  dropdownButton.style.borderRadius = "4px";
+  dropdownButton.style.background = "#fff";
+  dropdownButton.style.textAlign = "left";
+
+  const dropdownContent = document.createElement("div");
+  dropdownContent.className = "dropdown-content";
+  dropdownContent.style.display = "none";
+  dropdownContent.style.position = "absolute";
+  dropdownContent.style.backgroundColor = "#fff";
+  dropdownContent.style.border = "1px solid #dcdcdc";
+  dropdownContent.style.borderRadius = "4px";
+  dropdownContent.style.width = "100%";
+  dropdownContent.style.maxHeight = "300px";
+  dropdownContent.style.overflowY = "auto";
+  dropdownContent.style.zIndex = "10001";
+  dropdownContent.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
+
+  similarPromptsDropdown.appendChild(dropdownButton);
+  similarPromptsDropdown.appendChild(dropdownContent);
+
   const replacePromptLabel = document.createElement("label");
   replacePromptLabel.setAttribute("for", "replacePromptSelect");
   replacePromptLabel.textContent = "Select prompt to replace:";
+
   const replacePromptSelect = document.createElement("select");
   replacePromptSelect.id = "replacePromptSelect";
   replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
@@ -410,12 +447,15 @@ async function promptSaver(message) {
   const diffOutputLabel = document.createElement("label");
   diffOutputLabel.setAttribute("for", "promptDiffOutput");
   diffOutputLabel.textContent = "Prompt Differences:";
+
   const diffOutput = document.createElement("div");
   diffOutput.id = "promptDiffOutput";
   diffOutput.className =
     "diff-output border rounded p-2 bg-gray-50 min-h-[100px] text-sm font-mono whitespace-pre-wrap";
 
   replaceContent.appendChild(replaceText);
+  replaceContent.appendChild(similarPromptsLabel);
+  replaceContent.appendChild(similarPromptsDropdown);
   replaceContent.appendChild(replaceFolderLabel);
   replaceContent.appendChild(replaceFolderSelect);
   replaceContent.appendChild(replacePromptLabel);
@@ -616,7 +656,7 @@ async function promptSaver(message) {
       display: block;
     }
     .save-button:hover {
-      background: #218 Ascendant: #218838;
+      background: #218838;
     }
     .close {
       color: white;
@@ -647,18 +687,114 @@ async function promptSaver(message) {
       border-radius: 2px;
       transition: background-color 0.2s;
     }
-    .arrow {
-      color: #1e90ff;
-      font-weight: bold;
-      margin: 0 4px;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .fade-in {
-      animation: fadeIn 0.3s ease-in;
-    }
+ .arrow {
+    color: #1e90ff;
+    font-weight: bold;
+    margin: 0 4px;
+  }
+  .dropdown {
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .dropdown-button {
+    cursor: pointer;
+    color: #2c3e50 !important;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #dcdcdc;
+    border-radius: 4px;
+    background: #ffffff !important;
+    text-align: left;
+    font-size: 14px;
+  }
+  .dropdown-content {
+  display: none;
+  background: #ffffff !important;
+  color: #2c3e50 !important;
+  border: 1px solid #dcdcdc;
+  border-radius: 4px;
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10003; /* Höherer z-index */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  top: calc(100% + 5px); /* Abstand zum Button */
+  left: 0;
+}
+  .dropdown-content[style*="display: block"] {
+    display: block !important;
+  }
+  .dropdown-item {
+    padding: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    background: #ffffff !important;
+    color: #2c3e50 !important;
+  }
+  .dropdown-item:last-child {
+    border-bottom: none;
+  }
+  .dropdown-item:hover {
+    background: #f1f3f5 !important;
+  }
+  .dropdown-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .dropdown-item-title {
+    font-weight: 600;
+    color: #34495e !important;
+    font-size: 14px;
+  }
+  .dropdown-item-toggle {
+    cursor: pointer;
+    color: #1e90ff !important;
+    font-size: 13px;
+  }
+  .dropdown-item-content {
+    display: none;
+    margin-top: 8px;
+    padding: 10px;
+    background: #f8f9fa !important;
+    color: #2c3e50 !important;
+    border-radius: 4px;
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
+  .dropdown-item-content.active {
+    display: block !important;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in {
+    animation: fadeIn 0.3s ease-in;
+  }
+    .dropdown-item-diff .diff-word.added {
+  background-color: #d4fcbc;
+  color: black;
+}
+.dropdown-item-diff .diff-word.removed {
+  background-color: #fbb6c2;
+  color: black;
+  text-decoration: line-through;
+}
+.dropdown-item-diff .diff-word.common {
+  background-color: #e5e7eb;
+}
+.dropdown-item-diff .diff-word {
+  padding: 2px;
+  margin: 2px;
+  border-radius: 2px;
+}
+.dropdown-item-diff .arrow {
+  color: #1e90ff;
+  font-weight: bold;
+  margin: 0 4px;
+}
   `;
 
   // Modal zusammenbauen
@@ -741,6 +877,33 @@ async function promptSaver(message) {
       closeModal();
     }
   });
+
+  // Funktion zur Berechnung der Cosine Similarity
+  function computeCosineSimilarity(text1, text2) {
+    const words1 = text1
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w);
+    const words2 = text2
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w);
+    const allWords = [...new Set([...words1, ...words2])];
+
+    const vector1 = allWords.map(
+      (word) => words1.filter((w) => w === word).length
+    );
+    const vector2 = allWords.map(
+      (word) => words2.filter((w) => w === word).length
+    );
+
+    const dotProduct = vector1.reduce((sum, a, i) => sum + a * vector2[i], 0);
+    const magnitude1 = Math.sqrt(vector1.reduce((sum, a) => sum + a * a, 0));
+    const magnitude2 = Math.sqrt(vector2.reduce((sum, a) => sum + a * a, 0));
+
+    if (magnitude1 === 0 || magnitude2 === 0) return 0;
+    return dotProduct / (magnitude1 * magnitude2);
+  }
 
   // Funktion zum Berechnen und Anzeigen der Prompt-Differenz
   function computePromptDiff(currentPrompt, selectedPrompt) {
@@ -859,6 +1022,317 @@ async function promptSaver(message) {
     }
   }
 
+  function computePromptDiffForItem(
+    currentPrompt,
+    selectedPrompt,
+    diffContainer
+  ) {
+    diffContainer.innerHTML = ""; // Leere den Container
+
+    // Split texts into words
+    const words1 = selectedPrompt.split(/\s+/).filter((w) => w);
+    const words2 = currentPrompt.split(/\s+/).filter((w) => w);
+
+    // Compute diff
+    let i = 0,
+      j = 0;
+    const unifiedDiff = [];
+    let diffCount = 0; // Zähler für Unterschiede
+
+    while (i < words1.length || j < words2.length) {
+      if (i < words1.length && j < words2.length && words1[i] === words2[j]) {
+        unifiedDiff.push({ value: words1[i], type: "common" });
+        i++;
+        j++;
+      } else {
+        let foundMatch = false;
+        for (let k = j; k < Math.min(words2.length, j + 3); k++) {
+          for (let m = i; m < Math.min(words1.length, i + 3); m++) {
+            if (words1[m] === words2[k]) {
+              while (i < m) {
+                unifiedDiff.push({ value: words1[i], type: "removed" });
+                diffCount++; // Entferntes Wort
+                i++;
+              }
+              while (j < k) {
+                unifiedDiff.push({ value: words2[j], type: "added" });
+                diffCount++; // Hinzugefügtes Wort
+                j++;
+              }
+              unifiedDiff.push({ value: words1[m], type: "common" });
+              i++;
+              j++;
+              foundMatch = true;
+              break;
+            }
+          }
+          if (foundMatch) break;
+        }
+        if (!foundMatch) {
+          if (i < words1.length) {
+            unifiedDiff.push({ value: words1[i], type: "removed" });
+            diffCount++;
+            i++;
+          }
+          if (j < words2.length) {
+            unifiedDiff.push({ value: words2[j], type: "added" });
+            diffCount++;
+            j++;
+          }
+        }
+      }
+    }
+
+    // Render diff
+    let lastWasRemoved = false;
+    unifiedDiff.forEach((part, index) => {
+      const span = document.createElement("span");
+      span.className = `diff-word ${part.type}`;
+      span.textContent = part.value + " ";
+
+      if (lastWasRemoved && part.type === "added") {
+        const prevPart = unifiedDiff[index - 1];
+        if (prevPart && prevPart.type === "removed") {
+          const arrow = document.createElement("span");
+          arrow.textContent = "→ ";
+          arrow.className = "arrow";
+          diffContainer.appendChild(arrow);
+        }
+      }
+
+      diffContainer.appendChild(span);
+      lastWasRemoved = part.type === "removed";
+    });
+
+    return { diffCount };
+  }
+
+  // Funktion zum Laden ähnlicher Prompts
+  async function loadSimilarPrompts(currentPrompt) {
+    console.log(
+      "loadSimilarPrompts gestartet mit currentPrompt:",
+      currentPrompt
+    );
+    dropdownContent.innerHTML = ""; // Inhalt zurücksetzen
+    dropdownButton.textContent = "Select a similar prompt";
+    similarPromptsDropdown.style.display = "none"; // Standardmäßig ausblenden
+    similarPromptsLabel.style.display = "none"; // Standardmäßig ausblenden
+
+    try {
+      const data = await new Promise((resolve, reject) => {
+        chrome.storage.sync.get(null, (data) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(data);
+          }
+        });
+      });
+      console.log("Daten aus chrome.storage.sync geladen:", data);
+
+      const allPrompts = [];
+      Object.entries(data).forEach(([folderId, topic]) => {
+        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden) {
+          topic.prompts.forEach((prompt, index) => {
+            const similarity = computeCosineSimilarity(
+              currentPrompt,
+              prompt.content
+            );
+            allPrompts.push({
+              folderId,
+              index,
+              title: prompt.title || "Untitled Prompt",
+              content: prompt.content,
+              similarity,
+            });
+          });
+        }
+      });
+
+      const similarPrompts = allPrompts
+        .filter((p) => p.similarity > 0.1)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 5);
+
+      if (similarPrompts.length === 0) {
+        console.log("Keine ähnlichen Prompts mit Ähnlichkeit > 0.1 gefunden.");
+        dropdownContent.innerHTML =
+          "<div class='dropdown-item'>Keine ähnlichen Prompts gefunden.</div>";
+        similarPromptsDropdown.style.display = "block";
+        similarPromptsLabel.style.display = "block";
+        return;
+      }
+
+      console.log("Ähnliche Prompts gefunden:", similarPrompts);
+      similarPromptsDropdown.style.display = "block";
+      similarPromptsLabel.style.display = "block";
+
+      similarPrompts.forEach((prompt, index) => {
+        const item = document.createElement("div");
+        item.className = "dropdown-item";
+        item.setAttribute("data-prompt-index", index);
+
+        const header = document.createElement("div");
+        header.className = "dropdown-item-header";
+
+        const title = document.createElement("span");
+        title.className = "dropdown-item-title";
+        title.textContent =
+          prompt.title.length > 50
+            ? prompt.title.slice(0, 50) + "..."
+            : prompt.title;
+        title.title = prompt.title;
+
+        const toggle = document.createElement("span");
+        toggle.className = "dropdown-item-toggle";
+        toggle.textContent = "Show content";
+
+        header.appendChild(title);
+        header.appendChild(toggle);
+
+        const contentWrapper = document.createElement("div");
+        contentWrapper.className = "dropdown-item-content-wrapper";
+        contentWrapper.style.display = "none";
+
+        // Prompt-Inhalt mit Label
+        const contentLabel = document.createElement("div");
+        contentLabel.textContent = "Prompt Content:";
+        contentLabel.style.fontWeight = "bold";
+        contentLabel.style.marginBottom = "5px";
+
+        const content = document.createElement("div");
+        content.className = "dropdown-item-content";
+        content.style.marginBottom = "10px";
+        content.style.padding = "10px";
+        content.style.background = "#f8f9fa";
+        content.style.borderRadius = "4px";
+        content.style.fontSize = "13px";
+        content.style.color = "#2c3e50";
+        content.style.whiteSpace = "pre-wrap";
+        console.log(
+          "Setze Prompt-Inhalt für",
+          prompt.title,
+          ":",
+          prompt.content
+        ); // Debugging
+        content.textContent = prompt.content || "Kein Inhalt verfügbar"; // Sicherstellen, dass etwas angezeigt wird
+
+        // Differenzbereich mit Label
+        const diffLabel = document.createElement("div");
+        diffLabel.textContent = "Differences:";
+        diffLabel.style.fontWeight = "bold";
+        diffLabel.style.marginBottom = "5px";
+
+        const diffContainer = document.createElement("div");
+        diffContainer.className = "dropdown-item-diff";
+        diffContainer.style.marginTop = "10px";
+        diffContainer.style.padding = "10px";
+        diffContainer.style.background = "#f8f9fa";
+        diffContainer.style.borderRadius = "4px";
+        diffContainer.style.fontSize = "13px";
+        diffContainer.style.color = "#2c3e50";
+
+        const diffSummary = document.createElement("div");
+        diffSummary.className = "diff-summary";
+        diffSummary.style.marginTop = "10px";
+        diffSummary.style.fontWeight = "bold";
+        diffSummary.style.color = "#1e90ff";
+
+        contentWrapper.appendChild(contentLabel);
+        contentWrapper.appendChild(content);
+        contentWrapper.appendChild(diffLabel);
+        contentWrapper.appendChild(diffContainer);
+        contentWrapper.appendChild(diffSummary);
+
+        item.appendChild(header);
+        item.appendChild(contentWrapper);
+
+        toggle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isActive = contentWrapper.style.display === "block";
+          contentWrapper.style.display = isActive ? "none" : "block";
+          toggle.textContent = isActive ? "Show content" : "Hide content";
+          console.log(
+            "Toggle geklickt für:",
+            prompt.title,
+            "Aktiv:",
+            !isActive
+          );
+
+          if (!isActive) {
+            const { diffCount } = computePromptDiffForItem(
+              currentPrompt,
+              prompt.content,
+              diffContainer
+            );
+            diffSummary.textContent = `Unterschiede: ${diffCount} Wörter`;
+          } else {
+            diffContainer.innerHTML = "";
+            diffSummary.textContent = "";
+          }
+        });
+
+        item.addEventListener("click", () => {
+          console.log("Prompt ausgewählt:", prompt.title);
+          replaceFolderSelect.value = prompt.folderId;
+          replacePromptSelect.disabled = false;
+          replacePromptSelect.innerHTML =
+            '<option value="">Select a prompt</option>';
+
+          chrome.storage.sync.get(prompt.folderId, (data) => {
+            const topic = data[prompt.folderId];
+            if (topic && topic.prompts) {
+              topic.prompts.forEach((p, i) => {
+                const option = document.createElement("option");
+                option.value = i;
+                option.textContent = p.title || "Untitled Prompt";
+                if (i === prompt.index) option.selected = true;
+                replacePromptSelect.appendChild(option);
+              });
+            }
+          });
+
+          dropdownButton.textContent = prompt.title;
+          dropdownContent.style.display = "none";
+          computePromptDiff(currentPrompt, prompt.content);
+        });
+
+        dropdownContent.appendChild(item);
+      });
+
+      console.log(
+        "Dropdown-Inhalte erstellt, Anzahl Items:",
+        similarPrompts.length
+      );
+    } catch (error) {
+      console.error("Fehler beim Laden ähnlicher Prompts:", error);
+      dropdownContent.innerHTML =
+        "<div class='dropdown-item'>Fehler beim Laden ähnlicher Prompts.</div>";
+      similarPromptsDropdown.style.display = "block";
+      similarPromptsLabel.style.display = "block";
+    }
+  }
+
+  // Dropdown-Interaktion
+  dropdownButton.addEventListener("click", (e) => {
+    console.log("Dropdown-Button geklickt");
+    e.stopPropagation(); // Verhindert, dass das Klick-Event das Dropdown sofort wieder schließt
+    const currentDisplay = dropdownContent.style.display;
+    dropdownContent.style.display =
+      currentDisplay === "block" ? "none" : "block";
+    console.log(
+      "Dropdown-Content Display geändert zu:",
+      dropdownContent.style.display
+    );
+  });
+
+  // Schließe Dropdown bei Klick außerhalb
+  document.addEventListener("click", (e) => {
+    if (!similarPromptsDropdown.contains(e.target)) {
+      dropdownContent.style.display = "none";
+    }
+  });
+
   // Prompts für ausgewählten Ordner in Replace-Option laden
   replaceFolderSelect.addEventListener("change", async (e) => {
     const folderId = replaceFolderSelect.value;
@@ -931,6 +1405,14 @@ async function promptSaver(message) {
     }
   });
 
+  // Lade ähnliche Prompts bei Änderung des Prompt-Textes
+  promptTextarea.addEventListener("input", () => {
+    const currentPrompt = promptTextarea.value.trim();
+    if (currentPrompt) {
+      loadSimilarPrompts(currentPrompt);
+    }
+  });
+
   // Schritt-Navigation
   nextToPromptButton.addEventListener("click", (e) => {
     if (promptTitleInput.value.trim() === "") {
@@ -956,6 +1438,10 @@ async function promptSaver(message) {
       return;
     }
     await loadFolders();
+    const currentPrompt = promptTextarea.value.trim();
+    if (currentPrompt) {
+      await loadSimilarPrompts(currentPrompt);
+    }
     promptSection.classList.remove("active");
     optionsSection.classList.add("active");
     modalContent.classList.add("options-active");
