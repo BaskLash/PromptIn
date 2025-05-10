@@ -395,7 +395,7 @@ async function promptSaver(message) {
 
   const replaceFolderLabel = document.createElement("label");
   replaceFolderLabel.setAttribute("for", "replaceFolderSelect");
-  replaceFolderLabel.textContent = "Select folder:";
+  replaceFolderLabel.textContent = "Select folder or Category:";
 
   const replaceFolderSelect = document.createElement("select");
   replaceFolderSelect.id = "replaceFolderSelect";
@@ -794,6 +794,12 @@ async function promptSaver(message) {
   font-weight: bold;
   margin: 0 4px;
 }
+  .dropdown-item-label {
+        font-weight: 600;
+        color: #34495e;
+        font-size: 14px;
+        margin-bottom: 5px;
+    }
   `;
 
   // Modal zusammenbauen
@@ -993,29 +999,46 @@ async function promptSaver(message) {
         });
       });
 
+      // Filter für nicht-versteckte Ordner (Categorised Prompts)
       const folders = Object.entries(data).filter(
         ([, topic]) =>
-          topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden
+          topic.prompts &&
+          Array.isArray(topic.prompts) &&
+          !topic.isHidden &&
+          !topic.isTrash
       );
 
-      replaceFolderSelect.innerHTML =
-        '<option value="">Select a folder</option>';
-      folders.forEach(([id, topic]) => {
-        if (topic.prompts.length > 0) {
-          const option = document.createElement("option");
-          option.value = id;
-          option.textContent = topic.name;
-          replaceFolderSelect.appendChild(option);
-        }
-      });
+      // Filter für versteckte Ordner (Single Prompts)
+      const hiddenFolders = Object.entries(data).filter(
+        ([, topic]) =>
+          topic.prompts &&
+          Array.isArray(topic.prompts) &&
+          topic.isHidden &&
+          !topic.isTrash
+      );
 
-      addFolderSelect.innerHTML = '<option value="">Select a folder</option>';
-      folders.forEach(([id, topic]) => {
-        const option = document.createElement("option");
-        option.value = id;
-        option.textContent = topic.name;
-        addFolderSelect.appendChild(option);
-      });
+      // Populate replaceFolderSelect mit Ordnern und Single Prompts Option
+      replaceFolderSelect.innerHTML = `
+        <option value="">Select a folder or category</option>
+        <optgroup label="Categorised Prompts">
+          ${folders
+            .map(
+              ([id, topic]) => `<option value="${id}">${topic.name}</option>`
+            )
+            .join("")}
+        </optgroup>
+        <optgroup label="Single Prompts">
+          <option value="single">Single Prompts</option>
+        </optgroup>
+      `;
+
+      // Populate addFolderSelect nur mit nicht-versteckten Ordnern
+      addFolderSelect.innerHTML = `
+        <option value="">Select a folder</option>
+        ${folders
+          .map(([id, topic]) => `<option value="${id}">${topic.name}</option>`)
+          .join("")}
+      `;
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -1115,6 +1138,7 @@ async function promptSaver(message) {
   }
 
   // Funktion zum Laden ähnlicher Prompts
+  // Funktion zum Laden ähnlicher Prompts
   async function loadSimilarPrompts(currentPrompt) {
     console.log(
       "loadSimilarPrompts gestartet mit currentPrompt:",
@@ -1148,7 +1172,7 @@ async function promptSaver(message) {
 
       const allPrompts = [];
       Object.entries(data).forEach(([folderId, topic]) => {
-        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isHidden) {
+        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
           topic.prompts.forEach((prompt, index) => {
             const similarity = computeCosineSimilarity(
               currentPrompt,
@@ -1163,9 +1187,12 @@ async function promptSaver(message) {
               folderId,
               index,
               title: prompt.title || "Untitled Prompt",
+              description: prompt.description || "Keine Beschreibung verfügbar",
               content: prompt.content || "",
               similarity,
               diffCount,
+              isHidden: topic.isHidden || false,
+              folderName: topic.isHidden ? "Single Prompt" : topic.name,
             });
           });
         }
@@ -1174,6 +1201,21 @@ async function promptSaver(message) {
       const similarPrompts = allPrompts
         .filter((p) => p.similarity > 0.1)
         .sort((a, b) => a.diffCount - b.diffCount); // Sortiere nach geringstem Unterschied
+
+      // Check for identical prompts (diffCount === 0)
+      const identicalPrompt = similarPrompts.find((p) => p.diffCount === 0);
+      if (identicalPrompt) {
+        console.log("Identischer Prompt gefunden:", identicalPrompt.title);
+        dropdownContent.innerHTML = `
+          <div class='dropdown-item'>
+            This prompt already exists:<br>
+            <strong>Title:</strong> ${identicalPrompt.title}<br>
+            <strong>Description:</strong> ${identicalPrompt.description}
+          </div>`;
+        similarPromptsDropdown.style.display = "block";
+        similarPromptsLabel.style.display = "block";
+        return;
+      }
 
       if (similarPrompts.length === 0) {
         console.log("Keine ähnlichen Prompts mit Ähnlichkeit > 0.1 gefunden.");
@@ -1189,6 +1231,9 @@ async function promptSaver(message) {
       similarPromptsLabel.style.display = "block";
 
       similarPrompts.forEach((prompt, index) => {
+        // Skip prompts with diffCount === 0 (handled above)
+        if (prompt.diffCount === 0) return;
+
         const item = document.createElement("div");
         item.className = "dropdown-item";
         item.setAttribute("data-prompt-index", index);
@@ -1202,7 +1247,7 @@ async function promptSaver(message) {
           prompt.title.length > 50
             ? prompt.title.slice(0, 50) + "..."
             : prompt.title;
-        title.title = `${prompt.title} (Differences: ${prompt.diffCount} words)`;
+        title.title = `${prompt.title} (Differences: ${prompt.diffCount} words, Category: ${prompt.folderName})`;
 
         const toggle = document.createElement("span");
         toggle.className = "dropdown-item-toggle";
@@ -1217,9 +1262,8 @@ async function promptSaver(message) {
 
         // Prompt-Inhalt mit Label
         const contentLabel = document.createElement("div");
+        contentLabel.className = "dropdown-item-label";
         contentLabel.textContent = "Prompt Content:";
-        contentLabel.style.fontWeight = "bold";
-        contentLabel.style.marginBottom = "5px";
 
         const content = document.createElement("div");
         content.className = "dropdown-item-content";
@@ -1234,9 +1278,8 @@ async function promptSaver(message) {
 
         // Differenzbereich mit Label
         const diffLabel = document.createElement("div");
+        diffLabel.className = "dropdown-item-label";
         diffLabel.textContent = "Differences:";
-        diffLabel.style.fontWeight = "bold";
-        diffLabel.style.marginBottom = "5px";
 
         const diffContainer = document.createElement("div");
         diffContainer.className = "dropdown-item-diff";
@@ -1289,23 +1332,52 @@ async function promptSaver(message) {
 
         item.addEventListener("click", () => {
           console.log("Prompt ausgewählt:", prompt.title);
-          replaceFolderSelect.value = prompt.folderId;
+          replaceFolderSelect.value = prompt.isHidden
+            ? "single"
+            : prompt.folderId;
           replacePromptSelect.disabled = false;
           replacePromptSelect.innerHTML =
             '<option value="">Select a prompt</option>';
 
-          chrome.storage.sync.get(prompt.folderId, (data) => {
-            const topic = data[prompt.folderId];
-            if (topic && topic.prompts) {
-              topic.prompts.forEach((p, i) => {
+          if (prompt.isHidden) {
+            // Für Single Prompts, lade Prompts aus allen versteckten Ordnern
+            chrome.storage.sync.get(null, (data) => {
+              let singlePrompts = [];
+              Object.entries(data).forEach(([id, topic]) => {
+                if (topic.isHidden && !topic.isTrash && topic.prompts) {
+                  topic.prompts.forEach((p, i) => {
+                    singlePrompts.push({
+                      folderId: id,
+                      index: i,
+                      title: p.title || "Untitled Prompt",
+                    });
+                  });
+                }
+              });
+              singlePrompts.forEach((p) => {
                 const option = document.createElement("option");
-                option.value = i;
-                option.textContent = p.title || "Untitled Prompt";
-                if (i === prompt.index) option.selected = true;
+                option.value = `${p.folderId}:${p.index}`;
+                option.textContent = p.title;
+                if (p.folderId === prompt.folderId && p.index === prompt.index)
+                  option.selected = true;
                 replacePromptSelect.appendChild(option);
               });
-            }
-          });
+            });
+          } else {
+            // Für Categorised Prompts, lade Prompts aus dem spezifischen Ordner
+            chrome.storage.sync.get(prompt.folderId, (data) => {
+              const topic = data[prompt.folderId];
+              if (topic && topic.prompts) {
+                topic.prompts.forEach((p, i) => {
+                  const option = document.createElement("option");
+                  option.value = i;
+                  option.textContent = p.title || "Untitled Prompt";
+                  if (i === prompt.index) option.selected = true;
+                  replacePromptSelect.appendChild(option);
+                });
+              }
+            });
+          }
 
           dropdownButton.textContent = prompt.title;
           dropdownContent.style.display = "none";
@@ -1327,6 +1399,139 @@ async function promptSaver(message) {
       similarPromptsLabel.style.display = "block";
     }
   }
+
+  // Prompts für ausgewählten Ordner oder Single Prompts in Replace-Option laden
+  replaceFolderSelect.addEventListener("change", async (e) => {
+    const folderId = replaceFolderSelect.value;
+    replacePromptSelect.disabled = !folderId;
+    replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
+    shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
+
+    if (folderId) {
+      try {
+        if (folderId === "single") {
+          // Lade alle Prompts aus versteckten Ordnern
+          const data = await new Promise((resolve, reject) => {
+            chrome.storage.sync.get(null, (data) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(data);
+              }
+            });
+          });
+
+          let singlePrompts = [];
+          Object.entries(data).forEach(([id, topic]) => {
+            if (topic.isHidden && !topic.isTrash && topic.prompts) {
+              topic.prompts.forEach((prompt, index) => {
+                singlePrompts.push({
+                  folderId: id,
+                  index,
+                  title: prompt.title || "Untitled Prompt",
+                });
+              });
+            }
+          });
+
+          singlePrompts.forEach((prompt) => {
+            const option = document.createElement("option");
+            option.value = `${prompt.folderId}:${prompt.index}`;
+            option.textContent =
+              prompt.title.length > 50
+                ? prompt.title.slice(0, 50) + "..."
+                : prompt.title;
+            option.title = prompt.title;
+            replacePromptSelect.appendChild(option);
+          });
+        } else {
+          // Lade Prompts aus einem spezifischen Ordner
+          const data = await new Promise((resolve, reject) => {
+            chrome.storage.sync.get(folderId, (data) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(data);
+              }
+            });
+          });
+
+          const topic = data[folderId];
+          if (topic && topic.prompts) {
+            topic.prompts.forEach((prompt, index) => {
+              const option = document.createElement("option");
+              option.value = index;
+              const promptTitle = prompt.title || "Untitled Prompt";
+              option.textContent =
+                promptTitle.length > 50
+                  ? promptTitle.slice(0, 50) + "..."
+                  : promptTitle;
+              option.title = promptTitle;
+              replacePromptSelect.appendChild(option);
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching folder data:", error);
+      }
+    }
+  });
+
+  // Event-Listener für Prompt-Auswahl zum Anzeigen der Differenz
+  replacePromptSelect.addEventListener("change", async (e) => {
+    const folderId = replaceFolderSelect.value;
+    const promptValue = replacePromptSelect.value;
+
+    if (folderId && promptValue !== "") {
+      try {
+        if (folderId === "single") {
+          // Für Single Prompts ist der Wert im Format folderId:index
+          const [singleFolderId, promptIndex] = promptValue.split(":");
+          const data = await new Promise((resolve, reject) => {
+            chrome.storage.sync.get(singleFolderId, (data) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(data);
+              }
+            });
+          });
+
+          const topic = data[singleFolderId];
+          if (topic && topic.prompts && topic.prompts[promptIndex]) {
+            const selectedPrompt = topic.prompts[promptIndex].content;
+            const currentPrompt = promptTextarea.value.trim();
+            computePromptDiff(currentPrompt, selectedPrompt);
+          }
+        } else {
+          // Für Categorised Prompts
+          const promptIndex = promptValue;
+          const data = await new Promise((resolve, reject) => {
+            chrome.storage.sync.get(folderId, (data) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(data);
+              }
+            });
+          });
+
+          const topic = data[folderId];
+          if (topic && topic.prompts && topic.prompts[promptIndex]) {
+            const selectedPrompt = topic.prompts[promptIndex].content;
+            const currentPrompt = promptTextarea.value.trim();
+            computePromptDiff(currentPrompt, selectedPrompt);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching prompt data:", error);
+        shadowRoot.getElementById("promptDiffOutput").innerHTML =
+          "Error loading prompt differences.";
+      }
+    } else {
+      shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
+    }
+  });
 
   // Dropdown-Interaktion
   dropdownButton.addEventListener("click", (e) => {
@@ -1547,41 +1752,88 @@ async function promptSaver(message) {
           closeModal();
         } else if (activeOption === "replace") {
           const folderId = replaceFolderSelect.value;
-          const promptIndex = replacePromptSelect.value;
+          const promptValue = replacePromptSelect.value;
 
-          if (!folderId || promptIndex === "") {
+          if (!folderId || promptValue === "") {
             alert("Bitte wähle einen Ordner und eine Prompt aus!");
             return;
           }
 
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.sync.get(folderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
+          if (folderId === "single") {
+            // Für Single Prompts: promptValue ist im Format folderId:index
+            const [singleFolderId, promptIndex] = promptValue.split(":");
+            if (!singleFolderId || promptIndex === undefined) {
+              alert("Ungültige Prompt-Auswahl!");
+              return;
+            }
 
-          const topic = data[folderId];
-          if (topic && topic.prompts) {
-            topic.prompts[promptIndex] = promptObject;
-            topic.name = topic.prompts.length === 1 ? promptTitle : topic.name;
-
-            await new Promise((resolve, reject) => {
-              chrome.storage.sync.set({ [folderId]: topic }, () => {
+            const data = await new Promise((resolve, reject) => {
+              chrome.storage.sync.get(singleFolderId, (data) => {
                 if (chrome.runtime.lastError) {
                   reject(chrome.runtime.lastError);
                 } else {
-                  console.log(
-                    `Prompt in folder ${folderId} replaced at index ${promptIndex}`
-                  );
-                  resolve();
+                  resolve(data);
                 }
               });
             });
-            closeModal();
+
+            const topic = data[singleFolderId];
+            if (topic && topic.prompts && topic.prompts[promptIndex]) {
+              topic.prompts[promptIndex] = promptObject;
+              topic.name =
+                topic.prompts.length === 1 ? promptTitle : topic.name;
+
+              await new Promise((resolve, reject) => {
+                chrome.storage.sync.set({ [singleFolderId]: topic }, () => {
+                  if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                  } else {
+                    console.log(
+                      `Prompt in single folder ${singleFolderId} replaced at index ${promptIndex}`
+                    );
+                    resolve();
+                  }
+                });
+              });
+              closeModal();
+            } else {
+              alert("Prompt oder Ordner nicht gefunden!");
+            }
+          } else {
+            // Für Categorised Prompts
+            const promptIndex = promptValue;
+            const data = await new Promise((resolve, reject) => {
+              chrome.storage.sync.get(folderId, (data) => {
+                if (chrome.runtime.lastError) {
+                  reject(chrome.runtime.lastError);
+                } else {
+                  resolve(data);
+                }
+              });
+            });
+
+            const topic = data[folderId];
+            if (topic && topic.prompts && topic.prompts[promptIndex]) {
+              topic.prompts[promptIndex] = promptObject;
+              topic.name =
+                topic.prompts.length === 1 ? promptTitle : topic.name;
+
+              await new Promise((resolve, reject) => {
+                chrome.storage.sync.set({ [folderId]: topic }, () => {
+                  if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                  } else {
+                    console.log(
+                      `Prompt in folder ${folderId} replaced at index ${promptIndex}`
+                    );
+                    resolve();
+                  }
+                });
+              });
+              closeModal();
+            } else {
+              alert("Prompt oder Ordner nicht gefunden!");
+            }
           }
         } else if (activeOption === "add") {
           const folderId = addFolderSelect.value;
