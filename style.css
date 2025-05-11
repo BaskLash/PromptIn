@@ -198,12 +198,18 @@ body {
   flex-grow: 1;
   padding: 1rem;
   overflow-y: auto;
+  box-sizing: border-box; /* Stellt sicher, dass Padding die Höhe nicht überschreitet */
+  display: flex; /* Flex-Layout, um .container zu zentrieren */
+  flex-direction: column;
 }
 
 .container {
   width: 90%;
   max-width: 500px;
   margin: 0 auto;
+  flex-grow: 1; /* Nutzt verfügbaren Platz */
+  display: flex;
+  flex-direction: column;
 }
 
 .enterage {

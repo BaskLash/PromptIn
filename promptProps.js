@@ -22,7 +22,6 @@ function createPromptItem(prompt, folderId, index, isHidden, isTrash, view) {
   promptItem.appendChild(promptText);
 
   if (isHidden && !isTrash) {
-    promptItem.style.opacity = "0.8";
     promptItem.title = "This prompt is not assigned to a visible folder";
   }
 

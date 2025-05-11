@@ -555,37 +555,39 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       folderNavList.innerHTML = "";
-      if (!data || Object.keys(data).length === 0) {
+
+      const validFolders = Object.entries(data).filter(
+        ([id, topic]) =>
+          topic.prompts &&
+          Array.isArray(topic.prompts) &&
+          !topic.isHidden &&
+          !topic.isTrash
+      );
+
+      if (validFolders.length === 0) {
         const noFolders = document.createElement("a");
         noFolders.textContent = "No folders available";
         noFolders.style.color = "#888";
         noFolders.style.pointerEvents = "none";
         folderNavList.appendChild(noFolders);
       } else {
-        Object.entries(data).forEach(([id, topic]) => {
-          if (
-            topic.prompts &&
-            Array.isArray(topic.prompts) &&
-            !topic.isHidden &&
-            !topic.isTrash
-          ) {
-            const folderLink = document.createElement("a");
-            folderLink.href = `#folder-${id}`;
-            folderLink.textContent = `${topic.name} (${topic.prompts.length})`;
-            folderLink.dataset.folderId = id;
-            folderLink.addEventListener("click", (e) => {
-              e.preventDefault();
-              [
-                favoritesLink,
-                allPromptsLink,
-                singlePromptsLink,
-                categorisedPromptsLink,
-                trashLink,
-              ].forEach((link) => link.classList.remove("active"));
-              showFolderContent(id);
-            });
-            folderNavList.appendChild(folderLink);
-          }
+        validFolders.forEach(([id, topic]) => {
+          const folderLink = document.createElement("a");
+          folderLink.href = `#folder-${id}`;
+          folderLink.textContent = `${topic.name} (${topic.prompts.length})`;
+          folderLink.dataset.folderId = id;
+          folderLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            [
+              favoritesLink,
+              allPromptsLink,
+              singlePromptsLink,
+              categorisedPromptsLink,
+              trashLink,
+            ].forEach((link) => link.classList.remove("active"));
+            showFolderContent(id);
+          });
+          folderNavList.appendChild(folderLink);
         });
       }
 
