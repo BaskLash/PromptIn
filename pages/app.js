@@ -1530,7 +1530,6 @@ document.addEventListener("DOMContentLoaded", function () {
               folderId: id,
               index,
               totalPrompts: topic.prompts.length,
-              isHidden: topic.isHidden || false,
             }))
           );
         }
@@ -1543,22 +1542,15 @@ document.addEventListener("DOMContentLoaded", function () {
         noPrompts.style.padding = "15px";
         promptList.appendChild(noPrompts);
       } else {
-        allPrompts.forEach(
-          ({ prompt, folderId, index, totalPrompts, isHidden }) => {
-            const promptItem = createPromptItem(
-              prompt,
-              folderId,
-              index,
-              totalPrompts
-            );
-            if (isHidden) {
-              promptItem.style.opacity = "0.8";
-              promptItem.title =
-                "This prompt is not assigned to a visible folder";
-            }
-            promptList.appendChild(promptItem);
-          }
-        );
+        allPrompts.forEach(({ prompt, folderId, index, totalPrompts }) => {
+          const promptItem = createPromptItem(
+            prompt,
+            folderId,
+            index,
+            totalPrompts
+          );
+          promptList.appendChild(promptItem);
+        });
       }
 
       promptsContainer.appendChild(promptList);
@@ -1605,22 +1597,15 @@ document.addEventListener("DOMContentLoaded", function () {
         noPrompts.style.padding = "15px";
         promptList.appendChild(noPrompts);
       } else {
-        singlePrompts.forEach(
-          ({ prompt, folderId, index, totalPrompts, isHidden }) => {
-            const promptItem = createPromptItem(
-              prompt,
-              folderId,
-              index,
-              totalPrompts
-            );
-            if (isHidden) {
-              promptItem.style.opacity = "0.8";
-              promptItem.title =
-                "This prompt is not assigned to a visible folder";
-            }
-            promptList.appendChild(promptItem);
-          }
-        );
+        singlePrompts.forEach(({ prompt, folderId, index, totalPrompts }) => {
+          const promptItem = createPromptItem(
+            prompt,
+            folderId,
+            index,
+            totalPrompts
+          );
+          promptList.appendChild(promptItem);
+        });
       }
 
       promptsContainer.appendChild(promptList);
@@ -1769,7 +1754,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 folderId: id,
                 index,
                 totalPrompts: topic.prompts.length,
-                isHidden: topic.isHidden || false,
               });
             }
           });
@@ -1783,22 +1767,15 @@ document.addEventListener("DOMContentLoaded", function () {
         noPrompts.style.padding = "15px";
         promptList.appendChild(noPrompts);
       } else {
-        favoritePrompts.forEach(
-          ({ prompt, folderId, index, totalPrompts, isHidden }) => {
-            const promptItem = createPromptItem(
-              prompt,
-              folderId,
-              index,
-              totalPrompts
-            );
-            if (isHidden) {
-              promptItem.style.opacity = "0.8";
-              promptItem.title =
-                "This prompt is not assigned to a visible folder";
-            }
-            promptList.appendChild(promptItem);
-          }
-        );
+        favoritePrompts.forEach(({ prompt, folderId, index, totalPrompts }) => {
+          const promptItem = createPromptItem(
+            prompt,
+            folderId,
+            index,
+            totalPrompts
+          );
+          promptList.appendChild(promptItem);
+        });
       }
 
       promptsContainer.appendChild(promptList);
@@ -2241,7 +2218,12 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         }
         topic.prompts.forEach((prompt, index) => {
-          const searchText = typeof prompt === "string" ? prompt : prompt.title;
+          const searchText =
+            typeof prompt === "string"
+              ? prompt
+              : `${prompt.title || ""} ${prompt.content || ""} ${
+                  prompt.description || ""
+                }`;
           if (
             searchText.toLowerCase().includes(lowercaseQuery) &&
             !topic.isTrash
