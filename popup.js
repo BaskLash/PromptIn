@@ -144,8 +144,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Settings Modal
   const settingsModal = document.getElementById("settings-modal");
+  const closeSettingsModal = document.getElementById("close-modal");
   settingsBtn.addEventListener("click", () => {
     settingsModal.style.display = "block";
+  });
+  closeSettingsModal.addEventListener("click", () => {
+    settingsModal.style.display = "none";
   });
   window.addEventListener("click", (event) => {
     if (event.target === settingsModal) {
@@ -363,5 +367,14 @@ document.addEventListener("DOMContentLoaded", function () {
     .getElementById("feature-request-btn")
     .addEventListener("click", () => {
       window.open("https://forms.gle/5EM4tPz9b7d1p6iB7", "_blank");
+    });
+
+  document
+    .getElementById("rating-request-btn")
+    .addEventListener("click", () => {
+      window.open(
+        "https://chromewebstore.google.com/detail/pbfmkjjnmjfjlebpfcndpdhofoccgkje?utm_source=item-share-cb",
+        "_blank"
+      );
     });
 });
