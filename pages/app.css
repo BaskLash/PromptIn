@@ -473,3 +473,61 @@ main {
 .dropdown-item:hover {
   background: #ddd;
 }
+/* Version Timeline Styling */
+.version-timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.version-item {
+  position: relative;
+  margin-bottom: 20px;
+  padding-left: 20px;
+  border-left: 2px solid #00d4ff;
+}
+
+.version-item::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  background: #00d4ff;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.version-header h3 {
+  margin: 0;
+  font-size: 1.2em;
+  color: #00d4ff;
+}
+
+.version-date {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.version-content label {
+  font-weight: 600;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  display: block;
+  color: #34495e;
+}
+
+.version-content p {
+  margin: 0 0 10px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  word-break: break-word;
+}

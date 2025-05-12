@@ -1,4 +1,14 @@
 document.addEventListener("DOMContentLoaded", function () {
+  function generateUUID() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0,
+          v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    );
+  }
   const folderList = document.getElementById("foldersContainer");
   const searchResults = document.getElementById("searchResults");
   const searchInput = document.getElementById("searchInput");
@@ -112,6 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
           alert("Fehler beim Erstellen des neuen Ordners.");
         } else {
           console.log(`New folder created with ID: ${folderId}`);
+          loadFolders();
           loadFolderNavigation();
           showFolderContent(folderId);
         }
@@ -351,7 +362,20 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
 
-        const newPrompt = { title, content, isFavorite };
+        const newPrompt = {
+          title,
+          content,
+          isFavorite,
+          versions: [
+            {
+              versionId: generateUUID(),
+              title,
+              description,
+              content,
+              timestamp: Date.now(),
+            },
+          ],
+        };
         if (description) newPrompt.description = description;
 
         if (folderId) {
@@ -431,91 +455,91 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const style = document.createElement("style");
       style.textContent = `
-        .modal {
-          display: block;
-          position: fixed;
-          z-index: 1000;
-          left: 0;
-          top: 0;
-          width: 100%;
-          height: 100%;
-          overflow: auto;
-          background: rgba(0, 0, 0, 0.7);
-          backdrop-filter: blur(3px);
-        }
-  
-        .modal-content {
-          background: #fff;
-          margin: 5% auto;
-          padding: 0;
-          width: 90%;
-          max-width: 600px;
-          border-radius: 8px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-          overflow: hidden;
-        }
-  
-        .modal-header {
-          padding: 16px 24px;
-          background: linear-gradient(135deg, #1e90ff, #4169e1);
-          color: white;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-  
-        .modal-header h2 {
-          margin: 0;
-          font-size: 1.6em;
-          font-weight: 600;
-        }
-  
-        .modal-body {
-          padding: 24px;
-          color: #2c3e50;
-        }
-  
-        .modal-body label {
-          font-weight: 600;
-          margin-top: 16px;
-          margin-bottom: 6px;
-          display: block;
-          color: #34495e;
-        }
-  
-        .modal-body input,
-        .modal-body textarea,
-        .modal-body select {
-          margin-bottom: 12px;
-          box-sizing: border-box;
-        }
-  
-        .close {
-          color: white;
-          font-size: 28px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: transform 0.2s ease;
-        }
-  
-        .close:hover,
-        .close:focus {
-          transform: scale(1.1);
-        }
-  
-        .action-btn {
-          padding: 8px 16px;
-          background: #1e90ff;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-  
-        .action-btn:hover {
-          background: #4169e1;
-        }
-      `;
+      .modal {
+        display: block;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(3px);
+      }
+
+      .modal-content {
+        background: #fff;
+        margin: 5% auto;
+        padding: 0;
+        width: 90%;
+        max-width: 600px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+      }
+
+      .modal-header {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #1e90ff, #4169e1);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 1.6em;
+        font-weight: 600;
+      }
+
+      .modal-body {
+        padding: 24px;
+        color: #2c3e50;
+      }
+
+      .modal-body label {
+        font-weight: 600;
+        margin-top: 16px;
+        margin-bottom: 6px;
+        display: block;
+        color: #34495e;
+      }
+
+      .modal-body input,
+      .modal-body textarea,
+      .modal-body select {
+        margin-bottom: 12px;
+        box-sizing: border-box;
+      }
+
+      .close {
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+
+      .close:hover,
+      .close:focus {
+        transform: scale(1.1);
+      }
+
+      .action-btn {
+        padding: 8px 16px;
+        background: #1e90ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .action-btn:hover {
+        background: #4169e1;
+      }
+    `;
 
       document.head.appendChild(style);
       document.body.appendChild(modal);
@@ -819,6 +843,10 @@ document.addEventListener("DOMContentLoaded", function () {
             : "Add to Favorites",
           action: () =>
             toggleFavoritePrompt(folderId, index, promptItem, prompt),
+        },
+        {
+          text: "Show Versions",
+          action: () => showPromptVersions(folderId, index, promptItem),
         },
         {
           text: "Move to Trash",
@@ -1954,18 +1982,37 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
 
+        const currentPrompt = data[folderId].prompts[promptIndex];
+        const newVersion = {
+          versionId: generateUUID(),
+          title: newTitle,
+          description: newDesc,
+          content: newContent,
+          timestamp: Date.now(),
+        };
+
+        if (!currentPrompt.versions) {
+          currentPrompt.versions = [];
+        }
+        currentPrompt.versions.push(newVersion);
+        if (currentPrompt.versions.length > 50) {
+          currentPrompt.versions.shift(); // Remove oldest version if limit exceeded
+        }
+
         if (typeof prompt === "string") {
           data[folderId].prompts[promptIndex] = {
             title: newTitle,
             description: newDesc,
             content: newContent,
             isFavorite,
+            versions: currentPrompt.versions,
           };
         } else {
           data[folderId].prompts[promptIndex].title = newTitle;
           data[folderId].prompts[promptIndex].description = newDesc;
           data[folderId].prompts[promptIndex].content = newContent;
           data[folderId].prompts[promptIndex].isFavorite = isFavorite;
+          data[folderId].prompts[promptIndex].versions = currentPrompt.versions;
         }
 
         if (data[folderId].prompts.length === 1 && data[folderId].isHidden) {
@@ -2016,94 +2063,94 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const style = document.createElement("style");
       style.textContent = `
-        .modal {
-          display: block;
-          position: fixed;
-          z-index: 1000;
-          left: 0;
-          top: 0;
-          width: 100%;
-          height: 100%;
-          overflow: auto;
-          background: rgba(0, 0, 0, 0.7);
-          backdrop-filter: blur(3px);
-        }
-  
-        .modal-content {
-          background: #fff;
-          margin: 5% auto;
-          padding: 0;
-          width: 90%;
-          max-width: 600px;
-          border-radius: 8px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-          overflow: hidden;
-        }
-  
-        .modal-header {
-          padding: 16px 24px;
-          background: linear-gradient(135deg, #1e90ff, #4169e1);
-          color: white;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-  
-        .modal-header h2 {
-          margin: 0;
-          font-size: 1.6em;
-          font-weight: 600;
-        }
-  
-        .modal-body {
-          padding: 24px;
-          color: #2c3e50;
-        }
-  
-        .modal-body label {
-          font-weight: 600;
-          margin-top: 16px;
-          margin-bottom: 6px;
-          display: block;
-          color: #34495e;
-        }
-  
-        .modal-body input,
-        .modal-body textarea {
-          margin-bottom: 12px;
-          box-sizing: border-box;
-        }
-  
-        .modal-body p {
-          margin: 0 0 12px;
-          padding: 10px;
-          background: #f8f9fa;
-          border-radius: 4px;
-          word-break: break-word;
-        }
-  
-        .close {
-          color: white;
-          font-size: 28px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: transform 0.2s ease;
-        }
-  
-        .close:hover,
-        .close:focus {
-          transform: scale(1.1);
-        }
-  
-        .action-btn {
-          padding: 8px 16px;
-          background: #1e90ff;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-      `;
+      .modal {
+        display: block;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(3px);
+      }
+
+      .modal-content {
+        background: #fff;
+        margin: 5% auto;
+        padding: 0;
+        width: 90%;
+        max-width: 600px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+      }
+
+      .modal-header {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #1e90ff, #4169e1);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 1.6em;
+        font-weight: 600;
+      }
+
+      .modal-body {
+        padding: 24px;
+        color: #2c3e50;
+      }
+
+      .modal-body label {
+        font-weight: 600;
+        margin-top: 16px;
+        margin-bottom: 6px;
+        display: block;
+        color: #34495e;
+      }
+
+      .modal-body input,
+      .modal-body textarea {
+        margin-bottom: 12px;
+        box-sizing: border-box;
+      }
+
+      .modal-body p {
+        margin: 0 0 12px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        word-break: break-word;
+      }
+
+      .close {
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+
+      .close:hover,
+      .close:focus {
+        transform: scale(1.1);
+      }
+
+      .action-btn {
+        padding: 8px 16px;
+        background: #1e90ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+    `;
 
       document.head.appendChild(style);
       document.body.appendChild(modal);
@@ -2127,6 +2174,326 @@ document.addEventListener("DOMContentLoaded", function () {
       );
 
       titleInput.focus();
+    });
+  }
+
+  function showPromptVersions(folderId, promptIndex, promptItem) {
+    chrome.storage.sync.get(folderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      const prompt = data[folderId].prompts[promptIndex];
+      if (!prompt || !prompt.versions) return;
+
+      const modal = document.createElement("div");
+      modal.className = "modal";
+
+      const modalContent = document.createElement("div");
+      modalContent.className = "modal-content";
+
+      const modalHeader = document.createElement("div");
+      modalHeader.className = "modal-header";
+
+      const closeSpan = document.createElement("span");
+      closeSpan.className = "close";
+      closeSpan.innerHTML = "×";
+
+      const headerTitle = document.createElement("h2");
+      headerTitle.textContent = "Prompt Version History";
+
+      const modalBody = document.createElement("div");
+      modalBody.className = "modal-body";
+
+      const timeline = document.createElement("div");
+      timeline.className = "version-timeline";
+
+      prompt.versions
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .forEach((version, index) => {
+          const versionItem = document.createElement("div");
+          versionItem.className = "version-item";
+
+          const versionHeader = document.createElement("div");
+          versionHeader.className = "version-header";
+
+          const versionTitle = document.createElement("h3");
+          versionTitle.textContent = `Version ${
+            prompt.versions.length - index
+          }`;
+          versionHeader.appendChild(versionTitle);
+
+          const versionDate = document.createElement("span");
+          versionDate.className = "version-date";
+          versionDate.textContent = new Date(
+            version.timestamp
+          ).toLocaleString();
+          versionHeader.appendChild(versionDate);
+
+          const versionContent = document.createElement("div");
+          versionContent.className = "version-content";
+
+          const titleLabel = document.createElement("label");
+          titleLabel.textContent = "Title:";
+          const titleText = document.createElement("p");
+          titleText.textContent = version.title || "Untitled";
+          versionContent.appendChild(titleLabel);
+          versionContent.appendChild(titleText);
+
+          const descLabel = document.createElement("label");
+          descLabel.textContent = "Description:";
+          const descText = document.createElement("p");
+          descText.textContent = version.description || "No description";
+          versionContent.appendChild(descLabel);
+          versionContent.appendChild(descText);
+
+          const contentLabel = document.createElement("label");
+          contentLabel.textContent = "Content:";
+          const contentText = document.createElement("p");
+          contentText.textContent = version.content;
+          versionContent.appendChild(contentLabel);
+          versionContent.appendChild(contentText);
+
+          const restoreButton = document.createElement("button");
+          restoreButton.textContent = "Restore";
+          restoreButton.classList.add("action-btn");
+          restoreButton.addEventListener("click", () => {
+            restoreVersion(
+              folderId,
+              promptIndex,
+              version.versionId,
+              promptItem
+            );
+            modal.style.display = "none";
+            document.body.removeChild(modal);
+            document.head.removeChild(style);
+          });
+          versionContent.appendChild(restoreButton);
+
+          versionItem.appendChild(versionHeader);
+          versionItem.appendChild(versionContent);
+          timeline.appendChild(versionItem);
+        });
+
+      modalHeader.appendChild(closeSpan);
+      modalHeader.appendChild(headerTitle);
+      modalBody.appendChild(timeline);
+      modalContent.appendChild(modalHeader);
+      modalContent.appendChild(modalBody);
+      modal.appendChild(modalContent);
+
+      const style = document.createElement("style");
+      style.textContent = `
+      .modal {
+        display: block;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(3px);
+      }
+
+      .modal-content {
+        background: #fff;
+        margin: 5% auto;
+        padding: 0;
+        width: 90%;
+        max-width: 600px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+      }
+
+      .modal-header {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #1e90ff, #4169e1);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 1.6em;
+        font-weight: 600;
+      }
+
+      .modal-body {
+        padding: 24px;
+        color: #2c3e50;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+
+      .version-timeline {
+        position: relative;
+        padding-left: 30px;
+      }
+
+      .version-item {
+        position: relative;
+        margin-bottom: 20px;
+        padding-left: 20px;
+        border-left: 2px solid #1e90ff;
+      }
+
+      .version-item::before {
+        content: '';
+        position: absolute;
+        left: -9px;
+        top: 0;
+        width: 16px;
+        height: 16px;
+        background: #1e90ff;
+        border-radius: 50%;
+        border: 2px solid #fff;
+      }
+
+      .version-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .version-header h3 {
+        margin: 0;
+        font-size: 1.2em;
+        color: #1e90ff;
+      }
+
+      .version-date {
+        font-size: 0.9em;
+        color: #666;
+      }
+
+      .version-content label {
+        font-weight: 600;
+        margin-top: 10px;
+        margin-bottom: 5px;
+        display: block;
+        color: #34495e;
+      }
+
+      .version-content p {
+        margin: 0 0 10px;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        word-break: break-word;
+      }
+
+      .action-btn {
+        padding: 8px 16px;
+        background: #1e90ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      .action-btn:hover {
+        background: #4169e1;
+      }
+
+      .close {
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+
+      .close:hover,
+      .close:focus {
+        transform: scale(1.1);
+      }
+    `;
+
+      document.head.appendChild(style);
+      document.body.appendChild(modal);
+
+      closeSpan.onclick = function () {
+        modal.style.display = "none";
+        document.body.removeChild(modal);
+        document.head.removeChild(style);
+      };
+
+      window.addEventListener(
+        "click",
+        function (event) {
+          if (event.target === modal) {
+            modal.style.display = "none";
+            document.body.removeChild(modal);
+            document.head.removeChild(style);
+          }
+        },
+        { once: true }
+      );
+    });
+  }
+
+  function restoreVersion(folderId, promptIndex, versionId, promptItem) {
+    chrome.storage.sync.get(folderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+
+      const prompt = data[folderId].prompts[promptIndex];
+      if (!prompt || !prompt.versions) return;
+
+      const version = prompt.versions.find((v) => v.versionId === versionId);
+      if (!version) return;
+
+      // Save current state as a new version
+      prompt.versions.push({
+        versionId: generateUUID(),
+        title: prompt.title,
+        description: prompt.description || "",
+        content: prompt.content,
+        timestamp: Date.now(),
+      });
+
+      // Update prompt to selected version
+      prompt.title = version.title;
+      prompt.description = version.description || "";
+      prompt.content = version.content;
+
+      // Enforce version limit
+      if (prompt.versions.length > 50) {
+        prompt.versions.shift();
+      }
+
+      chrome.storage.sync.set({ [folderId]: data[folderId] }, function () {
+        if (chrome.runtime.lastError) {
+          console.error("Error restoring version:", chrome.runtime.lastError);
+          alert("Fehler beim Wiederherstellen der Version.");
+        } else {
+          console.log(
+            `Version ${versionId} restored for prompt in ${folderId}`
+          );
+          promptItem.querySelector(".prompt-text").textContent = version.title;
+          if (!data[folderId].isHidden) {
+            showFolderContent(folderId);
+            if (mainHeaderTitle.textContent === "Categorised Prompts")
+              showCategorisedPrompts();
+          } else {
+            if (mainHeaderTitle.textContent === "Single Prompts")
+              showSinglePrompts();
+          }
+          if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
+          if (mainHeaderTitle.textContent === "Favorites")
+            showFavoritePrompts();
+        }
+      });
     });
   }
 
