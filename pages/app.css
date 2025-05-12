@@ -487,7 +487,7 @@ main {
 }
 
 .version-item::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -9px;
   top: 0;
@@ -530,4 +530,243 @@ main {
   background: #f8f9fa;
   border-radius: 4px;
   word-break: break-word;
+}
+/* Diff View Styling */
+/* Enhanced diff header styling */
+.diff-header {
+  margin: 0 0 12px;
+  color: #1e90ff;
+  font-size: 1.3em;
+  font-weight: 600;
+  border-bottom: 2px solid #1e90ff;
+  padding-bottom: 8px;
+}
+.diff-word.added {
+  background-color: #d4fcbc;
+  color: black;
+}
+.diff-word.removed {
+  background-color: #fbb6c2;
+  color: black;
+  text-decoration: line-through;
+}
+.diff-word.common {
+  background-color: #e5e7eb;
+}
+.diff-word {
+  padding: 2px;
+  margin: 2px;
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+.arrow {
+  color: #1e90ff;
+  font-weight: bold;
+  margin: 0 4px;
+}
+.diff-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+.diff-section h3 {
+  margin: 0 0 12px;
+  color: #1e90ff;
+  font-size: 1.3em;
+}
+.diff-section label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+  color: #34495e;
+}
+.diff-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 0.95em;
+}
+.diff-container {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.diff-wrapper {
+  margin-bottom: 16px;
+}
+.diff-wrapper h4 {
+  margin: 0 0 8px;
+  color: #34495e;
+  font-size: 1.1em;
+}
+.diff-output {
+  min-height: 50px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+.diff-summary {
+  margin-top: 12px;
+  font-weight: 600;
+  color: #1e90ff;
+  font-size: 0.9em;
+}
+.version-timeline {
+  position: relative;
+  padding-left: 30px;
+}
+.version-item {
+  position: relative;
+  margin-bottom: 20px;
+  padding: 16px;
+  padding-left: 20px;
+  border-left: 2px solid #1e90ff;
+  background: #f8f9fa;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+.version-item.current-version {
+  background: #e6f3ff;
+  border-left-color: #28a745;
+}
+.version-item.current-version::before {
+  background: #28a745;
+}
+.version-item::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 16px;
+  width: 16px;
+  height: 16px;
+  background: #1e90ff;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+.version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.version-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.version-header h3 {
+  margin: 0;
+  font-size: 1.2em;
+  color: #1e90ff;
+}
+.current-badge {
+  background: #28a745;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+.version-date {
+  font-size: 0.9em;
+  color: #666;
+}
+.version-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+.action-btn {
+  padding: 8px 16px;
+  background: #1e90ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+.action-btn:hover {
+  background: #4169e1;
+}
+
+/* Responsive Design */
+@media (max-width: 500px) {
+  .version-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .version-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .action-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+/* Existing styles remain unchanged */
+
+/* Styles for timeline diffs and dual dropdowns */
+.version-diff-wrapper {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.version-diff-wrapper h4 {
+  margin: 0 0 8px;
+  color: #34495e;
+  font-size: 1.1em;
+}
+
+.diff-select-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.diff-select-wrapper label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+  color: #34495e;
+  flex: 1 1 100%;
+}
+
+.diff-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 0.95em;
+  flex: 1 1 calc(50% - 6px);
+}
+
+/* Responsive design for dropdowns */
+@media (max-width: 500px) {
+  .diff-select-wrapper {
+    flex-direction: column;
+  }
+  .diff-select {
+    flex: 1 1 100%;
+  }
 }
