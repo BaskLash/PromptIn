@@ -222,6 +222,9 @@ function inputFieldTrigger() {
       let selectedCategoryOrFolder = null;
       let isPasting = false;
       let isEscaped = false;
+      // Initialize state variables for slash handling
+      let isDropdownTriggered = false;
+      let isSlashKeyboardInput = false;
 
       // Function to update dropdown data from Chrome storage
       function updateDropdownData(callback) {
@@ -848,9 +851,13 @@ function inputFieldTrigger() {
           if (currentFocusElement) {
             if (currentFocusElement.classList.contains("dropdown-item")) {
               currentFocusElement.click();
+              isDropdownTriggered = false;
+              isSlashKeyboardInput = false;
             }
           }
         } else if (e.key === "Escape") {
+          isDropdownTriggered = false;
+          isSlashKeyboardInput = false;
           hideDropdown();
           isEscaped = true;
           inputField.focus();
@@ -862,7 +869,6 @@ function inputFieldTrigger() {
             const query = currentText.substring(slashIndex + 1);
             let cursorPos;
 
-            // Get cursor position
             if (
               inputField.tagName === "TEXTAREA" ||
               inputField.tagName === "INPUT"
@@ -883,23 +889,19 @@ function inputFieldTrigger() {
               cursorPos = currentText.length;
             }
 
-            // Only proceed if cursor is in the query part (after slash)
             if (cursorPos > slashIndex + 1) {
               const queryIndex = cursorPos - (slashIndex + 1);
               let newQuery;
               if (queryIndex > 0 && queryIndex <= query.length) {
-                // Remove the character before the cursor
                 newQuery =
                   query.substring(0, queryIndex - 1) +
                   query.substring(queryIndex);
               } else {
-                // If cursor is at the end or beyond, remove the last character
                 newQuery = query.slice(0, -1);
               }
               const newText = textBeforeSlash + "/" + newQuery;
               setInputText(inputField, newText);
 
-              // Restore cursor position
               if (
                 inputField.tagName === "TEXTAREA" ||
                 inputField.tagName === "INPUT"
@@ -916,7 +918,6 @@ function inputFieldTrigger() {
                 function traverseNodes(node) {
                   if (found) return;
                   if (node.nodeType === 3) {
-                    // Text node
                     if (charCount + node.length >= cursorPos - 1) {
                       range.setStart(node, cursorPos - 1 - charCount);
                       range.setEnd(node, cursorPos - 1 - charCount);
@@ -937,7 +938,6 @@ function inputFieldTrigger() {
 
               inputField.focus();
 
-              // Update dropdown based on the new query
               const newQueryTrimmed = newQuery.trim();
               if (newQueryTrimmed) {
                 renderSearchResults(newQueryTrimmed);
@@ -959,7 +959,6 @@ function inputFieldTrigger() {
                 }
               }
             } else if (cursorPos === slashIndex + 1 && query.length === 0) {
-              // Cursor is right after the slash, keep the slash
               setInputText(inputField, textBeforeSlash + "/");
               inputField.focus();
               if (
@@ -979,6 +978,10 @@ function inputFieldTrigger() {
                 selectedCategoryOrFolder = firstNavItem.textContent;
                 renderContentPanel(firstNavItem.textContent);
               }
+            } else if (cursorPos <= slashIndex + 1) {
+              isDropdownTriggered = false;
+              isSlashKeyboardInput = false;
+              hideDropdown();
             }
           }
         }
@@ -1082,20 +1085,27 @@ function inputFieldTrigger() {
         }, 300);
       }
 
-      // Handle paste events
+      // Replace the existing paste event listener
       inputField.addEventListener("paste", function (e) {
         isPasting = true;
+        isSlashKeyboardInput = false; // Prevent dropdown on pasted "/"
         setTimeout(() => {
           isPasting = false;
+          const text = getInputText(inputField);
+          if (text.includes("/") && !isSlashKeyboardInput) {
+            isDropdownTriggered = false;
+            hideDropdown();
+          }
         }, 100);
       });
 
       // Handle input events for dynamic search and dropdown control
       inputField.addEventListener("input", function (e) {
         const text = getInputText(inputField);
-        const slashIndex = text.indexOf("/");
+        const slashIndex = text.lastIndexOf("/");
 
-        if (slashIndex !== -1 && !isPasting) {
+        if (slashIndex !== -1 && isSlashKeyboardInput && !isPasting) {
+          isDropdownTriggered = true;
           const query = text
             .slice(slashIndex + 1)
             .trim()
@@ -1110,6 +1120,8 @@ function inputFieldTrigger() {
             showDropdown(query);
           }
         } else if (!text.includes("/") && !dropdown.dataset.openedByButton) {
+          isDropdownTriggered = false;
+          isSlashKeyboardInput = false;
           hideDropdown();
           isEscaped = false;
         }
@@ -1117,9 +1129,30 @@ function inputFieldTrigger() {
 
       // Prevent Enter key from submitting when dropdown is open
       inputField.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" && dropdown.style.display === "flex") {
+        if (e.key === "/" && !isPasting) {
+          isSlashKeyboardInput = true; // Mark "/" as keyboard input
+        } else if (e.key === "Enter" && dropdown.style.display === "flex") {
           e.preventDefault();
           e.stopPropagation();
+        } else if (e.key === "Escape" && isDropdownTriggered) {
+          isDropdownTriggered = false;
+          isSlashKeyboardInput = false;
+          hideDropdown();
+          isEscaped = true;
+          inputField.focus();
+          e.preventDefault();
+        } else if (
+          (e.key === "Backspace" || e.key === "Delete") &&
+          isDropdownTriggered
+        ) {
+          setTimeout(() => {
+            const text = getInputText(inputField);
+            if (!text.includes("/")) {
+              isDropdownTriggered = false;
+              isSlashKeyboardInput = false;
+              hideDropdown();
+            }
+          }, 0);
         }
       });
 
