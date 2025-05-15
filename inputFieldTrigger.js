@@ -170,15 +170,6 @@ function inputFieldTrigger() {
       dropdown.style.transition = "opacity 0.3s ease, transform 0.3s ease";
       document.body.appendChild(dropdown);
 
-      const style = document.createElement("style");
-      style.textContent = `
-    .selected {
-        outline: 2px solid #007bff;
-        background-color: #e6f0ff;
-    }
-`;
-      document.head.appendChild(style);
-
       // Panels container for nav and content
       const panelsContainer = document.createElement("div");
       panelsContainer.style.display = "flex";
@@ -230,9 +221,7 @@ function inputFieldTrigger() {
       let currentFocusElement = null;
       let selectedCategoryOrFolder = null;
       let isPasting = false;
-      let dropdownClosedByEscape = false;
-      let selectedElement = null; // Tracks the currently selected dropdown item
-      let selectionPanel = "nav"; // Tracks whether selection is in 'nav' or 'content' panel
+      let isEscaped = false;
 
       // Function to update dropdown data from Chrome storage
       function updateDropdownData(callback) {
@@ -377,17 +366,6 @@ function inputFieldTrigger() {
         }
       }
 
-      function selectElement(element) {
-        if (selectedElement) {
-          selectedElement.classList.remove("selected");
-        }
-        selectedElement = element;
-        if (element) {
-          element.classList.add("selected");
-          element.scrollIntoView({ block: "nearest" });
-        }
-      }
-
       // Function to render content panel based on selected category/folder
       function renderContentPanel(categoryOrFolder) {
         contentPanel.innerHTML = "";
@@ -412,7 +390,7 @@ function inputFieldTrigger() {
           message.style.color = "#888";
           contentPanel.appendChild(message);
         } else {
-          const contentItems = items.map((itemText) => {
+          items.forEach((itemText) => {
             const contentItem = document.createElement("div");
             const title = itemText.includes(": ")
               ? itemText.split(": ")[1]
@@ -433,15 +411,16 @@ function inputFieldTrigger() {
             contentItem.style.borderRadius = "4px";
             contentItem.style.transition = "background-color 0.2s ease";
             contentItem.className = "dropdown-item";
+            contentItem.tabIndex = 0;
 
             contentItem.addEventListener("mouseover", () => {
-              if (selectedElement !== contentItem) {
+              if (!currentFocusElement || currentFocusElement !== contentItem) {
                 contentItem.style.backgroundColor = "#f8f8f8";
               }
             });
 
             contentItem.addEventListener("mouseout", () => {
-              if (selectedElement !== contentItem) {
+              if (!currentFocusElement || currentFocusElement !== contentItem) {
                 contentItem.style.backgroundColor = "white";
               }
             });
@@ -480,16 +459,12 @@ function inputFieldTrigger() {
               setInputText(inputField, newText);
               inputField.focus();
               setCursorToEnd(inputField);
-              hideDropdown();
+              dropdown.style.display = "none";
+              clearFocus();
             });
 
             contentPanel.appendChild(contentItem);
-            return contentItem;
           });
-
-          if (contentItems.length > 0 && selectionPanel === "content") {
-            selectElement(contentItems[0]);
-          }
         }
       }
 
@@ -498,9 +473,9 @@ function inputFieldTrigger() {
         navPanel.style.display = "block";
         contentPanel.style.width = "250px";
         navPanel.innerHTML = "";
-        selectionPanel = "nav";
+        clearFocus();
 
-        const navItems = Object.keys(categories).map((category) => {
+        Object.keys(categories).forEach((category) => {
           const navItem = document.createElement("div");
           navItem.textContent = category;
           navItem.style.padding = "10px";
@@ -509,15 +484,16 @@ function inputFieldTrigger() {
           navItem.style.transition =
             "background-color 0.2s ease, font-weight 0.2s ease";
           navItem.className = "nav-item";
+          navItem.tabIndex = 0;
 
           navItem.addEventListener("mouseover", () => {
-            if (selectedElement !== navItem) {
+            if (!currentFocusElement || currentFocusElement !== navItem) {
               navItem.style.backgroundColor = "#f0f0f0";
             }
           });
 
           navItem.addEventListener("mouseout", () => {
-            if (selectedElement !== navItem) {
+            if (!currentFocusElement || currentFocusElement !== navItem) {
               navItem.style.backgroundColor = navItem.classList.contains(
                 "active"
               )
@@ -539,13 +515,8 @@ function inputFieldTrigger() {
             navItem.style.fontWeight = "bold";
             navItem.style.backgroundColor = "#e3e3e3";
             selectedCategoryOrFolder = category;
-            selectionPanel = "content";
             renderContentPanel(category);
-            const firstContentItem =
-              contentPanel.querySelector(".dropdown-item");
-            if (firstContentItem) {
-              selectElement(firstContentItem);
-            }
+            setFocus(navItem);
           });
 
           navPanel.appendChild(navItem);
@@ -565,15 +536,22 @@ function inputFieldTrigger() {
                 folderItem.style.transition =
                   "background-color 0.2s ease, font-weight 0.2s ease";
                 folderItem.className = "folder-item";
+                folderItem.tabIndex = 0;
 
                 folderItem.addEventListener("mouseover", () => {
-                  if (selectedElement !== folderItem) {
+                  if (
+                    !currentFocusElement ||
+                    currentFocusElement !== folderItem
+                  ) {
                     folderItem.style.backgroundColor = "#f0f0f0";
                   }
                 });
 
                 folderItem.addEventListener("mouseout", () => {
-                  if (selectedElement !== folderItem) {
+                  if (
+                    !currentFocusElement ||
+                    currentFocusElement !== folderItem
+                  ) {
                     folderItem.style.backgroundColor =
                       folderItem.classList.contains("active")
                         ? "#e3e3e3"
@@ -594,24 +572,19 @@ function inputFieldTrigger() {
                   folderItem.style.fontWeight = "bold";
                   folderItem.style.backgroundColor = "#e3e3e3";
                   selectedCategoryOrFolder = folder;
-                  selectionPanel = "content";
                   renderContentPanel(folder);
-                  const firstContentItem =
-                    contentPanel.querySelector(".dropdown-item");
-                  if (firstContentItem) {
-                    selectElement(firstContentItem);
-                  }
+                  setFocus(folderItem);
                 });
 
                 folderContainer.appendChild(folderItem);
               });
             navPanel.appendChild(folderContainer);
           }
-          return navItem;
         });
 
-        if (navItems.length > 0) {
-          navItems[0].click();
+        const firstNavItem = navPanel.querySelector(".nav-item");
+        if (firstNavItem) {
+          firstNavItem.click();
         }
       }
 
@@ -620,7 +593,7 @@ function inputFieldTrigger() {
         navPanel.style.display = "none";
         contentPanel.style.width = "100%";
         contentPanel.innerHTML = "";
-        selectionPanel = "content";
+        clearFocus();
 
         const allPrompts = [];
         promptSourceMap.forEach((source, key) => {
@@ -645,7 +618,7 @@ function inputFieldTrigger() {
           noResults.style.color = "#888";
           contentPanel.appendChild(noResults);
         } else {
-          const contentItems = scoredPrompts.map(({ title, source }) => {
+          scoredPrompts.forEach(({ title, source }) => {
             const contentItem = document.createElement("div");
             const displayText = source.folder
               ? `${title} (in ${source.folder})`
@@ -656,15 +629,16 @@ function inputFieldTrigger() {
             contentItem.style.borderRadius = "4px";
             contentItem.style.transition = "background-color 0.2s ease";
             contentItem.className = "dropdown-item";
+            contentItem.tabIndex = 0;
 
             contentItem.addEventListener("mouseover", () => {
-              if (selectedElement !== contentItem) {
+              if (!currentFocusElement || currentFocusElement !== contentItem) {
                 contentItem.style.backgroundColor = "#f8f8f8";
               }
             });
 
             contentItem.addEventListener("mouseout", () => {
-              if (selectedElement !== contentItem) {
+              if (!currentFocusElement || currentFocusElement !== contentItem) {
                 contentItem.style.backgroundColor = "white";
               }
             });
@@ -701,17 +675,20 @@ function inputFieldTrigger() {
               setInputText(inputField, newText);
               inputField.focus();
               setCursorToEnd(inputField);
-              hideDropdown();
+              dropdown.style.display = "none";
+              clearFocus();
             });
 
             contentPanel.appendChild(contentItem);
-            return contentItem;
           });
-
-          if (contentItems.length > 0) {
-            selectElement(contentItems[0]);
-          }
         }
+
+        requestAnimationFrame(() => {
+          const firstResult = contentPanel.querySelector(".dropdown-item");
+          if (firstResult) {
+            setFocus(firstResult);
+          }
+        });
       }
 
       // Function to handle keyboard navigation
@@ -733,83 +710,148 @@ function inputFieldTrigger() {
           return;
         }
 
+        const navItems = Array.from(
+          navPanel.querySelectorAll(".nav-item, .folder-item")
+        );
+        const contentItems = Array.from(
+          contentPanel.querySelectorAll(".dropdown-item")
+        );
+
         if (e.key === "ArrowDown") {
-          if (selectionPanel === "nav") {
-            const navItems = Array.from(
-              navPanel.querySelectorAll(".nav-item, .folder-item")
-            );
-            let currentIndex = selectedElement
-              ? navItems.indexOf(selectedElement)
-              : -1;
-            if (currentIndex < navItems.length - 1) {
-              const nextItem = navItems[currentIndex + 1];
-              selectElement(nextItem);
-              nextItem.click();
+          if (currentFocusElement) {
+            const items =
+              currentFocusElement.classList.contains("nav-item") ||
+              currentFocusElement.classList.contains("folder-item")
+                ? navItems
+                : contentItems;
+            const currentIndex = items.indexOf(currentFocusElement);
+            if (currentIndex < items.length - 1) {
+              const nextItem = items[currentIndex + 1];
+              setFocus(nextItem);
+              if (
+                nextItem.classList.contains("nav-item") ||
+                nextItem.classList.contains("folder-item")
+              ) {
+                document
+                  .querySelectorAll(".nav-item, .folder-item")
+                  .forEach((item) => {
+                    item.classList.remove("active");
+                    item.style.fontWeight = "normal";
+                    item.style.backgroundColor = "transparent";
+                  });
+                nextItem.classList.add("active");
+                nextItem.style.fontWeight = "bold";
+                nextItem.style.backgroundColor = "#e3e3e3";
+                selectedCategoryOrFolder = nextItem.textContent;
+                renderContentPanel(nextItem.textContent);
+              }
             }
-          } else if (selectionPanel === "content") {
-            const contentItems = Array.from(
-              contentPanel.querySelectorAll(".dropdown-item")
-            );
-            let currentIndex = selectedElement
-              ? contentItems.indexOf(selectedElement)
-              : -1;
-            if (currentIndex < contentItems.length - 1) {
-              selectElement(contentItems[currentIndex + 1]);
-            }
+          } else if (navItems.length > 0) {
+            setFocus(navItems[0]);
+            document
+              .querySelectorAll(".nav-item, .folder-item")
+              .forEach((item) => {
+                item.classList.remove("active");
+                item.style.fontWeight = "normal";
+                item.style.backgroundColor = "transparent";
+              });
+            navItems[0].classList.add("active");
+            navItems[0].style.fontWeight = "bold";
+            navItems[0].style.backgroundColor = "#e3e3e3";
+            selectedCategoryOrFolder = navItems[0].textContent;
+            renderContentPanel(navItems[0].textContent);
           }
         } else if (e.key === "ArrowUp") {
-          if (selectionPanel === "nav") {
-            const navItems = Array.from(
-              navPanel.querySelectorAll(".nav-item, .folder-item")
-            );
-            let currentIndex = selectedElement
-              ? navItems.indexOf(selectedElement)
-              : 0;
+          if (currentFocusElement) {
+            const items =
+              currentFocusElement.classList.contains("nav-item") ||
+              currentFocusElement.classList.contains("folder-item")
+                ? navItems
+                : contentItems;
+            const currentIndex = items.indexOf(currentFocusElement);
             if (currentIndex > 0) {
-              const prevItem = navItems[currentIndex - 1];
-              selectElement(prevItem);
-              prevItem.click();
+              const prevItem = items[currentIndex - 1];
+              setFocus(prevItem);
+              if (
+                prevItem.classList.contains("nav-item") ||
+                prevItem.classList.contains("folder-item")
+              ) {
+                document
+                  .querySelectorAll(".nav-item, .folder-item")
+                  .forEach((item) => {
+                    item.classList.remove("active");
+                    item.style.fontWeight = "normal";
+                    item.style.backgroundColor = "transparent";
+                  });
+                prevItem.classList.add("active");
+                prevItem.style.fontWeight = "bold";
+                prevItem.style.backgroundColor = "#e3e3e3";
+                selectedCategoryOrFolder = prevItem.textContent;
+                renderContentPanel(prevItem.textContent);
+              }
             }
-          } else if (selectionPanel === "content") {
-            const contentItems = Array.from(
-              contentPanel.querySelectorAll(".dropdown-item")
-            );
-            let currentIndex = selectedElement
-              ? contentItems.indexOf(selectedElement)
-              : 0;
-            if (currentIndex > 0) {
-              selectElement(contentItems[currentIndex - 1]);
-            }
+          } else if (navItems.length > 0) {
+            setFocus(navItems[0]);
+            document
+              .querySelectorAll(".nav-item, .folder-item")
+              .forEach((item) => {
+                item.classList.remove("active");
+                item.style.fontWeight = "normal";
+                item.style.backgroundColor = "transparent";
+              });
+            navItems[0].classList.add("active");
+            navItems[0].style.fontWeight = "bold";
+            navItems[0].style.backgroundColor = "#e3e3e3";
+            selectedCategoryOrFolder = navItems[0].textContent;
+            renderContentPanel(navItems[0].textContent);
           }
         } else if (e.key === "ArrowRight") {
-          if (selectionPanel === "nav") {
-            selectionPanel = "content";
+          if (
+            currentFocusElement &&
+            (currentFocusElement.classList.contains("nav-item") ||
+              currentFocusElement.classList.contains("folder-item"))
+          ) {
             const firstContentItem =
               contentPanel.querySelector(".dropdown-item");
             if (firstContentItem) {
-              selectElement(firstContentItem);
+              setFocus(firstContentItem);
             }
           }
         } else if (e.key === "ArrowLeft") {
-          if (selectionPanel === "content") {
-            selectionPanel = "nav";
+          if (
+            currentFocusElement &&
+            currentFocusElement.classList.contains("dropdown-item")
+          ) {
             const activeNavItem = navPanel.querySelector(
               ".nav-item.active, .folder-item.active"
             );
             if (activeNavItem) {
-              selectElement(activeNavItem);
+              setFocus(activeNavItem);
+            } else if (navItems.length > 0) {
+              setFocus(navItems[0]);
+              document
+                .querySelectorAll(".nav-item, .folder-item")
+                .forEach((item) => {
+                  item.classList.remove("active");
+                  item.style.fontWeight = "normal";
+                  item.style.backgroundColor = "transparent";
+                });
+              navItems[0].classList.add("active");
+              navItems[0].style.fontWeight = "bold";
+              navItems[0].style.backgroundColor = "#e3e3e3";
+              selectedCategoryOrFolder = navItems[0].textContent;
+              renderContentPanel(navItems[0].textContent);
             }
           }
         } else if (e.key === "Enter") {
-          if (
-            selectedElement &&
-            selectedElement.classList.contains("dropdown-item")
-          ) {
-            selectedElement.click();
+          if (currentFocusElement) {
+            if (currentFocusElement.classList.contains("dropdown-item")) {
+              currentFocusElement.click();
+            }
           }
         } else if (e.key === "Escape") {
           hideDropdown();
-          dropdownClosedByEscape = true;
+          isEscaped = true;
           inputField.focus();
         }
       }
@@ -885,10 +927,19 @@ function inputFieldTrigger() {
           dropdown.style.transform = "translateY(0)";
           if (query) {
             renderSearchResults(query);
+            const firstResult = contentPanel.querySelector(".dropdown-item");
+            if (firstResult) {
+              firstResult.focus();
+              setFocus(firstResult);
+            }
           } else {
             renderCategoryNavigation();
+            const firstNavItem = navPanel.querySelector(".nav-item");
+            if (firstNavItem) {
+              firstNavItem.focus();
+              setFocus(firstNavItem);
+            }
           }
-          inputField.focus(); // Ensure focus stays on input field
         });
       }
 
@@ -898,8 +949,8 @@ function inputFieldTrigger() {
         dropdown.style.transform = "translateY(10px)";
         setTimeout(() => {
           dropdown.style.display = "none";
-          selectElement(null);
-          selectionPanel = "nav";
+          clearFocus();
+          selectedCategoryOrFolder = null;
         }, 300);
       }
 
@@ -914,53 +965,33 @@ function inputFieldTrigger() {
       // Handle input events for dynamic search and dropdown control
       inputField.addEventListener("input", function (e) {
         const text = getInputText(inputField);
-        const slashIndex = text.lastIndexOf("/");
+        const slashIndex = text.indexOf("/");
 
-        if (slashIndex !== -1 && !isPasting && !dropdownClosedByEscape) {
+        if (slashIndex !== -1 && !isPasting) {
           const query = text
             .slice(slashIndex + 1)
             .trim()
             .toLowerCase();
-          showDropdown(query);
-        } else if (
-          slashIndex === -1 &&
-          !dropdown.dataset.openedByButton &&
-          dropdown.style.display === "flex"
-        ) {
+          if (isEscaped && text.lastIndexOf("/") === slashIndex) {
+            if (!query) {
+              isEscaped = false;
+              showDropdown(query);
+            }
+          } else {
+            isEscaped = false;
+            showDropdown(query);
+          }
+        } else if (!text.includes("/") && !dropdown.dataset.openedByButton) {
           hideDropdown();
-          dropdownClosedByEscape = false;
+          isEscaped = false;
         }
       });
 
       // Prevent Enter key from submitting when dropdown is open
       inputField.addEventListener("keydown", function (e) {
-        if (e.key === "Backspace" || e.key === "Delete") {
-          const text = getInputText(inputField);
-          const slashIndex = text.lastIndexOf("/");
-          if (slashIndex !== -1) {
-            const query = text.slice(slashIndex + 1).trim();
-            if (!query && dropdown.style.display === "flex") {
-              // If only "/" remains, allow deletion and close dropdown
-              hideDropdown();
-              dropdownClosedByEscape = false;
-            } else if (query) {
-              // Update dropdown with new query after deletion
-              setTimeout(() => {
-                const newText = getInputText(inputField);
-                const newSlashIndex = newText.lastIndexOf("/");
-                if (newSlashIndex !== -1) {
-                  const newQuery = newText
-                    .slice(newSlashIndex + 1)
-                    .trim()
-                    .toLowerCase();
-                  showDropdown(newQuery);
-                } else {
-                  hideDropdown();
-                  dropdownClosedByEscape = false;
-                }
-              }, 0);
-            }
-          }
+        if (e.key === "Enter" && dropdown.style.display === "flex") {
+          e.preventDefault();
+          e.stopPropagation();
         }
       });
 
