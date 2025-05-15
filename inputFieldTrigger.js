@@ -702,6 +702,7 @@ function inputFieldTrigger() {
           "ArrowRight",
           "Enter",
           "Escape",
+          "Backspace",
         ];
         if (navigationKeys.includes(e.key)) {
           e.preventDefault();
@@ -853,6 +854,133 @@ function inputFieldTrigger() {
           hideDropdown();
           isEscaped = true;
           inputField.focus();
+        } else if (e.key === "Backspace") {
+          const currentText = getInputText(inputField);
+          const slashIndex = currentText.lastIndexOf("/");
+          if (slashIndex !== -1) {
+            const textBeforeSlash = currentText.substring(0, slashIndex);
+            const query = currentText.substring(slashIndex + 1);
+            let cursorPos;
+
+            // Get cursor position
+            if (
+              inputField.tagName === "TEXTAREA" ||
+              inputField.tagName === "INPUT"
+            ) {
+              cursorPos = inputField.selectionStart;
+            } else if (inputField.isContentEditable) {
+              const selection = window.getSelection();
+              if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const preCaretRange = range.cloneRange();
+                preCaretRange.selectNodeContents(inputField);
+                preCaretRange.setEnd(range.endContainer, range.endOffset);
+                cursorPos = preCaretRange.toString().length;
+              } else {
+                cursorPos = currentText.length;
+              }
+            } else {
+              cursorPos = currentText.length;
+            }
+
+            // Only proceed if cursor is in the query part (after slash)
+            if (cursorPos > slashIndex + 1) {
+              const queryIndex = cursorPos - (slashIndex + 1);
+              let newQuery;
+              if (queryIndex > 0 && queryIndex <= query.length) {
+                // Remove the character before the cursor
+                newQuery =
+                  query.substring(0, queryIndex - 1) +
+                  query.substring(queryIndex);
+              } else {
+                // If cursor is at the end or beyond, remove the last character
+                newQuery = query.slice(0, -1);
+              }
+              const newText = textBeforeSlash + "/" + newQuery;
+              setInputText(inputField, newText);
+
+              // Restore cursor position
+              if (
+                inputField.tagName === "TEXTAREA" ||
+                inputField.tagName === "INPUT"
+              ) {
+                inputField.selectionStart = inputField.selectionEnd =
+                  cursorPos - 1;
+              } else if (inputField.isContentEditable) {
+                inputField.focus();
+                const selection = window.getSelection();
+                const range = document.createRange();
+                let charCount = 0;
+                let found = false;
+
+                function traverseNodes(node) {
+                  if (found) return;
+                  if (node.nodeType === 3) {
+                    // Text node
+                    if (charCount + node.length >= cursorPos - 1) {
+                      range.setStart(node, cursorPos - 1 - charCount);
+                      range.setEnd(node, cursorPos - 1 - charCount);
+                      found = true;
+                    }
+                    charCount += node.length;
+                  } else {
+                    for (let i = 0; i < node.childNodes.length; i++) {
+                      traverseNodes(node.childNodes[i]);
+                    }
+                  }
+                }
+
+                traverseNodes(inputField);
+                selection.removeAllRanges();
+                selection.addRange(range);
+              }
+
+              inputField.focus();
+
+              // Update dropdown based on the new query
+              const newQueryTrimmed = newQuery.trim();
+              if (newQueryTrimmed) {
+                renderSearchResults(newQueryTrimmed);
+                const firstResult =
+                  contentPanel.querySelector(".dropdown-item");
+                if (firstResult) {
+                  setFocus(firstResult);
+                }
+              } else {
+                renderCategoryNavigation();
+                const firstNavItem = navPanel.querySelector(".nav-item");
+                if (firstNavItem) {
+                  setFocus(firstNavItem);
+                  firstNavItem.classList.add("active");
+                  firstNavItem.style.fontWeight = "bold";
+                  firstNavItem.style.backgroundColor = "#e3e3e3";
+                  selectedCategoryOrFolder = firstNavItem.textContent;
+                  renderContentPanel(firstNavItem.textContent);
+                }
+              }
+            } else if (cursorPos === slashIndex + 1 && query.length === 0) {
+              // Cursor is right after the slash, keep the slash
+              setInputText(inputField, textBeforeSlash + "/");
+              inputField.focus();
+              if (
+                inputField.tagName === "TEXTAREA" ||
+                inputField.tagName === "INPUT"
+              ) {
+                inputField.selectionStart = inputField.selectionEnd =
+                  slashIndex + 1;
+              }
+              renderCategoryNavigation();
+              const firstNavItem = navPanel.querySelector(".nav-item");
+              if (firstNavItem) {
+                setFocus(firstNavItem);
+                firstNavItem.classList.add("active");
+                firstNavItem.style.fontWeight = "bold";
+                firstNavItem.style.backgroundColor = "#e3e3e3";
+                selectedCategoryOrFolder = firstNavItem.textContent;
+                renderContentPanel(firstNavItem.textContent);
+              }
+            }
+          }
         }
       }
 
