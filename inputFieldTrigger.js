@@ -706,6 +706,7 @@ function inputFieldTrigger() {
           "Enter",
           "Escape",
           "Backspace",
+          "Delete",
         ];
         if (navigationKeys.includes(e.key)) {
           e.preventDefault();
@@ -864,126 +865,101 @@ function inputFieldTrigger() {
         } else if (e.key === "Backspace") {
           const currentText = getInputText(inputField);
           const slashIndex = currentText.lastIndexOf("/");
-          if (slashIndex !== -1) {
-            const textBeforeSlash = currentText.substring(0, slashIndex);
-            const query = currentText.substring(slashIndex + 1);
-            let cursorPos;
 
-            if (
-              inputField.tagName === "TEXTAREA" ||
-              inputField.tagName === "INPUT"
-            ) {
-              cursorPos = inputField.selectionStart;
-            } else if (inputField.isContentEditable) {
-              const selection = window.getSelection();
-              if (selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                const preCaretRange = range.cloneRange();
-                preCaretRange.selectNodeContents(inputField);
-                preCaretRange.setEnd(range.endContainer, range.endOffset);
-                cursorPos = preCaretRange.toString().length;
-              } else {
-                cursorPos = currentText.length;
-              }
-            } else {
-              cursorPos = currentText.length;
-            }
+          if (slashIndex !== -1) {
+            let cursorPos = getCursorPosition(inputField);
 
             if (cursorPos > slashIndex + 1) {
-              const queryIndex = cursorPos - (slashIndex + 1);
-              let newQuery;
-              if (queryIndex > 0 && queryIndex <= query.length) {
-                newQuery =
-                  query.substring(0, queryIndex - 1) +
-                  query.substring(queryIndex);
-              } else {
-                newQuery = query.slice(0, -1);
-              }
-              const newText = textBeforeSlash + "/" + newQuery;
+              const queryStart = slashIndex + 1;
+              const queryIndex = cursorPos - queryStart;
+              const query = currentText.substring(queryStart);
+              const newQuery =
+                query.substring(0, queryIndex - 1) +
+                query.substring(queryIndex);
+              const newText =
+                currentText.substring(0, slashIndex + 1) + newQuery;
+
               setInputText(inputField, newText);
-
-              if (
-                inputField.tagName === "TEXTAREA" ||
-                inputField.tagName === "INPUT"
-              ) {
-                inputField.selectionStart = inputField.selectionEnd =
-                  cursorPos - 1;
-              } else if (inputField.isContentEditable) {
-                inputField.focus();
-                const selection = window.getSelection();
-                const range = document.createRange();
-                let charCount = 0;
-                let found = false;
-
-                function traverseNodes(node) {
-                  if (found) return;
-                  if (node.nodeType === 3) {
-                    if (charCount + node.length >= cursorPos - 1) {
-                      range.setStart(node, cursorPos - 1 - charCount);
-                      range.setEnd(node, cursorPos - 1 - charCount);
-                      found = true;
-                    }
-                    charCount += node.length;
-                  } else {
-                    for (let i = 0; i < node.childNodes.length; i++) {
-                      traverseNodes(node.childNodes[i]);
-                    }
-                  }
-                }
-
-                traverseNodes(inputField);
-                selection.removeAllRanges();
-                selection.addRange(range);
-              }
-
-              inputField.focus();
-
-              const newQueryTrimmed = newQuery.trim();
-              if (newQueryTrimmed) {
-                renderSearchResults(newQueryTrimmed);
-                const firstResult =
-                  contentPanel.querySelector(".dropdown-item");
-                if (firstResult) {
-                  setFocus(firstResult);
-                }
-              } else {
-                renderCategoryNavigation();
-                const firstNavItem = navPanel.querySelector(".nav-item");
-                if (firstNavItem) {
-                  setFocus(firstNavItem);
-                  firstNavItem.classList.add("active");
-                  firstNavItem.style.fontWeight = "bold";
-                  firstNavItem.style.backgroundColor = "#e3e3e3";
-                  selectedCategoryOrFolder = firstNavItem.textContent;
-                  renderContentPanel(firstNavItem.textContent);
-                }
-              }
-            } else if (cursorPos === slashIndex + 1 && query.length === 0) {
-              setInputText(inputField, textBeforeSlash + "/");
-              inputField.focus();
-              if (
-                inputField.tagName === "TEXTAREA" ||
-                inputField.tagName === "INPUT"
-              ) {
-                inputField.selectionStart = inputField.selectionEnd =
-                  slashIndex + 1;
-              }
-              renderCategoryNavigation();
-              const firstNavItem = navPanel.querySelector(".nav-item");
-              if (firstNavItem) {
-                setFocus(firstNavItem);
-                firstNavItem.classList.add("active");
-                firstNavItem.style.fontWeight = "bold";
-                firstNavItem.style.backgroundColor = "#e3e3e3";
-                selectedCategoryOrFolder = firstNavItem.textContent;
-                renderContentPanel(firstNavItem.textContent);
-              }
-            } else if (cursorPos <= slashIndex + 1) {
-              isDropdownTriggered = false;
-              isSlashKeyboardInput = false;
-              hideDropdown();
+              const newCursorPos = cursorPos - 1; // Cursor wird korrekt nach links verschoben
+              setCursorPosition(inputField, newCursorPos);
+            } else {
+              // Cursor direkt nach dem Slash oder davor: nichts löschen, Cursor bleibt
+              setCursorPosition(inputField, slashIndex + 1);
             }
           }
+        } else if (e.key === "Delete") {
+          const currentText = getInputText(inputField);
+          const slashIndex = currentText.lastIndexOf("/");
+
+          if (slashIndex !== -1) {
+            let cursorPos = getCursorPosition(inputField);
+            const queryStart = slashIndex + 1;
+            const query = currentText.substring(queryStart);
+
+            if (cursorPos >= queryStart && cursorPos < currentText.length) {
+              const queryIndex = cursorPos - queryStart;
+              const newQuery =
+                query.substring(0, queryIndex) +
+                query.substring(queryIndex + 1);
+              const newText =
+                currentText.substring(0, slashIndex + 1) + newQuery;
+
+              setInputText(inputField, newText);
+              setCursorPosition(inputField, cursorPos); // Cursor bleibt an der gleichen Position
+            }
+          }
+        }
+      }
+
+      function getCursorPosition(el) {
+        if (el.selectionStart !== undefined) return el.selectionStart;
+
+        if (el.isContentEditable) {
+          const selection = window.getSelection();
+          if (!selection.rangeCount) return 0;
+
+          const range = selection.getRangeAt(0);
+          const preCaretRange = range.cloneRange();
+          preCaretRange.selectNodeContents(el);
+          preCaretRange.setEnd(range.endContainer, range.endOffset);
+          return preCaretRange.toString().length;
+        }
+        return 0;
+      }
+
+      function setCursorPosition(el, pos) {
+        if (el.selectionStart !== undefined) {
+          el.selectionStart = el.selectionEnd = pos;
+          el.focus();
+          return;
+        }
+
+        if (el.isContentEditable) {
+          el.focus();
+          const range = document.createRange();
+          const sel = window.getSelection();
+          let charCount = 0;
+          let found = false;
+
+          function traverse(node) {
+            if (found) return;
+            if (node.nodeType === 3) {
+              if (charCount + node.length >= pos) {
+                range.setStart(node, pos - charCount);
+                range.setEnd(node, pos - charCount);
+                found = true;
+              }
+              charCount += node.length;
+            } else {
+              for (let i = 0; i < node.childNodes.length; i++) {
+                traverse(node.childNodes[i]);
+              }
+            }
+          }
+
+          traverse(el);
+          sel.removeAllRanges();
+          sel.addRange(range);
         }
       }
 
@@ -1174,27 +1150,64 @@ function inputFieldTrigger() {
       });
 
       /* Plus Button */
-      const selectors = [
-        "[data-testid='composer-trailing-actions']", // ChatGPT
-        "div.bg-background:nth-child(3)", // Perplexity
-        ".ChatInput-module__trailingActions--q2BNB", // GitHub Copilot
-        ".ml-auto.flex.flex-row.items-end.gap-1", // Grok
-        ".trailing-actions-wrapper", // Gemini
-        ".fTx8kArcxKUd9ZBMcuCc", // Duckai
-        ".ms-auto.flex.gap-2", // Mistral
-        ".flex.gap-2\\.5.w-full.items-center", // Claude
-        ".bf38813a", // DeepSeek
-        ".flex.gap-2", // Microsoft Copilot
-        ".absolute.right-2.top-4.flex.items-end", // Blackbox
-        ".button-container", // Deepai
-        ".flex.items-end.max-w-10.absolute.right-3", // Qwen
+      const selectorMap = [
+        {
+          url: "https://chatgpt.com",
+          selector: "[data-testid='composer-trailing-actions']",
+        }, // ChatGPT
+        {
+          url: "https://www.perplexity.ai",
+          selector: "div.bg-background:nth-child(3)",
+        }, // Perplexity
+        {
+          url: "https://github.com",
+          selector: ".ChatInput-module__trailingActions--q2BNB",
+        }, // GitHub Copilot
+        {
+          url: "https://grok.com",
+          selector: ".ml-auto.flex.flex-row.items-end.gap-1",
+        }, // Grok
+        {
+          url: "https://gemini.google.com",
+          selector: ".trailing-actions-wrapper",
+        }, // Gemini
+        { url: "https://duck.ai", selector: ".fTx8kArcxKUd9ZBMcuCc" }, // Duckai
+        { url: "https://chat.mistral.ai", selector: ".ms-auto.flex.gap-2" }, // Mistral
+        {
+          url: "https://claude.ai",
+          selector: ".flex.gap-2\\.5.w-full.items-center",
+        }, // Claude
+        { url: "https://www.deepseek.com", selector: ".bf38813a" }, // DeepSeek
+        { url: "https://copilot.microsoft.com", selector: ".flex.gap-2" }, // Microsoft Copilot
+        {
+          url: "https://blackbox.ai",
+          selector:
+            ".flex.items-center.gap-2.overflow-hidden.whitespace-nowrap",
+        }, // Blackbox
+        { url: "https://deepai.org", selector: ".button-container" }, // Deepai
+        {
+          url: "https://qwen.alibaba.com",
+          selector: ".flex.items-end.max-w-10.absolute.right-3",
+        }, // Qwen
       ];
 
       let container = null;
-      for (const selector of selectors) {
-        container = document.querySelector(selector);
-        if (container) break;
-        console.warn(`Container not found using selector: '${selector}'`);
+      const currentUrl = window.location.href;
+
+      // Finde den passenden Selektor basierend auf der URL
+      const matchedSite = selectorMap.find((site) =>
+        currentUrl.startsWith(site.url)
+      );
+
+      if (matchedSite) {
+        container = document.querySelector(matchedSite.selector);
+        if (!container) {
+          console.warn(
+            `Container not found using selector: '${matchedSite.selector}' for URL: '${currentUrl}'`
+          );
+        }
+      } else {
+        console.warn(`No selector mapping found for URL: '${currentUrl}'`);
       }
 
       if (!container) {
@@ -1207,59 +1220,59 @@ function inputFieldTrigger() {
 
         // Add styles + button inside shadow DOM
         shadowRoot.innerHTML = `
-          <style>
-            .plus-button {
-              width: 40px;
-              height: 40px;
-              border-radius: 50%;
-              background-color: white;
-              color: black;
-              border: none;
-              cursor: pointer;
-              font-weight: bold;
-              font-size: 24px;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-              transition: box-shadow 0.3s ease, transform 0.2s ease;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              position: relative;
-            }
-      
-            .plus-button:hover {
-              background-color: black;
-              color: white;
-              box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            }
-      
-            .tooltip {
-              position: fixed;
-              background-color: black;
-              color: white;
-              padding: 8px 12px;
-              border-radius: 4px;
-              font-size: 14px;
-              white-space: nowrap;
-              z-index: 10000;
-              opacity: 0;
-              pointer-events: none;
-              transition: opacity 0.2s ease;
-            }
-      
-            .tooltip::after {
-              content: '';
-              position: absolute;
-              bottom: -6px;
-              left: 50%;
-              transform: translateX(-50%);
-              border-left: 6px solid transparent;
-              border-right: 6px solid transparent;
-              border-top: 6px solid black;
-            }
-          </style>
-          <button class="plus-button">+</button>
-          <div class="tooltip">Open the PromptIn Management Menu</div>
-        `;
+    <style>
+      .plus-button {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: white;
+        color: black;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 24px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: box-shadow 0.3s ease, transform 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .plus-button:hover {
+        background-color: black;
+        color: white;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      }
+
+      .tooltip {
+        position: fixed;
+        background-color: black;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        white-space: nowrap;
+        z-index: 10000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+
+      .tooltip::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid black;
+      }
+    </style>
+    <button class="plus-button">+</button>
+    <div class="tooltip">Open the PromptIn Management Menu</div>
+  `;
 
         const button = shadowRoot.querySelector(".plus-button");
         const tooltip = shadowRoot.querySelector(".tooltip");

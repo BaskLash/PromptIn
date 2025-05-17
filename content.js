@@ -476,6 +476,88 @@ async function promptSaver(message) {
   addContent.appendChild(addFolderLabel);
   addContent.appendChild(addFolderSelect);
 
+  const newFolderSection = document.createElement("div");
+  newFolderSection.className = "new-folder-section";
+  newFolderSection.style.marginTop = "10px";
+
+  const newFolderLabel = document.createElement("label");
+  newFolderLabel.setAttribute("for", "newFolderName");
+  newFolderLabel.textContent = "Or create a new folder:";
+  newFolderLabel.style.marginBottom = "6px";
+
+  const newFolderInput = document.createElement("input");
+  newFolderInput.type = "text";
+  newFolderInput.id = "newFolderName";
+  newFolderInput.name = "newFolderName";
+  newFolderInput.placeholder = "Enter new folder name";
+  newFolderInput.style.marginBottom = "10px";
+
+  const createFolderButton = document.createElement("button");
+  createFolderButton.textContent = "Create Folder";
+  createFolderButton.className = "create-folder-button";
+  createFolderButton.style.padding = "8px 16px";
+  createFolderButton.style.background = "#1e90ff";
+  createFolderButton.style.color = "white";
+  createFolderButton.style.border = "none";
+  createFolderButton.style.borderRadius = "4px";
+  createFolderButton.style.cursor = "pointer";
+  createFolderButton.style.fontWeight = "600";
+  createFolderButton.style.transition = "background 0.2s ease";
+  createFolderButton.addEventListener("mouseover", () => {
+    createFolderButton.style.background = "#4169e1";
+  });
+  createFolderButton.addEventListener("mouseout", () => {
+    createFolderButton.style.background = "#1e90ff";
+  });
+
+  newFolderSection.appendChild(newFolderLabel);
+  newFolderSection.appendChild(newFolderInput);
+  newFolderSection.appendChild(createFolderButton);
+  addContent.appendChild(newFolderSection);
+
+  createFolderButton.addEventListener("click", async () => {
+    const newFolderName = newFolderInput.value.trim();
+    if (!newFolderName) {
+      alert("Bitte gib einen Ordnernamen ein!");
+      return;
+    }
+
+    const newFolderId = `folder_${Date.now()}_${Math.floor(
+      Math.random() * 10000
+    )}`;
+    const newFolder = {
+      name: newFolderName,
+      prompts: [],
+      isHidden: false,
+      isTrash: false,
+    };
+
+    try {
+      await new Promise((resolve, reject) => {
+        chrome.storage.sync.set({ [newFolderId]: newFolder }, () => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            console.log("Neuer Ordner erstellt:", newFolder);
+            resolve();
+          }
+        });
+      });
+
+      // Ordnerauswahl aktualisieren
+      const option = document.createElement("option");
+      option.value = newFolderId;
+      option.textContent = newFolderName;
+      option.selected = true;
+      addFolderSelect.appendChild(option);
+      newFolderInput.value = ""; // Eingabefeld leeren
+      alert(`Ordner "${newFolderName}" erfolgreich erstellt!`);
+    } catch (error) {
+      console.error("Fehler beim Erstellen des Ordners:", error);
+      alert("Fehler beim Erstellen des Ordners.");
+    }
+  });
+
   const optionsButtons = document.createElement("div");
   optionsButtons.className = "button-group";
   const backToPromptButton = document.createElement("button");
@@ -563,6 +645,7 @@ async function promptSaver(message) {
       cursor: pointer;
       transition: all 0.2s ease;
       border-radius: 4px;
+      color: black;
     }
     .options-switch button:hover {
       background: #e9ecef;
@@ -577,6 +660,12 @@ async function promptSaver(message) {
     .option-content.active {
       display: block;
     }
+      .new-folder-section {
+  margin-top: 10px;
+}
+.create-folder-button:hover {
+  background: #4169e1 !important;
+}
     .modal-body label {
       font-weight: 600;
       margin-top: 16px;
@@ -1839,7 +1928,7 @@ async function promptSaver(message) {
           const folderId = addFolderSelect.value;
 
           if (!folderId) {
-            alert("Bitte wähle einen Ordner aus!");
+            alert("Bitte wähle einen Ordner aus oder erstelle einen neuen!");
             return;
           }
 
@@ -1853,7 +1942,12 @@ async function promptSaver(message) {
             });
           });
 
-          const topic = data[folderId] || { name: promptTitle, prompts: [] };
+          const topic = data[folderId] || {
+            name: promptTitle,
+            prompts: [],
+            isHidden: false,
+            isTrash: false,
+          };
           topic.prompts.push(promptObject);
 
           await new Promise((resolve, reject) => {
