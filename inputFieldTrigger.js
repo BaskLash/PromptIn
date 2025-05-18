@@ -1242,7 +1242,6 @@ function inputFieldTrigger() {
       .plus-button:hover {
         background-color: black;
         color: white;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
       }
 
       .tooltip {
@@ -1276,20 +1275,6 @@ function inputFieldTrigger() {
 
         const button = shadowRoot.querySelector(".plus-button");
         const tooltip = shadowRoot.querySelector(".tooltip");
-
-        // Tooltip behavior
-        const positionTooltip = () => {
-          const rect = shadowHost.getBoundingClientRect();
-          tooltip.style.left = `${rect.left + rect.width / 2}px`;
-          tooltip.style.top = `${rect.top - tooltip.offsetHeight - 10}px`;
-          tooltip.style.transform = "translateX(-50%)";
-        };
-
-        button.addEventListener("mouseover", () => {
-          document.body.appendChild(tooltip);
-          tooltip.style.opacity = "1";
-          positionTooltip();
-        });
 
         button.addEventListener("mouseout", () => {
           tooltip.style.opacity = "0";
