@@ -12,6 +12,9 @@ function inputFieldTrigger() {
         let input = document.getElementById("prompt-textarea");
         if (input) return input;
 
+        input = document.getElementById("copilot-chat-textarea");
+        if (input) return input;
+
         // Try common textarea
         input = document.querySelector(
           "textarea:not([readonly]):not([disabled])"
@@ -1148,7 +1151,15 @@ function inputFieldTrigger() {
           positionDropdown();
         }
       });
-
+      function positionTooltip() {
+        const buttonRect = button.getBoundingClientRect();
+        tooltip.style.left = `${
+          buttonRect.left + buttonRect.width / 2 + window.scrollX
+        }px`;
+        tooltip.style.top = `${buttonRect.top - 40 + window.scrollY}px`;
+        tooltip.style.transform = "translateX(-50%)";
+        tooltip.style.opacity = "1";
+      }
       /* Plus Button */
       const selectorMap = [
         {
@@ -1160,8 +1171,8 @@ function inputFieldTrigger() {
           selector: "div.bg-background:nth-child(3)",
         }, // Perplexity
         {
-          url: "https://github.com",
-          selector: ".ChatInput-module__trailingActions--q2BNB",
+          url: "https://github.com/copilot",
+          selector: ".ChatInput-module__toolbarRight--PiQJn",
         }, // GitHub Copilot
         {
           url: "https://grok.com",
@@ -1171,18 +1182,20 @@ function inputFieldTrigger() {
           url: "https://gemini.google.com",
           selector: ".trailing-actions-wrapper",
         }, // Gemini
-        { url: "https://duck.ai", selector: ".fTx8kArcxKUd9ZBMcuCc" }, // Duckai
+        {
+          url: "https://duckduckgo.com",
+          selector: ".VxPe9cw5s4CtJMWgwO3A.PzT4Zd7XtUNtxwg6HUlG",
+        }, // Duckai
         { url: "https://chat.mistral.ai", selector: ".ms-auto.flex.gap-2" }, // Mistral
         {
           url: "https://claude.ai",
           selector: ".flex.gap-2\\.5.w-full.items-center",
         }, // Claude
-        { url: "https://www.deepseek.com", selector: ".bf38813a" }, // DeepSeek
+        { url: "https://www.chat.deepseek.com", selector: ".bf38813a" }, // DeepSeek
         { url: "https://copilot.microsoft.com", selector: ".flex.gap-2" }, // Microsoft Copilot
         {
-          url: "https://blackbox.ai",
-          selector:
-            ".flex.items-center.gap-2.overflow-hidden.whitespace-nowrap",
+          url: "https://www.blackbox.ai",
+          selector: ".flex.items-center.justify-between.gap-4:nth-child(1)",
         }, // Blackbox
         { url: "https://deepai.org", selector: ".button-container" }, // Deepai
         {
@@ -1193,6 +1206,8 @@ function inputFieldTrigger() {
 
       let container = null;
       const currentUrl = window.location.href;
+
+      console.log(currentUrl)
 
       // Finde den passenden Selektor basierend auf der URL
       const matchedSite = selectorMap.find((site) =>
@@ -1323,6 +1338,217 @@ function inputFieldTrigger() {
 
         container.appendChild(shadowHost);
       }
+
+      // Periodic check for shortcut and plus button
+      setInterval(() => {
+        // Re-find input field in case DOM changes
+        const inputField = findInputField();
+        if (!inputField) {
+          console.warn("Input field not found during periodic check.");
+          return;
+        }
+
+        // Check and restore "/" shortcut functionality
+        let isSlashListenerActive = false;
+        const inputListeners = (inputField._eventListeners || []).input || [];
+        inputListeners.forEach((listener) => {
+          if (listener.toString().includes("isSlashKeyboardInput")) {
+            isSlashListenerActive = true;
+          }
+        });
+
+        if (!isSlashListenerActive) {
+          console.log("Restoring '/' shortcut listener...");
+          inputField.addEventListener("input", function (e) {
+            const text = getInputText(inputField);
+            const slashIndex = text.lastIndexOf("/");
+
+            if (slashIndex !== -1 && isSlashKeyboardInput && !isPasting) {
+              isDropdownTriggered = true;
+              const query = text
+                .slice(slashIndex + 1)
+                .trim()
+                .toLowerCase();
+              if (isEscaped && text.lastIndexOf("/") === slashIndex) {
+                if (!query) {
+                  isEscaped = false;
+                  showDropdown(query);
+                }
+              } else {
+                isEscaped = false;
+                showDropdown(query);
+              }
+            } else if (
+              !text.includes("/") &&
+              !dropdown.dataset.openedByButton
+            ) {
+              isDropdownTriggered = false;
+              isSlashKeyboardInput = false;
+              hideDropdown();
+              isEscaped = false;
+            }
+          });
+
+          inputField.addEventListener("keydown", function (e) {
+            if (e.key === "/" && !isPasting) {
+              isSlashKeyboardInput = true;
+            } else if (e.key === "Enter" && dropdown.style.display === "flex") {
+              e.preventDefault();
+              e.stopPropagation();
+            } else if (e.key === "Escape" && isDropdownTriggered) {
+              isDropdownTriggered = false;
+              isSlashKeyboardInput = false;
+              hideDropdown();
+              isEscaped = true;
+              inputField.focus();
+              e.preventDefault();
+            } else if (
+              (e.key === "Backspace" || e.key === "Delete") &&
+              isDropdownTriggered
+            ) {
+              setTimeout(() => {
+                const text = getInputText(inputField);
+                if (!text.includes("/")) {
+                  isDropdownTriggered = false;
+                  isSlashKeyboardInput = false;
+                  hideDropdown();
+                }
+              }, 0);
+            }
+          });
+        }
+
+        // Check and restore plus button
+        const matchedSite = selectorMap.find((site) =>
+          window.location.href.startsWith(site.url)
+        );
+        if (!matchedSite) {
+          console.warn(
+            "No selector mapping found for current URL during periodic check."
+          );
+          return;
+        }
+
+        let container = document.querySelector(matchedSite.selector);
+        if (!container) {
+          console.warn(
+            `Container not found using selector: '${matchedSite.selector}' during periodic check.`
+          );
+          return;
+        }
+
+        // Check for the shadowHost instead of the button to avoid duplicates
+        const existingShadowHost = container.querySelector(
+          "div[style='display: inline-block;']"
+        );
+        if (!existingShadowHost) {
+          console.log("Restoring plus button...");
+          const shadowHost = document.createElement("div");
+          shadowHost.style.display = "inline-block";
+          const shadowRoot = shadowHost.attachShadow({ mode: "closed" });
+
+          shadowRoot.innerHTML = `
+    <style>
+      .plus-button {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: white;
+        color: black;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 24px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: box-shadow 0.3s ease, transform 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .plus-button:hover {
+        background-color: black;
+        color: white;
+      }
+      .tooltip {
+        position: fixed;
+        background-color: black;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        white-space: nowrap;
+        z-index: 10000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+      .tooltip::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid black;
+      }
+    </style>
+    <button class="plus-button">+</button>
+    <div class="tooltip">Open the PromptIn Management Menu</div>
+  `;
+
+          const button = shadowRoot.querySelector(".plus-button");
+          const tooltip = shadowRoot.querySelector(".tooltip");
+
+          button.title = "Display the menu";
+          button.addEventListener("mouseout", () => {
+            tooltip.style.opacity = "0";
+            setTimeout(() => {
+              if (tooltip.parentNode === document.body) {
+                document.body.removeChild(tooltip);
+              }
+            }, 200);
+          });
+
+          window.addEventListener("scroll", () => {
+            if (tooltip.style.opacity === "1") positionTooltip();
+          });
+          window.addEventListener("resize", () => {
+            if (tooltip.style.opacity === "1") positionTooltip();
+          });
+
+          button.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (
+              typeof dropdown === "undefined" ||
+              typeof inputField === "undefined"
+            ) {
+              console.error("Dropdown or inputField not defined.");
+              return;
+            }
+            if (dropdown.style.display === "flex") {
+              hideDropdown();
+              delete dropdown.dataset.openedByButton;
+              dropdownClosedByUser = false;
+              tooltip.textContent = "Open the PromptIn Management Menu";
+            } else {
+              const currentText = getInputText(inputField);
+              if (!currentText.includes("/")) {
+                setInputText(inputField, currentText + "/");
+              }
+              inputField.focus();
+              setCursorToEnd(inputField);
+              showDropdown();
+              dropdown.dataset.openedByButton = "true";
+              dropdownClosedByUser = false;
+              tooltip.textContent = "Close the PromptIn Management Menu";
+            }
+          });
+
+          container.appendChild(shadowHost);
+        }
+      }, 5000); // Check every 5 seconds
     }, 2000);
   });
 }
