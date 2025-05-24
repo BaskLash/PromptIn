@@ -2298,18 +2298,16 @@ document.addEventListener("DOMContentLoaded", function () {
       const modalBody = document.createElement("div");
       modalBody.className = "modal-body";
 
-      const timeline = document.createElement("div");
-      timeline.className = "version-timeline";
-
-      const diffSection = document.createElement("div");
-      diffSection.className = "diff-section";
-      diffSection.style.display = "none";
+      // Custom Diff Section (oben im Modal)
+      const customDiffSection = document.createElement("div");
+      customDiffSection.className = "custom-diff-section";
+      customDiffSection.style.display = "none";
 
       const diffHeader = document.createElement("h3");
       diffHeader.className = "diff-header";
       diffHeader.textContent = "Versionsvergleich";
       diffHeader.title = "Vergleiche zwei Versionen, um Unterschiede zu sehen";
-      diffSection.appendChild(diffHeader);
+      customDiffSection.appendChild(diffHeader);
 
       const diffSelectWrapper = document.createElement("div");
       diffSelectWrapper.className = "diff-select-wrapper";
@@ -2325,6 +2323,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const baseDefaultOption = document.createElement("option");
       baseDefaultOption.value = "";
       baseDefaultOption.textContent = "Wähle Basis-Version";
+      baseDefaultOption.disabled = true;
+      baseDefaultOption.selected = true;
       baseSelect.appendChild(baseDefaultOption);
 
       const compareSelectLabel = document.createElement("label");
@@ -2338,13 +2338,22 @@ document.addEventListener("DOMContentLoaded", function () {
       const compareDefaultOption = document.createElement("option");
       compareDefaultOption.value = "";
       compareDefaultOption.textContent = "Wähle Vergleichs-Version";
+      compareDefaultOption.disabled = true;
+      compareDefaultOption.selected = true;
       compareSelect.appendChild(compareDefaultOption);
 
-      diffSection.appendChild(diffSelectWrapper);
+      diffSelectWrapper.appendChild(baseSelect);
+      diffSelectWrapper.appendChild(compareSelectLabel);
+      diffSelectWrapper.appendChild(compareSelect);
+      customDiffSection.appendChild(diffSelectWrapper);
 
-      const diffContainer = document.createElement("div");
-      diffContainer.className = "diff-container";
-      diffSection.appendChild(diffContainer);
+      const customDiffContainer = document.createElement("div");
+      customDiffContainer.className = "custom-diff-container";
+      customDiffSection.appendChild(customDiffContainer);
+
+      // Timeline (unverändert)
+      const timeline = document.createElement("div");
+      timeline.className = "version-timeline";
 
       const versions = prompt.versions
         .slice()
@@ -2354,19 +2363,19 @@ document.addEventListener("DOMContentLoaded", function () {
         // Populate dropdowns
         const optionBase = document.createElement("option");
         optionBase.value = version.versionId;
-        optionBase.textContent = `Version ${versions.length - index} - ${new Date(
-          version.timestamp
-        ).toLocaleString()}`;
+        optionBase.textContent = `Version ${
+          versions.length - index
+        } - ${new Date(version.timestamp).toLocaleString()}`;
         baseSelect.appendChild(optionBase);
 
         const optionCompare = document.createElement("option");
         optionCompare.value = version.versionId;
-        optionCompare.textContent = `Version ${versions.length - index} - ${new Date(
-          version.timestamp
-        ).toLocaleString()}`;
+        optionCompare.textContent = `Version ${
+          versions.length - index
+        } - ${new Date(version.timestamp).toLocaleString()}`;
         compareSelect.appendChild(optionCompare);
 
-        // Create version item
+        // Create version item (unverändert)
         const versionItem = document.createElement("div");
         versionItem.className = "version-item";
         if (index === 0) {
@@ -2402,7 +2411,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const versionContent = document.createElement("div");
         versionContent.className = "version-content";
 
-        // Show full content for oldest version (index === versions.length - 1)
+        // Show full content for oldest version
         if (index === versions.length - 1) {
           const titleLabel = document.createElement("label");
           titleLabel.textContent = "Titel:";
@@ -2416,7 +2425,8 @@ document.addEventListener("DOMContentLoaded", function () {
           descLabel.textContent = "Beschreibung:";
           const descText = document.createElement("p");
           descText.textContent = version.description || "Keine Beschreibung";
-          descText.title = version.description || "Keine Beschreibung angegeben";
+          descText.title =
+            version.description || "Keine Beschreibung angegeben";
           versionContent.appendChild(descLabel);
           versionContent.appendChild(descText);
 
@@ -2434,7 +2444,9 @@ document.addEventListener("DOMContentLoaded", function () {
           diffWrapper.className = "version-diff-wrapper";
 
           const diffTitle = document.createElement("h4");
-          diffTitle.textContent = `Änderungen von Version ${versions.length - (index + 1)} zu Version ${versions.length - index}`;
+          diffTitle.textContent = `Änderungen von Version ${
+            versions.length - (index + 1)
+          } zu Version ${versions.length - index}`;
           diffWrapper.appendChild(diffTitle);
 
           // Title diff
@@ -2494,7 +2506,7 @@ document.addEventListener("DOMContentLoaded", function () {
           contentSummary.className = "diff-summary";
           contentSummary.textContent = `Unterschiede: ${contentDiffCount} Wörter`;
           contentDiffWrapper.appendChild(contentDiffContainer);
-          contentDiffWrapper.appendChild(contentSummary);
+          contentDiffWrapper.appendChild(contentSummary); // KORREKTUR: contentWrapper → contentDiffWrapper
           diffWrapper.appendChild(contentDiffWrapper);
 
           versionContent.appendChild(diffWrapper);
@@ -2506,7 +2518,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const restoreButton = document.createElement("button");
         restoreButton.textContent = "Wiederherstellen";
         restoreButton.classList.add("action-btn");
-        restoreButton.title = "Diese Version als aktuelle Version wiederherstellen";
+        restoreButton.title =
+          "Diese Version als aktuelle Version wiederherstellen";
         restoreButton.addEventListener("click", () => {
           restoreVersion(folderId, promptIndex, version.versionId, promptItem);
           modal.style.display = "none";
@@ -2520,12 +2533,12 @@ document.addEventListener("DOMContentLoaded", function () {
         compareButton.classList.add("action-btn");
         compareButton.title = "Unterschiede zu anderen Versionen anzeigen";
         compareButton.addEventListener("click", () => {
-          diffSection.style.display = "block";
-          baseSelect.value = "";
+          customDiffSection.style.display = "block";
+          baseSelect.value = version.versionId;
           compareSelect.value = "";
-          diffContainer.innerHTML = "";
+          customDiffContainer.innerHTML = "";
           diffHeader.textContent = "Versionsvergleich";
-          modalBody.scrollTop = diffSection.offsetTop;
+          modalBody.scrollTop = 0;
         });
         actions.appendChild(compareButton);
 
@@ -2536,30 +2549,40 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       // Handle dropdown changes for custom comparisons
-      function updateDiffView() {
+      function updateCustomDiffView() {
         const baseVersionId = baseSelect.value;
         const compareVersionId = compareSelect.value;
 
-        if (!baseVersionId || !compareVersionId || baseVersionId === compareVersionId) {
-          diffContainer.innerHTML = "";
+        if (
+          !baseVersionId ||
+          !compareVersionId ||
+          baseVersionId === compareVersionId
+        ) {
+          customDiffContainer.innerHTML = "";
           diffHeader.textContent = "Versionsvergleich";
           return;
         }
 
         const baseVersion = versions.find((v) => v.versionId === baseVersionId);
-        const compareVersion = versions.find((v) => v.versionId === compareVersionId);
+        const compareVersion = versions.find(
+          (v) => v.versionId === compareVersionId
+        );
         if (!baseVersion || !compareVersion) return;
 
         // Calculate version numbers
-        const baseVersionIndex = versions.findIndex((v) => v.versionId === baseVersionId);
+        const baseVersionIndex = versions.findIndex(
+          (v) => v.versionId === baseVersionId
+        );
         const baseVersionNumber = versions.length - baseVersionIndex;
-        const compareVersionIndex = versions.findIndex((v) => v.versionId === compareVersionId);
+        const compareVersionIndex = versions.findIndex(
+          (v) => v.versionId === compareVersionId
+        );
         const compareVersionNumber = versions.length - compareVersionIndex;
 
         // Update diff header
         diffHeader.textContent = `Version ${baseVersionNumber} vs. Version ${compareVersionNumber}`;
 
-        diffContainer.innerHTML = "";
+        customDiffContainer.innerHTML = "";
 
         // Render diff for title
         const titleWrapper = document.createElement("div");
@@ -2579,7 +2602,7 @@ document.addEventListener("DOMContentLoaded", function () {
         titleSummary.textContent = `Unterschiede: ${titleDiffCount} Wörter`;
         titleWrapper.appendChild(titleDiffContainer);
         titleWrapper.appendChild(titleSummary);
-        diffContainer.appendChild(titleWrapper);
+        customDiffContainer.appendChild(titleWrapper);
 
         // Render diff for description
         const descWrapper = document.createElement("div");
@@ -2599,7 +2622,7 @@ document.addEventListener("DOMContentLoaded", function () {
         descSummary.textContent = `Unterschiede: ${descDiffCount} Wörter`;
         descWrapper.appendChild(descDiffContainer);
         descWrapper.appendChild(descSummary);
-        diffContainer.appendChild(descWrapper);
+        customDiffContainer.appendChild(descWrapper);
 
         // Render diff for content
         const contentWrapper = document.createElement("div");
@@ -2619,15 +2642,15 @@ document.addEventListener("DOMContentLoaded", function () {
         contentSummary.textContent = `Unterschiede: ${contentDiffCount} Wörter`;
         contentWrapper.appendChild(contentDiffContainer);
         contentWrapper.appendChild(contentSummary);
-        diffContainer.appendChild(contentWrapper);
+        customDiffContainer.appendChild(contentWrapper);
       }
 
-      baseSelect.addEventListener("change", updateDiffView);
-      compareSelect.addEventListener("change", updateDiffView);
+      baseSelect.addEventListener("change", updateCustomDiffView);
+      compareSelect.addEventListener("change", updateCustomDiffView);
 
       modalHeader.appendChild(closeSpan);
       modalHeader.appendChild(headerTitle);
-      modalBody.appendChild(diffSection);
+      modalBody.appendChild(customDiffSection);
       modalBody.appendChild(timeline);
       modalContent.appendChild(modalHeader);
       modalContent.appendChild(modalBody);
@@ -2803,7 +2826,7 @@ document.addEventListener("DOMContentLoaded", function () {
         transform: scale(1.1);
       }
 
-      .diff-section {
+      .custom-diff-section {
         margin-bottom: 24px;
         padding: 16px;
         background: #f8f9fa;
@@ -2824,6 +2847,7 @@ document.addEventListener("DOMContentLoaded", function () {
         flex-wrap: wrap;
         gap: 12px;
         margin-bottom: 12px;
+        align-items: center;
       }
 
       .diff-select-wrapper label {
@@ -2831,7 +2855,7 @@ document.addEventListener("DOMContentLoaded", function () {
         margin-bottom: 8px;
         display: block;
         color: #34495e;
-        flex: 1 1 100%;
+        flex: 0 0 120px;
       }
 
       .diff-select {
@@ -2842,10 +2866,11 @@ document.addEventListener("DOMContentLoaded", function () {
         background: #fff;
         color: #2c3e50;
         font-size: 0.95em;
-        flex: 1 1 calc(50% - 6px);
+        flex: 1;
+        min-width: 0;
       }
 
-      .diff-container {
+      .custom-diff-container {
         max-height: 300px;
         overflow-y: auto;
         padding: 12px;
@@ -2890,6 +2915,25 @@ document.addEventListener("DOMContentLoaded", function () {
         border-radius: 4px;
       }
 
+      .diff-word.common {
+        color: #2c3e50;
+      }
+
+      .diff-word.added {
+        background: #e6ffed;
+        color: #28a745;
+      }
+
+      .diff-word.removed {
+        background: #ffe6e6;
+        color: #dc3545;
+      }
+
+      .arrow {
+        color: #1e90ff;
+        font-weight: bold;
+      }
+
       /* Responsive Design */
       @media (max-width: 500px) {
         .modal-content {
@@ -2918,6 +2962,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .diff-select-wrapper {
           flex-direction: column;
         }
+        .diff-select-wrapper label,
         .diff-select {
           flex: 1 1 100%;
         }
