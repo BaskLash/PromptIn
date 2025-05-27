@@ -226,6 +226,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const description = promptDescInput.value.trim();
     const content = promptContentInput.value.trim();
     const selectedFolder = folderSelect.value;
+    const isFavorite =
+      document.getElementById("isFavoriteCheckbox")?.checked || false;
 
     if (!title || !content) {
       alert("Title and content are required!");
@@ -234,8 +236,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
     chrome.storage.sync.get(null, function (data) {
       const updatedData = data || {};
-      const promptObj = { title, content };
-      if (description) promptObj.description = description;
+
+      // Einfache UUID-Generierungsfunktion
+      function generateUUID() {
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+          /[xy]/g,
+          function (c) {
+            const r = (Math.random() * 16) | 0,
+              v = c === "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          }
+        );
+      }
+
+      const promptObj = {
+        title,
+        description,
+        content,
+        createdAt: Date.now(),
+        isFavorite,
+        versions: [
+          {
+            versionId: generateUUID(),
+            title,
+            description,
+            content,
+            timestamp: Date.now(),
+          },
+        ],
+      };
 
       const updates = {};
 

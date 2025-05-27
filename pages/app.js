@@ -364,8 +364,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const newPrompt = {
           title,
+          description,
           content,
           isFavorite,
+          createdAt: Date.now(),
           versions: [
             {
               versionId: generateUUID(),
@@ -376,7 +378,6 @@ document.addEventListener("DOMContentLoaded", function () {
             },
           ],
         };
-        if (description) newPrompt.description = description;
 
         if (folderId) {
           data[folderId].prompts.push(newPrompt);

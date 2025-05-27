@@ -371,6 +371,7 @@ function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
 
     topic.prompts[promptIndex].isFavorite =
       !topic.prompts[promptIndex].isFavorite;
+    const isNowFavorite = topic.prompts[promptIndex].isFavorite;
 
     chrome.storage.sync.set({ [folderId]: topic }, function () {
       if (chrome.runtime.lastError) {
@@ -384,18 +385,21 @@ function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
         const currentView = document
           .getElementById("mainHeaderTitle")
           .textContent.toLowerCase();
-        if (currentView.includes("favorites")) {
-          window.loadPrompts("favorites");
+        if (currentView.includes("favorites") && !isNowFavorite) {
+          promptItem.remove(); // Entferne das Element sofort, wenn es kein Favorit mehr ist
+          loadPrompts("favorites");
+        } else if (currentView.includes("favorites")) {
+          loadPrompts("favorites");
         } else if (currentView.includes("all")) {
-          window.loadPrompts("all");
+          loadPrompts("all");
         } else if (currentView.includes("single")) {
-          window.loadPrompts("single");
+          loadPrompts("single");
         } else if (currentView.includes("categorised")) {
-          window.loadPrompts("categorised");
+          loadPrompts("categorised");
         } else if (currentView.includes("trash")) {
-          window.loadPrompts("trash");
+          loadPrompts("trash");
         } else {
-          window.loadPrompts(folderId);
+          loadPrompts(folderId);
         }
       }
     });
