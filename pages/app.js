@@ -3111,52 +3111,303 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // Inject CSS styles dynamically
+  function injectStyles() {
+    const style = document.createElement("style");
+    style.textContent = `
+        .search-results-container {
+            margin-top: 20px;
+        }
+        .results-section {
+            margin-bottom: 30px;
+        }
+        .results-section h3 {
+            font-size: 1.3em;
+            color: #1e90ff;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #1e90ff;
+            padding-bottom: 8px;
+        }
+        .results-list {
+            list-style: none;
+            padding: 0;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .result-item:hover {
+            background: #e6f3ff;
+        }
+        .folder-item {
+            font-weight: 600;
+        }
+        .prompt-item .result-content {
+            flex-grow: 1;
+        }
+        .result-type {
+            font-weight: 600;
+            color: #34495e;
+            margin-right: 8px;
+        }
+        .result-name {
+            font-size: 1em;
+            color: #2c3e50;
+        }
+        .result-folder {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: 8px;
+        }
+        .result-meta {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: 8px;
+        }
+        .result-preview {
+            font-size: 0.85em;
+            color: #555;
+            margin-top: 8px;
+            padding-left: 20px;
+            line-height: 1.4;
+        }
+        .match-field {
+            font-weight: 600;
+            color: #1e90ff;
+            margin-right: 8px;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        .no-results {
+            color: #666;
+            font-style: italic;
+            padding: 16px;
+        }
+        .prompt-actions {
+            display: flex;
+            align-items: center;
+        }
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            padding: 4px 8px;
+            color: #666;
+        }
+        .menu-btn {
+            font-weight: bold;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            min-width: 150px;
+            right: 0;
+        }
+        .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #333;
+        }
+        .dropdown-item:hover {
+            background: #f0f0f0;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+            padding: 16px;
+            text-align: center;
+        }
+        @media (max-width: 500px) {
+            .result-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .prompt-actions {
+                margin-top: 8px;
+                align-self: flex-end;
+            }
+            .result-preview {
+                padding-left: 10px;
+            }
+            .dropdown-menu {
+                right: auto;
+                left: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Call injectStyles when the script loads
+  injectStyles();
+
+  // Simple fuzzy matching function
+  function fuzzyMatch(text, query) {
+    if (!text || !query) return 0;
+    text = text.toLowerCase();
+    query = query.toLowerCase();
+    let score = 0;
+    let queryIndex = 0;
+    for (let i = 0; i < text.length && queryIndex < query.length; i++) {
+      if (text[i] === query[queryIndex]) {
+        score += 1;
+        queryIndex++;
+      } else {
+        score -= 0.1; // Small penalty for non-matching characters
+      }
+    }
+    return queryIndex === query.length ? score : -1;
+  }
+
   function searchFoldersAndPrompts(query) {
+    searchResults.innerHTML = '<p class="loading">Loading...</p>';
+    searchResults.classList.remove("hidden");
+    folderListSection.classList.add("hidden");
+    promptListSection.classList.add("hidden");
+
+    document.getElementById("mainHeaderTitle").textContent = "Search Results";
+    document
+      .getElementById("mainHeaderTitle")
+      .setAttribute("aria-live", "polite");
+
     chrome.storage.sync.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
+        searchResults.innerHTML =
+          '<p class="no-results">Error loading data</p>';
         return;
       }
 
-      searchResults.innerHTML = "";
-      searchResults.classList.remove("hidden");
-      folderListSection.classList.add("hidden");
-      promptListSection.classList.add("hidden");
-
-      document.getElementById("mainHeaderTitle").textContent = "Search Results";
       const results = [];
-      const lowercaseQuery = query.toLowerCase();
+      const lowercaseQuery = query.toLowerCase().trim();
+      const queryWords = lowercaseQuery
+        .split(/\s+/)
+        .filter((word) => word.length > 0);
+
+      // Helper function to highlight matches
+      function highlightMatch(text, queryWords) {
+        if (!text) return "";
+        let highlighted = text;
+        queryWords.forEach((word) => {
+          const regex = new RegExp(`(${word})`, "gi");
+          highlighted = highlighted.replace(
+            regex,
+            '<span class="highlight">$1</span>'
+          );
+        });
+        return highlighted;
+      }
+
+      // Helper function to get a preview snippet
+      function getPreview(text, queryWords, maxLength = 100) {
+        if (!text) return "";
+        const lowercaseText = text.toLowerCase();
+        let startIndex = 0;
+        for (const word of queryWords) {
+          const index = lowercaseText.indexOf(word);
+          if (index !== -1) {
+            startIndex = Math.max(0, index - 20);
+            break;
+          }
+        }
+        const snippet = text.slice(startIndex, startIndex + maxLength);
+        return snippet.length < text.length ? `${snippet}...` : snippet;
+      }
 
       Object.entries(data).forEach(([id, topic]) => {
+        // Validate topic and topic.name
         if (
-          topic.name.toLowerCase().includes(lowercaseQuery) &&
-          !topic.isTrash
+          !topic ||
+          typeof topic !== "object" ||
+          !topic.name ||
+          typeof topic.name !== "string"
         ) {
+          console.warn(`Invalid topic data for ID ${id}:`, topic);
+          return;
+        }
+
+        // Search in folder name
+        const folderScore = fuzzyMatch(topic.name, lowercaseQuery);
+        if (folderScore > 0 && !topic.isTrash) {
           results.push({
             type: "folder",
             name: topic.name,
             id: id,
-            prompts: topic.prompts,
+            prompts: topic.prompts || [],
+            match: "name",
+            matchedText: highlightMatch(topic.name, queryWords),
+            score: folderScore,
           });
         }
-        topic.prompts.forEach((prompt, index) => {
-          const searchText =
-            typeof prompt === "string"
-              ? prompt
-              : `${prompt.title || ""} ${prompt.content || ""} ${
-                  prompt.description || ""
-                }`;
-          if (
-            searchText.toLowerCase().includes(lowercaseQuery) &&
-            !topic.isTrash
-          ) {
-            results.push({
-              type: "prompt",
-              prompt,
-              folder: topic.name,
-              folderId: id,
-              promptIndex: index,
-              isHidden: topic.isHidden || false,
+
+        // Search in prompts
+        const prompts = Array.isArray(topic.prompts) ? topic.prompts : [];
+        prompts.forEach((prompt, index) => {
+          if (!prompt) {
+            console.warn(`Invalid prompt at index ${index} in topic ${id}`);
+            return;
+          }
+
+          if (typeof prompt === "string") {
+            const promptScore = fuzzyMatch(prompt, lowercaseQuery);
+            if (promptScore > 0 && !topic.isTrash) {
+              results.push({
+                type: "prompt",
+                prompt,
+                folder: topic.name,
+                folderId: id,
+                promptIndex: index,
+                isHidden: topic.isHidden || false,
+                match: "content",
+                matchedText: highlightMatch(
+                  getPreview(prompt, queryWords),
+                  queryWords
+                ),
+                score: promptScore,
+              });
+            }
+          } else {
+            const fields = [
+              { key: "title", value: prompt.title || "" },
+              { key: "description", value: prompt.description || "" },
+              { key: "content", value: prompt.content || "" },
+            ];
+
+            fields.forEach((field) => {
+              const fieldScore = fuzzyMatch(field.value, lowercaseQuery);
+              if (fieldScore > 0 && !topic.isTrash) {
+                results.push({
+                  type: "prompt",
+                  prompt,
+                  folder: topic.name,
+                  folderId: id,
+                  promptIndex: index,
+                  isHidden: topic.isHidden || false,
+                  match: field.key,
+                  matchedText: highlightMatch(
+                    getPreview(field.value, queryWords),
+                    queryWords
+                  ),
+                  score: fieldScore,
+                });
+              }
             });
           }
         });
@@ -3167,30 +3418,100 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      const resultsTitle = document.createElement("h2");
-      resultsTitle.textContent = `Search Results (${results.length})`;
-      searchResults.appendChild(resultsTitle);
+      // Sort results by score (higher score = better match)
+      results.sort((a, b) => b.score - a.score);
 
-      const resultsList = document.createElement("ul");
-      results.forEach((result) => {
-        const resultItem = document.createElement("li");
-        if (result.type === "folder") {
-          resultItem.textContent = `Folder: ${result.name} (${result.prompts.length} prompts)`;
-        } else {
+      // Group results by type
+      const folderResults = results.filter((r) => r.type === "folder");
+      const promptResults = results.filter((r) => r.type === "prompt");
+
+      // Create results container
+      const resultsContainer = document.createElement("div");
+      resultsContainer.classList.add("search-results-container");
+      resultsContainer.setAttribute("aria-label", "Search results");
+
+      // Folder results section
+      if (folderResults.length > 0) {
+        const folderSection = document.createElement("div");
+        folderSection.classList.add("results-section");
+        const folderTitle = document.createElement("h3");
+        folderTitle.textContent = `Folders (${folderResults.length})`;
+        folderSection.appendChild(folderTitle);
+
+        const folderList = document.createElement("ul");
+        folderList.classList.add("results-list");
+        folderResults.forEach((result) => {
+          const folderItem = document.createElement("li");
+          folderItem.classList.add("result-item", "folder-item");
+          folderItem.setAttribute("role", "button");
+          folderItem.setAttribute("aria-label", `Open folder ${result.name}`);
+          folderItem.innerHTML = `
+                    <div class="result-content">
+                        <span class="result-type">Folder:</span>
+                        <span class="result-name">${result.matchedText}</span>
+                        <span class="result-meta">(${result.prompts.length} prompts)</span>
+                    </div>
+                `;
+          folderItem.addEventListener("click", () =>
+            showFolderContent(result.id)
+          );
+          folderList.appendChild(folderItem);
+        });
+        folderSection.appendChild(folderList);
+        resultsContainer.appendChild(folderSection);
+      }
+
+      // Prompt results section
+      if (promptResults.length > 0) {
+        const promptSection = document.createElement("div");
+        promptSection.classList.add("results-section");
+        const promptTitle = document.createElement("h3");
+        promptTitle.textContent = `Prompts (${promptResults.length})`;
+        promptSection.appendChild(promptTitle);
+
+        const promptList = document.createElement("ul");
+        promptList.classList.add("results-list");
+        promptResults.forEach((result) => {
+          const promptItem = document.createElement("li");
+          promptItem.classList.add("result-item", "prompt-item");
+          promptItem.setAttribute("role", "button");
+          promptItem.setAttribute(
+            "aria-label",
+            `View prompt ${result.prompt.title || "Untitled"}`
+          );
           const promptText =
             typeof result.prompt === "string"
               ? result.prompt
-              : result.prompt.title;
-          resultItem.innerHTML = result.isHidden
-            ? `Prompt: "${promptText}"`
-            : `Prompt: "${promptText}" <span>(in ${result.folder})</span>`;
+              : result.prompt.title || "Untitled";
+          const folderInfo = result.isHidden
+            ? ""
+            : `<span class="result-folder">in ${result.folder}</span>`;
+          promptItem.innerHTML = `
+                    <div class="result-content">
+                        <span class="result-type">Prompt:</span>
+                        <span class="result-name">${highlightMatch(
+                          promptText,
+                          queryWords
+                        )}</span>
+                        ${folderInfo}
+                        <div class="result-preview">
+                            <span class="match-field">${
+                              result.match.charAt(0).toUpperCase() +
+                              result.match.slice(1)
+                            }:</span>
+                            ${result.matchedText}
+                        </div>
+                    </div>
+                `;
 
-          const actions = document.createElement("span");
+          // Add actions for prompts
+          const actions = document.createElement("div");
           actions.classList.add("prompt-actions");
 
           const menuBtn = document.createElement("button");
           menuBtn.textContent = "...";
           menuBtn.classList.add("action-btn", "menu-btn");
+          menuBtn.setAttribute("aria-label", "Prompt actions");
           const dropdown = document.createElement("div");
           dropdown.classList.add("dropdown-menu");
 
@@ -3202,13 +3523,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 movePromptToFolder(
                   result.folderId,
                   result.promptIndex,
-                  resultItem
+                  promptItem
                 ),
             },
             {
               text: "Edit",
               action: () =>
-                editPrompt(result.folderId, result.promptIndex, resultItem),
+                editPrompt(result.folderId, result.promptIndex, promptItem),
             },
             { text: "Share", action: () => sharePrompt(result.prompt) },
             {
@@ -3219,14 +3540,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 toggleFavoritePrompt(
                   result.folderId,
                   result.promptIndex,
-                  resultItem,
+                  promptItem,
                   result.prompt
+                ),
+            },
+            {
+              text: "Show Versions",
+              action: () =>
+                showPromptVersions(
+                  result.folderId,
+                  result.promptIndex,
+                  promptItem
                 ),
             },
             {
               text: "Move to Trash",
               action: () =>
-                deletePrompt(result.folderId, result.promptIndex, resultItem),
+                deletePrompt(result.folderId, result.promptIndex, promptItem),
             },
           ];
 
@@ -3239,7 +3569,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   removeFromFolder(
                     result.folderId,
                     result.promptIndex,
-                    resultItem
+                    promptItem
                   ),
               });
             }
@@ -3248,6 +3578,8 @@ document.addEventListener("DOMContentLoaded", function () {
               const menuItem = document.createElement("div");
               menuItem.classList.add("dropdown-item");
               menuItem.textContent = item.text;
+              menuItem.setAttribute("role", "menuitem");
+              menuItem.setAttribute("aria-label", item.text);
               menuItem.addEventListener("click", item.action);
               dropdown.appendChild(menuItem);
             });
@@ -3264,19 +3596,64 @@ document.addEventListener("DOMContentLoaded", function () {
 
           actions.appendChild(menuBtn);
           actions.appendChild(dropdown);
-          resultItem.appendChild(actions);
+          promptItem.appendChild(actions);
 
-          document.addEventListener("click", (e) => {
+          promptItem.addEventListener("click", (e) => {
             if (!actions.contains(e.target)) {
+              showPromptDetails(
+                result.prompt,
+                result.folderId,
+                result.promptIndex
+              );
+            }
+          });
+
+          promptList.appendChild(promptItem);
+        });
+        promptSection.appendChild(promptList);
+        resultsContainer.appendChild(promptSection);
+      }
+
+      // Append total results count
+      const resultsTitle = document.createElement("h2");
+      resultsTitle.textContent = `Search Results (${results.length})`;
+      searchResults.innerHTML = "";
+      searchResults.appendChild(resultsTitle);
+      searchResults.appendChild(resultsContainer);
+
+      // Close dropdowns on outside click
+      document.addEventListener(
+        "click",
+        (e) => {
+          document.querySelectorAll(".prompt-actions").forEach((actions) => {
+            const dropdown = actions.querySelector(".dropdown-menu");
+            if (dropdown && !actions.contains(e.target)) {
               dropdown.style.display = "none";
             }
           });
-        }
-        resultsList.appendChild(resultItem);
-      });
-      searchResults.appendChild(resultsList);
+        },
+        { once: true }
+      );
     });
   }
+
+  // Debounced search input handler
+  let debounceTimeout;
+  searchInput.addEventListener("input", function () {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      const query = searchInput.value.trim();
+      if (query) {
+        clearSearch.style.display = "block";
+        searchFoldersAndPrompts(query);
+      } else {
+        clearSearch.style.display = "none";
+        searchResults.classList.add("hidden");
+        folderListSection.classList.remove("hidden");
+        loadFolders(); // Assumed to exist
+      }
+    }, 300);
+  });
 
   favoritesLink.addEventListener("click", (e) => {
     e.preventDefault();

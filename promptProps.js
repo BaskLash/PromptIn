@@ -54,7 +54,6 @@ function createPromptItem(prompt, folderId, index, isHidden, isTrash, view) {
     ];
   } else {
     actions = [
-      { text: "Use", class: "use-btn", title: "Use prompt", icon: "▶️" },
       {
         text: "Copy Prompt",
         class: "copy-btn",
@@ -116,7 +115,6 @@ function createPromptItem(prompt, folderId, index, isHidden, isTrash, view) {
     dropdownMenu.style.display = isOpen ? "none" : "block";
   });
 
-  const useBtn = dropdownMenu.querySelector(".use-btn");
   const copyBtn = dropdownMenu.querySelector(".copy-btn");
   const editBtn = dropdownMenu.querySelector(".edit-btn");
   const shareBtn = dropdownMenu.querySelector(".share-btn");
@@ -128,14 +126,6 @@ function createPromptItem(prompt, folderId, index, isHidden, isTrash, view) {
   const permanentDeleteBtn = dropdownMenu.querySelector(
     ".permanent-delete-btn"
   );
-
-  if (useBtn) {
-    useBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      usePrompt(prompt);
-      dropdownMenu.style.display = "none";
-    });
-  }
 
   if (copyBtn) {
     copyBtn.addEventListener("click", (e) => {
