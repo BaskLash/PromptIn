@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="script-src 'self'; style-src 'self' 'unsafe-inline';"
+    />
+    <script src="faq.js" defer></script>
+    <link rel="stylesheet" href="faq.css" />
+    <title>PromptIn FAQ</title>
+  </head>
+  <body>
+    <header>
+      <h1>PromptIn FAQ</h1>
+      <p>Find answers to common questions about using PromptIn</p>
+      <div class="header-actions">
+        <a href="#search" class="header-button">Search FAQs</a>
+        <a
+          href="https://github.com/BaskLash/PromptIn/issues/new"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="header-button"
+          >Submit Feedback</a
+        >
+        <a
+          href="https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje/reviews"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="header-button"
+          >Leave us a review</a
+        >
+      </div>
+    </header>
+    <main>
+      <div class="search-container">
+        <input
+          type="text"
+          id="search"
+          placeholder="Search for questions or keywords..."
+          aria-label="Search FAQs"
+        />
+        <svg
+          class="search-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1116.65 16.65z"
+          />
+        </svg>
+      </div>
+      <div id="faq-list">
+        <div
+          class="faq-item"
+          data-tags="overview,introduction,what-is-promptin"
+        >
+          <button class="faq-question" aria-expanded="false">
+            What is PromptIn?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn is a tool for organizing and managing your prompts
+            efficiently.
+          </div>
+        </div>
+        <div class="faq-item" data-tags="prompt,create,add,management">
+          <button class="faq-question" aria-expanded="false">
+            How do I create a new prompt?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            In the popup window, click the plus button located at the bottom
+            right. If you're on the main page, click the top right to add a new
+            prompt.
+          </div>
+        </div>
+        <div class="faq-item" data-tags="theme,settings,appearance">
+          <button class="faq-question" aria-expanded="false">
+            How can I change the theme?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Go to settings (⚙️) and choose between Dark and Light Mode.
+          </div>
+        </div>
+        <div class="faq-item" data-tags="export,prompts,backup,data">
+          <button class="faq-question" aria-expanded="false">
+            How do I export my prompts?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Open settings (⚙️) and click 'Export Prompts'.
+          </div>
+        </div>
+        <div
+          class="faq-item"
+          data-tags="troubleshooting,prompts,display,recovery"
+        >
+          <button class="faq-question" aria-expanded="false">
+            My prompts are no longer displayed, what should I do?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            If your prompts are not visible, they may still be stored in the old
+            local storage. Visit our GitHub page, download the ZIP file, and add
+            it to your browser extensions, then temporarily disable this
+            extension. In the popup window, go to settings and export your
+            prompts. Save them securely, then re-enable the main extension and
+            disable the one you just installed. If prompts are still not
+            visible, go to settings in the main extension, import the saved
+            prompts, and it should work again. You will find a more detailed
+            explanation to that issue here (in German):
+            https://github.com/BaskLash/PromptIn/issues/49#issue-3097566276
+          </div>
+        </div>
+        <div class="faq-item" data-tags="security,storage,prompts,data,privacy">
+          <button class="faq-question" aria-expanded="false">
+            Where are my prompts being stored?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            As we save all of your prompts using the chrome.storage local
+            method, all of your prompts are being stored on your local device
+            and not hidden somewhere on an account. If you still have security
+            concerns, here is our code: https://github.com/BaskLash/PromptIn
+          </div>
+        </div>
+        <div
+          class="faq-item"
+          data-tags="contribute,support,community,development"
+        >
+          <button class="faq-question" aria-expanded="false">
+            How can I contribute to this project?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            If you are eager to help us, if you know how to code you can support
+            us by making this tool a better solution for everyone:
+            https://github.com/BaskLash/PromptIn If you don't know how to code,
+            just look out for bugs and report them here:
+            https://github.com/BaskLash/PromptIn/issues/new If you want to
+            support us financially, you can do this here:
+            https://buymeacoffee.com/olivierluethy
+          </div>
+        </div>
+        <div class="faq-item" data-tags="transfer,prompts,export,import,device">
+          <button class="faq-question" aria-expanded="false">
+            How can I transfer my prompts from my device to another?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            <ol>
+              <li>Export your prompts from the current system.</li>
+              <li>
+                Save the exported file to a location you can easily remember.
+              </li>
+              <li>Copy the file onto a USB stick.</li>
+              <li>Insert the USB stick into the other computer.</li>
+              <li>
+                Download and install the extension on the second computer.
+              </li>
+              <li>Import the prompts from the USB stick into the extension.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="faq-item" data-tags="vision,mission,purpose,why-promptin">
+          <button class="faq-question" aria-expanded="false">
+            Why We Created This — And Why It Matters Now More Than Ever
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Artificial Intelligence is no longer just a trend — it’s becoming
+            the backbone of modern IT and productivity. But with its growing
+            presence, one truth is becoming clear: **AI is only as good as the
+            prompts we feed it.** Too often, we see people entering the same
+            vague, repetitive prompts and expecting magical results. This not
+            only reduces efficiency — it defeats the entire purpose of using AI
+            in the first place. Every inaccurate or unclear prompt forces the AI
+            to work harder, producing mediocre results that require more
+            back-and-forth correction. This wastes your time, drains computing
+            power, and yes — increases energy consumption. In an age where
+            sustainability matters, this inefficiency carries a real
+            environmental cost. That’s why we built **our own Prompt Management
+            System** — not just another tool, but a purpose-driven platform
+            designed from the ground up to make AI interaction smarter, faster,
+            and truly efficient. ---
+
+            <h2>Why Existing Tools Fell Short</h2>
+            We’ve tested countless tools on the market: browser extensions,
+            clunky software that needs to be installed, systems demanding your
+            API keys and storing them insecurely. Some simply store prompts with
+            no structure. Others require constant copy-pasting and offer no real
+            guidance or improvement over time. That’s not smart. That’s not
+            scalable. And that’s not the future. Prompt engineering is evolving
+            — and existing tools are stuck in the past. ---
+
+            <h2>Our Mission: Smarter Prompts, Smarter Future</h2>
+            We believe in a different vision:
+            <strong>A tool that adapts with you.</strong> One that helps you
+            craft smarter, cleaner prompts.
+            <strong>
+              One that learns what works — and what doesn’t — to reduce the
+              trial-and-error chaos.
+            </strong>
+            A system built to not only boost your productivity, but also
+            minimize wasted resources and support a more eco-friendly AI
+            ecosystem. We're not just building a tool. We're creating a
+            <strong>movement</strong> — toward automation, toward precision, and
+            toward a world where AI can begin to self-improve without constant
+            human intervention. If you believe in the power of AI, if you care
+            about using it responsibly, and if you want to be part of shaping
+            its future — then this is for you. ---
+
+            <h2>Join Us</h2>
+            This is just the beginning. We’re designing the foundations for an
+            intelligent, automated, and deeply human-centric AI experience — and
+            we want you to be part of it. If you’ve ever been frustrated by
+            current prompt tools, or if you believe AI should be both powerful
+            *and* sustainable, then it’s time to upgrade. Let’s stop wasting
+            time — and start building smarter. Together. We don't want to sell
+            you something like everyone else does. What we tell you is the
+            truth; otherwise, you wouldn't be reading this or using our tool.
+          </div>
+        </div>
+        <div class="faq-item" data-tags="funding,support,subsidy,community">
+          <button class="faq-question" aria-expanded="false">
+            By whom are we subsidised?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            In fact, an employee who created all of this is subsidizing us. We
+            don't mean that this person is spending money to maintain this
+            remarkable tool, but rather, they are subsidizing it figuratively,
+            as they are the only person working on this software and investing
+            their time.
+          </div>
+        </div>
+        <div class="faq-item" data-tags="error,report,bug,troubleshooting">
+          <button class="faq-question" aria-expanded="false">
+            I see an error message. How can I report it?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Go here and submit it. It doesn't have to be professional but enough
+            understandable. Ideally with screenshots or a short video.
+            https://github.com/BaskLash/PromptIn/issues/new
+          </div>
+        </div>
+        <div
+          class="faq-item"
+          data-tags="feature,suggestion,contribute,community"
+        >
+          <button class="faq-question" aria-expanded="false">
+            I have an idea for a feature. Where can I submit it?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Go here and submit it. It doesn't have to be professional but enough
+            understandable. https://github.com/BaskLash/PromptIn/issues/new
+          </div>
+        </div>
+        <div class="faq-item" data-tags="security,privacy,access,prompts,data">
+          <button class="faq-question" aria-expanded="false">
+            Who has access to my saved prompts?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            No one except only you. Not even us can access them and therefore
+            you are responsible for your data only and if you unexpectedly
+            delete something, we can't help you for recovering them. Don't trust
+            us? Check out the code: https://github.com/BaskLash/PromptIn/
+          </div>
+        </div>
+        <div
+          class="faq-item"
+          data-tags="organization,folders,projects,prompts,management"
+        >
+          <button class="faq-question" aria-expanded="false">
+            Can I organize my prompts into categories or projects?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Our tool is designed so that folders can also be saved in it. These
+            folders can be used as project folders. The prompts can be saved in
+            one folder per project. This allows you to keep track of how you
+            have implemented a certain feature with AI in a project that you may
+            want to reuse for another project.
+          </div>
+        </div>
+        <div
+          class="faq-item"
+          data-tags="shortcuts,context-menu,chat,usability,integration"
+        >
+          <button class="faq-question" aria-expanded="false">
+            Are there shortcuts or context menus for use directly in the chat
+            window?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Of course. If our tool supports the AI you require (you can see this
+            here in the overview: https://github.com/BaskLash/PromptIn), then
+            you also have the option of entering “/” in the AI input field.
+            Alternatively, you can also click on the “+” button, which is
+            labeled “Open Management System” when you hover over it with the
+            mouse.
+          </div>
+        </div>
+        <div class="faq-item" data-tags="sharing,collaboration,team,prompts">
+          <button class="faq-question" aria-expanded="false">
+            Is it possible to share prompts with team members or work on them
+            together?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            So far, it is only possible to share a prompt via email, WhatsApp or
+            another messenger. There is not yet a function that allows you to
+            work on it together directly, but this will be available in the
+            future, as will sharing entire folders instead of just individual
+            prompts.
+          </div>
+        </div>
+        <div class="faq-item" data-tags="bug,report,troubleshooting,support">
+          <button class="faq-question" aria-expanded="false">
+            How can I report a bug?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Go here: https://github.com/BaskLash/PromptIn/issues/new
+          </div>
+        </div>
+        <div class="faq-item" data-tags="security,storage,privacy,data,browser">
+          <button class="faq-question" aria-expanded="false">
+            How secure is the storage in my browser?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Your prompts are stored locally in your browser via Chrome Storage
+            Local. This means that no data is transferred to external servers,
+            so your prompts remain exclusively on your device. Full control:
+            Only you (or your browser profile) can access your stored data. Your
+            data is automatically protected by the browser. Chrome protects your
+            locally stored data using its own security mechanisms, such as
+            isolated browser processes and user rights. There is no risk from
+            API keys or online accounts because PromptIn requires no login,
+            account, or cloud synchronization. Conclusion: Your data is as
+            secure as your device itself. As long as your computer or browser
+            profile is protected, your prompts are protected too — completely
+            offline and without third-party access.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="overview,differentiation,comparison">
+          <button class="faq-question" aria-expanded="false">
+            What makes PromptIn different from other prompt storage tools?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn stands out by offering a lightweight, browser-based
+            solution that requires no account or API key, ensuring maximum
+            privacy. Unlike other tools, it provides folder-based organization,
+            context menu integration for quick access, and a focus on
+            sustainability by reducing inefficient AI interactions. Its
+            open-source code allows transparency, and future updates will
+            include smarter prompt suggestions and team collaboration features.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="organization,benefits,efficiency">
+          <button class="faq-question" aria-expanded="false">
+            Why should I organize my prompts? Does it really make a difference?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Organizing prompts saves time, reduces repetitive work, and improves
+            AI output quality. With PromptIn, you can categorize prompts by
+            project or task, quickly reuse effective ones, and avoid the hassle
+            of rewriting or searching through scattered notes. This streamlines
+            your workflow, boosts productivity, and ensures consistent results
+            across AI tools like ChatGPT or Claude.
+          </div>
+        </div>
+
+        <div
+          class="faq-item"
+          data-tags="efficiency,productivity,ai-tools,workflow"
+        >
+          <button class="faq-question" aria-expanded="false">
+            How does PromptIn help with my daily work with AI tools like
+            ChatGPT, Claude, or Gemini?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn integrates seamlessly with AI tools, allowing you to store,
+            organize, and access prompts directly in the chat window via
+            shortcuts or context menus. This eliminates repetitive typing,
+            ensures you use optimized prompts, and speeds up tasks like coding,
+            writing, or brainstorming, making your interactions with AI tools
+            more efficient and effective.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="efficiency,usability,time-saving">
+          <button class="faq-question" aria-expanded="false">
+            How does PromptIn save me time or reduce clicks in my daily work?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn reduces clicks by offering shortcuts (like “/” in the chat
+            input) and a context menu to insert prompts instantly. Organized
+            folders let you find prompts quickly, and the export/import feature
+            simplifies transferring prompts across devices. This minimizes
+            manual copying, pasting, and searching, saving you time in your
+            daily AI tasks.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="security,privacy,api-keys,data">
+          <button class="faq-question" aria-expanded="false">
+            Does PromptIn store my API keys or usage data anywhere?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            No, PromptIn does not store API keys or usage data. It operates
+            entirely offline using Chrome Storage Local, keeping all data on
+            your device. No login or account is required, ensuring your
+            interactions with AI tools remain private and secure. Check our
+            open-source code for transparency:
+            https://github.com/BaskLash/PromptIn
+          </div>
+        </div>
+
+        <div
+          class="faq-item"
+          data-tags="open-source,code,transparency,security"
+        >
+          <button class="faq-question" aria-expanded="false">
+            Is PromptIn open source, and can I review the code?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Yes, PromptIn is fully open source. You can review the code on our
+            GitHub repository: https://github.com/BaskLash/PromptIn. This
+            transparency ensures you can verify the security and functionality
+            of the tool yourself.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="validation,automation,prompts,quality">
+          <button class="faq-question" aria-expanded="false">
+            How does automatic validation work, and what exactly is validated?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn’s automatic validation (planned for future updates) will
+            check prompts for clarity, structure, and compatibility with
+            supported AI tools. It ensures prompts are well-formed to avoid
+            errors and improve AI responses. Currently, validation is manual,
+            but we’re working on automating syntax checks and suggesting
+            improvements. Stay tuned for updates on our GitHub:
+            https://github.com/BaskLash/PromptIn
+          </div>
+        </div>
+
+        <div
+          class="faq-item"
+          data-tags="efficiency,quality,prompts,improvement"
+        >
+          <button class="faq-question" aria-expanded="false">
+            How does PromptIn improve the quality of my prompts?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn helps you craft better prompts by allowing you to save,
+            refine, and reuse effective ones. Organized folders encourage
+            structuring prompts by task or project, and future updates will
+            include suggestions for clearer, more precise prompts to maximize AI
+            output quality, reducing trial-and-error.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="productivity,efficiency,workflow">
+          <button class="faq-question" aria-expanded="false">
+            Does PromptIn make me more productive when programming, writing, or
+            brainstorming?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Yes, PromptIn boosts productivity by streamlining prompt management.
+            Quick access via shortcuts, organized folders, and reusable prompts
+            save time on repetitive tasks. Whether coding, writing, or
+            brainstorming, you can focus on creativity and results instead of
+            managing prompts manually.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="habits,prompts,improvement,efficiency">
+          <button class="faq-question" aria-expanded="false">
+            Can PromptIn help me break bad prompting habits?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Absolutely. PromptIn encourages structured prompt creation and
+            organization, helping you move away from vague or repetitive
+            prompts. By saving and refining effective prompts, you’ll develop
+            better habits, leading to more consistent and high-quality AI
+            responses over time.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="analytics,performance,prompts,usage">
+          <button class="faq-question" aria-expanded="false">
+            Can I see which of my prompts perform best or are used most often?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            This feature is not yet available, but it’s on our roadmap. Future
+            updates will include analytics to track prompt usage and
+            performance, helping you identify which prompts yield the best AI
+            results. Follow our progress on GitHub:
+            https://github.com/BaskLash/PromptIn
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="vision,future,development,roadmap">
+          <button class="faq-question" aria-expanded="false">
+            How will PromptIn evolve in the future?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn will evolve with features like automated prompt
+            suggestions, performance analytics, and team collaboration tools.
+            We’re also exploring cloud synchronization for cross-device access
+            and deeper integration with AI platforms. Check our GitHub for the
+            latest roadmap updates: https://github.com/BaskLash/PromptIn
+          </div>
+        </div>
+
+        <div
+          class="faq-item"
+          data-tags="automation,suggestions,personalization"
+        >
+          <button class="faq-question" aria-expanded="false">
+            Will PromptIn automatically suggest prompts or learn my style?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Not yet, but it’s planned. Future versions of PromptIn will analyze
+            your prompt patterns to suggest improvements and tailor prompts to
+            your style, making AI interactions more intuitive. Stay updated on
+            our GitHub: https://github.com/BaskLash/PromptIn
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="roadmap,features,integration">
+          <button class="faq-question" aria-expanded="false">
+            Is there a roadmap for new features, like integration with more
+            tools?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Yes, our roadmap includes expanded AI tool integrations, cloud sync,
+            and collaborative features. We’re committed to making PromptIn more
+            versatile and user-friendly. Visit
+            https://github.com/BaskLash/PromptIn for the latest roadmap and to
+            suggest features.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="cloud,sync,device,transfer">
+          <button class="faq-question" aria-expanded="false">
+            Will there be cloud synchronization for cross-device prompt access?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Cloud synchronization is on our roadmap to enable seamless prompt
+            access across devices while maintaining strict privacy standards.
+            For now, you can transfer prompts manually via export/import. Follow
+            updates on our GitHub: https://github.com/BaskLash/PromptIn
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="emotional,usability,stress,workflow">
+          <button class="faq-question" aria-expanded="false">
+            Does PromptIn make working with AI less stressful and frustrating?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Yes, PromptIn simplifies AI interactions by organizing prompts,
+            reducing repetitive typing, and providing quick access via
+            shortcuts. This lets you focus on your work rather than managing
+            prompts, making your AI experience smoother and less frustrating.
+          </div>
+        </div>
+
+        <div
+          class="faq-item"
+          data-tags="emotional,creativity,productivity,management"
+        >
+          <button class="faq-question" aria-expanded="false">
+            Can PromptIn help me focus on creativity instead of prompt
+            management?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Absolutely. PromptIn handles prompt organization and access, so you
+            spend less time on administrative tasks. With folders, shortcuts,
+            and reusable prompts, you can focus on creative tasks like writing,
+            coding, or brainstorming, letting the tool manage the rest.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="emotional,sustainability,ai,impact">
+          <button class="faq-question" aria-expanded="false">
+            Does using PromptIn support a more sustainable way of working with
+            AI?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Yes, PromptIn promotes sustainability by encouraging efficient
+            prompts that reduce unnecessary AI processing, saving computational
+            resources and energy. By streamlining interactions, it supports a
+            more eco-friendly approach to AI usage.
+          </div>
+        </div>
+
+        <div
+          class="faq-item"
+          data-tags="emotional,recommendation,team,community"
+        >
+          <button class="faq-question" aria-expanded="false">
+            Is PromptIn something I’d recommend to my team?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Definitely. PromptIn’s ease of use, privacy focus, and productivity
+            benefits make it ideal for teams. While direct collaboration
+            features are coming, you can share prompts via export/import, making
+            it a valuable tool to recommend for streamlined AI workflows.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="compatibility,ai-tools,integration">
+          <button class="faq-question" aria-expanded="false">
+            Does PromptIn work with all AI tools I use, like Midjourney or
+            Copilot?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn currently supports popular AI tools like ChatGPT, Claude,
+            and Gemini. For others like Midjourney or Copilot, compatibility
+            depends on their input interfaces. Check our GitHub for the full
+            list of supported tools: https://github.com/BaskLash/PromptIn. If
+            your tool isn’t supported yet, suggest it via
+            https://github.com/BaskLash/PromptIn/issues/new, and we’ll explore
+            adding it in future updates.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="usability,learning-curve,beginner">
+          <button class="faq-question" aria-expanded="false">
+            Is PromptIn easy to use for someone new to prompt engineering?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Yes, PromptIn is designed with beginners in mind. Its intuitive
+            interface lets you save, organize, and access prompts without
+            technical expertise. Start with simple folder organization and use
+            shortcuts to streamline your workflow. For tips, check our GitHub
+            guides: https://github.com/BaskLash/PromptIn.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="performance,browser,resources">
+          <button class="faq-question" aria-expanded="false">
+            Will PromptIn slow down my browser or use a lot of resources?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            No, PromptIn is lightweight and uses Chrome Storage Local, which has
+            minimal impact on browser performance. It’s designed to run
+            efficiently, even with large prompt libraries, ensuring your
+            browsing experience remains smooth. If you notice any issues, report
+            them at https://github.com/BaskLash/PromptIn/issues/new.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="backup,recovery,data,loss">
+          <button class="faq-question" aria-expanded="false">
+            What happens to my prompts if I uninstall PromptIn or switch
+            browsers?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Prompts are stored in Chrome Storage Local, so uninstalling PromptIn
+            or clearing browser data may delete them. To avoid loss, export your
+            prompts via settings before uninstalling or switching browsers. You
+            can then import them into PromptIn on another browser or device.
+            Always keep a secure backup of your exported file.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="support,community,help,documentation">
+          <button class="faq-question" aria-expanded="false">
+            Where can I get help if I’m stuck using PromptIn?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            For help, check our GitHub repository for documentation and guides:
+            https://github.com/BaskLash/PromptIn. If you’re still stuck, submit
+            a question or issue at
+            https://github.com/BaskLash/PromptIn/issues/new, and our community
+            or team will assist you promptly.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="updates,notifications,features">
+          <button class="faq-question" aria-expanded="false">
+            How will I know when new PromptIn features or updates are available?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            PromptIn updates are announced on our GitHub page:
+            https://github.com/BaskLash/PromptIn. You can also enable
+            notifications in your browser settings for Chrome Web Store updates.
+            We’ll keep you informed about new features like cloud sync or prompt
+            suggestions as they roll out.
+          </div>
+        </div>
+
+        <div class="faq-item" data-tags="customization,prompts,templates">
+          <button class="faq-question" aria-expanded="false">
+            Can I create reusable prompt templates for repetitive tasks?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          <div class="faq-answer" aria-hidden="true">
+            Yes, PromptIn lets you save prompts in folders, which can act as
+            reusable templates for repetitive tasks like coding or content
+            creation. Organize them by task type or project for easy access.
+            Future updates may include dedicated template features—stay tuned on
+            https://github.com/BaskLash/PromptIn.
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer>
+      <p>© 2025 PromptIn. All rights reserved.</p>
+    </footer>
+  </body>
+</html>

@@ -157,19 +157,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // FAQ Modal
-  const faqModal = document.getElementById("faq-modal");
-  const closeFaqModal = document.getElementById("close-faq-modal");
+  // FAQ
   faqBtn.addEventListener("click", () => {
-    faqModal.style.display = "block";
-  });
-  closeFaqModal.addEventListener("click", () => {
-    faqModal.style.display = "none";
-  });
-  window.addEventListener("click", (event) => {
-    if (event.target === faqModal) {
-      faqModal.style.display = "none";
-    }
+     chrome.tabs.create({ url: chrome.runtime.getURL("/pages/faq.html") });
   });
 
   // New Prompt Modal
@@ -402,7 +392,7 @@ document.addEventListener("DOMContentLoaded", function () {
     .getElementById("rating-request-btn")
     .addEventListener("click", () => {
       window.open(
-        "https://chromewebstore.google.com/detail/pbfmkjjnmjfjlebpfcndpdhofoccgkje?utm_source=item-share-cb",
+        "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje/reviews",
         "_blank"
       );
     });
