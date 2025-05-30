@@ -18,8 +18,8 @@ document.addEventListener("DOMContentLoaded", function () {
     lineCount.textContent = text.split("\n").length;
   }
 
-  // Hole den Prompt-Text aus chrome.storage.sync
-  chrome.storage.sync.get(folderId, function (data) {
+  // Hole den Prompt-Text aus chrome.storage.local
+  chrome.storage.local.get(folderId, function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
       return;
@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    chrome.storage.sync.get(folderId, function (data) {
+    chrome.storage.local.get(folderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const folder = data[folderId];
       if (folder && folder.prompts[promptIndex] !== undefined) {
         folder.prompts[promptIndex] = updatedPromptText;
-        chrome.storage.sync.set({ [folderId]: folder }, function () {
+        chrome.storage.local.set({ [folderId]: folder }, function () {
           if (chrome.runtime.lastError) {
             console.error("Error saving data:", chrome.runtime.lastError);
           } else {

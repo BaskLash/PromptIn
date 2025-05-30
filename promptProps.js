@@ -7,7 +7,7 @@ function createPromptItem(prompt, folderId, index, isHidden, isTrash, view) {
 
   const promptText = document.createElement("span");
   promptText.classList.add("prompt-text");
-  chrome.storage.sync.get(folderId, (data) => {
+  chrome.storage.local.get(folderId, (data) => {
     const topic = data[folderId];
     const folderName =
       topic && !topic.isHidden && !topic.isTrash ? topic.name : "";
@@ -210,7 +210,7 @@ function createPromptItem(prompt, folderId, index, isHidden, isTrash, view) {
 
 // Funktion zum Erstellen eines Prompt-Elements
 function loadPrompts(view = "all") {
-  chrome.storage.sync.get(null, function (data) {
+  chrome.storage.local.get(null, function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
       return;
@@ -350,7 +350,7 @@ function loadPrompts(view = "all") {
   });
 }
 function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
-  chrome.storage.sync.get(folderId, function (data) {
+  chrome.storage.local.get(folderId, function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
       return;
@@ -363,7 +363,7 @@ function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
       !topic.prompts[promptIndex].isFavorite;
     const isNowFavorite = topic.prompts[promptIndex].isFavorite;
 
-    chrome.storage.sync.set({ [folderId]: topic }, function () {
+    chrome.storage.local.set({ [folderId]: topic }, function () {
       if (chrome.runtime.lastError) {
         console.error(
           "Error toggling favorite status:",
@@ -421,7 +421,7 @@ function sharePrompt(prompt) {
 }
 
 function movePromptToFolder(currentFolderId, promptIndex, promptItem) {
-  chrome.storage.sync.get(null, function (data) {
+  chrome.storage.local.get(null, function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
       return;
@@ -506,13 +506,13 @@ function movePromptToFolder(currentFolderId, promptIndex, promptItem) {
 
       const updates = {};
       if (data[currentFolderId].prompts.length === 0) {
-        chrome.storage.sync.remove(currentFolderId);
+        chrome.storage.local.remove(currentFolderId);
       } else {
         updates[currentFolderId] = data[currentFolderId];
       }
       updates[targetFolderId] = data[targetFolderId];
 
-      chrome.storage.sync.set(updates, function () {
+      chrome.storage.local.set(updates, function () {
         if (chrome.runtime.lastError) {
           console.error("Error moving prompt:", chrome.runtime.lastError);
         } else {
@@ -647,7 +647,7 @@ function movePromptToFolder(currentFolderId, promptIndex, promptItem) {
 
 function removeFromFolder(currentFolderId, promptIndex, promptItem) {
   if (confirm("Are you sure you want to remove this prompt from its folder?")) {
-    chrome.storage.sync.get(currentFolderId, function (data) {
+    chrome.storage.local.get(currentFolderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -670,13 +670,13 @@ function removeFromFolder(currentFolderId, promptIndex, promptItem) {
 
       const updates = {};
       if (topic.prompts.length === 0) {
-        chrome.storage.sync.remove(currentFolderId);
+        chrome.storage.local.remove(currentFolderId);
       } else {
         updates[currentFolderId] = topic;
       }
       updates[hiddenFolderId] = hiddenFolder;
 
-      chrome.storage.sync.set(updates, function () {
+      chrome.storage.local.set(updates, function () {
         if (chrome.runtime.lastError) {
           console.error(
             "Error moving prompt to hidden folder:",
@@ -806,7 +806,7 @@ function editPrompt(prompt, folderId, promptIndex, promptItem) {
       return;
     }
 
-    chrome.storage.sync.get(folderId, function (data) {
+    chrome.storage.local.get(folderId, function (data) {
       if (chrome.runtime.lastError || !data[folderId]) {
         console.error("Error fetching folder:", chrome.runtime.lastError);
         alert("Error fetching folder data.");
@@ -824,7 +824,7 @@ function editPrompt(prompt, folderId, promptIndex, promptItem) {
         data[folderId].name = newTitle.slice(0, 50);
       }
 
-      chrome.storage.sync.set({ [folderId]: data[folderId] }, function () {
+      chrome.storage.local.set({ [folderId]: data[folderId] }, function () {
         if (chrome.runtime.lastError) {
           console.error("Error saving prompt:", chrome.runtime.lastError);
           alert("Error saving prompt.");
@@ -970,7 +970,7 @@ function editPrompt(prompt, folderId, promptIndex, promptItem) {
 // Funktion zum Löschen eines Prompts
 function deletePrompt(folderId, promptIndex, promptItem) {
   if (confirm("Are you sure you want to move this prompt to the trash?")) {
-    chrome.storage.sync.get([folderId, "trash_folder"], function (data) {
+    chrome.storage.local.get([folderId, "trash_folder"], function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -997,13 +997,13 @@ function deletePrompt(folderId, promptIndex, promptItem) {
 
       const updates = {};
       if (topic.prompts.length === 0) {
-        chrome.storage.sync.remove(folderId);
+        chrome.storage.local.remove(folderId);
       } else {
         updates[folderId] = topic;
       }
       updates[trashFolderId] = trashFolder;
 
-      chrome.storage.sync.set(updates, function () {
+      chrome.storage.local.set(updates, function () {
         if (chrome.runtime.lastError) {
           console.error(
             "Error moving prompt to trash:",
@@ -1023,7 +1023,7 @@ function deletePrompt(folderId, promptIndex, promptItem) {
 // Funktion zum Wiederherstellen eines Prompts
 function restorePrompt(trashFolderId, promptIndex, promptItem) {
   if (confirm("Are you sure you want to restore this prompt?")) {
-    chrome.storage.sync.get(trashFolderId, function (data) {
+    chrome.storage.local.get(trashFolderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching trash data:", chrome.runtime.lastError);
         return;
@@ -1037,7 +1037,7 @@ function restorePrompt(trashFolderId, promptIndex, promptItem) {
         prompt.originalFolderId ||
         `hidden_folder_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
-      chrome.storage.sync.get(originalFolderId, function (folderData) {
+      chrome.storage.local.get(originalFolderId, function (folderData) {
         let targetFolder = folderData[originalFolderId] || {
           name: prompt.title || "Restored Prompt",
           prompts: [],
@@ -1051,13 +1051,13 @@ function restorePrompt(trashFolderId, promptIndex, promptItem) {
 
         const updates = {};
         if (trashFolder.prompts.length === 0) {
-          chrome.storage.sync.remove(trashFolderId);
+          chrome.storage.local.remove(trashFolderId);
         } else {
           updates[trashFolderId] = trashFolder;
         }
         updates[originalFolderId] = targetFolder;
 
-        chrome.storage.sync.set(updates, function () {
+        chrome.storage.local.set(updates, function () {
           if (chrome.runtime.lastError) {
             console.error("Error restoring prompt:", chrome.runtime.lastError);
             alert("Error restoring prompt.");
@@ -1079,7 +1079,7 @@ function permanentlyDeletePrompt(trashFolderId, promptIndex, promptItem) {
       "Are you sure you want to permanently delete this prompt? This action cannot be undone."
     )
   ) {
-    chrome.storage.sync.get(trashFolderId, function (data) {
+    chrome.storage.local.get(trashFolderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching trash data:", chrome.runtime.lastError);
         return;
@@ -1091,7 +1091,7 @@ function permanentlyDeletePrompt(trashFolderId, promptIndex, promptItem) {
       trashFolder.prompts.splice(promptIndex, 1);
 
       if (trashFolder.prompts.length === 0) {
-        chrome.storage.sync.remove(trashFolderId, function () {
+        chrome.storage.local.remove(trashFolderId, function () {
           if (chrome.runtime.lastError) {
             console.error(
               "Error removing trash folder:",
@@ -1103,7 +1103,7 @@ function permanentlyDeletePrompt(trashFolderId, promptIndex, promptItem) {
           loadPrompts();
         });
       } else {
-        chrome.storage.sync.set({ [trashFolderId]: trashFolder }, function () {
+        chrome.storage.local.set({ [trashFolderId]: trashFolder }, function () {
           if (chrome.runtime.lastError) {
             console.error(
               "Error deleting prompt from trash:",
@@ -1122,7 +1122,7 @@ function permanentlyDeletePrompt(trashFolderId, promptIndex, promptItem) {
 }
 // Funktion zum Laden aller Prompts im Hauptinhalt
 function loadPrompts(view = "all") {
-  chrome.storage.sync.get(null, function (data) {
+  chrome.storage.local.get(null, function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
       return;

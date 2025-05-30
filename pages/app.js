@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", function () {
         isHidden: false,
       };
 
-      chrome.storage.sync.set({ [folderId]: newFolder }, function () {
+      chrome.storage.local.set({ [folderId]: newFolder }, function () {
         if (chrome.runtime.lastError) {
           console.error("Error creating new folder:", chrome.runtime.lastError);
           alert("Fehler beim Erstellen des neuen Ordners.");
@@ -252,7 +252,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function addNewPrompt(currentFolderId = null) {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -381,7 +381,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (folderId) {
           data[folderId].prompts.push(newPrompt);
-          chrome.storage.sync.set({ [folderId]: data[folderId] }, function () {
+          chrome.storage.local.set({ [folderId]: data[folderId] }, function () {
             if (chrome.runtime.lastError) {
               console.error("Error saving prompt:", chrome.runtime.lastError);
               alert("Fehler beim Speichern des Prompts.");
@@ -412,7 +412,7 @@ document.addEventListener("DOMContentLoaded", function () {
             prompts: [newPrompt],
             isHidden: true,
           };
-          chrome.storage.sync.set({ [newFolderId]: newFolder }, function () {
+          chrome.storage.local.set({ [newFolderId]: newFolder }, function () {
             if (chrome.runtime.lastError) {
               console.error("Error saving prompt:", chrome.runtime.lastError);
               alert("Fehler beim Speichern des Prompts.");
@@ -573,7 +573,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function loadFolderNavigation() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -625,7 +625,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showFolderContent(folderId) {
-    chrome.storage.sync.get(folderId, function (data) {
+    chrome.storage.local.get(folderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching folder data:", chrome.runtime.lastError);
         return;
@@ -703,7 +703,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function loadFolders() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -794,7 +794,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const promptText = document.createElement("span");
     promptText.classList.add("prompt-text");
 
-    chrome.storage.sync.get(folderId, (data) => {
+    chrome.storage.local.get(folderId, (data) => {
       const topic = data[folderId];
       const folderName =
         topic && !topic.isHidden && !topic.isTrash ? topic.name : "";
@@ -855,7 +855,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       );
 
-      chrome.storage.sync.get(folderId, (data) => {
+      chrome.storage.local.get(folderId, (data) => {
         const topic = data[folderId];
         if (topic && !topic.isHidden && !topic.isTrash) {
           menuItems.splice(5, 0, {
@@ -912,7 +912,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
-    chrome.storage.sync.get(folderId, function (data) {
+    chrome.storage.local.get(folderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -924,7 +924,7 @@ document.addEventListener("DOMContentLoaded", function () {
       topic.prompts[promptIndex].isFavorite =
         !topic.prompts[promptIndex].isFavorite;
 
-      chrome.storage.sync.set({ [folderId]: topic }, function () {
+      chrome.storage.local.set({ [folderId]: topic }, function () {
         if (chrome.runtime.lastError) {
           console.error(
             "Error toggling favorite status:",
@@ -952,7 +952,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function restorePrompt(trashFolderId, promptIndex, promptItem) {
     if (confirm("Are you sure you want to restore this prompt?")) {
-      chrome.storage.sync.get(trashFolderId, function (data) {
+      chrome.storage.local.get(trashFolderId, function (data) {
         if (chrome.runtime.lastError) {
           console.error("Error fetching trash data:", chrome.runtime.lastError);
           return;
@@ -966,7 +966,7 @@ document.addEventListener("DOMContentLoaded", function () {
           prompt.originalFolderId ||
           `hidden_folder_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
-        chrome.storage.sync.get(originalFolderId, function (folderData) {
+        chrome.storage.local.get(originalFolderId, function (folderData) {
           let targetFolder = folderData[originalFolderId] || {
             name: prompt.title || "Restored Prompt",
             prompts: [],
@@ -980,13 +980,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
           const updates = {};
           if (trashFolder.prompts.length === 0) {
-            chrome.storage.sync.remove(trashFolderId);
+            chrome.storage.local.remove(trashFolderId);
           } else {
             updates[trashFolderId] = trashFolder;
           }
           updates[originalFolderId] = targetFolder;
 
-          chrome.storage.sync.set(updates, function () {
+          chrome.storage.local.set(updates, function () {
             if (chrome.runtime.lastError) {
               console.error(
                 "Error restoring prompt:",
@@ -1017,7 +1017,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "Are you sure you want to permanently delete this prompt? This action cannot be undone."
       )
     ) {
-      chrome.storage.sync.get(trashFolderId, function (data) {
+      chrome.storage.local.get(trashFolderId, function (data) {
         if (chrome.runtime.lastError) {
           console.error("Error fetching trash data:", chrome.runtime.lastError);
           return;
@@ -1029,7 +1029,7 @@ document.addEventListener("DOMContentLoaded", function () {
         trashFolder.prompts.splice(promptIndex, 1);
 
         if (trashFolder.prompts.length === 0) {
-          chrome.storage.sync.remove(trashFolderId, function () {
+          chrome.storage.local.remove(trashFolderId, function () {
             if (chrome.runtime.lastError) {
               console.error(
                 "Error removing trash folder:",
@@ -1042,7 +1042,7 @@ document.addEventListener("DOMContentLoaded", function () {
             showTrashedPrompts();
           });
         } else {
-          chrome.storage.sync.set(
+          chrome.storage.local.set(
             { [trashFolderId]: trashFolder },
             function () {
               if (chrome.runtime.lastError) {
@@ -1245,7 +1245,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (
       confirm("Are you sure you want to remove this prompt from its folder?")
     ) {
-      chrome.storage.sync.get(currentFolderId, function (data) {
+      chrome.storage.local.get(currentFolderId, function (data) {
         if (chrome.runtime.lastError) {
           console.error("Error fetching data:", chrome.runtime.lastError);
           return;
@@ -1275,13 +1275,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const updates = {};
         if (topic.prompts.length === 0) {
-          chrome.storage.sync.remove(currentFolderId);
+          chrome.storage.local.remove(currentFolderId);
         } else {
           updates[currentFolderId] = topic;
         }
         updates[hiddenFolderId] = hiddenFolder;
 
-        chrome.storage.sync.set(updates, function () {
+        chrome.storage.local.set(updates, function () {
           if (chrome.runtime.lastError) {
             console.error(
               "Error moving prompt to hidden folder:",
@@ -1306,7 +1306,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function movePromptToFolder(currentFolderId, promptIndex, promptItem) {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -1391,13 +1391,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const updates = {};
         if (data[currentFolderId].prompts.length === 0) {
-          chrome.storage.sync.remove(currentFolderId);
+          chrome.storage.local.remove(currentFolderId);
         } else {
           updates[currentFolderId] = data[currentFolderId];
         }
         updates[targetFolderId] = data[targetFolderId];
 
-        chrome.storage.sync.set(updates, function () {
+        chrome.storage.local.set(updates, function () {
           if (chrome.runtime.lastError) {
             console.error("Error moving prompt:", chrome.runtime.lastError);
           } else {
@@ -1536,7 +1536,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showAllPrompts() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -1593,7 +1593,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showSinglePrompts() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -1648,7 +1648,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showTrashedPrompts() {
-    chrome.storage.sync.get("trash_folder", function (data) {
+    chrome.storage.local.get("trash_folder", function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching trash data:", chrome.runtime.lastError);
         return;
@@ -1697,7 +1697,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showCategorisedPrompts() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -1759,7 +1759,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showFavoritePrompts() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -1829,10 +1829,10 @@ document.addEventListener("DOMContentLoaded", function () {
     function saveNewName() {
       const newName = input.value.trim();
       if (newName && newName !== currentName) {
-        chrome.storage.sync.get(folderId, function (data) {
+        chrome.storage.local.get(folderId, function (data) {
           if (data[folderId]) {
             data[folderId].name = newName;
-            chrome.storage.sync.set(data, function () {
+            chrome.storage.local.set(data, function () {
               if (chrome.runtime.lastError) {
                 console.error(
                   "Error renaming folder:",
@@ -1865,7 +1865,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "Are you sure you want to delete this folder and all its prompts?"
       )
     ) {
-      chrome.storage.sync.remove(folderId, function () {
+      chrome.storage.local.remove(folderId, function () {
         if (chrome.runtime.lastError) {
           console.error("Error deleting folder:", chrome.runtime.lastError);
         } else {
@@ -1889,7 +1889,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function editPrompt(folderId, promptIndex, promptItem) {
-    chrome.storage.sync.get(folderId, function (data) {
+    chrome.storage.local.get(folderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -2020,7 +2020,7 @@ document.addEventListener("DOMContentLoaded", function () {
           data[folderId].name = newTitle.slice(0, 50);
         }
 
-        chrome.storage.sync.set(data, function () {
+        chrome.storage.local.set(data, function () {
           if (chrome.runtime.lastError) {
             console.error("Error editing prompt:", chrome.runtime.lastError);
           } else {
@@ -2269,7 +2269,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function showPromptVersions(folderId, promptIndex, promptItem) {
-    chrome.storage.sync.get(folderId, function (data) {
+    chrome.storage.local.get(folderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -2994,7 +2994,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function restoreVersion(folderId, promptIndex, versionId, promptItem) {
-    chrome.storage.sync.get(folderId, function (data) {
+    chrome.storage.local.get(folderId, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         return;
@@ -3025,7 +3025,7 @@ document.addEventListener("DOMContentLoaded", function () {
         prompt.versions.shift();
       }
 
-      chrome.storage.sync.set({ [folderId]: data[folderId] }, function () {
+      chrome.storage.local.set({ [folderId]: data[folderId] }, function () {
         if (chrome.runtime.lastError) {
           console.error("Error restoring version:", chrome.runtime.lastError);
           alert("Fehler beim Wiederherstellen der Version.");
@@ -3052,7 +3052,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function deletePrompt(folderId, promptIndex, promptItem) {
     if (confirm("Are you sure you want to move this prompt to the trash?")) {
-      chrome.storage.sync.get([folderId, "trash_folder"], function (data) {
+      chrome.storage.local.get([folderId, "trash_folder"], function (data) {
         if (chrome.runtime.lastError) {
           console.error("Error fetching data:", chrome.runtime.lastError);
           return;
@@ -3079,13 +3079,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const updates = {};
         if (topic.prompts.length === 0) {
-          chrome.storage.sync.remove(folderId);
+          chrome.storage.local.remove(folderId);
         } else {
           updates[folderId] = topic;
         }
         updates[trashFolderId] = trashFolder;
 
-        chrome.storage.sync.set(updates, function () {
+        chrome.storage.local.set(updates, function () {
           if (chrome.runtime.lastError) {
             console.error(
               "Error moving prompt to trash:",
@@ -3287,7 +3287,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .getElementById("mainHeaderTitle")
       .setAttribute("aria-live", "polite");
 
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (chrome.runtime.lastError) {
         console.error("Error fetching data:", chrome.runtime.lastError);
         searchResults.innerHTML =
@@ -3560,7 +3560,7 @@ document.addEventListener("DOMContentLoaded", function () {
             },
           ];
 
-          chrome.storage.sync.get(result.folderId, (data) => {
+          chrome.storage.local.get(result.folderId, (data) => {
             const topic = data[result.folderId];
             if (topic && !topic.isHidden && !topic.isTrash) {
               menuItems.splice(5, 0, {

@@ -610,7 +610,7 @@ async function promptSaver(message) {
     );
     try {
       const data = await new Promise((resolve, reject) => {
-        chrome.storage.sync.get(null, (data) => {
+        chrome.storage.local.get(null, (data) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
@@ -915,7 +915,7 @@ async function promptSaver(message) {
 
     try {
       await new Promise((resolve, reject) => {
-        chrome.storage.sync.set({ [newFolderId]: newFolder }, () => {
+        chrome.storage.local.set({ [newFolderId]: newFolder }, () => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
@@ -1518,7 +1518,7 @@ async function promptSaver(message) {
   async function loadFolders() {
     try {
       const data = await new Promise((resolve, reject) => {
-        chrome.storage.sync.get(null, (data) => {
+        chrome.storage.local.get(null, (data) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
@@ -1688,7 +1688,7 @@ async function promptSaver(message) {
 
     try {
       const data = await new Promise((resolve, reject) => {
-        chrome.storage.sync.get(null, (data) => {
+        chrome.storage.local.get(null, (data) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
@@ -1696,7 +1696,7 @@ async function promptSaver(message) {
           }
         });
       });
-      console.log("Daten aus chrome.storage.sync geladen:", data);
+      console.log("Daten aus chrome.storage.local geladen:", data);
 
       const allPrompts = [];
       Object.entries(data).forEach(([folderId, topic]) => {
@@ -1869,7 +1869,7 @@ async function promptSaver(message) {
 
           if (prompt.isHidden) {
             // Für Single Prompts, lade Prompts aus allen versteckten Ordnern
-            chrome.storage.sync.get(null, (data) => {
+            chrome.storage.local.get(null, (data) => {
               let singlePrompts = [];
               Object.entries(data).forEach(([id, topic]) => {
                 if (topic.isHidden && !topic.isTrash && topic.prompts) {
@@ -1893,7 +1893,7 @@ async function promptSaver(message) {
             });
           } else {
             // Für Categorised Prompts, lade Prompts aus dem spezifischen Ordner
-            chrome.storage.sync.get(prompt.folderId, (data) => {
+            chrome.storage.local.get(prompt.folderId, (data) => {
               const topic = data[prompt.folderId];
               if (topic && topic.prompts) {
                 topic.prompts.forEach((p, i) => {
@@ -1940,7 +1940,7 @@ async function promptSaver(message) {
         if (folderId === "single") {
           // Lade alle Prompts aus versteckten Ordnern
           const data = await new Promise((resolve, reject) => {
-            chrome.storage.sync.get(null, (data) => {
+            chrome.storage.local.get(null, (data) => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
               } else {
@@ -1975,7 +1975,7 @@ async function promptSaver(message) {
         } else {
           // Lade Prompts aus einem spezifischen Ordner
           const data = await new Promise((resolve, reject) => {
-            chrome.storage.sync.get(folderId, (data) => {
+            chrome.storage.local.get(folderId, (data) => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
               } else {
@@ -2013,7 +2013,7 @@ async function promptSaver(message) {
       try {
         const [folderId, promptIndex] = promptValue.split(":");
         const data = await new Promise((resolve, reject) => {
-          chrome.storage.sync.get(folderId, (data) => {
+          chrome.storage.local.get(folderId, (data) => {
             if (chrome.runtime.lastError) {
               reject(chrome.runtime.lastError);
             } else {
@@ -2053,7 +2053,7 @@ async function promptSaver(message) {
           // Für Single Prompts ist der Wert im Format folderId:index
           const [singleFolderId, promptIndex] = promptValue.split(":");
           const data = await new Promise((resolve, reject) => {
-            chrome.storage.sync.get(singleFolderId, (data) => {
+            chrome.storage.local.get(singleFolderId, (data) => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
               } else {
@@ -2072,7 +2072,7 @@ async function promptSaver(message) {
           // Für Categorised Prompts
           const promptIndex = promptValue;
           const data = await new Promise((resolve, reject) => {
-            chrome.storage.sync.get(folderId, (data) => {
+            chrome.storage.local.get(folderId, (data) => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
               } else {
@@ -2131,7 +2131,7 @@ async function promptSaver(message) {
     if (folderId) {
       try {
         const data = await new Promise((resolve, reject) => {
-          chrome.storage.sync.get(folderId, (data) => {
+          chrome.storage.local.get(folderId, (data) => {
             if (chrome.runtime.lastError) {
               reject(chrome.runtime.lastError);
             } else {
@@ -2168,7 +2168,7 @@ async function promptSaver(message) {
     if (folderId && promptIndex !== "") {
       try {
         const data = await new Promise((resolve, reject) => {
-          chrome.storage.sync.get(folderId, (data) => {
+          chrome.storage.local.get(folderId, (data) => {
             if (chrome.runtime.lastError) {
               reject(chrome.runtime.lastError);
             } else {
@@ -2365,7 +2365,7 @@ async function promptSaver(message) {
           };
 
           await new Promise((resolve, reject) => {
-            chrome.storage.sync.set({ [hiddenFolderId]: hiddenFolder }, () => {
+            chrome.storage.local.set({ [hiddenFolderId]: hiddenFolder }, () => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
               } else {
@@ -2395,7 +2395,7 @@ async function promptSaver(message) {
             }
 
             const data = await new Promise((resolve, reject) => {
-              chrome.storage.sync.get(singleFolderId, (data) => {
+              chrome.storage.local.get(singleFolderId, (data) => {
                 if (chrome.runtime.lastError) {
                   reject(chrome.runtime.lastError);
                 } else {
@@ -2411,7 +2411,7 @@ async function promptSaver(message) {
                 topic.prompts.length === 1 ? promptTitle : topic.name;
 
               await new Promise((resolve, reject) => {
-                chrome.storage.sync.set({ [singleFolderId]: topic }, () => {
+                chrome.storage.local.set({ [singleFolderId]: topic }, () => {
                   if (chrome.runtime.lastError) {
                     reject(chrome.runtime.lastError);
                   } else {
@@ -2429,7 +2429,7 @@ async function promptSaver(message) {
           } else {
             const promptIndex = promptValue;
             const data = await new Promise((resolve, reject) => {
-              chrome.storage.sync.get(folderId, (data) => {
+              chrome.storage.local.get(folderId, (data) => {
                 if (chrome.runtime.lastError) {
                   reject(chrome.runtime.lastError);
                 } else {
@@ -2445,7 +2445,7 @@ async function promptSaver(message) {
                 topic.prompts.length === 1 ? promptTitle : topic.name;
 
               await new Promise((resolve, reject) => {
-                chrome.storage.sync.set({ [folderId]: topic }, () => {
+                chrome.storage.local.set({ [folderId]: topic }, () => {
                   if (chrome.runtime.lastError) {
                     reject(chrome.runtime.lastError);
                   } else {
@@ -2470,7 +2470,7 @@ async function promptSaver(message) {
           }
 
           const data = await new Promise((resolve, reject) => {
-            chrome.storage.sync.get(folderId, (data) => {
+            chrome.storage.local.get(folderId, (data) => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
               } else {
@@ -2488,7 +2488,7 @@ async function promptSaver(message) {
           topic.prompts.push(promptObject);
 
           await new Promise((resolve, reject) => {
-            chrome.storage.sync.set({ [folderId]: topic }, () => {
+            chrome.storage.local.set({ [folderId]: topic }, () => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
               } else {
@@ -2517,7 +2517,7 @@ async function promptSaver(message) {
           }
 
           const data = await new Promise((resolve, reject) => {
-            chrome.storage.sync.get(folderId, (data) => {
+            chrome.storage.local.get(folderId, (data) => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
               } else {
@@ -2544,7 +2544,7 @@ async function promptSaver(message) {
             });
 
             await new Promise((resolve, reject) => {
-              chrome.storage.sync.set({ [folderId]: topic }, () => {
+              chrome.storage.local.set({ [folderId]: topic }, () => {
                 if (chrome.runtime.lastError) {
                   reject(chrome.runtime.lastError);
                 } else {

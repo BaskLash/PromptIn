@@ -231,7 +231,7 @@ function inputFieldTrigger() {
 
       // Function to update dropdown data from Chrome storage
       function updateDropdownData(callback) {
-        chrome.storage.sync.get(null, function (data) {
+        chrome.storage.local.get(null, function (data) {
           if (chrome.runtime.lastError) {
             console.error(
               "Error fetching data from Chrome storage:",

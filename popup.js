@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Funktion zum Laden der Ordner in der Seitenleiste
   function loadFolders() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       folderNavList.innerHTML = "";
 
       if (!data || Object.keys(data).length === 0) {
@@ -172,7 +172,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const folderSelect = document.getElementById("folder-select");
 
   function updateFolderSelect() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       folderSelect.innerHTML =
         '<option value="">No folder (single prompt)</option>';
       if (data) {
@@ -224,7 +224,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       const updatedData = data || {};
 
       // Einfache UUID-Generierungsfunktion
@@ -279,7 +279,7 @@ document.addEventListener("DOMContentLoaded", function () {
         };
       }
 
-      chrome.storage.sync.set(updates, function () {
+      chrome.storage.local.set(updates, function () {
         if (chrome.runtime.lastError) {
           console.error("Error saving prompt:", chrome.runtime.lastError);
           alert("Error saving prompt. Please try again.");
@@ -300,7 +300,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Suche
   inputField.addEventListener("input", function () {
     const searchTerm = inputField.value.trim().toLowerCase();
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       promptList.innerHTML = "";
       let filteredPrompts = [];
 
@@ -354,7 +354,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "Are you sure you want to clear all data? This action cannot be undone."
       )
     ) {
-      chrome.storage.sync.clear(() => {
+      chrome.storage.local.clear(() => {
         promptList.innerHTML = "";
         noData.style.display = "block";
         noData.textContent = "No prompts available";
@@ -403,7 +403,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Funktion zum Exportieren aller Prompts als JSON-Datei
   function exportPromptsToJSON() {
-    chrome.storage.sync.get(null, function (data) {
+    chrome.storage.local.get(null, function (data) {
       if (!data || Object.keys(data).length === 0) {
         alert("No prompts to export!");
         return;
@@ -449,5 +449,87 @@ document.addEventListener("DOMContentLoaded", function () {
       URL.revokeObjectURL(url);
       console.log("Prompts exported successfully");
     });
+  }
+  // Funktion zum Importieren von Prompts aus einer JSON-Datei
+  function importPromptsFromJSON(event) {
+    const file = event.target.files[0];
+    if (!file) {
+      alert("No file selected!");
+      return;
+    }
+
+    if (!file.name.endsWith(".json")) {
+      alert("Please select a valid JSON file!");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (!importedData.prompts || !Array.isArray(importedData.prompts)) {
+          alert(
+            "Invalid JSON structure: 'prompts' property missing or invalid!"
+          );
+          return;
+        }
+
+        chrome.storage.local.get(null, function (existingData) {
+          const updatedData = existingData || {};
+          importedData.prompts.forEach((item) => {
+            const { folderId, folderName, isHidden, isTrash, prompt } = item;
+            if (!updatedData[folderId]) {
+              updatedData[folderId] = {
+                name: folderName,
+                prompts: [],
+                isHidden: isHidden || false,
+                isTrash: isTrash || false,
+              };
+            }
+            updatedData[folderId].prompts.push(prompt);
+          });
+
+          chrome.storage.local.set(updatedData, function () {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Error importing prompts:",
+                chrome.runtime.lastError
+              );
+              alert("Error importing prompts. Please try again.");
+            } else {
+              console.log("Prompts imported successfully");
+              loadPrompts("all");
+              loadFolders();
+              alert("Prompts imported successfully!");
+            }
+          });
+        });
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        alert("Error parsing JSON file. Please check the file and try again.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Verstecktes Input-Element für Datei-Auswahl erstellen
+  const importInput = document.createElement("input");
+  importInput.type = "file";
+  importInput.accept = ".json";
+  importInput.style.display = "none"; // Versteckt das Input-Element
+  importInput.addEventListener("change", importPromptsFromJSON);
+  document.body.appendChild(importInput);
+
+  // Vorhandenen Import-Button verwenden
+  const importBtn = document.getElementById("import-btn");
+  if (importBtn) {
+    importBtn.addEventListener("click", () => {
+      importInput.click(); // Öffnet den Datei-Auswahl-Dialog
+    });
+  } else {
+    console.error("Import button with ID 'import-btn' not found!");
+    alert(
+      "Import button not found! Please ensure an element with ID 'import-btn' exists."
+    );
   }
 });
