@@ -159,7 +159,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // FAQ
   faqBtn.addEventListener("click", () => {
-     chrome.tabs.create({ url: chrome.runtime.getURL("/pages/faq.html") });
+    chrome.tabs.create({ url: chrome.runtime.getURL("/pages/faq.html") });
   });
 
   // New Prompt Modal
@@ -396,4 +396,58 @@ document.addEventListener("DOMContentLoaded", function () {
         "_blank"
       );
     });
+
+  // Export-Button hinzufügen und Event-Listener
+  const exportBtn = document.getElementById("export-btn");
+  exportBtn.addEventListener("click", exportPromptsToJSON);
+
+  // Funktion zum Exportieren aller Prompts als JSON-Datei
+  function exportPromptsToJSON() {
+    chrome.storage.sync.get(null, function (data) {
+      if (!data || Object.keys(data).length === 0) {
+        alert("No prompts to export!");
+        return;
+      }
+
+      // Nur Prompts aus allen Ordnern extrahieren
+      const allPrompts = [];
+      Object.entries(data).forEach(([folderId, topic]) => {
+        if (topic.prompts && Array.isArray(topic.prompts)) {
+          topic.prompts.forEach((prompt) => {
+            allPrompts.push({
+              folderId: folderId,
+              folderName: topic.name,
+              isHidden: topic.isHidden || false,
+              isTrash: topic.isTrash || false,
+              prompt: prompt,
+            });
+          });
+        }
+      });
+
+      if (allPrompts.length === 0) {
+        alert("No prompts to export!");
+        return;
+      }
+
+      const exportData = {
+        exportDate: Date.now(),
+        prompts: allPrompts,
+      };
+
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `prompts_backup_${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      console.log("Prompts exported successfully");
+    });
+  }
 });
