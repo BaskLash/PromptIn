@@ -941,9 +941,21 @@ async function promptSaver(message) {
 
   const optionsButtons = document.createElement("div");
   optionsButtons.className = "button-group";
+
   const backToPromptButton = document.createElement("button");
   backToPromptButton.textContent = "Back";
   backToPromptButton.className = "back-button";
+
+  const backToPromptEditButton = document.createElement("button");
+  backToPromptEditButton.textContent = "Back";
+  backToPromptEditButton.className = "back-button";
+
+  const saveButton = document.createElement("button");
+  saveButton.className = "save-button";
+  saveButton.textContent = "Speichern";
+
+  optionsButtons.appendChild(backToPromptEditButton);
+  optionsButtons.appendChild(saveButton);
 
   optionsSection.appendChild(optionsHeader);
   optionsSection.appendChild(optionsSwitch); // Dies muss vor den anderen Inhalten stehen
@@ -955,10 +967,6 @@ async function promptSaver(message) {
 
   const modalFooter = document.createElement("div");
   modalFooter.className = "modal-footer";
-
-  const saveButton = document.createElement("button");
-  saveButton.className = "save-button";
-  saveButton.textContent = "Speichern";
 
   // Stile definieren
   const style = document.createElement("style");
@@ -1311,8 +1319,6 @@ async function promptSaver(message) {
   modalBody.appendChild(titleSection);
   modalBody.appendChild(promptSection);
   modalBody.appendChild(optionsSection);
-
-  modalFooter.appendChild(saveButton);
 
   modalContent.appendChild(modalHeader);
   modalContent.appendChild(modalBody);
@@ -2253,6 +2259,11 @@ async function promptSaver(message) {
     optionsSection.classList.remove("active");
     promptSection.classList.add("active");
     modalContent.classList.remove("options-active");
+  });
+
+  backToPromptEditButton.addEventListener("click", (e) => {
+    optionsSection.classList.remove("active");
+    promptSection.classList.add("active");
   });
 
   // Options-Switcher-Logik mit Event-Delegation

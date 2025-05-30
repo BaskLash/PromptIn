@@ -149,4 +149,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const hasCloseMatches = results.some((result) => result.score >= 80);
     noResults.style.display = searchTerm && !hasCloseMatches ? "block" : "none";
   });
+
+  document.getElementById("searchFocus").addEventListener("click", () => {
+    document.getElementById("search").focus();
+  });
 });

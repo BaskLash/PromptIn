@@ -10,6 +10,11 @@ header {
   color: white;
   padding: 1.5rem;
   text-align: center;
+  position: sticky;
+  height: 7rem;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 header h1 {
   margin: 0;
@@ -46,9 +51,13 @@ main {
   padding: 0 1rem;
 }
 .search-container {
-  position: relative;
-  margin-bottom: 2rem;
+  position: sticky;
+  top: 10rem; /* gleiche Höhe wie header */
+  z-index: 99;
+  background-color: #f4f4f9; /* notwendig, um Überlappung zu verhindern beim Scrollen */
+  padding: 1rem 0;
 }
+
 #search {
   width: 100%;
   padding: 0.75rem 2.5rem 0.75rem 1rem;
@@ -57,6 +66,10 @@ main {
   border-radius: 0.375rem;
   outline: none;
 }
+#searchFocus {
+  cursor: pointer;
+}
+
 #search:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);

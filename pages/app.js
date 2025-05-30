@@ -236,18 +236,6 @@ document.addEventListener("DOMContentLoaded", function () {
       document.head.removeChild(style);
     };
 
-    window.addEventListener(
-      "click",
-      function (event) {
-        if (event.target === modal) {
-          modal.style.display = "none";
-          document.body.removeChild(modal);
-          document.head.removeChild(style);
-        }
-      },
-      { once: true }
-    );
-
     nameInput.focus();
   }
 

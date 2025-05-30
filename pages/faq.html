@@ -16,7 +16,7 @@
       <h1>PromptIn FAQ</h1>
       <p>Find answers to common questions about using PromptIn</p>
       <div class="header-actions">
-        <a href="#search" class="header-button">Search FAQs</a>
+        <a id="searchFocus" class="header-button">Search FAQs</a>
         <a
           href="https://github.com/BaskLash/PromptIn/issues/new"
           target="_blank"
@@ -166,6 +166,52 @@
             prompts, and it should work again. You will find a more detailed
             explanation to that issue here (in German):
             https://github.com/BaskLash/PromptIn/issues/49#issue-3097566276
+            <br /><br />If it was not understandable and too complicated for
+            you, follow this If it was not understandable and too complicated
+            for you, follow this guide. Instructions:
+            <ul>
+              <li>
+                Go to this GitHub link to get the older version of the
+                extension:
+                <a
+                  href="https://github.com/BaskLash/PromptIn/tree/50cd2a8eec34ec506c947fd65518492ae5df7254"
+                  target="_blank"
+                >
+                  GitHub Commit Link
+                </a>
+              </li>
+              <li>Download the extension files from that version.</li>
+              <li>Open Chrome and go to <code>chrome://extensions</code>.</li>
+              <li>Enable "Developer mode" in the top right corner.</li>
+              <li>
+                Click on "Load unpacked" and select the downloaded folder.
+              </li>
+              <li>
+                Once the extension is loaded, open it and export your prompts as
+                a JSON file.
+              </li>
+              <li>
+                After exporting, open the extension popup, go to Settings, and
+                click on <strong>"Delete Data"</strong>.
+              </li>
+              <li>
+                Alternatively, you can remove the extension, but it's safer to
+                delete the data manually first.
+              </li>
+              <li>
+                Reinstall the latest version of the extension (it may look
+                empty).
+              </li>
+              <li>
+                Import your prompts using the JSON file you saved earlier.
+              </li>
+              <li>
+                This process moves your data from
+                <code>chrome.storage.sync</code> to
+                <code>chrome.storage.local</code>, so your data is no longer
+                stored in the Google Cloud.
+              </li>
+            </ul>
           </div>
         </div>
         <div class="faq-item" data-tags="security,storage,prompts,data,privacy">
