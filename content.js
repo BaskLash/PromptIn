@@ -310,6 +310,8 @@ async function promptSaver(message) {
   checkboxContainer.style.marginTop = "10px";
   checkboxContainer.style.display = "flex";
   checkboxContainer.style.alignItems = "center";
+  // Checkbox-Container nur anzeigen, wenn ein Doppelpunkt im Text vorhanden ist
+  checkboxContainer.style.display = message.includes(":") ? "flex" : "none";
 
   const showFullContentCheckbox = document.createElement("input");
   showFullContentCheckbox.type = "checkbox";
@@ -324,6 +326,7 @@ async function promptSaver(message) {
   checkboxLabel.textContent = "Gesamten Inhalt anzeigen (inkl. Text nach ':')";
   checkboxLabel.style.fontSize = "14px";
   checkboxLabel.style.marginTop = "5px";
+  checkboxLabel.style.userSelect = "none";
 
   showFullContentCheckbox.addEventListener("change", (e) => {
     promptTextarea.value = e.target.checked
@@ -331,6 +334,14 @@ async function promptSaver(message) {
       : originalMessage.includes(":")
       ? originalMessage.split(":")[0].trim()
       : originalMessage;
+  });
+
+  // Dynamische Anpassung, falls der Benutzer den Text in der Textarea bearbeitet
+  promptTextarea.addEventListener("input", (e) => {
+    const currentText = e.target.value;
+    checkboxContainer.style.display = currentText.includes(":")
+      ? "flex"
+      : "none";
   });
 
   const promptButtons = document.createElement("div");
