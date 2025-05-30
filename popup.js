@@ -401,22 +401,32 @@ document.addEventListener("DOMContentLoaded", function () {
   const exportBtn = document.getElementById("export-btn");
   exportBtn.addEventListener("click", exportPromptsToJSON);
 
-  // Funktion zum Exportieren aller Prompts als JSON-Datei
+  // Funktion zum Exportieren aller Prompts und Ordner (inkl. leerer Ordner) als JSON-Datei
   function exportPromptsToJSON() {
     chrome.storage.local.get(null, function (data) {
       if (!data || Object.keys(data).length === 0) {
-        alert("No prompts to export!");
+        alert("No data to export!");
         return;
       }
 
-      // Nur Prompts aus allen Ordnern extrahieren
+      // Prompts und Ordnerstruktur extrahieren
       const allPrompts = [];
+      const allFolders = [];
       Object.entries(data).forEach(([folderId, topic]) => {
+        // Ordnerinformationen speichern, auch wenn leer
+        allFolders.push({
+          folderId: folderId,
+          folderName: topic.name || "Unnamed Folder",
+          isHidden: topic.isHidden || false,
+          isTrash: topic.isTrash || false,
+        });
+
+        // Prompts hinzufügen, falls vorhanden
         if (topic.prompts && Array.isArray(topic.prompts)) {
           topic.prompts.forEach((prompt) => {
             allPrompts.push({
               folderId: folderId,
-              folderName: topic.name,
+              folderName: topic.name || "Unnamed Folder",
               isHidden: topic.isHidden || false,
               isTrash: topic.isTrash || false,
               prompt: prompt,
@@ -425,14 +435,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      if (allPrompts.length === 0) {
-        alert("No prompts to export!");
+      if (allFolders.length === 0 && allPrompts.length === 0) {
+        alert("No data to export!");
         return;
       }
 
       const exportData = {
         exportDate: Date.now(),
         prompts: allPrompts,
+        folders: allFolders,
       };
 
       const jsonString = JSON.stringify(exportData, null, 2);
@@ -447,10 +458,10 @@ document.addEventListener("DOMContentLoaded", function () {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      console.log("Prompts exported successfully");
+      console.log("Prompts and folders exported successfully");
     });
   }
-  // Funktion zum Importieren von Prompts aus einer JSON-Datei
+  // Funktion zum Importieren von Prompts und Ordnern aus einer JSON-Datei
   function importPromptsFromJSON(event) {
     const file = event.target.files[0];
     if (!file) {
@@ -476,11 +487,42 @@ document.addEventListener("DOMContentLoaded", function () {
 
         chrome.storage.local.get(null, function (existingData) {
           const updatedData = existingData || {};
+
+          // 1. Leere Ordner aus der JSON-Datei hinzufügen
+          if (importedData.folders && Array.isArray(importedData.folders)) {
+            importedData.folders.forEach((folder) => {
+              const { folderId, folderName, isHidden, isTrash } = folder;
+              if (!updatedData[folderId]) {
+                updatedData[folderId] = {
+                  name: folderName || "Unnamed Folder",
+                  prompts: [],
+                  isHidden: isHidden || false,
+                  isTrash: isTrash || false,
+                };
+              } else {
+                // Bestehende Ordnerattribute beibehalten, nur fehlende ergänzen
+                updatedData[folderId].name =
+                  updatedData[folderId].name || folderName || "Unnamed Folder";
+                updatedData[folderId].isHidden =
+                  updatedData[folderId].isHidden !== undefined
+                    ? updatedData[folderId].isHidden
+                    : isHidden || false;
+                updatedData[folderId].isTrash =
+                  updatedData[folderId].isTrash !== undefined
+                    ? updatedData[folderId].isTrash
+                    : isTrash || false;
+                updatedData[folderId].prompts =
+                  updatedData[folderId].prompts || [];
+              }
+            });
+          }
+
+          // 2. Prompts zu den Ordnern hinzufügen
           importedData.prompts.forEach((item) => {
             const { folderId, folderName, isHidden, isTrash, prompt } = item;
             if (!updatedData[folderId]) {
               updatedData[folderId] = {
-                name: folderName,
+                name: folderName || "Unnamed Folder",
                 prompts: [],
                 isHidden: isHidden || false,
                 isTrash: isTrash || false,
@@ -492,15 +534,15 @@ document.addEventListener("DOMContentLoaded", function () {
           chrome.storage.local.set(updatedData, function () {
             if (chrome.runtime.lastError) {
               console.error(
-                "Error importing prompts:",
+                "Error importing prompts and folders:",
                 chrome.runtime.lastError
               );
-              alert("Error importing prompts. Please try again.");
+              alert("Error importing prompts and folders. Please try again.");
             } else {
-              console.log("Prompts imported successfully");
+              console.log("Prompts and folders imported successfully");
               loadPrompts("all");
               loadFolders();
-              alert("Prompts imported successfully!");
+              alert("Prompts and folders imported successfully!");
             }
           });
         });
