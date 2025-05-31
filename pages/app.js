@@ -2707,32 +2707,39 @@ document.addEventListener("DOMContentLoaded", function () {
         const actions = document.createElement("div");
         actions.className = "version-actions";
 
-        const restoreButton = document.createElement("button");
-        restoreButton.textContent = "Wiederherstellen";
-        restoreButton.classList.add("action-btn");
-        restoreButton.title =
-          "Diese Version als aktuelle Version wiederherstellen";
-        restoreButton.addEventListener("click", () => {
-          restoreVersion(folderId, promptIndex, version.versionId, promptItem);
-          modal.style.display = "none";
-          document.body.removeChild(modal);
-          document.head.removeChild(style);
-        });
-        actions.appendChild(restoreButton);
+        if (versions.length > 1) {
+          const restoreButton = document.createElement("button");
+          restoreButton.textContent = "Wiederherstellen";
+          restoreButton.classList.add("action-btn");
+          restoreButton.title =
+            "Diese Version als aktuelle Version wiederherstellen";
+          restoreButton.addEventListener("click", () => {
+            restoreVersion(
+              folderId,
+              promptIndex,
+              version.versionId,
+              promptItem
+            );
+            modal.style.display = "none";
+            document.body.removeChild(modal);
+            document.head.removeChild(style);
+          });
+          actions.appendChild(restoreButton);
 
-        const compareButton = document.createElement("button");
-        compareButton.textContent = "Vergleichen";
-        compareButton.classList.add("action-btn");
-        compareButton.title = "Unterschiede zu anderen Versionen anzeigen";
-        compareButton.addEventListener("click", () => {
-          customDiffSection.style.display = "block";
-          baseSelect.value = version.versionId;
-          compareSelect.value = "";
-          customDiffContainer.innerHTML = "";
-          diffHeader.textContent = "Versionsvergleich";
-          modalBody.scrollTop = 0;
-        });
-        actions.appendChild(compareButton);
+          const compareButton = document.createElement("button");
+          compareButton.textContent = "Vergleichen";
+          compareButton.classList.add("action-btn");
+          compareButton.title = "Unterschiede zu anderen Versionen anzeigen";
+          compareButton.addEventListener("click", () => {
+            customDiffSection.style.display = "block";
+            baseSelect.value = version.versionId;
+            compareSelect.value = "";
+            customDiffContainer.innerHTML = "";
+            diffHeader.textContent = "Versionsvergleich";
+            modalBody.scrollTop = 0;
+          });
+          actions.appendChild(compareButton);
+        }
 
         versionContent.appendChild(actions);
         versionItem.appendChild(versionHeader);
@@ -2844,6 +2851,62 @@ document.addEventListener("DOMContentLoaded", function () {
       modalHeader.appendChild(headerTitle);
       modalBody.appendChild(customDiffSection);
       modalBody.appendChild(timeline);
+
+      // Export Dropdown
+      const exportContainer = document.createElement("div");
+      exportContainer.style.marginTop = "15px";
+      exportContainer.style.display = "flex";
+      exportContainer.style.alignItems = "center";
+      exportContainer.style.gap = "8px";
+
+      const exportLabel = document.createElement("label");
+      exportLabel.textContent = "Export History:";
+      exportLabel.style.fontWeight = "600";
+      exportLabel.style.color = "#34495e";
+
+      const exportSelect = document.createElement("select");
+      exportSelect.className = "action-btn";
+      exportSelect.style.padding = "8px";
+      exportSelect.style.borderRadius = "4px";
+      exportSelect.style.border = "1px solid #ddd";
+      exportSelect.title = "Wähle ein Exportformat für den Versionsverlauf";
+
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "Select Export Format";
+      defaultOption.disabled = true;
+      defaultOption.selected = true;
+      exportSelect.appendChild(defaultOption);
+
+      const exportOptions = [
+        { value: "latex", text: "Export as PDF (LaTeX)" },
+        { value: "json", text: "Export as JSON" },
+        { value: "html", text: "Export as HTML" },
+      ];
+
+      exportOptions.forEach((opt) => {
+        const option = document.createElement("option");
+        option.value = opt.value;
+        option.textContent = opt.text;
+        exportSelect.appendChild(option);
+      });
+
+      exportSelect.addEventListener("change", () => {
+        const format = exportSelect.value;
+        if (format === "latex") {
+          exportVersionHistory(prompt);
+        } else if (format === "json") {
+          exportVersionHistoryAsJson(prompt);
+        } else if (format === "html") {
+          exportVersionHistoryAsHtml(prompt);
+        }
+        exportSelect.value = ""; // Reset dropdown
+      });
+
+      exportContainer.appendChild(exportLabel);
+      exportContainer.appendChild(exportSelect);
+      modalBody.appendChild(exportContainer);
+
       modalContent.appendChild(modalHeader);
       modalContent.appendChild(modalBody);
       modal.appendChild(modalContent);
@@ -3151,6 +3214,21 @@ document.addEventListener("DOMContentLoaded", function () {
           width: 100%;
           text-align: center;
         }
+          .action-btn select {
+  background: #1e90ff;
+  color: white;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.action-btn select:hover {
+  background: #4169e1;
+}
+.action-btn select option {
+  background: #fff;
+  color: #2c3e50;
+}
         .diff-select-wrapper {
           flex-direction: column;
         }
@@ -3197,14 +3275,22 @@ document.addEventListener("DOMContentLoaded", function () {
       const version = prompt.versions.find((v) => v.versionId === versionId);
       if (!version) return;
 
-      // Save current state as a new version
-      prompt.versions.push({
-        versionId: generateUUID(),
-        title: prompt.title,
-        description: prompt.description || "",
-        content: prompt.content,
-        timestamp: Date.now(),
-      });
+      // Check if the restored version differs from the current state
+      const isDifferent =
+        prompt.title !== version.title ||
+        (prompt.description || "") !== (version.description || "") ||
+        prompt.content !== version.content;
+
+      if (isDifferent) {
+        // Save current state as a new version only if there's a difference
+        prompt.versions.push({
+          versionId: generateUUID(),
+          title: prompt.title,
+          description: prompt.description || "",
+          content: prompt.content,
+          timestamp: Date.now(),
+        });
+      }
 
       // Update prompt to selected version
       prompt.title = version.title;
@@ -3990,6 +4076,157 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initiale Aktualisierung
   updateStorageInfo();
+
+  function escapeLatex(str) {
+    if (!str) return "";
+    return str
+      .replace(/([\\{}&$%#_\^~])/g, "\\$1")
+      .replace(/</g, "\\textless{}")
+      .replace(/>/g, "\\textgreater{}")
+      .replace(/"/g, "\\textquotedbl{}")
+      .replace(/'/g, "\\textquotesingle{}")
+      .replace(/\n/g, "\\\\");
+  }
+
+  function exportVersionHistory(prompt) {
+    if (!prompt || !prompt.versions) return;
+
+    const versions = prompt.versions
+      .slice()
+      .sort((a, b) => b.timestamp - a.timestamp);
+
+    let latexContent = `
+\\documentclass[a4paper,12pt]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T1]{fontenc}
+\\usepackage{geometry}
+\\geometry{margin=2cm}
+\\usepackage{parskip}
+\\usepackage{datetime2}
+\\usepackage{xcolor}
+\\definecolor{headercolor}{RGB}{30,144,255}
+\\title{Prompt Version History}
+\\author{}
+\\date{}
+
+\\begin{document}
+\\maketitle
+\\section*{Prompt: ${escapeLatex(prompt.title || "Untitled")}}
+`;
+
+    versions.forEach((version, index) => {
+      const versionNumber = versions.length - index;
+      const timestamp = new Date(version.timestamp).toLocaleString();
+      latexContent += `
+\\subsection*{Version ${versionNumber} -- ${escapeLatex(timestamp)}}
+\\textbf{Title:} ${escapeLatex(version.title || "None")}\\\\
+\\textbf{Description:} ${escapeLatex(version.description || "None")}\\\\
+\\textbf{Content:} ${escapeLatex(version.content || "None")}\\\\
+`;
+    });
+
+    latexContent += `
+\\end{document}
+`;
+
+    // Trigger download
+    const blob = new Blob([latexContent], { type: "text/x-tex" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `prompt_version_history_${Date.now()}.tex`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportVersionHistoryAsJson(prompt) {
+    if (!prompt || !prompt.versions) return;
+
+    const exportData = {
+      title: prompt.title || "Untitled",
+      versions: prompt.versions
+        .slice()
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .map((version, index) => ({
+          versionNumber: prompt.versions.length - index,
+          title: version.title || "None",
+          description: version.description || "None",
+          content: version.content || "None",
+          timestamp: new Date(version.timestamp).toLocaleString(),
+        })),
+    };
+
+    const jsonContent = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonContent], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `prompt_version_history_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportVersionHistoryAsHtml(prompt) {
+    if (!prompt || !prompt.versions) return;
+
+    const versions = prompt.versions
+      .slice()
+      .sort((a, b) => b.timestamp - a.timestamp);
+
+    let htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Version History</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; color: #2c3e50; }
+    h1 { color: #1e90ff; }
+    h2 { color: #34495e; border-bottom: 2px solid #1e90ff; padding-bottom: 8px; }
+    .version { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+    .version p { margin: 8px 0; }
+    .label { font-weight: bold; color: #34495e; }
+  </style>
+</head>
+<body>
+  <h1>Prompt Version History: ${prompt.title || "Untitled"}</h1>
+`;
+
+    versions.forEach((version, index) => {
+      const versionNumber = versions.length - index;
+      const timestamp = new Date(version.timestamp).toLocaleString();
+      htmlContent += `
+  <div class="version">
+    <h2>Version ${versionNumber} - ${timestamp}</h2>
+    <p><span class="label">Title:</span> ${version.title || "None"}</p>
+    <p><span class="label">Description:</span> ${
+      version.description || "None"
+    }</p>
+    <p><span class="label">Content:</span> ${version.content || "None"}</p>
+  </div>
+`;
+    });
+
+    htmlContent += `
+</body>
+</html>
+`;
+
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `prompt_version_history_${Date.now()}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   // Optional: Regelmäßige Aktualisierung alle 5 Sekunden
   setInterval(updateStorageInfo, 5000);

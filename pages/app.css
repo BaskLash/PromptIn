@@ -329,6 +329,17 @@ main {
   color: #1a1a1a;
 }
 
+.action-btn.export-btn {
+  display: block;
+  margin: 15px auto 0;
+  padding: 10px 20px;
+  background: #28a745;
+}
+
+.action-btn.export-btn:hover {
+  background: #218838;
+}
+
 /* Verbessertes Prompt-Design */
 .prompt-list {
   list-style: none;
