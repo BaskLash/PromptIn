@@ -3738,4 +3738,37 @@ document.addEventListener("DOMContentLoaded", function () {
     trashLink,
   ].forEach((link) => link.classList.remove("active"));
   allPromptsLink.classList.add("active");
+
+  function updateStorageInfo() {
+    const totalBytes = 10 * 1024 * 1024; // 10 MB
+    chrome.storage.local.getBytesInUse(null, function (bytesInUse) {
+      const remainingBytes = totalBytes - bytesInUse;
+      const usedPercentage = (bytesInUse / totalBytes) * 100;
+
+      // Update progress bar and percentage
+      document.getElementById("usedBar").style.width = usedPercentage + "%";
+      document.getElementById("percentageText").textContent =
+        usedPercentage.toFixed(1) + "%";
+
+      // Convert and display only MB values
+      document.getElementById("usedMB").textContent = (
+        bytesInUse /
+        (1024 * 1024)
+      ).toFixed(2);
+      document.getElementById("remainingMB").textContent = (
+        remainingBytes /
+        (1024 * 1024)
+      ).toFixed(2);
+      document.getElementById("totalMB").textContent = (
+        totalBytes /
+        (1024 * 1024)
+      ).toFixed(2);
+    });
+  }
+
+  // Initiale Aktualisierung
+  updateStorageInfo();
+
+  // Optional: Regelmäßige Aktualisierung alle 5 Sekunden
+  setInterval(updateStorageInfo, 5000);
 });

@@ -30,16 +30,38 @@
       <div class="nav-section">
         <button class="collapsible">
           Folders
-          <span id="createFolderIcon" class="folder-icon" title="Create new folder">+</span>
+          <span
+            id="createFolderIcon"
+            class="folder-icon"
+            title="Create new folder"
+            >+</span
+          >
         </button>
         <div class="collapsible-content" id="folderNavList"></div>
+      </div>
+
+      <div class="bottom-section">
+        <div class="container">
+          <h2>Storage Usage</h2>
+          <div class="storage-bar">
+            <div class="used-bar" id="usedBar"></div>
+            <span class="percentage-text" id="percentageText">0%</span>
+          </div>
+          <div class="details">
+            <p>Used: <span id="usedMB">0</span> MB</p>
+            <p>Available: <span id="remainingMB">0</span> MB</p>
+            <p>Total Capacity: <span id="totalMB">0</span> MB</p>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="main-content">
       <header class="sticky-header">
         <h1 id="mainHeaderTitle">Prompt Overview</h1>
-        <button id="addPromptBtn" class="add-prompt-btn" title="Add new prompt">Add Prompt</button>
+        <button id="addPromptBtn" class="add-prompt-btn" title="Add new prompt">
+          Add Prompt
+        </button>
       </header>
       <main>
         <section id="promptList" class="prompt-list-section hidden">
