@@ -356,6 +356,7 @@ document.addEventListener("DOMContentLoaded", function () {
           content,
           isFavorite,
           createdAt: Date.now(),
+          lastUsed: Date.now(),
           versions: [
             {
               versionId: generateUUID(),
@@ -779,6 +780,9 @@ document.addEventListener("DOMContentLoaded", function () {
       promptItem.classList.add("favorite");
     }
 
+    const promptContent = document.createElement("div");
+    promptContent.classList.add("prompt-content");
+
     const promptText = document.createElement("span");
     promptText.classList.add("prompt-text");
 
@@ -794,7 +798,15 @@ document.addEventListener("DOMContentLoaded", function () {
           : prompt.title || "Untitled Prompt";
     });
 
-    promptItem.appendChild(promptText);
+    const lastUsedText = document.createElement("span");
+    lastUsedText.classList.add("prompt-last-used");
+    lastUsedText.textContent = prompt.lastUsed
+      ? `Zuletzt genutzt: ${new Date(prompt.lastUsed).toLocaleString()}`
+      : "Noch nie genutzt";
+
+    promptContent.appendChild(promptText);
+    promptContent.appendChild(lastUsedText);
+    promptItem.appendChild(promptContent);
 
     const promptActions = document.createElement("div");
     promptActions.classList.add("prompt-actions");
@@ -884,6 +896,12 @@ document.addEventListener("DOMContentLoaded", function () {
     promptActions.appendChild(menuBtn);
     promptActions.appendChild(dropdown);
     promptItem.appendChild(promptActions);
+
+    promptItem.addEventListener("click", (e) => {
+      if (!promptActions.contains(e.target)) {
+        showPromptDetails(prompt, folderId, index);
+      }
+    });
 
     return promptItem;
   }
@@ -1227,6 +1245,25 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       { once: true }
     );
+
+    chrome.storage.local.get(folderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+      const topic = data[folderId];
+      if (!topic || !topic.prompts[index]) return;
+
+      // Aktualisiere lastUsed
+      topic.prompts[index].lastUsed = Date.now();
+      chrome.storage.local.set({ [folderId]: topic }, function () {
+        if (chrome.runtime.lastError) {
+          console.error("Error updating lastUsed:", chrome.runtime.lastError);
+        } else {
+          console.log(`lastUsed updated for prompt in ${folderId}`);
+        }
+      });
+    });
   }
 
   function removeFromFolder(currentFolderId, promptIndex, promptItem) {
@@ -1552,6 +1589,13 @@ document.addEventListener("DOMContentLoaded", function () {
             }))
           );
         }
+      });
+
+      // Sort prompts by lastUsed date (most recent first)
+      allPrompts.sort((a, b) => {
+        const lastUsedA = a.prompt.lastUsed || 0;
+        const lastUsedB = b.prompt.lastUsed || 0;
+        return lastUsedB - lastUsedA; // Descending order
       });
 
       if (allPrompts.length === 0) {

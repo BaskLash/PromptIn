@@ -243,8 +243,9 @@ document.addEventListener("DOMContentLoaded", function () {
         title,
         description,
         content,
-        createdAt: Date.now(),
         isFavorite,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
         versions: [
           {
             versionId: generateUUID(),

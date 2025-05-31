@@ -431,7 +431,7 @@ function inputFieldTrigger() {
               }
             });
 
-            contentItem.addEventListener("click", () => {
+            contentItem.addEventListener("click", async () => {
               const currentText = getInputText(inputField);
               const slashIndex = currentText.indexOf("/");
               let newText = "";
@@ -467,6 +467,20 @@ function inputFieldTrigger() {
               setCursorToEnd(inputField);
               dropdown.style.display = "none";
               clearFocus();
+
+              // Aktualisiere lastUsed
+              const promptIndex = await findPromptIndex(
+                source.folderId,
+                source.prompt
+              );
+              if (promptIndex !== -1) {
+                updatePromptLastUsed(source.folderId, promptIndex);
+              } else {
+                console.error(
+                  "Prompt index not found for folder:",
+                  source.folderId
+                );
+              }
             });
 
             contentPanel.appendChild(contentItem);
@@ -649,7 +663,7 @@ function inputFieldTrigger() {
               }
             });
 
-            contentItem.addEventListener("click", () => {
+            contentItem.addEventListener("click", async () => {
               const currentText = getInputText(inputField);
               const slashIndex = currentText.indexOf("/");
               let newText = "";
@@ -683,6 +697,20 @@ function inputFieldTrigger() {
               setCursorToEnd(inputField);
               dropdown.style.display = "none";
               clearFocus();
+
+              // Aktualisiere lastUsed
+              const promptIndex = await findPromptIndex(
+                source.folderId,
+                source.prompt
+              );
+              if (promptIndex !== -1) {
+                updatePromptLastUsed(source.folderId, promptIndex);
+              } else {
+                console.error(
+                  "Prompt index not found for folder:",
+                  source.folderId
+                );
+              }
             });
 
             contentPanel.appendChild(contentItem);
@@ -1207,7 +1235,7 @@ function inputFieldTrigger() {
       let container = null;
       const currentUrl = window.location.href;
 
-      console.log(currentUrl)
+      console.log(currentUrl);
 
       // Finde den passenden Selektor basierend auf der URL
       const matchedSite = selectorMap.find((site) =>
@@ -1550,5 +1578,51 @@ function inputFieldTrigger() {
         }
       }, 5000); // Check every 5 seconds
     }, 2000);
+  });
+}
+function updatePromptLastUsed(folderId, promptIndex) {
+  chrome.storage.local.get(folderId, function (data) {
+    if (chrome.runtime.lastError) {
+      console.error("Error fetching data:", chrome.runtime.lastError);
+      return;
+    }
+    const topic = data[folderId];
+    if (!topic || !topic.prompts[promptIndex]) return;
+
+    topic.prompts[promptIndex].lastUsed = Date.now();
+    chrome.storage.local.set({ [folderId]: topic }, function () {
+      if (chrome.runtime.lastError) {
+        console.error("Error updating lastUsed:", chrome.runtime.lastError);
+      } else {
+        console.log(`lastUsed updated for prompt in ${folderId}`);
+      }
+    });
+  });
+}
+function findPromptIndex(folderId, prompt) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(folderId, function (data) {
+      if (
+        chrome.runtime.lastError ||
+        !data[folderId] ||
+        !data[folderId].prompts
+      ) {
+        console.error("Error fetching prompts for folder:", folderId);
+        resolve(-1);
+        return;
+      }
+      const prompts = data[folderId].prompts;
+      const index = prompts.findIndex(
+        (p) =>
+          (typeof p === "string" &&
+            typeof prompt === "string" &&
+            p === prompt) ||
+          (typeof p !== "string" &&
+            typeof prompt !== "string" &&
+            p.title === prompt.title &&
+            p.content === prompt.content)
+      );
+      resolve(index);
+    });
   });
 }
