@@ -849,8 +849,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const lastUsedText = document.createElement("span");
     lastUsedText.classList.add("prompt-last-used");
     lastUsedText.textContent = prompt.lastUsed
-      ? `Zuletzt genutzt: ${new Date(prompt.lastUsed).toLocaleString()}`
-      : "Noch nie genutzt";
+      ? `Lastly used: ${new Date(prompt.lastUsed).toLocaleString()}`
+      : "Never used";
 
     promptContent.appendChild(promptText);
     promptContent.appendChild(lastUsedText);
@@ -888,7 +888,10 @@ document.addEventListener("DOMContentLoaded", function () {
       );
     } else {
       menuItems.push(
-        { text: "Copy Prompt", action: () => copyPrompt(prompt) },
+        {
+          text: "Copy Prompt",
+          action: () => copyPrompt(prompt, folderId, index),
+        },
         {
           text: "Move to Folder",
           action: () => movePromptToFolder(folderId, index, promptItem),
@@ -1126,12 +1129,49 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  function copyPrompt(prompt) {
+  function copyPrompt(prompt, folderId, promptIndex) {
     const text = typeof prompt === "string" ? prompt : prompt.content;
     navigator.clipboard
       .writeText(text)
       .then(() => {
         alert("Prompt copied to clipboard!");
+        // Update lastUsed in storage
+        if (folderId && typeof promptIndex === "number") {
+          chrome.storage.local.get(folderId, function (data) {
+            if (chrome.runtime.lastError) {
+              console.error("Error fetching data:", chrome.runtime.lastError);
+              return;
+            }
+            const topic = data[folderId];
+            if (!topic || !topic.prompts[promptIndex]) return;
+
+            topic.prompts[promptIndex].lastUsed = Date.now();
+            chrome.storage.local.set({ [folderId]: topic }, function () {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Error updating lastUsed:",
+                  chrome.runtime.lastError
+                );
+              } else {
+                console.log(`lastUsed updated for prompt in ${folderId}`);
+                // Refresh UI if necessary
+                if (mainHeaderTitle.textContent === "All Prompts") {
+                  showAllPrompts();
+                } else if (mainHeaderTitle.textContent === "Single Prompts") {
+                  showSinglePrompts();
+                } else if (
+                  mainHeaderTitle.textContent === "Categorised Prompts"
+                ) {
+                  showCategorisedPrompts();
+                } else if (mainHeaderTitle.textContent === "Favorites") {
+                  showFavoritePrompts();
+                } else {
+                  showFolderContent(folderId);
+                }
+              }
+            });
+          });
+        }
       })
       .catch((err) => {
         console.error("Failed to copy prompt:", err);
@@ -3682,7 +3722,11 @@ document.addEventListener("DOMContentLoaded", function () {
           dropdown.classList.add("dropdown-menu");
 
           const menuItems = [
-            { text: "Copy Prompt", action: () => copyPrompt(result.prompt) },
+            {
+              text: "Copy Prompt",
+              action: () =>
+                copyPrompt(result.prompt, result.folderId, result.promptIndex),
+            },
             {
               text: "Move to Folder",
               action: () =>
