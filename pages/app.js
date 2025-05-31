@@ -355,6 +355,9 @@ document.addEventListener("DOMContentLoaded", function () {
           description,
           content,
           isFavorite,
+          aiModels: aiModelCheckboxes
+            .filter((checkbox) => checkbox.checked)
+            .map((checkbox) => checkbox.value),
           createdAt: Date.now(),
           lastUsed: Date.now(),
           versions: [
@@ -438,6 +441,51 @@ document.addEventListener("DOMContentLoaded", function () {
       modalBody.appendChild(folderSelect);
       modalBody.appendChild(favoriteLabel);
       modalBody.appendChild(favoriteCheckbox);
+
+      const aiModelLabel = document.createElement("label");
+      aiModelLabel.textContent = "Compatible AI Models:";
+      aiModelLabel.style.marginTop = "10px";
+      aiModelLabel.style.display = "block";
+      const aiModelContainer = document.createElement("div");
+      aiModelContainer.style.display = "flex";
+      aiModelContainer.style.flexDirection = "column";
+      aiModelContainer.style.gap = "8px";
+      const aiModels = [
+        "Grok",
+        "Gemini",
+        "ChatGPT",
+        "Claude",
+        "BlackBox",
+        "GitHub Copilot",
+        "Microsoft Copilot",
+        "Mistral",
+        "DuckDuckGo",
+        "Perplexity",
+        "DeepSeek",
+        "Deepai",
+        "Qwen AI",
+      ];
+      const aiModelCheckboxes = [];
+      aiModels.forEach((model) => {
+        const checkboxContainer = document.createElement("div");
+        checkboxContainer.style.display = "flex";
+        checkboxContainer.style.alignItems = "center";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = model;
+        checkbox.id = `ai-model-${model}`;
+        checkbox.style.marginRight = "8px";
+        const label = document.createElement("label");
+        label.htmlFor = `ai-model-${model}`;
+        label.textContent = model;
+        checkboxContainer.appendChild(checkbox);
+        checkboxContainer.appendChild(label);
+        aiModelContainer.appendChild(checkboxContainer);
+        aiModelCheckboxes.push(checkbox);
+      });
+      modalBody.appendChild(aiModelLabel);
+      modalBody.appendChild(aiModelContainer);
+
       modalBody.appendChild(saveButton);
       modalContent.appendChild(modalHeader);
       modalContent.appendChild(modalBody);
@@ -806,6 +854,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     promptContent.appendChild(promptText);
     promptContent.appendChild(lastUsedText);
+
+    const aiModelsText = document.createElement("span");
+    aiModelsText.classList.add("prompt-ai-models");
+    aiModelsText.textContent =
+      prompt.aiModels && prompt.aiModels.length > 0
+        ? `AI Models: ${prompt.aiModels.join(", ")}`
+        : "AI Models: None";
+    promptContent.appendChild(aiModelsText);
+
     promptItem.appendChild(promptContent);
 
     const promptActions = document.createElement("div");
@@ -1145,6 +1202,17 @@ document.addEventListener("DOMContentLoaded", function () {
     modalBody.appendChild(descText);
     modalBody.appendChild(contentLabel);
     modalBody.appendChild(contentText);
+
+    const aiModelsLabel = document.createElement("label");
+    aiModelsLabel.textContent = "Compatible AI Models:";
+    const aiModelsText = document.createElement("p");
+    aiModelsText.textContent =
+      prompt.aiModels && prompt.aiModels.length > 0
+        ? prompt.aiModels.join(", ")
+        : "None";
+    modalBody.appendChild(aiModelsLabel);
+    modalBody.appendChild(aiModelsText);
+
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
     modal.appendChild(modalContent);
@@ -2045,6 +2113,9 @@ document.addEventListener("DOMContentLoaded", function () {
           data[folderId].prompts[promptIndex].description = newDesc;
           data[folderId].prompts[promptIndex].content = newContent;
           data[folderId].prompts[promptIndex].isFavorite = isFavorite;
+          data[folderId].prompts[promptIndex].aiModels = aiModelCheckboxes
+            .filter((checkbox) => checkbox.checked)
+            .map((checkbox) => checkbox.value);
           data[folderId].prompts[promptIndex].versions = currentPrompt.versions;
         }
 
@@ -2089,6 +2160,54 @@ document.addEventListener("DOMContentLoaded", function () {
       modalBody.appendChild(folderText);
       modalBody.appendChild(favoriteLabel);
       modalBody.appendChild(favoriteCheckbox);
+
+      const aiModelLabel = document.createElement("label");
+      aiModelLabel.textContent = "Compatible AI Models:";
+      aiModelLabel.style.marginTop = "10px";
+      aiModelLabel.style.display = "block";
+      const aiModelContainer = document.createElement("div");
+      aiModelContainer.style.display = "flex";
+      aiModelContainer.style.flexDirection = "column";
+      aiModelContainer.style.gap = "8px";
+      const aiModels = [
+        "Grok",
+        "Gemini",
+        "ChatGPT",
+        "Claude",
+        "BlackBox",
+        "GitHub Copilot",
+        "Microsoft Copilot",
+        "Mistral",
+        "DuckDuckGo",
+        "Perplexity",
+        "DeepSeek",
+        "Deepai",
+        "Qwen AI",
+      ];
+      const aiModelCheckboxes = [];
+      aiModels.forEach((model) => {
+        const checkboxContainer = document.createElement("div");
+        checkboxContainer.style.display = "flex";
+        checkboxContainer.style.alignItems = "center";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = model;
+        checkbox.id = `ai-model-${model}`;
+        checkbox.style.marginRight = "8px";
+        if (prompt.aiModels && prompt.aiModels.includes(model)) {
+          checkbox.checked = true;
+        }
+        const label = document.createElement("label");
+        label.htmlFor = `ai-model-${model}`;
+        label.textContent = model;
+        checkboxContainer.appendChild(checkbox);
+        checkboxContainer.appendChild(label);
+        aiModelContainer.appendChild(checkboxContainer);
+        aiModelCheckboxes.push(checkbox);
+      });
+      modalBody.appendChild(aiModelLabel);
+      modalBody.appendChild(aiModelContainer);
+
       modalBody.appendChild(saveButton);
       modalContent.appendChild(modalHeader);
       modalContent.appendChild(modalBody);
@@ -3225,6 +3344,21 @@ document.addEventListener("DOMContentLoaded", function () {
             font-style: italic;
             padding: 16px;
         }
+            .modal-body .checkbox-container {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+}
+.modal-body input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.modal-body input[type="checkbox"] + label {
+  cursor: pointer;
+  color: #34495e;
+  font-size: 0.95em;
+}
         .prompt-actions {
             display: flex;
             align-items: center;

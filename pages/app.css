@@ -70,7 +70,11 @@ body {
 #clearSearch:hover {
   color: #fff;
 }
-
+.prompt-ai-models {
+  font-size: 0.9em;
+  color: #555;
+  margin-top: 5px;
+}
 /* Navigationsabschnitte */
 .nav-section {
   margin: 10px 0;
