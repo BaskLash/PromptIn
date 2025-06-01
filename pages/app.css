@@ -819,3 +819,9 @@ main {
   margin-top: 10px;
   font-size: 14px;
 }
+.prompt-incompatible-ai-models {
+  font-size: 0.9em;
+  color: #dc3545; /* Red to indicate incompatibility */
+  margin-top: 4px;
+  margin-left: 1rem;
+}

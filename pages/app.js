@@ -358,6 +358,9 @@ document.addEventListener("DOMContentLoaded", function () {
           aiModels: aiModelCheckboxes
             .filter((checkbox) => checkbox.checked)
             .map((checkbox) => checkbox.value),
+          incompatibleAIModels: incompatibleAIModelCheckboxes
+            .filter((checkbox) => checkbox.checked)
+            .map((checkbox) => checkbox.value),
           createdAt: Date.now(),
           lastUsed: Date.now(),
           versions: [
@@ -485,6 +488,35 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       modalBody.appendChild(aiModelLabel);
       modalBody.appendChild(aiModelContainer);
+
+      const incompatibleAIModelLabel = document.createElement("label");
+      incompatibleAIModelLabel.textContent = "Incompatible AI Models:";
+      incompatibleAIModelLabel.style.marginTop = "10px";
+      incompatibleAIModelLabel.style.display = "block";
+      const incompatibleAIModelContainer = document.createElement("div");
+      incompatibleAIModelContainer.style.display = "flex";
+      incompatibleAIModelContainer.style.flexDirection = "column";
+      incompatibleAIModelContainer.style.gap = "8px";
+      const incompatibleAIModelCheckboxes = [];
+      aiModels.forEach((model) => {
+        const checkboxContainer = document.createElement("div");
+        checkboxContainer.style.display = "flex";
+        checkboxContainer.style.alignItems = "center";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = model;
+        checkbox.id = `incompatible-ai-model-${model}`;
+        checkbox.style.marginRight = "8px";
+        const label = document.createElement("label");
+        label.htmlFor = `incompatible-ai-model-${model}`;
+        label.textContent = model;
+        checkboxContainer.appendChild(checkbox);
+        checkboxContainer.appendChild(label);
+        incompatibleAIModelContainer.appendChild(checkboxContainer);
+        incompatibleAIModelCheckboxes.push(checkbox);
+      });
+      modalBody.appendChild(incompatibleAIModelLabel);
+      modalBody.appendChild(incompatibleAIModelContainer);
 
       modalBody.appendChild(saveButton);
       modalContent.appendChild(modalHeader);
@@ -862,6 +894,14 @@ document.addEventListener("DOMContentLoaded", function () {
         ? `AI Models: ${prompt.aiModels.join(", ")}`
         : "AI Models: None";
     promptContent.appendChild(aiModelsText);
+
+    const incompatibleAIModelsText = document.createElement("span");
+incompatibleAIModelsText.classList.add("prompt-incompatible-ai-models");
+incompatibleAIModelsText.textContent =
+  prompt.incompatibleAIModels && prompt.incompatibleAIModels.length > 0
+    ? `Incompatible AI Models: ${prompt.incompatibleAIModels.join(", ")}`
+    : "Incompatible AI Models: None";
+promptContent.appendChild(incompatibleAIModelsText);
 
     promptItem.appendChild(promptContent);
 
@@ -1252,6 +1292,16 @@ document.addEventListener("DOMContentLoaded", function () {
         : "None";
     modalBody.appendChild(aiModelsLabel);
     modalBody.appendChild(aiModelsText);
+
+    const incompatibleAIModelsLabel = document.createElement("label");
+incompatibleAIModelsLabel.textContent = "Incompatible AI Models:";
+const incompatibleAIModelsText = document.createElement("p");
+incompatibleAIModelsText.textContent =
+  prompt.incompatibleAIModels && prompt.incompatibleAIModels.length > 0
+    ? prompt.incompatibleAIModels.join(", ")
+    : "None";
+modalBody.appendChild(incompatibleAIModelsLabel);
+modalBody.appendChild(incompatibleAIModelsText);
 
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
@@ -2156,6 +2206,10 @@ document.addEventListener("DOMContentLoaded", function () {
           data[folderId].prompts[promptIndex].aiModels = aiModelCheckboxes
             .filter((checkbox) => checkbox.checked)
             .map((checkbox) => checkbox.value);
+          data[folderId].prompts[promptIndex].incompatibleAIModels =
+            incompatibleAIModelCheckboxes
+              .filter((checkbox) => checkbox.checked)
+              .map((checkbox) => checkbox.value);
           data[folderId].prompts[promptIndex].versions = currentPrompt.versions;
         }
 
@@ -2247,6 +2301,38 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       modalBody.appendChild(aiModelLabel);
       modalBody.appendChild(aiModelContainer);
+
+      const incompatibleAIModelLabel = document.createElement("label");
+incompatibleAIModelLabel.textContent = "Incompatible AI Models:";
+incompatibleAIModelLabel.style.marginTop = "10px";
+incompatibleAIModelLabel.style.display = "block";
+const incompatibleAIModelContainer = document.createElement("div");
+incompatibleAIModelContainer.style.display = "flex";
+incompatibleAIModelContainer.style.flexDirection = "column";
+incompatibleAIModelContainer.style.gap = "8px";
+const incompatibleAIModelCheckboxes = [];
+aiModels.forEach((model) => {
+  const checkboxContainer = document.createElement("div");
+  checkboxContainer.style.display = "flex";
+  checkboxContainer.style.alignItems = "center";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.value = model;
+  checkbox.id = `incompatible-ai-model-${model}`;
+  checkbox.style.marginRight = "8px";
+  if (prompt.incompatibleAIModels && prompt.incompatibleAIModels.includes(model)) {
+    checkbox.checked = true;
+  }
+  const label = document.createElement("label");
+  label.htmlFor = `incompatible-ai-model-${model}`;
+  label.textContent = model;
+  checkboxContainer.appendChild(checkbox);
+  checkboxContainer.appendChild(label);
+  incompatibleAIModelContainer.appendChild(checkboxContainer);
+  incompatibleAIModelCheckboxes.push(checkbox);
+});
+modalBody.appendChild(incompatibleAIModelLabel);
+modalBody.appendChild(incompatibleAIModelContainer);
 
       modalBody.appendChild(saveButton);
       modalContent.appendChild(modalHeader);
@@ -3779,22 +3865,37 @@ document.addEventListener("DOMContentLoaded", function () {
             ? ""
             : `<span class="result-folder">in ${result.folder}</span>`;
           promptItem.innerHTML = `
-                    <div class="result-content">
-                        <span class="result-type">Prompt:</span>
-                        <span class="result-name">${highlightMatch(
-                          promptText,
-                          queryWords
-                        )}</span>
-                        ${folderInfo}
-                        <div class="result-preview">
-                            <span class="match-field">${
-                              result.match.charAt(0).toUpperCase() +
-                              result.match.slice(1)
-                            }:</span>
-                            ${result.matchedText}
-                        </div>
-                    </div>
-                `;
+          <div class="result-content">
+              <span class="result-type">Prompt:</span>
+              <span class="result-name">${highlightMatch(
+                promptText,
+                queryWords
+              )}</span>
+              ${folderInfo}
+              <div class="result-preview">
+                  <span class="match-field">${
+                    result.match.charAt(0).toUpperCase() +
+                    result.match.slice(1)
+                  }:</span>
+                  ${result.matchedText}
+              </div>
+              <div class="result-meta">
+                  Compatible AI Models: ${
+                    result.prompt.aiModels && result.prompt.aiModels.length > 0
+                      ? result.prompt.aiModels.join(", ")
+                      : "None"
+                  }
+              </div>
+              <div class="result-meta">
+                  Incompatible AI Models: ${
+                    result.prompt.incompatibleAIModels &&
+                    result.prompt.incompatibleAIModels.length > 0
+                      ? result.prompt.incompatibleAIModels.join(", ")
+                      : "None"
+                  }
+              </div>
+          </div>
+      `;
 
           // Add actions for prompts
           const actions = document.createElement("div");
@@ -4076,158 +4177,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initiale Aktualisierung
   updateStorageInfo();
-
-  function escapeLatex(str) {
-    if (!str) return "";
-    return str
-      .replace(/([\\{}&$%#_\^~])/g, "\\$1")
-      .replace(/</g, "\\textless{}")
-      .replace(/>/g, "\\textgreater{}")
-      .replace(/"/g, "\\textquotedbl{}")
-      .replace(/'/g, "\\textquotesingle{}")
-      .replace(/\n/g, "\\\\");
-  }
-
-  function exportVersionHistory(prompt) {
-    if (!prompt || !prompt.versions) return;
-
-    const versions = prompt.versions
-      .slice()
-      .sort((a, b) => b.timestamp - a.timestamp);
-
-    let latexContent = `
-\\documentclass[a4paper,12pt]{article}
-\\usepackage[utf8]{inputenc}
-\\usepackage[T1]{fontenc}
-\\usepackage{geometry}
-\\geometry{margin=2cm}
-\\usepackage{parskip}
-\\usepackage{datetime2}
-\\usepackage{xcolor}
-\\definecolor{headercolor}{RGB}{30,144,255}
-\\title{Prompt Version History}
-\\author{}
-\\date{}
-
-\\begin{document}
-\\maketitle
-\\section*{Prompt: ${escapeLatex(prompt.title || "Untitled")}}
-`;
-
-    versions.forEach((version, index) => {
-      const versionNumber = versions.length - index;
-      const timestamp = new Date(version.timestamp).toLocaleString();
-      latexContent += `
-\\subsection*{Version ${versionNumber} -- ${escapeLatex(timestamp)}}
-\\textbf{Title:} ${escapeLatex(version.title || "None")}\\\\
-\\textbf{Description:} ${escapeLatex(version.description || "None")}\\\\
-\\textbf{Content:} ${escapeLatex(version.content || "None")}\\\\
-`;
-    });
-
-    latexContent += `
-\\end{document}
-`;
-
-    // Trigger download
-    const blob = new Blob([latexContent], { type: "text/x-tex" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `prompt_version_history_${Date.now()}.tex`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function exportVersionHistoryAsJson(prompt) {
-    if (!prompt || !prompt.versions) return;
-
-    const exportData = {
-      title: prompt.title || "Untitled",
-      versions: prompt.versions
-        .slice()
-        .sort((a, b) => b.timestamp - a.timestamp)
-        .map((version, index) => ({
-          versionNumber: prompt.versions.length - index,
-          title: version.title || "None",
-          description: version.description || "None",
-          content: version.content || "None",
-          timestamp: new Date(version.timestamp).toLocaleString(),
-        })),
-    };
-
-    const jsonContent = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([jsonContent], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `prompt_version_history_${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function exportVersionHistoryAsHtml(prompt) {
-    if (!prompt || !prompt.versions) return;
-
-    const versions = prompt.versions
-      .slice()
-      .sort((a, b) => b.timestamp - a.timestamp);
-
-    let htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prompt Version History</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 40px; color: #2c3e50; }
-    h1 { color: #1e90ff; }
-    h2 { color: #34495e; border-bottom: 2px solid #1e90ff; padding-bottom: 8px; }
-    .version { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
-    .version p { margin: 8px 0; }
-    .label { font-weight: bold; color: #34495e; }
-  </style>
-</head>
-<body>
-  <h1>Prompt Version History: ${prompt.title || "Untitled"}</h1>
-`;
-
-    versions.forEach((version, index) => {
-      const versionNumber = versions.length - index;
-      const timestamp = new Date(version.timestamp).toLocaleString();
-      htmlContent += `
-  <div class="version">
-    <h2>Version ${versionNumber} - ${timestamp}</h2>
-    <p><span class="label">Title:</span> ${version.title || "None"}</p>
-    <p><span class="label">Description:</span> ${
-      version.description || "None"
-    }</p>
-    <p><span class="label">Content:</span> ${version.content || "None"}</p>
-  </div>
-`;
-    });
-
-    htmlContent += `
-</body>
-</html>
-`;
-
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `prompt_version_history_${Date.now()}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
   // Optional: Regelmäßige Aktualisierung alle 5 Sekunden
   setInterval(updateStorageInfo, 5000);
 });
