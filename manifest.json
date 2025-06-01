@@ -3,7 +3,7 @@
   "name": "PromptIn: AI Prompt Management System",
   "description": "An intelligent tool for managing and optimizing AI prompts for efficient and precise results",
   "version": "1.0.4",
-  "permissions": ["storage", "unlimitedStorage", "scripting", "activeTab"],
+  "permissions": ["storage", "unlimitedStorage"],
   "icons": {
     "16": "icon/icon16.png",
     "48": "icon/icon48.png",

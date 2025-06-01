@@ -75,6 +75,10 @@ body {
   margin-top: 5px;
   margin-left: 1rem;
 }
+.prompt-unused-note {
+    display: block;
+    margin-top: 4px;
+}
 /* Navigationsabschnitte */
 .nav-section {
   margin: 10px 0;
