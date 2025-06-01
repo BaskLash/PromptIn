@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const collapsibles = document.querySelectorAll(".collapsible");
   const overviewBtn = document.getElementById("overview-btn");
   const settingsBtn = document.getElementById("settings-btn");
+  const toolsBtn = document.getElementById("tools-btn");
   const faqBtn = document.getElementById("faq-btn");
   const newPromptBtn = document.querySelector(".new-prompt");
   const clearStorageBtn = document.getElementById("clear-storage");
@@ -144,7 +145,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Settings Modal
   const settingsModal = document.getElementById("settings-modal");
-  const closeSettingsModal = document.getElementById("close-modal");
+  const closeSettingsModal = document.getElementById("close-settings-modal");
   settingsBtn.addEventListener("click", () => {
     settingsModal.style.display = "block";
   });
@@ -154,6 +155,21 @@ document.addEventListener("DOMContentLoaded", function () {
   window.addEventListener("click", (event) => {
     if (event.target === settingsModal) {
       settingsModal.style.display = "none";
+    }
+  });
+
+  // Tools Modal
+  const toolsModal = document.getElementById("tools-modal");
+  const closeToolsModal = document.getElementById("close-tools-modal");
+  toolsBtn.addEventListener("click", () => {
+    toolsModal.style.display = "block";
+  });
+  closeToolsModal.addEventListener("click", () => {
+    toolsModal.style.display = "none";
+  });
+  window.addEventListener("click", (event) => {
+    if (event.target === toolsModal) {
+      toolsModal.style.display = "none";
     }
   });
 
@@ -575,4 +591,14 @@ document.addEventListener("DOMContentLoaded", function () {
       "Import button not found! Please ensure an element with ID 'import-btn' exists."
     );
   }
+  /* Highlight Text Section */
+  const toggle = document.getElementById("highlight-toggle");
+
+  chrome.storage.local.get(["enabled", "savedTexts"], (result) => {
+    toggle.checked = result.enabled || false;
+  });
+
+  toggle.addEventListener("change", () => {
+    chrome.storage.local.set({ enabled: toggle.checked });
+  });
 });
