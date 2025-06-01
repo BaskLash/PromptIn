@@ -1590,11 +1590,16 @@ function updatePromptLastUsed(folderId, promptIndex) {
     if (!topic || !topic.prompts[promptIndex]) return;
 
     topic.prompts[promptIndex].lastUsed = Date.now();
+    topic.prompts[promptIndex].usageCount =
+      (topic.prompts[promptIndex].usageCount || 0) + 1;
+
     chrome.storage.local.set({ [folderId]: topic }, function () {
       if (chrome.runtime.lastError) {
-        console.error("Error updating lastUsed:", chrome.runtime.lastError);
+        console.error("Error updating prompt data:", chrome.runtime.lastError);
       } else {
-        console.log(`lastUsed updated for prompt in ${folderId}`);
+        console.log(
+          `lastUsed and usageCount updated for prompt in ${folderId}`
+        );
       }
     });
   });

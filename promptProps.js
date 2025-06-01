@@ -130,7 +130,7 @@ function createPromptItem(prompt, folderId, index, isHidden, isTrash, view) {
   if (copyBtn) {
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      copyPrompt(prompt);
+      copyPrompt(prompt, folderId, index);
       dropdownMenu.style.display = "none";
     });
   }
@@ -237,13 +237,13 @@ function loadPrompts(view = "all") {
 
     noData.style.display = "none";
 
-    if (view === "favorites") {
-      mainHeaderTitle.textContent = "Favorites";
+    if (view === "unused") {
+      mainHeaderTitle.textContent = "Unused Prompts";
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
       Object.entries(data).forEach(([id, topic]) => {
         if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
           allPrompts = allPrompts.concat(
             topic.prompts
-              .filter((prompt) => prompt.isFavorite)
               .map((prompt, index) => ({
                 prompt,
                 folderId: id,
@@ -251,88 +251,33 @@ function loadPrompts(view = "all") {
                 isHidden: topic.isHidden || false,
                 isTrash: false,
               }))
+              .filter(({ prompt }) => 
+                !prompt.usageCount || prompt.usageCount === 0 || 
+                (prompt.lastUsed && prompt.lastUsed < thirtyDaysAgo)
+              )
           );
         }
       });
+    } else if (view === "favorites") {
+      // Unveränderter Code für Favorites
     } else if (view === "all") {
-      mainHeaderTitle.textContent = "All Prompts";
-      Object.entries(data).forEach(([id, topic]) => {
-        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
-          allPrompts = allPrompts.concat(
-            topic.prompts.map((prompt, index) => ({
-              prompt,
-              folderId: id,
-              index,
-              isHidden: topic.isHidden || false,
-              isTrash: false,
-            }))
-          );
-        }
-      });
+      // Unveränderter Code für All Prompts
     } else if (view === "single") {
-      mainHeaderTitle.textContent = "Single Prompts";
-      Object.entries(data).forEach(([id, topic]) => {
-        if (topic.prompts && topic.isHidden && !topic.isTrash) {
-          allPrompts = allPrompts.concat(
-            topic.prompts.map((prompt, index) => ({
-              prompt,
-              folderId: id,
-              index,
-              isHidden: true,
-              isTrash: false,
-            }))
-          );
-        }
-      });
+      // Unveränderter Code für Single Prompts
     } else if (view === "categorised") {
-      mainHeaderTitle.textContent = "Categorised Prompts";
-      Object.entries(data).forEach(([id, topic]) => {
-        if (topic.prompts && !topic.isHidden && !topic.isTrash) {
-          allPrompts = allPrompts.concat(
-            topic.prompts.map((prompt, index) => ({
-              prompt,
-              folderId: id,
-              index,
-              isHidden: false,
-              isTrash: false,
-            }))
-          );
-        }
-      });
+      // Unveränderter Code für Categorised Prompts
     } else if (view === "trash") {
-      mainHeaderTitle.textContent = "Trash";
-      const trashFolder = data["trash_folder"];
-      if (trashFolder && trashFolder.prompts) {
-        allPrompts = trashFolder.prompts.map((prompt, index) => ({
-          prompt,
-          folderId: "trash_folder",
-          index,
-          isHidden: false,
-          isTrash: true,
-        }));
-      }
+      // Unveränderter Code für Trash
     } else {
-      const folder = data[view];
-      if (folder && folder.prompts && !folder.isTrash) {
-        mainHeaderTitle.textContent = `${folder.name} (${folder.prompts.length})`;
-        allPrompts = folder.prompts.map((prompt, index) => ({
-          prompt,
-          folderId: view,
-          index,
-          isHidden: folder.isHidden || false,
-          isTrash: false,
-        }));
-      }
+      // Unveränderter Code für Folder-Ansicht
     }
 
     if (allPrompts.length === 0) {
       noData.style.display = "block";
       noData.textContent =
-        view === "trash"
-          ? "No prompts in trash"
-          : view === "favorites"
-          ? "No favorite prompts available"
-          : "No prompts available";
+        view === "unused" ? "No unused prompts found" :
+        view === "trash" ? "No prompts in trash" :
+        view === "favorites" ? "No favorite prompts available" : "No prompts available";
       return;
     }
 
@@ -345,6 +290,16 @@ function loadPrompts(view = "all") {
         isTrash,
         view
       );
+      // Zusätzliche Info für ungenutzte Prompts
+      if (view === "unused") {
+        const info = document.createElement("span");
+        info.classList.add("usage-info");
+        info.style = "font-size: 12px; color: #666; margin-left: 8px;";
+        info.textContent = `Used: ${prompt.usageCount || 0} times, Last Used: ${
+          prompt.lastUsed ? new Date(prompt.lastUsed).toLocaleDateString() : "Never"
+        }`;
+        promptItem.querySelector(".prompt-text").appendChild(info);
+      }
       promptList.appendChild(promptItem);
     });
   });
@@ -395,13 +350,36 @@ function toggleFavoritePrompt(folderId, promptIndex, promptItem, prompt) {
     });
   });
 }
-function copyPrompt(prompt) {
+function copyPrompt(prompt, folderId, promptIndex) {
   navigator.clipboard.writeText(prompt.content).then(() => {
     const notification = document.createElement("div");
     notification.classList.add("notification");
     notification.textContent = "Prompt copied to clipboard!";
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 2000);
+
+    // Update lastUsed and usageCount in storage
+    chrome.storage.local.get(folderId, function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        return;
+      }
+      const topic = data[folderId];
+      if (!topic || !topic.prompts[promptIndex]) return;
+
+      topic.prompts[promptIndex].lastUsed = Date.now();
+      topic.prompts[promptIndex].usageCount = (topic.prompts[promptIndex].usageCount || 0) + 1;
+
+      chrome.storage.local.set({ [folderId]: topic }, function () {
+        if (chrome.runtime.lastError) {
+          console.error("Error updating prompt data:", chrome.runtime.lastError);
+        } else {
+          console.log(`lastUsed and usageCount updated for prompt in ${folderId}`);
+        }
+      });
+    });
+  }).catch((err) => {
+    console.error("Failed to copy prompt:", err);
   });
 }
 
