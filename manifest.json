@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PromptIn: AI Prompt Management System",
   "description": "An intelligent tool for managing and optimizing AI prompts for efficient and precise results",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "permissions": ["storage", "unlimitedStorage", "scripting", "activeTab"],
   "icons": {
     "16": "icon/icon16.png",
@@ -17,22 +17,7 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "*://*.github.com/*",
-        "*://*.chatgpt.com/*",
-        "*://*.gemini.google.com/*",
-        "*://*.grok.com/*",
-        "*://*.blackbox.ai/*",
-        "*://*.claude.ai/*",
-        "*://*.copilot.microsoft.com/*",
-        "*://*.chat.mistral.ai/*",
-        "*://*.duckduckgo.com/*",
-        "*://*.perplexity.ai/*",
-        "*://*.deepseek.com/*",
-        "*://*.v0.dev/*",
-        "*://*.deepai.org/*",
-        "*://*.chat.qwen.ai/*"
-      ],
+      "matches": ["<all_urls>"],
       "js": [
         "inputFieldTrigger.js",
         "addButton.js",
@@ -41,6 +26,12 @@
         "content.js"
       ],
       "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icon/icon48.png"],
+      "matches": ["<all_urls>"]
     }
   ],
   "content_security_policy": {

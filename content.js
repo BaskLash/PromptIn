@@ -2598,3 +2598,140 @@ document.addEventListener("DOMContentLoaded", removeElement);
 async function generateUniqueID(baseName) {
   return `${baseName}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 }
+let currentIcon = null;
+
+function createIcon(x, y, selectedText) {
+  removeCurrentIcon();
+
+  // Inject CSS einmalig
+  if (!document.getElementById("text-marker-style")) {
+    const style = document.createElement("style");
+    style.id = "text-marker-style";
+    style.textContent = `
+      .text-marker-icon {
+        position: absolute;
+        cursor: pointer;
+        z-index: 9999;
+        transition: transform 0.3s ease;
+        background: none; /* Kein Hintergrund, um Weiß/Blau zu entfernen */
+        border: none; /* Kein Rahmen, um das Icon klar hervorzuheben */
+        padding: 0; /* Padding entfernt, Größe wird durch Bild bestimmt */
+      }
+
+      .text-marker-icon:hover {
+        transform: scale(1.3) rotate(5deg); /* Vergrößerung und Drehung für Effekt */
+      }
+
+      .text-marker-icon img {
+        width: 48px; /* Größere, gut sichtbare Größe */
+        height: 48px;
+        display: block; /* Sicherstellen, dass das Bild korrekt dargestellt wird */
+      }
+
+      .text-marker-icon::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(ellipse at center, rgba(0, 123, 255, 0.3), transparent 70%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+
+      .text-marker-icon:hover::after {
+        opacity: 1; /* Subtiler blauer Halo-Effekt beim Hover */
+      }
+
+      .animate-icon {
+        animation: spinIn 0.4s ease-out;
+      }
+
+      @keyframes spinIn {
+        from {
+          transform: scale(0.8) rotate(-90deg);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1) rotate(0deg);
+          opacity: 1;
+        }
+      }
+
+      .text-marker-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Icon-Wrapper
+  const icon = document.createElement("div");
+  icon.className = "text-marker-icon";
+  icon.style.left = `${x + 10}px`;
+  icon.style.top = `${y + 10}px`;
+  icon.title = "Klicke hier, um den markierten Text zu speichern";
+
+  // Dein eigenes Icon-Bild
+  const img = document.createElement("img");
+  img.src = chrome.runtime.getURL("icon/icon48.png");
+  img.alt = "Speichern";
+  img.onerror = () => {
+    console.error("Bild konnte nicht geladen werden: ", img.src);
+  };
+  img.onload = () => {
+    console.log("Bild erfolgreich geladen: ", img.src);
+  };
+  icon.appendChild(img);
+
+  icon.addEventListener("click", () => {
+    promptSaver(selectedText);
+    removeCurrentIcon();
+  });
+
+  document.body.appendChild(icon);
+  icon.classList.add("animate-icon");
+  currentIcon = icon;
+}
+
+function removeCurrentIcon() {
+  if (currentIcon && currentIcon.parentElement) {
+    currentIcon.remove();
+    currentIcon = null;
+  }
+}
+
+// Hauptlistener
+document.addEventListener("mouseup", () => {
+  setTimeout(() => {
+    chrome.storage.local.get(["enabled"], (result) => {
+      console.log("Enabled status:", result.enabled); // DEBUG
+
+      if (!result.enabled) return;
+
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+      console.log("Markierter Text:", text); // DEBUG
+
+      if (text.length === 0) {
+        removeCurrentIcon();
+        return;
+      }
+
+      const rect = selection.getRangeAt(0).getBoundingClientRect();
+      createIcon(rect.right + window.scrollX, rect.top + window.scrollY, text);
+    });
+  }, 0);
+});
