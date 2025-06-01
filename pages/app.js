@@ -896,12 +896,12 @@ document.addEventListener("DOMContentLoaded", function () {
     promptContent.appendChild(aiModelsText);
 
     const incompatibleAIModelsText = document.createElement("span");
-incompatibleAIModelsText.classList.add("prompt-incompatible-ai-models");
-incompatibleAIModelsText.textContent =
-  prompt.incompatibleAIModels && prompt.incompatibleAIModels.length > 0
-    ? `Incompatible AI Models: ${prompt.incompatibleAIModels.join(", ")}`
-    : "Incompatible AI Models: None";
-promptContent.appendChild(incompatibleAIModelsText);
+    incompatibleAIModelsText.classList.add("prompt-incompatible-ai-models");
+    incompatibleAIModelsText.textContent =
+      prompt.incompatibleAIModels && prompt.incompatibleAIModels.length > 0
+        ? `Incompatible AI Models: ${prompt.incompatibleAIModels.join(", ")}`
+        : "Incompatible AI Models: None";
+    promptContent.appendChild(incompatibleAIModelsText);
 
     promptItem.appendChild(promptContent);
 
@@ -1294,14 +1294,14 @@ promptContent.appendChild(incompatibleAIModelsText);
     modalBody.appendChild(aiModelsText);
 
     const incompatibleAIModelsLabel = document.createElement("label");
-incompatibleAIModelsLabel.textContent = "Incompatible AI Models:";
-const incompatibleAIModelsText = document.createElement("p");
-incompatibleAIModelsText.textContent =
-  prompt.incompatibleAIModels && prompt.incompatibleAIModels.length > 0
-    ? prompt.incompatibleAIModels.join(", ")
-    : "None";
-modalBody.appendChild(incompatibleAIModelsLabel);
-modalBody.appendChild(incompatibleAIModelsText);
+    incompatibleAIModelsLabel.textContent = "Incompatible AI Models:";
+    const incompatibleAIModelsText = document.createElement("p");
+    incompatibleAIModelsText.textContent =
+      prompt.incompatibleAIModels && prompt.incompatibleAIModels.length > 0
+        ? prompt.incompatibleAIModels.join(", ")
+        : "None";
+    modalBody.appendChild(incompatibleAIModelsLabel);
+    modalBody.appendChild(incompatibleAIModelsText);
 
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
@@ -2303,36 +2303,39 @@ modalBody.appendChild(incompatibleAIModelsText);
       modalBody.appendChild(aiModelContainer);
 
       const incompatibleAIModelLabel = document.createElement("label");
-incompatibleAIModelLabel.textContent = "Incompatible AI Models:";
-incompatibleAIModelLabel.style.marginTop = "10px";
-incompatibleAIModelLabel.style.display = "block";
-const incompatibleAIModelContainer = document.createElement("div");
-incompatibleAIModelContainer.style.display = "flex";
-incompatibleAIModelContainer.style.flexDirection = "column";
-incompatibleAIModelContainer.style.gap = "8px";
-const incompatibleAIModelCheckboxes = [];
-aiModels.forEach((model) => {
-  const checkboxContainer = document.createElement("div");
-  checkboxContainer.style.display = "flex";
-  checkboxContainer.style.alignItems = "center";
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.value = model;
-  checkbox.id = `incompatible-ai-model-${model}`;
-  checkbox.style.marginRight = "8px";
-  if (prompt.incompatibleAIModels && prompt.incompatibleAIModels.includes(model)) {
-    checkbox.checked = true;
-  }
-  const label = document.createElement("label");
-  label.htmlFor = `incompatible-ai-model-${model}`;
-  label.textContent = model;
-  checkboxContainer.appendChild(checkbox);
-  checkboxContainer.appendChild(label);
-  incompatibleAIModelContainer.appendChild(checkboxContainer);
-  incompatibleAIModelCheckboxes.push(checkbox);
-});
-modalBody.appendChild(incompatibleAIModelLabel);
-modalBody.appendChild(incompatibleAIModelContainer);
+      incompatibleAIModelLabel.textContent = "Incompatible AI Models:";
+      incompatibleAIModelLabel.style.marginTop = "10px";
+      incompatibleAIModelLabel.style.display = "block";
+      const incompatibleAIModelContainer = document.createElement("div");
+      incompatibleAIModelContainer.style.display = "flex";
+      incompatibleAIModelContainer.style.flexDirection = "column";
+      incompatibleAIModelContainer.style.gap = "8px";
+      const incompatibleAIModelCheckboxes = [];
+      aiModels.forEach((model) => {
+        const checkboxContainer = document.createElement("div");
+        checkboxContainer.style.display = "flex";
+        checkboxContainer.style.alignItems = "center";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = model;
+        checkbox.id = `incompatible-ai-model-${model}`;
+        checkbox.style.marginRight = "8px";
+        if (
+          prompt.incompatibleAIModels &&
+          prompt.incompatibleAIModels.includes(model)
+        ) {
+          checkbox.checked = true;
+        }
+        const label = document.createElement("label");
+        label.htmlFor = `incompatible-ai-model-${model}`;
+        label.textContent = model;
+        checkboxContainer.appendChild(checkbox);
+        checkboxContainer.appendChild(label);
+        incompatibleAIModelContainer.appendChild(checkboxContainer);
+        incompatibleAIModelCheckboxes.push(checkbox);
+      });
+      modalBody.appendChild(incompatibleAIModelLabel);
+      modalBody.appendChild(incompatibleAIModelContainer);
 
       modalBody.appendChild(saveButton);
       modalContent.appendChild(modalHeader);
@@ -3874,8 +3877,7 @@ modalBody.appendChild(incompatibleAIModelContainer);
               ${folderInfo}
               <div class="result-preview">
                   <span class="match-field">${
-                    result.match.charAt(0).toUpperCase() +
-                    result.match.slice(1)
+                    result.match.charAt(0).toUpperCase() + result.match.slice(1)
                   }:</span>
                   ${result.matchedText}
               </div>

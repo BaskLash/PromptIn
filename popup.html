@@ -25,6 +25,9 @@
           <a class="nav-link" id="settings-btn" title="Go to settings">⚙️</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" id="tools-btn" title="Tools">🛠️</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" id="faq-btn" title="FAQ">❓</a>
         </li>
       </ul>
@@ -126,14 +129,30 @@
           </button>
         </div>
         <div class="settings-option">
-          <button id="feedback-btn" class="modal-button">Send Feedback</button> 
+          <button id="feedback-btn" class="modal-button">Send Feedback</button>
           <button id="feature-request-btn" class="modal-button">
             Feature Request
           </button>
-           <br /><br />
+          <br /><br />
           <button id="rating-request-btn" class="modal-button">
             Leave us a rating!
           </button>
+        </div>
+      </div>
+    </div>
+    <!-- Tools Modal -->
+    <div id="tools-modal" class="modal">
+      <div class="modal-content">
+        <span id="close-modal" class="close">×</span>
+        <h2>Tools</h2>
+        <div class="toggle-container">
+          <label class="toggle-label" for="highlight-toggle"
+            >Highlight to Prompt:</label
+          >
+          <label class="toggle-switch">
+            <input type="checkbox" id="highlight-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
     </div>
