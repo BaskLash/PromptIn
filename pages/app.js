@@ -18,6 +18,31 @@ document.addEventListener("DOMContentLoaded", function () {
   const workflowsLink = document.getElementById("workflowsLink");
   const trashLink = document.getElementById("trashLink");
 
+  const AI_OPTIONS = {
+    grok: { name: "Grok", endpoint: "https://grok.com/" },
+    gemini: { name: "Gemini", endpoint: "https://gemini.google.com/app" },
+    chatgpt: { name: "ChatGPT", endpoint: "https://chatgpt.com/" },
+    claude: { name: "Claude", endpoint: "https://claude.ai/" },
+    blackbox: { name: "BlackBox", endpoint: "https://blackbox.ai/" },
+    githubCopilot: {
+      name: "GitHub Copilot",
+      endpoint: "https://github.com/copilot/",
+    },
+    microsoftCopilot: {
+      name: "Microsoft Copilot",
+      endpoint: "https://copilot.microsoft.com/",
+    },
+    mistral: { name: "Mistral", endpoint: "https://chat.mistral.ai/" },
+    duckduckgo: {
+      name: "DuckDuckGo",
+      endpoint: "https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1",
+    },
+    perplexity: { name: "Perplexity", endpoint: "https://www.perplexity.ai/" },
+    deepseek: { name: "DeepSeek", endpoint: "https://chat.deepseek.com/" },
+    deepai: { name: "Deepai", endpoint: "https://deepai.org/chat" },
+    qwenAi: { name: "Qwen AI", endpoint: "https://chat.qwen.ai/" },
+  };
+
   if (searchInput.value === "") {
     clearSearch.style.display = "none";
   } else {
@@ -1874,6 +1899,23 @@ document.addEventListener("DOMContentLoaded", function () {
     nameInput.style.borderRadius = "4px";
     nameInput.style.border = "1px solid #ddd";
 
+    const aiLabel = document.createElement("label");
+    aiLabel.textContent = "AI Model:";
+    aiLabel.style.display = "block";
+    aiLabel.style.marginTop = "10px";
+    const aiSelect = document.createElement("select");
+    aiSelect.id = "aiModel";
+    aiSelect.style.width = "100%";
+    aiSelect.style.padding = "8px";
+    aiSelect.style.borderRadius = "4px";
+    aiSelect.style.border = "1px solid #ddd";
+    Object.keys(AI_OPTIONS).forEach((key) => {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = AI_OPTIONS[key].name;
+      aiSelect.appendChild(option);
+    });
+
     const stepsLabel = document.createElement("label");
     stepsLabel.textContent = "Steps:";
     const stepsContainer = document.createElement("div");
@@ -1902,6 +1944,12 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
+      const aiModel = aiSelect.value;
+      if (!aiModel) {
+        alert("Please select an AI model.");
+        return;
+      }
+
       const workflowSteps = steps.map((step, index) => {
         if (!step.promptSelect.value) {
           alert(`Please select a prompt for step ${index + 1}.`);
@@ -1918,7 +1966,6 @@ document.addEventListener("DOMContentLoaded", function () {
             );
             throw new Error("Invalid prompt selection.");
           }
-          // Extract promptIndex as the last part, folderId as everything before joined back
           const promptIndex = promptIdParts[promptIdParts.length - 1];
           const folderId = promptIdParts.slice(0, -1).join("_");
           const parsedPromptIndex = parseInt(promptIndex);
@@ -1958,6 +2005,7 @@ document.addEventListener("DOMContentLoaded", function () {
       )}`;
       const newWorkflow = {
         name: workflowName,
+        aiModel: aiModel,
         steps: workflowSteps,
         createdAt: Date.now(),
         lastUsed: null,
@@ -1970,7 +2018,7 @@ document.addEventListener("DOMContentLoaded", function () {
           alert("Error creating workflow.");
         } else {
           console.log(`Workflow created with ID: ${workflowId}`);
-          console.log("Created workflow steps:", workflowSteps); // Debugging
+          console.log("Created workflow steps:", workflowSteps);
           modal.remove();
           showWorkflows();
         }
@@ -1981,6 +2029,8 @@ document.addEventListener("DOMContentLoaded", function () {
     modalHeader.appendChild(headerTitle);
     modalBody.appendChild(nameLabel);
     modalBody.appendChild(nameInput);
+    modalBody.appendChild(aiLabel);
+    modalBody.appendChild(aiSelect);
     modalBody.appendChild(stepsLabel);
     modalBody.appendChild(addStepBtn);
     modalBody.appendChild(stepsContainer);
@@ -2036,6 +2086,24 @@ document.addEventListener("DOMContentLoaded", function () {
       nameInput.style.borderRadius = "4px";
       nameInput.style.border = "1px solid #ddd";
 
+      const aiLabel = document.createElement("label");
+      aiLabel.textContent = "AI Model:";
+      aiLabel.style.display = "block";
+      aiLabel.style.marginTop = "10px";
+      const aiSelect = document.createElement("select");
+      aiSelect.id = "aiModel";
+      aiSelect.style.width = "100%";
+      aiSelect.style.padding = "8px";
+      aiSelect.style.borderRadius = "4px";
+      aiSelect.style.border = "1px solid #ddd";
+      Object.keys(AI_OPTIONS).forEach((key) => {
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = AI_OPTIONS[key].name;
+        if (workflow.aiModel === key) option.selected = true;
+        aiSelect.appendChild(option);
+      });
+
       const stepsLabel = document.createElement("label");
       stepsLabel.textContent = "Steps:";
       const stepsContainer = document.createElement("div");
@@ -2064,6 +2132,12 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
 
+        const aiModel = aiSelect.value;
+        if (!aiModel) {
+          alert("Please select an AI model.");
+          return;
+        }
+
         const workflowSteps = steps.map((step, index) => {
           if (!step.promptSelect.value) {
             alert(`Please select a prompt for step ${index + 1}.`);
@@ -2080,7 +2154,6 @@ document.addEventListener("DOMContentLoaded", function () {
               );
               throw new Error("Invalid prompt selection.");
             }
-            // Extract promptIndex as the last part, folderId as everything before joined back
             const promptIndex = promptIdParts[promptIdParts.length - 1];
             const folderId = promptIdParts.slice(0, -1).join("_");
             const parsedPromptIndex = parseInt(promptIndex);
@@ -2118,6 +2191,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const updatedWorkflow = {
           ...workflow,
           name: workflowName,
+          aiModel: aiModel,
           steps: workflowSteps,
         };
 
@@ -2132,7 +2206,7 @@ document.addEventListener("DOMContentLoaded", function () {
               alert("Error updating workflow.");
             } else {
               console.log(`Workflow updated with ID: ${workflowId}`);
-              console.log("Updated workflow steps:", workflowSteps); // Debugging
+              console.log("Updated workflow steps:", workflowSteps);
               modal.remove();
               showWorkflows();
             }
@@ -2144,6 +2218,8 @@ document.addEventListener("DOMContentLoaded", function () {
       modalHeader.appendChild(headerTitle);
       modalBody.appendChild(nameLabel);
       modalBody.appendChild(nameInput);
+      modalBody.appendChild(aiLabel);
+      modalBody.appendChild(aiSelect);
       modalBody.appendChild(stepsLabel);
       modalBody.appendChild(addStepBtn);
       modalBody.appendChild(stepsContainer);
@@ -2374,7 +2450,6 @@ document.addEventListener("DOMContentLoaded", function () {
           );
         });
 
-        // Check for unhandled placeholders
         const remainingPlaceholders = promptContentText.match(/\{[^{}]*\}/g);
         if (remainingPlaceholders) {
           throw new Error(
@@ -2385,27 +2460,30 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
+      const aiModel = workflow.aiModel || "grok"; // Default to Grok if not specified
+      const aiConfig = AI_OPTIONS[aiModel] || AI_OPTIONS.grok; // Fallback to Grok if invalid model
+
       modalBody.innerHTML = "";
       const stepTitle = document.createElement("h3");
       stepTitle.textContent = `Step ${stepIndex + 1}: ${
         step.title || "Untitled Step"
-      }`;
+      } (AI: ${aiConfig.name})`;
       modalBody.appendChild(stepTitle);
 
       const promptContent = document.createElement("p");
       promptContent.textContent = `Prompt: ${promptContentText}`;
       modalBody.appendChild(promptContent);
 
-      const openGrokBtn = document.createElement("button");
-      openGrokBtn.textContent = "Open Grok and Copy Prompt";
-      openGrokBtn.className = "action-btn";
-      openGrokBtn.addEventListener("click", () => {
+      const openAIBtn = document.createElement("button");
+      openAIBtn.textContent = `Open ${aiConfig.name} and Copy Prompt`;
+      openAIBtn.className = "action-btn";
+      openAIBtn.addEventListener("click", () => {
         navigator.clipboard.writeText(promptContentText).then(() => {
-          chrome.tabs.create({ url: "https://grok.com" });
-          alert("Prompt copied to clipboard! Paste it into Grok.");
+          chrome.tabs.create({ url: aiConfig.endpoint });
+          alert(`Prompt copied to clipboard! Paste it into ${aiConfig.name}.`);
         });
       });
-      modalBody.appendChild(openGrokBtn);
+      modalBody.appendChild(openAIBtn);
 
       const paramsLabel = document.createElement("label");
       paramsLabel.textContent = "Parameters:";
@@ -2415,11 +2493,11 @@ document.addEventListener("DOMContentLoaded", function () {
       modalBody.appendChild(paramsText);
 
       const resultLabel = document.createElement("label");
-      resultLabel.textContent = "Result (paste Grok response here):";
+      resultLabel.textContent = `Result (paste ${aiConfig.name} response here):`;
       const resultInput = document.createElement("textarea");
       resultInput.style.width = "100%";
       resultInput.style.minHeight = "100px";
-      resultInput.placeholder = "Paste the response from Grok here...";
+      resultInput.placeholder = `Paste the response from ${aiConfig.name} here...`;
       modalBody.appendChild(resultLabel);
       modalBody.appendChild(resultInput);
 
