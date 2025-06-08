@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Layout</title>
+
+  <style>
+    :root {
+  --header-height: 60px;
+  --main-header-height: 73px;
+  --sidebar-width: 220px;
+  --bg-color: #f9f9f9;
+  --primary-color: #000;
+  --accent-color: #555;
+  --btn-bg: #000;
+  --btn-color: #fff;
+  --border-color: #ddd;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--primary-color);
+}
+
+header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  height: var(--header-height);
+  background-color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  color: white;
+}
+
+.header-left,
+.header-right {
+  width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.header-center input {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+}
+
+#sidebar-resizer {
+  width: 5px;
+  cursor: col-resize;
+  background-color: #ddd;
+  height: calc(100vh - var(--header-height));
+  position: sticky;
+  top: var(--header-height);
+  z-index: 10;
+  transition: background-color 0.2s ease;
+}
+
+#sidebar-resizer:hover {
+  background-color: var(--accent-color);
+}
+
+.container {
+  display: flex;
+  min-height: calc(100vh - var(--header-height));
+  padding-top: var(--header-height);
+  flex-direction: row;
+}
+
+aside {
+  position: sticky;
+  top: var(--header-height);
+  height: calc(100vh - var(--header-height));
+  overflow-y: auto;
+  width: var(--sidebar-width);
+  background-color: #fff;
+  border-right: 1px solid var(--border-color);
+  padding: 20px;
+}
+
+aside nav {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+aside nav section h4 {
+  margin-bottom: 8px;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--accent-color);
+}
+
+aside nav ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+aside nav ul li {
+  margin: 6px 0;
+  font-size: 14px;
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+aside,
+main {
+  transition: width 0.2s ease;
+}
+
+main {
+  flex: 1;
+  padding: 30px;
+  padding-top: calc(var(--main-header-height) + 20px);
+  overflow: hidden;
+}
+
+.main-header {
+  position: fixed;
+  top: var(--header-height);
+  width: calc(100% - var(--sidebar-width) - 65px); /* Adjusted for resizer */
+  background-color: var(--bg-color);
+  z-index: 900;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.main-header h1 {
+  font-size: 24px;
+}
+
+.main-header button {
+  padding: 8px 16px;
+  background-color: var(--btn-bg);
+  color: var(--btn-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.table-container {
+  height: calc(100vh - var(--header-height) - var(--main-header-height) - 50px);
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  position: relative;
+  clip-path: inset(0 0 0 0);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+table th,
+table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+table th {
+  background-color: #f0f0f0;
+  font-weight: bold;
+  color: #333;
+}
+
+table thead {
+  position: sticky;
+  top: 0;
+  background-color: #f0f0f0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  z-index: 800;
+}
+
+.table-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: var(--accent-color);
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background-color: var(--bg-color);
+}
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  user-select: none;
+  gap: 8px;
+}
+
+.accordion-header::after {
+  content: "▾";
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.accordion-content.open {
+  max-height: 500px;
+}
+
+.accordion-content.open ~ .accordion-header::after {
+  transform: rotate(180deg);
+}
+
+.folders-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.add-folder-header-btn {
+  background-color: #000;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.folder-search {
+  display: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  width: 100%;
+}
+
+.folder-list {
+  list-style: none;
+  padding-left: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.folder-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  font-size: 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.folder-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.folder-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  transition: color 0.2s ease;
+  color: var(--primary-color);
+}
+
+.folder-action:hover {
+  color: var(--btn-bg);
+}
+
+@media (max-width: 768px) {
+  aside {
+    display: none;
+  }
+
+  #sidebar-resizer {
+    display: none;
+  }
+
+  .container {
+    flex-direction: column;
+  }
+
+  .main-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    width: calc(100% - 60px);
+  }
+
+  .header-left,
+  .header-right {
+    width: auto;
+  }
+
+  .header-center input {
+    max-width: 100%;
+  }
+
+  .table-container {
+    height: calc(
+      100vh - var(--header-height) - var(--main-header-height) - 50px
+    );
+  }
+
+  tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+}
+
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-left">
+      ⚙️
+    </div>
+    <div class="header-center">
+      <input type="text" placeholder="Suchen..." />
+    </div>
+    <div class="header-right">
+      👤
+      <span title="Survey" style="margin-left: 10px; cursor: pointer;">📋</span>
+      <span title="Hilfe" style="margin-left: 10px; cursor: pointer;">❓</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside>
+      <nav>
+        <section class="accordion">
+          <h4 class="accordion-header">Kategorien</h4>
+          <ul class="accordion-content">
+            <li>Favorites</li>
+            <li>All Prompts</li>
+            <li>Single Prompts</li>
+            <li>Categorised Prompts</li>
+            <li>Unused Prompts</li>
+            <li>Workflows</li>
+            <li>Trash</li>
+          </ul>
+        </section>
+        <section class="accordion folders-accordion">
+          <h4 class="accordion-header">
+            Folders
+            <button class="add-folder-header-btn" title="Ordner hinzufügen">+</button>
+          </h4>
+          <div class="accordion-content folders-content">
+            <input type="text" class="folder-search" placeholder="Ordner durchsuchen..." />
+            <ul class="folder-list">
+              <li>📁 Projekte
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Archiv
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Kunden
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Q1 2025
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Testdaten
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Rechnungen
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Marketing
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 UX
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Entwicklung
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Support
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Sales
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Docs
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Alt
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Review
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Reports
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Inhalte
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Ideas
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Präsentationen
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 PDF Export
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+              <li>📁 Kampagnen
+                <span class="folder-actions">
+                  <button class="folder-action" title="Aktionen">⚙️</button>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </section>
+        <section class="accordion">
+          <h4 class="accordion-header">Tools</h4>
+          <ul class="accordion-content">
+            <li>🔧 Editor</li>
+            <li>📊 Statistiken</li>
+            <li>🗂️ Verwaltung</li>
+          </ul>
+        </section>
+      </nav>
+    </aside>
+    <div id="sidebar-resizer"></div>
+    <main>
+      <div class="main-header">
+        <h1>Dashboard</h1>
+        <button>+ Add Item</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th><input type="checkbox" /></th>
+              <th>Titel</th>
+              <th>Beschreibung</th>
+              <th>Datum</th>
+              <th>Zuweisung</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Beispiel 1</td>
+              <td>Kurzbeschreibung hier</td>
+              <td>01.06.2025</td>
+              <td>Max Mustermann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Beispiel 2</td>
+              <td>Längere Beschreibung</td>
+              <td>02.06.2025</td>
+              <td>Erika Musterfrau</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Projekt Alpha</td>
+              <td>Initiale Projektplanung</td>
+              <td>03.06.2025</td>
+              <td>Anna Schmidt</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Datenprüfung</td>
+              <td>Qualitätskontrolle durchgeführt</td>
+              <td>04.06.2025</td>
+              <td>Tim Berger</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Analyse-Bericht</td>
+              <td>Ergebnisse der Marktforschung</td>
+              <td>05.06.2025</td>
+              <td>Julia Weber</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" /></td>
+              <td>Backup Server</td>
+              <td>Wöchentliche Sicherung</td>
+              <td>06.06.2025</td>
+              <td>Chris Hoffmann</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+  // Sidebar-Breite aus localStorage wiederherstellen
+  const savedWidth = localStorage.getItem("sidebarWidth");
+  const sidebar = document.querySelector("aside");
+  if (savedWidth) {
+    sidebar.style.width = `${savedWidth}px`;
+    document.documentElement.style.setProperty(
+      "--sidebar-width",
+      `${savedWidth}px`
+    );
+  }
+
+  // Accordion-Mechanik
+  document.querySelectorAll(".accordion-header").forEach((header) => {
+    header.addEventListener("click", (event) => {
+      if (!event.target.classList.contains("add-folder-header-btn")) {
+        const content = header.nextElementSibling;
+        content.classList.toggle("open");
+      }
+    });
+  });
+
+  // Folder-Suchfeld einblenden bei mehr als 5 Einträgen
+  const folderList = document.querySelector(".folder-list");
+  const folderSearchInput = document.querySelector(".folder-search");
+  const folderItems = folderList.querySelectorAll("li");
+
+  if (folderItems.length > 5) {
+    folderSearchInput.style.display = "block";
+  } else {
+    folderSearchInput.style.display = "none";
+  }
+
+  folderSearchInput.addEventListener("input", function () {
+    const filter = this.value.toLowerCase();
+    folderItems.forEach((item) => {
+      const text = item.textContent.toLowerCase();
+      item.style.display = text.includes(filter) ? "" : "none";
+    });
+  });
+
+  // Sidebar-Resizer
+  const resizer = document.getElementById("sidebar-resizer");
+  let isResizing = false;
+  let animationFrameId = null;
+  let currentX = 0;
+
+  const minWidth = 150;
+  const maxWidth = 500;
+
+  const resizeSidebar = () => {
+    const newWidth = Math.min(Math.max(currentX, minWidth), maxWidth);
+    sidebar.style.width = `${newWidth}px`;
+    document.documentElement.style.setProperty(
+      "--sidebar-width",
+      `${newWidth}px`
+    );
+    animationFrameId = null;
+  };
+
+  const onPointerMove = (e) => {
+    if (!isResizing) return;
+    currentX = e.clientX;
+    if (!animationFrameId) {
+      animationFrameId = requestAnimationFrame(resizeSidebar);
+    }
+  };
+
+  const onPointerUp = () => {
+    if (!isResizing) return;
+    isResizing = false;
+    document.body.style.cursor = "default";
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+
+    const finalWidth = sidebar.offsetWidth;
+    localStorage.setItem("sidebarWidth", finalWidth.toString());
+  };
+
+  resizer.addEventListener("pointerdown", (e) => {
+    isResizing = true;
+    currentX = e.clientX;
+    document.body.style.cursor = "col-resize";
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+    e.preventDefault();
+  });
+});
+
+  </script>
+</body>
+
+</html>

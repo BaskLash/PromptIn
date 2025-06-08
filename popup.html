@@ -1,229 +1,374 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PromptIn</title>
-    <link rel="stylesheet" href="style.css" />
-    <script src="promptProps.js" defer></script>
-    <script src="popup.js" defer></script>
+    <title data-i18n="title"></title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="main.js" defer></script>
   </head>
   <body>
-    <!-- Obere Navigation -->
-    <nav class="navbar">
-      <ul class="nav-menu">
-        <li class="nav-item">
-          <button class="nav-link burger-btn" title="Menu">☰</button>
-        </li>
-        <li class="nav-item nav-brand">
-          <h2>PromptIn</h2>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="overview-btn" title="View in tab">↗️</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="settings-btn" title="Go to settings">⚙️</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="tools-btn" title="Tools">🛠️</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="faq-btn" title="FAQ">❓</a>
-        </li>
-      </ul>
-    </nav>
-
-    <!-- Layout mit Seitenleiste und Hauptinhalt -->
-    <div class="layout">
-      <!-- Seitenleiste -->
-      <nav class="sidebar hidden">
-        <ul class="nav-menu sidebar-menu">
-          <!-- Collapsible Categories -->
-          <li class="nav-section">
-            <button class="collapsible" aria-expanded="false">
-              Categories
-            </button>
-            <div class="collapsible-content">
-              <a href="#" id="favorites-prompts-link" class="sidebar-link"
-                >Favorites</a
-              >
-              <a href="#" id="all-prompts-link" class="sidebar-link"
-                >All Prompts</a
-              >
-              <a href="#" id="single-prompts-link" class="sidebar-link"
-                >Single Prompts</a
-              >
-              <a href="#" id="categorised-prompts-link" class="sidebar-link"
-                >Categorised Prompts</a
-              >
-              <a href="#" id="trash-link" class="sidebar-link">Trash</a>
-            </div>
-          </li>
-          <!-- Collapsible Folders -->
-          <li class="nav-section">
-            <button class="collapsible" aria-expanded="false">Folders</button>
-            <div class="collapsible-content" id="folderNavList">
-              <!-- Dynamisch geladene Ordner kommen hier rein -->
-            </div>
-          </li>
-        </ul>
-      </nav>
+    <div class="popup">
+      <!-- Header -->
+      <header class="header">
+        <div class="left-header">
+          <div class="burger-menu" id="burger-menu">☰</div>
+          <div class="icon" id="settings-icon">⚙</div>
+          <div class="icon" id="tools-icon">🔧</div>
+        </div>
+        <div class="right-header">
+          <button class="fullscreen-btn">↗️</button>
+          <button class="fullscreen-btn">❓</button>
+          <div class="user-icon" id="user-icon">👤</div>
+        </div>
+        <div class="search-field">
+          <input
+            type="text"
+            data-i18n-placeholder="search_placeholder"
+            id="search-input"
+          />
+        </div>
+      </header>
 
       <!-- Hauptinhalt -->
-      <main class="main-content">
-        <div class="container">
-          <div class="enterage">
-            <input type="text" id="inputField" placeholder="Search prompts" />
-          </div>
-          <h2 id="mainHeaderTitle">All Prompts</h2>
-          <!-- Neues Element -->
-          <h1 id="noData" style="display: none">Nothing in here!</h1>
-          <div class="flexInbox">
-            <ul class="prompt-list" id="promptList"></ul>
-          </div>
+      <div class="main-content">
+        <label data-i18n="sort_by_label"></label>
+        <button class="sort-btn" data-i18n="sort_button"></button>
+        <div class="table-container">
+          <table class="entry-table">
+            <tbody>
+              <tr data-entry="Test Eintrag 1">
+                <td>Test Eintrag 1</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 2">
+                <td>Test Eintrag 2</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 3">
+                <td>Test Eintrag 3</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 4">
+                <td>Test Eintrag 4</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 5">
+                <td>Test Eintrag 5</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 6">
+                <td>Test Eintrag 6</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 7">
+                <td>Test Eintrag 7</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 8">
+                <td>Test Eintrag 8</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 9">
+                <td>Test Eintrag 9</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 10">
+                <td>Test Eintrag 10</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 11">
+                <td>Test Eintrag 11</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 12">
+                <td>Test Eintrag 12</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 13">
+                <td>Test Eintrag 13</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 14">
+                <td>Test Eintrag 14</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 15">
+                <td>Test Eintrag 15</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 16">
+                <td>Test Eintrag 16</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 17">
+                <td>Test Eintrag 17</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+              <tr data-entry="Test Eintrag 18">
+                <td>Test Eintrag 18</td>
+                <td class="action-cell">
+                  <button class="action-btn">⋮</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="button-container">
-          <button class="action-button new-prompt" title="Add prompt">+</button>
-        </div>
-      </main>
-    </div>
+      </div>
 
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal">
-      <div class="modal-content">
-        <span id="close-settings-modal" class="close">×</span>
-        <h2>Einstellungen</h2>
-        <div class="settings-option">
-          <label for="theme-select">Theme:</label>
-          <select id="theme-select">
-            <option value="dark">Dark Mode</option>
-            <option value="light">Light Mode</option>
-          </select>
-        </div>
-        <div class="settings-option">
-          <button id="import-btn" class="modal-button">
-            Prompts importieren
-          </button>
-        </div>
-        <div class="settings-option">
-          <button id="export-btn" class="modal-button">
-            Prompts exportieren
-          </button>
-        </div>
-        <div class="settings-option">
-          <label for="language-select">Sprache:</label>
-          <select id="language-select">
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-            <option value="fr">Français</option>
-          </select>
-        </div>
-        <div class="settings-option">
-          <label for="clear-storage">Delete your data:</label>
-          <button
-            id="clear-storage"
-            class="nav-button"
-            title="Clear everything"
-          >
-            🗑️
-          </button>
-        </div>
-        <div class="settings-option">
-          <button id="feedback-btn" class="modal-button">Send Feedback</button>
-          <button id="feature-request-btn" class="modal-button">
-            Feature Request
-          </button>
-          <br /><br />
-          <button id="rating-request-btn" class="modal-button">
-            Leave us a rating!
-          </button>
-        </div>
-      </div>
-    </div>
-    <!-- Tools Modal -->
-    <div id="tools-modal" class="modal">
-      <div class="modal-content">
-        <span id="close-tools-modal" class="close">×</span>
-        <h2>Tools</h2>
-        <div class="toggle-container">
-          <label class="toggle-label" for="highlight-toggle"
-            >Highlight to Prompt:</label
-          >
-          <label class="toggle-switch">
-            <input type="checkbox" id="highlight-toggle" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-    </div>
+      <!-- Plus-Button -->
+      <button class="plus-btn" id="plus-btn">+</button>
 
-    <!-- New Prompt Modal -->
-    <div id="new-prompt-modal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <span id="close-new-prompt-modal" class="close">×</span>
-          <h2>New Prompt</h2>
+      <!-- Seitennavigation -->
+      <div class="side-nav" id="side-nav">
+        <div class="nav-header">
+          <button id="close-nav">←</button>
         </div>
-        <div class="modal-body">
-          <label for="prompt-title">Title:</label>
-          <input
-            id="prompt-title"
-            type="text"
-            placeholder="Enter prompt title"
-            style="
-              width: 100%;
-              padding: 8px;
-              border-radius: 4px;
-              border: 1px solid #ddd;
-            "
-          />
-          <label for="prompt-description">Description (optional):</label>
-          <textarea
-            id="prompt-description"
-            placeholder="Enter prompt description"
-            style="
-              width: 100%;
-              padding: 8px;
-              border-radius: 4px;
-              border: 1px solid #ddd;
-              min-height: 80px;
-            "
-          ></textarea>
-          <label for="prompt-content">Content:</label>
-          <textarea
-            id="prompt-content"
-            placeholder="Enter prompt content"
-            style="
-              width: 100%;
-              padding: 8px;
-              border-radius: 4px;
-              border: 1px solid #ddd;
-              min-height: 120px;
-            "
-          ></textarea>
-          <label for="folder-select">Folder:</label>
-          <select
-            id="folder-select"
-            style="
-              width: 100%;
-              padding: 8px;
-              border-radius: 4px;
-              border: 1px solid #ddd;
-            "
-          ></select>
-          <div class="form-group">
-            <label for="prompt-favorite">Add to Favorites:</label>
-            <input type="checkbox" id="isFavoriteCheckbox" name="favorite" />
+        <div class="accordion">
+          <div class="accordion-item">
+            <div class="accordion-header" data-i18n="categories"></div>
+            <div class="accordion-content">
+              <ul>
+                <li data-i18n="category_favorites"></li>
+                <li data-i18n="category_all_prompts"></li>
+                <li data-i18n="category_single_prompts"></li>
+                <li data-i18n="category_categorised_prompts"></li>
+                <li data-i18n="category_unused_prompts"></li>
+                <li data-i18n="category_workflows"></li>
+                <li data-i18n="category_trash"></li>
+              </ul>
+            </div>
           </div>
-          <button
-            id="create-prompt-btn"
-            class="action-btn"
-            style="margin-top: 15px"
-          >
-            Create
-          </button>
+          <div class="accordion-item folders-accordion">
+            <div class="accordion-header">
+              <span data-i18n="folders"></span>
+              <button
+                class="add-folder-header-btn"
+                data-i18n-title="add_folder"
+              >
+                +
+              </button>
+            </div>
+            <div class="accordion-content folders-content">
+              <input
+                type="text"
+                class="folder-search"
+                data-i18n-placeholder="folder_search_placeholder"
+              />
+              <ul class="folder-list">
+                <li>📁 Ordner 1</li>
+                <li>📁 Ordner 2</li>
+                <li>📁 Projekte</li>
+                <li>📁 Archiv</li>
+                <li>📁 Kunden</li>
+                <li>📁 Q1 2025</li>
+                <li>📁 Testdaten</li>
+                <li>📁 Rechnungen</li>
+                <li>📁 Marketing</li>
+                <li>📁 UX</li>
+                <li>📁 Entwicklung</li>
+                <li>📁 Support</li>
+                <li>📁 Sales</li>
+                <li>📁 Docs</li>
+                <li>📁 Alt</li>
+                <li>📁 Review</li>
+                <li>📁 Reports</li>
+                <li>📁 Inhalte</li>
+                <li>📁 Ideas</li>
+                <li>📁 Präsentationen</li>
+              </ul>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <div class="accordion-header" data-i18n="tools"></div>
+            <div class="accordion-content">
+              <ul>
+                <li data-i18n="category_favorites"></li>
+                <li data-i18n="category_2"></li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- Detailansicht -->
+      <div class="detail-overlay" id="detail-overlay">
+        <div class="detail-header">
+          <button id="back-btn">←</button>
+          <h2 id="detail-title" data-i18n="entry_details"></h2>
+          <button id="edit-btn" data-i18n="edit_button"></button>
+        </div>
+        <div class="detail-content">
+          <div class="detail-field">
+            <label data-i18n="title_label"></label>
+            <input
+              type="text"
+              id="entry-title"
+              readonly
+              data-i18n-placeholder="title_placeholder"
+            />
+          </div>
+          <div class="detail-field">
+            <label data-i18n="description_label"></label>
+            <textarea
+              id="entry-description"
+              readonly
+              data-i18n-placeholder="description_placeholder"
+            ></textarea>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="content_label"></label>
+            <textarea
+              id="entry-content"
+              readonly
+              data-i18n-placeholder="content_placeholder"
+            ></textarea>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="favorite_label"></label>
+            <input type="checkbox" id="entry-favorite" disabled />
+          </div>
+          <div class="detail-field">
+            <label data-i18n="created_at_label"></label>
+            <input type="datetime-local" id="entry-created-at" readonly />
+          </div>
+          <div class="detail-field">
+            <label data-i18n="last_used_label"></label>
+            <input type="datetime-local" id="entry-last-used" readonly />
+          </div>
+          <div class="detail-field">
+            <label data-i18n="versions_label"></label>
+            <ul id="entry-versions" class="version-list"></ul>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="folder_label"></label>
+            <select id="entry-folder" disabled>
+              <option value="" data-i18n="folder_select"></option>
+              <!-- Dynamisch gefüllt durch JavaScript -->
+            </select>
+          </div>
+          <div class="detail-actions">
+            <button class="save-btn" data-i18n="save_button"></button>
+            <button class="cancel-btn" data-i18n="cancel_button"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Einstellungsansicht -->
+      <div class="detail-overlay" id="settings-overlay">
+        <div class="detail-header">
+          <button id="settings-back-btn">←</button>
+          <h2 id="settings-title" data-i18n="settings_title"></h2>
+        </div>
+        <div class="detail-content">
+          <div class="detail-field">
+            <label data-i18n="theme_label"></label>
+            <select id="theme-select">
+              <option value="dark" data-i18n="theme_dark"></option>
+              <option value="light" data-i18n="theme_light"></option>
+              <option value="system" data-i18n="theme_system"></option>
+            </select>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="language_label"></label>
+            <select id="language-select">
+              <option value="de" data-i18n="language_de"></option>
+              <option value="en" data-i18n="language_en"></option>
+              <option value="fr" data-i18n="language_fr"></option>
+              <option value="hi" data-i18n="language_hi"></option>
+              <option value="zh" data-i18n="language_zh"></option>
+              <option value="it" data-i18n="language_it"></option>
+              <option value="es" data-i18n="language_es"></option>
+              <option value="pt" data-i18n="language_pt"></option>
+              <option value="ru" data-i18n="language_ru"></option>
+              <option value="ja" data-i18n="language_ja"></option>
+              <option value="ko" data-i18n="language_ko"></option>
+              <option value="tr" data-i18n="language_tr"></option>
+              <option value="ar" data-i18n="language_ar"></option>
+            </select>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="prompts_label"></label>
+            <div class="settings-actions">
+              <button id="import-prompt-btn" data-i18n="import_prompt"></button>
+              <button id="export-prompt-btn" data-i18n="export_prompt"></button>
+            </div>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="data_label"></label>
+            <button id="delete-data-btn" data-i18n="delete_data"></button>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="feedback_support_label"></label>
+            <div class="settings-actions">
+              <button id="feedback-btn" data-i18n="feedback_button"></button>
+              <button
+                id="feature-request-btn"
+                data-i18n="feature_request_button"
+              ></button>
+              <button id="review-btn" data-i18n="review_button"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ordneransicht -->
+<div class="folder-overlay" id="folder-overlay">
+  <div class="folder-header">
+    <button class="back-btn" id="folder-back-btn">
+      <span class="material-icons">←</span>
+    </button>
+    <h2 id="folder-title"></h2>
+  </div>
+  <div class="folder-content">
+    <div class="folder-details">
+      <input
+        type="text"
+        class="prompt-search"
+        id="prompt-search"
+        data-i18n-placeholder="prompt_search_placeholder"
+      />
+    </div>
+    <div class="prompts-table">
+      <table class="entry-table folder-entry-table">
+        <tbody id="folder-entries"></tbody>
+      </table>
+    </div>
+</div>
     </div>
   </body>
 </html>
