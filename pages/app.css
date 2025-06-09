@@ -176,6 +176,15 @@ table td {
   border-bottom: 1px solid var(--border-color);
 }
 
+table tr {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+table tr:hover {
+  background-color: #e0e0e0; /* Grauer Hintergrund beim Hover */
+}
+
 table th {
   background-color: #f0f0f0;
   font-weight: bold;
