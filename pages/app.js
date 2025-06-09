@@ -2077,9 +2077,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function initializePrompts() {
     chrome.storage.local.get(null, function (data) {
       const allPrompts = Object.entries(data)
-        .filter(
-          ([id, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash
-        )
+        .filter(([, topic]) => topic.prompts && !topic.isTrash)
         .flatMap(([id, topic]) =>
           topic.prompts.map((prompt) => ({
             ...prompt,
@@ -2103,14 +2101,12 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.get(null, function (data) {
       const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
+      const isVisibleOrHiddenTopic = (topic) => topic.prompts && !topic.isTrash; // Definition hinzugefügt
       const isVisibleTopic = (topic) =>
         topic.prompts && !topic.isHidden && !topic.isTrash;
-
       const isHiddenTopic = (topic) =>
         topic.prompts && topic.isHidden && !topic.isTrash;
-
       const isTrashTopic = (topic) => topic.prompts && topic.isTrash;
-
       const getPromptObjects = (topic, id) =>
         (topic.prompts || []).map((prompt) => ({
           ...prompt,
@@ -2123,13 +2119,15 @@ document.addEventListener("DOMContentLoaded", () => {
       switch (category) {
         case "All Prompts":
           filteredPrompts = Object.entries(data)
-            .filter(([, topic]) => isVisibleTopic(topic))
+            .filter(([, topic]) => isVisibleOrHiddenTopic(topic))
             .flatMap(([id, topic]) => getPromptObjects(topic, id));
           break;
 
         case "Favorites":
           filteredPrompts = Object.entries(data)
-            .filter(([, topic]) => isVisibleTopic(topic))
+            .filter(
+              ([, topic]) => isVisibleTopic(topic) || isHiddenTopic(topic)
+            )
             .flatMap(([id, topic]) =>
               topic.prompts
                 .filter((p) => p.isFavorite)
@@ -2187,7 +2185,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         case "Unused Prompts":
           filteredPrompts = Object.entries(data)
-            .filter(([, topic]) => isVisibleTopic(topic))
+            .filter(
+              ([, topic]) => isVisibleTopic(topic) || isHiddenTopic(topic)
+            )
             .flatMap(([id, topic]) =>
               topic.prompts
                 .filter((p) => !p.lastUsed || p.lastUsed < thirtyDaysAgo)
@@ -2220,7 +2220,6 @@ document.addEventListener("DOMContentLoaded", () => {
           break;
 
         default:
-          // Assume it's a folder name
           filteredPrompts = Object.entries(data)
             .filter(
               ([, topic]) =>
