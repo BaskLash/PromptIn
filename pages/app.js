@@ -1,4 +1,174 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Search functionality
+  const searchInput = document.getElementById("searchInput");
+  const goalsList = document.querySelector(".table-container tbody");
+  const folderList = document.querySelector(".folder-list");
+  const accordionItems = document.querySelectorAll(".accordion-content li");
+  let folderSearchInput = document.querySelector("#folder-search");
+
+  folderSearchInput.addEventListener("input", filterFolders);
+
+  function filterFolders() {
+    const filter = folderSearchInput.value.toLowerCase().trim();
+    const folders = Array.from(folderList.getElementsByTagName("li"));
+
+    if (!filter) {
+      // No input: Reset to original state
+      folders.forEach((folder) => {
+        folder.style.display = "";
+        folder.classList.remove("highlight");
+      });
+      folders.forEach((folder) => folderList.appendChild(folder));
+      return;
+    }
+
+    // Calculate Levenshtein distance for folders
+    const scoredFolders = folders.map((folder) => {
+      const folderText = folder.textContent
+        .toLowerCase()
+        .replace("📁", "")
+        .trim()
+        .split(" ")[0]; // Extract folder name, remove emoji and actions
+      const distance = levenshteinDistance(folderText, filter);
+      return { item: folder, distance };
+    });
+
+    // Sort by distance
+    scoredFolders.sort((a, b) => a.distance - b.distance);
+
+    // Clear current display
+    folders.forEach((folder) => (folder.style.display = "none"));
+
+    // Apply sorted order and display
+    scoredFolders.forEach(({ item, distance }, index) => {
+      item.style.display = "";
+      // Highlight top 3 results
+      if (index < 3 && distance !== Infinity) {
+        item.classList.add("highlight");
+      } else {
+        item.classList.remove("highlight");
+      }
+      folderList.appendChild(item);
+    });
+  }
+
+  searchInput.addEventListener("input", filterGoals);
+
+  function filterGoals() {
+    const filter = searchInput.value.toLowerCase().trim();
+    const rows = Array.from(goalsList.getElementsByTagName("tr"));
+    const folders = Array.from(folderList.getElementsByTagName("li"));
+    const categories = Array.from(accordionItems);
+
+    if (!filter) {
+      // No input: Reset to original state
+      rows.forEach((row) => {
+        row.style.display = "";
+        row.classList.remove("highlight");
+      });
+      folders.forEach((folder) => {
+        folder.style.display = "";
+        folder.classList.remove("highlight");
+      });
+      categories.forEach((category) => {
+        category.style.display = "";
+        category.classList.remove("highlight");
+      });
+      // Restore original order
+      rows.forEach((row) => goalsList.appendChild(row));
+      folders.forEach((folder) => folderList.appendChild(folder));
+      return;
+    }
+
+    // Calculate Levenshtein distance for prompts
+    const scoredRows = rows.map((row) => {
+      const goalCell = row.getElementsByTagName("td")[1]; // Title column
+      if (!goalCell) return { item: row, distance: Infinity, type: "prompt" };
+      const goalText = goalCell.textContent.toLowerCase();
+      const distance = levenshteinDistance(goalText, filter);
+      return { item: row, distance, type: "prompt" };
+    });
+
+    // Calculate Levenshtein distance for folders
+    const scoredFolders = folders.map((folder) => {
+      const folderText = folder.textContent
+        .toLowerCase()
+        .replace("📁", "")
+        .trim()
+        .split(" ")[0]; // Extract folder name, remove emoji and actions
+      const distance = levenshteinDistance(folderText, filter);
+      return { item: folder, distance, type: "folder" };
+    });
+
+    // Calculate Levenshtein distance for categories
+    const scoredCategories = categories.map((category) => {
+      const categoryText = category.textContent.toLowerCase().trim();
+      const distance = levenshteinDistance(categoryText, filter);
+      return { item: category, distance, type: "category" };
+    });
+
+    // Combine and sort all results
+    const allScoredItems = [
+      ...scoredRows,
+      ...scoredFolders,
+      ...scoredCategories,
+    ].sort((a, b) => a.distance - b.distance);
+
+    // Clear current display
+    rows.forEach((row) => (row.style.display = "none"));
+    folders.forEach((folder) => (folder.style.display = "none"));
+    categories.forEach((category) => (category.style.display = "none"));
+
+    // Apply sorted order and display
+    allScoredItems.forEach(({ item, distance, type }, index) => {
+      item.style.display = "";
+      // Highlight top 3 results
+      if (index < 3 && distance !== Infinity) {
+        item.classList.add("highlight");
+      } else {
+        item.classList.remove("highlight");
+      }
+      // Re-append to respective container to reflect sorted order
+      if (type === "prompt") {
+        goalsList.appendChild(item);
+      } else if (type === "folder") {
+        folderList.appendChild(item);
+      } else if (type === "category") {
+        item.parentElement.appendChild(item); // Re-append to accordion-content
+      }
+    });
+
+    // Ensure folder search input visibility
+    folderSearchInput = document.querySelector(".folder-search");
+    if (folderList.children.length > 5) {
+      folderSearchInput.style.display = "block";
+    } else {
+      folderSearchInput.style.display = "none";
+    }
+  }
+
+  function levenshteinDistance(a, b) {
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
   // Sidebar-Breite aus localStorage wiederherstellen
   const savedWidth = localStorage.getItem("sidebarWidth");
   const sidebar = document.querySelector("aside");
@@ -21,8 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Folder-Suchfeld einblenden bei mehr als 5 Einträgen
-  const folderList = document.querySelector(".folder-list");
-  const folderSearchInput = document.querySelector(".folder-search");
+  folderSearchInput = document.querySelector(".folder-search");
   const folderItems = folderList.querySelectorAll("li");
 
   if (folderItems.length > 5) {
@@ -86,10 +255,68 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
   });
 
+  function generatePromptId(folderId, promptIndex) {
+    return `${folderId}_${promptIndex}`;
+  }
+  function parsePromptId(promptId) {
+    const lastUnderscoreIndex = promptId.lastIndexOf("_");
+    if (lastUnderscoreIndex === -1) return null;
+    return {
+      folderId: promptId.substring(0, lastUnderscoreIndex),
+      promptIndex: parseInt(promptId.substring(lastUnderscoreIndex + 1)),
+    };
+  }
+
   // Inject CSS styles dynamically
   function injectStyles() {
     const style = document.createElement("style");
     style.textContent = `
+    /* Highlight for top search results */
+    .highlight {
+      background-color: #e6f3ff;
+      border-left: 3px solid #1e90ff;
+    }
+
+    /* Ensure accordion items and folder list items are styled appropriately */
+    .accordion-content li.highlight,
+    .folder-list li.highlight {
+      padding-left: 5px;
+    }
+    /* Bestehende Stile */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+    .execute-workflow-step {
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .execute-workflow-step label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .execute-workflow-step textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      min-height: 80px;
+    }
+    .execute-workflow-step button {
+      margin-right: 10px;
+    }
     .prompt-actions {
       display: flex;
       align-items: center;
@@ -747,7 +974,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   (type === "static" && !isDynamicPrompt)
                 ) {
                   const option = document.createElement("option");
-                  option.value = `${id}_${idx}`;
+                  option.value = generatePromptId(id, idx);
                   option.textContent = prompt.title || `Prompt ${idx + 1}`;
                   if (stepData.promptId === option.value)
                     option.selected = true;
@@ -789,7 +1016,7 @@ document.addEventListener("DOMContentLoaded", () => {
           Object.entries(data).forEach(([id, topic]) => {
             if (topic.prompts && Array.isArray(topic.prompts)) {
               topic.prompts.forEach((prompt, idx) => {
-                if (`${id}_${idx}` === selectedPromptId) {
+                if (generatePromptId(id, idx) === selectedPromptId) {
                   selectedPromptContent = prompt.content;
                 }
               });
@@ -1411,21 +1638,19 @@ document.addEventListener("DOMContentLoaded", () => {
       <td><input type="checkbox" /></td>
       <td>${prompt.title || "N/A"}</td>
       <td>${prompt.type || "N/A"}</td>
-
       <td>${
         Array.isArray(prompt.compatibleModels)
           ? prompt.compatibleModels.join(", ")
           : prompt.compatibleModels || ""
       }</td>
-<td>${
+      <td>${
         Array.isArray(prompt.incompatibleModels)
           ? prompt.incompatibleModels.join(", ")
           : prompt.incompatibleModels || "N/A"
       }</td>
-<td>${
+      <td>${
         Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || ""
       }</td>
-
       <td>${prompt.folderName || ""}</td>
       <td>${
         prompt.lastUsed
@@ -1441,17 +1666,21 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="prompt-actions">
           <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
           <div class="dropdown-menu">
-  <div class="dropdown-item" data-action="copy">Copy Prompt</div>
-  <div class="dropdown-item" data-action="rename">Rename</div>
-  <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
-  <div class="dropdown-item" data-action="share">Share</div>
-  <div class="dropdown-item" data-action="add-to-favorites">${
-    prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
-  }</div>
-  <div class="dropdown-item" data-action="show-versions">Show Versions</div>
-  <div class="dropdown-item" data-action="export">Export Prompt</div>
-  <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
-</div>
+            ${
+              prompt.type === "Workflow"
+                ? '<div class="dropdown-item" data-action="execute-workflow">Execute Workflow</div>'
+                : '<div class="dropdown-item" data-action="copy">Copy Prompt</div>'
+            }
+            <div class="dropdown-item" data-action="rename">Rename</div>
+            <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
+            <div class="dropdown-item" data-action="share">Share</div>
+            <div class="dropdown-item" data-action="add-to-favorites">${
+              prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
+            }</div>
+            <div class="dropdown-item" data-action="show-versions">Show Versions</div>
+            <div class="dropdown-item" data-action="export">Export Prompt</div>
+            <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
+          </div>
         </div>
       </td>
     `;
@@ -1473,6 +1702,8 @@ document.addEventListener("DOMContentLoaded", () => {
           const action = item.dataset.action;
           if (action === "copy") {
             copyPrompt(prompt, prompt.folderId);
+          } else if (action === "execute-workflow") {
+            executeWorkflow(prompt.folderId);
           } else if (action === "rename") {
             renamePrompt(prompt, prompt.folderId, row);
           } else if (action === "move-to-folder") {
@@ -1516,6 +1747,262 @@ document.addEventListener("DOMContentLoaded", () => {
           menu.style.display = "none";
         });
       }
+    });
+  }
+
+  function executeWorkflow(workflowId) {
+    chrome.storage.local.get(workflowId, (data) => {
+      const workflow = data[workflowId];
+      if (!workflow || !workflow.steps) {
+        console.error(`Workflow mit ID ${workflowId} nicht gefunden.`);
+        alert("Fehler: Workflow nicht gefunden.");
+        return;
+      }
+
+      console.log("Geladener Workflow:", JSON.stringify(workflow, null, 2));
+
+      const modal = document.createElement("div");
+      modal.className = "modal";
+      const modalContent = document.createElement("div");
+      modalContent.className = "modal-content";
+      const modalHeader = document.createElement("div");
+      modalHeader.className = "modal-header";
+      const closeSpan = document.createElement("span");
+      closeSpan.className = "close";
+      closeSpan.innerHTML = "×";
+      const headerTitle = document.createElement("h2");
+      headerTitle.textContent = `Execute Workflow: ${workflow.name}`;
+      const modalBody = document.createElement("div");
+      modalBody.className = "modal-body";
+
+      let currentStep = 0;
+      let previousOutput = "";
+      const stepOutputs = Array(workflow.steps.length).fill("");
+
+      const renderStep = () => {
+        modalBody.innerHTML = `
+        <div class="execute-workflow-step">
+          <label>Step ${currentStep + 1}: ${
+          workflow.steps[currentStep].title || "Untitled Step"
+        }</label>
+          <label>Prompt Content</label>
+          <textarea readonly></textarea>
+          ${
+            workflow.steps[currentStep].isDynamic
+              ? `<label>Parameters (JSON)</label>
+                 <textarea class="step-params" placeholder='{"key": "value"}'>${JSON.stringify(
+                   workflow.steps[currentStep].parameters || {},
+                   null,
+                   2
+                 )}</textarea>`
+              : ""
+          }
+          <label>Previous Step Output (if any)</label>
+          <textarea class="previous-output" placeholder="Paste the output from the previous step">${
+            previousOutput || ""
+          }</textarea>
+          <button class="action-btn execute-step">Execute Step</button>
+          ${
+            currentStep < workflow.steps.length - 1
+              ? `<button class="action-btn next-step">Next Step</button>`
+              : `<button class="action-btn finish-workflow">Finish Workflow</button>`
+          }
+        </div>
+      `;
+
+        // Lade den Prompt-Inhalt
+        const promptId = workflow.steps[currentStep].promptId;
+        console.log(
+          `Verarbeite promptId: ${promptId} für Schritt ${currentStep + 1}`
+        );
+        if (promptId) {
+          // Split nur beim letzten Unterstrich
+
+          // In executeWorkflow, mit parsePromptId
+          const parsedId = parsePromptId(promptId);
+          if (!parsedId) {
+            console.error(`Ungültige promptId: ${promptId}`);
+            modalBody.querySelector("textarea[readonly]").value =
+              "Ungültige Prompt-ID.";
+            return;
+          }
+          const { folderId, promptIndex } = parsedId;
+
+          console.log(`folderId: ${folderId}, promptIndex: ${promptIndex}`);
+
+          chrome.storage.local.get(folderId, (data) => {
+            const topic = data[folderId];
+            console.log(`Geladenes Topic für folderId ${folderId}:`, topic);
+            if (
+              topic &&
+              topic.prompts &&
+              topic.prompts[parseInt(promptIndex)] // Sicherstellen, dass promptIndex eine Zahl ist
+            ) {
+              const promptContent =
+                topic.prompts[parseInt(promptIndex)].content;
+              console.log(`Prompt-Inhalt gefunden: ${promptContent}`);
+              modalBody.querySelector("textarea[readonly]").value =
+                promptContent;
+            } else {
+              console.error(
+                `Prompt nicht gefunden. Topic existiert: ${!!topic}, Prompts existieren: ${!!topic?.prompts}, Prompt an Index ${promptIndex}: ${
+                  topic?.prompts?.[parseInt(promptIndex)]
+                }`
+              );
+              modalBody.querySelector("textarea[readonly]").value =
+                "Prompt nicht gefunden.";
+            }
+          });
+        } else {
+          console.warn(
+            `Keine promptId für Schritt ${currentStep + 1} definiert.`
+          );
+          modalBody.querySelector("textarea[readonly]").value =
+            "Kein Prompt ausgewählt.";
+        }
+
+        // Execute Step
+        modalBody
+          .querySelector(".execute-step")
+          .addEventListener("click", () => {
+            const promptId = workflow.steps[currentStep].promptId;
+            if (!promptId) {
+              alert("Kein Prompt für diesen Schritt ausgewählt.");
+              return;
+            }
+
+            const parsedId = parsePromptId(promptId);
+            if (!parsedId) {
+              alert("Ungültige Prompt-ID.");
+              return;
+            }
+            const { folderId, promptIndex } = parsedId;
+
+            chrome.storage.local.get(folderId, (data) => {
+              const topic = data[folderId];
+              if (
+                !topic ||
+                !topic.prompts ||
+                !topic.prompts[parseInt(promptIndex)]
+              ) {
+                alert("Fehler: Prompt nicht gefunden.");
+                return;
+              }
+              const prompt = topic.prompts[parseInt(promptIndex)];
+              let finalPrompt = prompt.content;
+
+              if (workflow.steps[currentStep].isDynamic) {
+                try {
+                  const params = JSON.parse(
+                    modalBody.querySelector(".step-params").value || "{}"
+                  );
+                  finalPrompt = finalPrompt.replace(
+                    /\{([^}]+)\}/g,
+                    (match, key) => {
+                      return params[key] || match;
+                    }
+                  );
+                } catch (e) {
+                  alert("Ungültiges JSON in den Parametern: " + e.message);
+                  return;
+                }
+              }
+
+              // Ersetze Platzhalter für previousOutput
+              if (previousOutput) {
+                finalPrompt = finalPrompt.replace(
+                  "{previousOutput}",
+                  previousOutput
+                );
+              }
+
+              // Kopiere den Prompt in die Zwischenablage
+              navigator.clipboard
+                .writeText(finalPrompt)
+                .then(() => {
+                  // Öffne die KI-Seite in einem neuen Tab
+                  const aiModel = workflow.aiModel;
+                  const aiUrls = {
+                    grok: "https://grok.x.ai",
+                    gemini: "https://gemini.google.com",
+                    chatgpt: "https://chat.openai.com",
+                    claude: "https://www.anthropic.com",
+                    blackbox: "https://www.blackbox.ai",
+                    githubCopilot: "https://github.com/features/copilot",
+                    microsoftCopilot: "https://copilot.microsoft.com",
+                    mistral: "https://mistral.ai",
+                    duckduckgo: "https://duckduckgo.com",
+                    perplexity: "https://www.perplexity.ai",
+                    deepseek: "https://www.deepseek.com",
+                    deepai: "https://deepai.org",
+                    qwenAi: "https://www.qwen.ai",
+                  };
+                  const url = aiUrls[aiModel] || "https://www.google.com";
+                  window.open(url, "_blank");
+                  alert(
+                    "Prompt wurde in die Zwischenablage kopiert. Bitte füge ihn in die KI ein und kopiere die Ausgabe zurück."
+                  );
+                })
+                .catch((err) => {
+                  console.error("Fehler beim Kopieren des Prompts:", err);
+                  alert("Fehler beim Kopieren des Prompts.");
+                });
+            });
+          });
+
+        // Next Step
+        if (currentStep < workflow.steps.length - 1) {
+          modalBody
+            .querySelector(".next-step")
+            .addEventListener("click", () => {
+              stepOutputs[currentStep] = modalBody
+                .querySelector(".previous-output")
+                .value.trim();
+              previousOutput = stepOutputs[currentStep];
+              currentStep++;
+              renderStep();
+            });
+        }
+
+        // Finish Workflow
+        if (currentStep === workflow.steps.length - 1) {
+          modalBody
+            .querySelector(".finish-workflow")
+            .addEventListener("click", () => {
+              stepOutputs[currentStep] = modalBody
+                .querySelector(".previous-output")
+                .value.trim();
+              // Aktualisiere lastUsed
+              chrome.storage.local.get(workflowId, (data) => {
+                const updatedWorkflow = {
+                  ...data[workflowId],
+                  lastUsed: Date.now(),
+                };
+                chrome.storage.local.set(
+                  { [workflowId]: updatedWorkflow },
+                  () => {
+                    modal.remove();
+                    handleCategoryClick("Workflows");
+                  }
+                );
+              });
+            });
+        }
+      };
+
+      renderStep();
+
+      modalHeader.appendChild(closeSpan);
+      modalHeader.appendChild(headerTitle);
+      modalContent.appendChild(modalHeader);
+      modalContent.appendChild(modalBody);
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+
+      closeSpan.onclick = () => modal.remove();
+      window.onclick = (event) => {
+        if (event.target === modal) modal.remove();
+      };
     });
   }
 
@@ -1711,22 +2198,35 @@ document.addEventListener("DOMContentLoaded", () => {
           `;
           }
 
-          // Den letzten Unterstrich als Trenner verwenden
-          const lastUnderscoreIndex = step.promptId.lastIndexOf("_");
-          const promptFolderId = step.promptId.substring(
-            0,
-            lastUnderscoreIndex
-          );
-          const promptIndex = step.promptId.substring(lastUnderscoreIndex + 1);
+          // Split beim letzten Unterstrich
+
+          // In showDetailsSidebar, mit parsePromptId
+          const parsedId = parsePromptId(step.promptId);
+          if (!parsedId) {
+            return `
+    <li class="step-item">
+      <strong>Step ${index + 1}: ${step.title || "Untitled Step"}</strong><br>
+      Prompt: Ungültige Prompt-ID (${step.promptId})<br>
+      Parameters: <pre>${JSON.stringify(step.parameters || {}, null, 2)}</pre>
+    </li>
+  `;
+          }
+          const { folderId: promptFolderId, promptIndex } = parsedId;
+
           const topic = data[promptFolderId];
 
-          if (!topic || !topic.prompts || !topic.prompts[promptIndex]) {
+          if (
+            !topic ||
+            !topic.prompts ||
+            isNaN(promptIndex) ||
+            !topic.prompts[promptIndex]
+          ) {
             return `
             <li class="step-item">
               <strong>Step ${index + 1}: ${
               step.title || "Untitled Step"
             }</strong><br>
-              Prompt: Not found (ID: ${step.promptId})<br>
+              Prompt: Nicht gefunden (ID: ${step.promptId})<br>
               Parameters: <pre>${JSON.stringify(
                 step.parameters || {},
                 null,
@@ -1806,83 +2306,87 @@ document.addEventListener("DOMContentLoaded", () => {
         const metaChangeLogEntries = (prompt.metaChangeLog || [])
           .map(
             (entry) => `
-    <div style="margin-bottom: 10px;">
-      <strong>${new Date(entry.timestamp).toLocaleString("de-DE")}</strong>
-      <ul>
-        ${Object.entries(entry.changes)
-          .map(([key, change]) => {
-            const formatValue = (value) =>
-              Array.isArray(value)
-                ? value.join(", ") || "None"
-                : value === true
-                ? "Yes"
-                : value === false
-                ? "No"
-                : value || "None";
-            return `<li><strong>${key}:</strong> From "${formatValue(
-              change.from
-            )}" to "${formatValue(change.to)}"</li>`;
-          })
-          .join("")}
-      </ul>
-    </div>
-  `
+            <div style="margin-bottom: 10px;">
+              <strong>${new Date(entry.timestamp).toLocaleString(
+                "de-DE"
+              )}</strong>
+              <ul>
+                ${Object.entries(entry.changes)
+                  .map(([key, change]) => {
+                    const formatValue = (value) =>
+                      Array.isArray(value)
+                        ? value.join(", ") || "None"
+                        : value === true
+                        ? "Yes"
+                        : value === false
+                        ? "No"
+                        : value || "None";
+                    return `<li><strong>${key}:</strong> From "${formatValue(
+                      change.from
+                    )}" to "${formatValue(change.to)}"</li>`;
+                  })
+                  .join("")}
+              </ul>
+            </div>
+          `
           )
           .join("");
 
         sidebarContent.innerHTML = `
-  <label>Title</label>
-  <input type="text" value="${prompt.title || "N/A"}" readonly>
-  <label>Description</label>
-  <textarea readonly>${prompt.description || "N/A"}</textarea>
-  <label>Content</label>
-  <textarea readonly>${prompt.content || "N/A"}</textarea>
-  <label>Type</label>
-  <input type="text" value="${prompt.type || "N/A"}" readonly>
-  <label>Compatible Models</label>
-  <input type="text" value="${
-    Array.isArray(prompt.compatibleModels)
-      ? prompt.compatibleModels.join(", ")
-      : prompt.compatibleModels || "N/A"
-  }" readonly>
-  <label>Incompatible Models</label>
-  <input type="text" value="${
-    Array.isArray(prompt.incompatibleModels)
-      ? prompt.incompatibleModels.join(", ")
-      : prompt.incompatibleModels || "N/A"
-  }" readonly>
-  <label>Tags</label>
-  <input type="text" value="${
-    Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || "N/A"
-  }" readonly>
-  <label>Folder</label>
-  <input type="text" value="${prompt.folderName || "N/A"}" readonly>
-  <label>Favorite</label>
-  <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
-  <label>Created At</label>
-  <input type="text" value="${
-    prompt.createdAt
-      ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-      : "N/A"
-  }" readonly>
-  <label>Updated At</label>
-  <input type="text" value="${
-    prompt.updatedAt
-      ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
-      : "N/A"
-  }" readonly>
-  <label>Last Used</label>
-  <input type="text" value="${
-    prompt.lastUsed
-      ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-      : "N/A"
-  }" readonly>
-  <label>Metadata Change Log</label>
-  <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-    ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
-  </div>
-  <button class="edit-btn">Edit Prompt</button>
-`;
+        <label>Title</label>
+        <input type="text" value="${prompt.title || "N/A"}" readonly>
+        <label>Description</label>
+        <textarea readonly>${prompt.description || "N/A"}</textarea>
+        <label>Content</label>
+        <textarea readonly>${prompt.content || "N/A"}</textarea>
+        <label>Type</label>
+        <input type="text" value="${prompt.type || "N/A"}" readonly>
+        <label>Compatible Models</label>
+        <input type="text" value="${
+          Array.isArray(prompt.compatibleModels)
+            ? prompt.compatibleModels.join(", ")
+            : prompt.compatibleModels || "N/A"
+        }" readonly>
+        <label>Incompatible Models</label>
+        <input type="text" value="${
+          Array.isArray(prompt.incompatibleModels)
+            ? prompt.incompatibleModels.join(", ")
+            : prompt.incompatibleModels || "N/A"
+        }" readonly>
+        <label>Tags</label>
+        <input type="text" value="${
+          Array.isArray(prompt.tags)
+            ? prompt.tags.join(", ")
+            : prompt.tags || "N/A"
+        }" readonly>
+        <label>Folder</label>
+        <input type="text" value="${prompt.folderName || "N/A"}" readonly>
+        <label>Favorite</label>
+        <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
+        <label>Created At</label>
+        <input type="text" value="${
+          prompt.createdAt
+            ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+            : "N/A"
+        }" readonly>
+        <label>Updated At</label>
+        <input type="text" value="${
+          prompt.updatedAt
+            ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
+            : "N/A"
+        }" readonly>
+        <label>Last Used</label>
+        <input type="text" value="${
+          prompt.lastUsed
+            ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+            : "N/A"
+        }" readonly>
+        <label>Metadata Change Log</label>
+        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+          ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
+        </div>
+        <button class="edit-btn">Edit Prompt</button>
+      `;
 
         const editBtn = sidebarContent.querySelector(".edit-btn");
         editBtn.addEventListener("click", () => {
@@ -2570,7 +3074,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       // Update folder search visibility
-      const folderSearchInput = document.querySelector(".folder-search");
+      folderSearchInput = document.querySelector(".folder-search");
       if (folders.length > 5) {
         folderSearchInput.style.display = "block";
       } else {
