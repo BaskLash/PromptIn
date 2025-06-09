@@ -1176,8 +1176,12 @@ document.addEventListener("DOMContentLoaded", () => {
         sidebarContent.innerHTML = `
         <label>Title</label>
         <input type="text" value="${prompt.title || "N/A"}" readonly>
+        <label>Description</label>
+        <textarea readonly>${prompt.description || "N/A"}</textarea>
         <label>Content</label>
         <textarea readonly>${prompt.content || "N/A"}</textarea>
+        <label>Type</label>
+        <input type="text" value="${prompt.type || "N/A"}" readonly>
         <label>Compatible Models</label>
         <input type="text" value="${prompt.compatibleModels || "N/A"}" readonly>
         <label>Incompatible Models</label>
@@ -1188,6 +1192,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <input type="text" value="${prompt.tags || "N/A"}" readonly>
         <label>Folder</label>
         <input type="text" value="${prompt.folderName || "N/A"}" readonly>
+        <label>Favorite</label>
+        <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
         <label>Created At</label>
         <input type="text" value="${
           prompt.createdAt
@@ -1218,143 +1224,213 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     sidebarContent.innerHTML = `
-  <label>Titel</label>
-  <input type="text" value="${prompt.title || ""}" id="edit-title">
-  <label>Beschreibung</label>
-  <textarea id="edit-description">${prompt.description || ""}</textarea>
-  <label>Inhalt</label>
-  <textarea id="edit-content">${prompt.content || ""}</textarea>
-  <label>Kompatible Modelle</label>
-  <div class="checkbox-group" id="edit-compatible">
-    <label><input type="checkbox" name="compatible" value="Grok" ${
-      prompt.compatibleModels?.includes("Grok") ? "checked" : ""
-    }> Grok</label>
-    <label><input type="checkbox" name="compatible" value="Gemini" ${
-      prompt.compatibleModels?.includes("Gemini") ? "checked" : ""
-    }> Gemini</label>
-    <label><input type="checkbox" name="compatible" value="ChatGPT" ${
-      prompt.compatibleModels?.includes("ChatGPT") ? "checked" : ""
-    }> ChatGPT</label>
-    <label><input type="checkbox" name="compatible" value="Claude" ${
-      prompt.compatibleModels?.includes("Claude") ? "checked" : ""
-    }> Claude</label>
-    <label><input type="checkbox" name="compatible" value="BlackBox" ${
-      prompt.compatibleModels?.includes("BlackBox") ? "checked" : ""
-    }> BlackBox</label>
-    <label><input type="checkbox" name="compatible" value="GitHub Copilot" ${
-      prompt.compatibleModels?.includes("GitHub Copilot") ? "checked" : ""
-    }> GitHub Copilot</label>
-    <label><input type="checkbox" name="compatible" value="Microsoft Copilot" ${
-      prompt.compatibleModels?.includes("Microsoft Copilot") ? "checked" : ""
-    }> Microsoft Copilot</label>
-    <label><input type="checkbox" name="compatible" value="Mistral" ${
-      prompt.compatibleModels?.includes("Mistral") ? "checked" : ""
-    }> Mistral</label>
-    <label><input type="checkbox" name="compatible" value="DuckDuckGo" ${
-      prompt.compatibleModels?.includes("DuckDuckGo") ? "checked" : ""
-    }> DuckDuckGo</label>
-    <label><input type="checkbox" name="compatible" value="Perplexity" ${
-      prompt.compatibleModels?.includes("Perplexity") ? "checked" : ""
-    }> Perplexity</label>
-    <label><input type="checkbox" name="compatible" value="DeepSeek" ${
-      prompt.compatibleModels?.includes("DeepSeek") ? "checked" : ""
-    }> DeepSeek</label>
-    <label><input type="checkbox" name="compatible" value="Deepai" ${
-      prompt.compatibleModels?.includes("Deepai") ? "checked" : ""
-    }> Deepai</label>
-    <label><input type="checkbox" name="compatible" value="Qwen AI" ${
-      prompt.compatibleModels?.includes("Qwen AI") ? "checked" : ""
-    }> Qwen AI</label>
-  </div>
-  <label>Inkompatible Modelle</label>
-  <div class="checkbox-group" id="edit-incompatible">
-    <label><input type="checkbox" name="incompatible" value="Grok" ${
-      prompt.incompatibleModels?.includes("Grok") ? "checked" : ""
-    }> Grok</label>
-    <label><input type="checkbox" name="incompatible" value="Gemini" ${
-      prompt.incompatibleModels?.includes("Gemini") ? "checked" : ""
-    }> Gemini</label>
-    <label><input type="checkbox" name="incompatible" value="ChatGPT" ${
-      prompt.incompatibleModels?.includes("ChatGPT") ? "checked" : ""
-    }> ChatGPT</label>
-    <label><input type="checkbox" name="incompatible" value="Claude" ${
-      prompt.incompatibleModels?.includes("Claude") ? "checked" : ""
-    }> Claude</label>
-    <label><input type="checkbox" name="incompatible" value="BlackBox" ${
-      prompt.incompatibleModels?.includes("BlackBox") ? "checked" : ""
-    }> BlackBox</label>
-    <label><input type="checkbox" name="incompatible" value="GitHub Copilot" ${
-      prompt.incompatibleModels?.includes("GitHub Copilot") ? "checked" : ""
-    }> GitHub Copilot</label>
-    <label><input type="checkbox" name="incompatible" value="Microsoft Copilot" ${
-      prompt.incompatibleModels?.includes("Microsoft Copilot") ? "checked" : ""
-    }> Microsoft Copilot</label>
-    <label><input type="checkbox" name="incompatible" value="Mistral" ${
-      prompt.incompatibleModels?.includes("Mistral") ? "checked" : ""
-    }> Mistral</label>
-    <label><input type="checkbox" name="incompatible" value="DuckDuckGo" ${
-      prompt.incompatibleModels?.includes("DuckDuckGo") ? "checked" : ""
-    }> DuckDuckGo</label>
-    <label><input type="checkbox" name="incompatible" value="Perplexity" ${
-      prompt.incompatibleModels?.includes("Perplexity") ? "checked" : ""
-    }> Perplexity</label>
-    <label><input type="checkbox" name="incompatible" value="DeepSeek" ${
-      prompt.incompatibleModels?.includes("DeepSeek") ? "checked" : ""
-    }> DeepSeek</label>
-    <label><input type="checkbox" name="incompatible" value="Deepai" ${
-      prompt.incompatibleModels?.includes("Deepai") ? "checked" : ""
-    }> Deepai</label>
-    <label><input type="checkbox" name="incompatible" value="Qwen AI" ${
-      prompt.incompatibleModels?.includes("Qwen AI") ? "checked" : ""
-    }> Qwen AI</label>
-  </div>
-  <label>Tags</label>
-  <input type="text" value="${prompt.tags || ""}" id="edit-tags">
-  <button class="save-btn">Speichern</button>
-  <button class="cancel-btn">Abbrechen</button>
-`;
+    <label>Title</label>
+    <input type="text" value="${prompt.title || ""}" id="edit-title">
+    <label>Description</label>
+    <textarea id="edit-description">${prompt.description || ""}</textarea>
+    <label>Content</label>
+    <textarea id="edit-content">${prompt.content || ""}</textarea>
+    <label>Type</label>
+    <select id="edit-type">
+      <option value="System" ${
+        prompt.type === "System" ? "selected" : ""
+      }>System (Textgeneration)</option>
+      <option value="Zusammenfassung" ${
+        prompt.type === "Zusammenfassung" ? "selected" : ""
+      }>User (Zusammenfassung)</option>
+      <option value="Umschreiben" ${
+        prompt.type === "Umschreiben" ? "selected" : ""
+      }>User (Umschreiben)</option>
+      <option value="Übersetzen" ${
+        prompt.type === "Übersetzen" ? "selected" : ""
+      }>User (Übersetzen)</option>
+      <option value="Codegenerierung" ${
+        prompt.type === "Codegenerierung" ? "selected" : ""
+      }>User (Codegenerierung)</option>
+      <option value="Analyse" ${
+        prompt.type === "Analyse" ? "selected" : ""
+      }>User (Analyse)</option>
+      <option value="Ideenfindung" ${
+        prompt.type === "Ideenfindung" ? "selected" : ""
+      }>User (Ideenfindung)</option>
+      <option value="Werbetexte" ${
+        prompt.type === "Werbetexte" ? "selected" : ""
+      }>User (Werbetexte)</option>
+      <option value="Prompt Engineering" ${
+        prompt.type === "Prompt Engineering" ? "selected" : ""
+      }>User (Prompt Engineering)</option>
+      <option value="Assistant" ${
+        prompt.type === "Assistant" ? "selected" : ""
+      }>Assistant</option>
+    </select>
 
-    const saveBtn = sidebarContent.querySelector(".save-btn");
-    const cancelBtn = sidebarContent.querySelector(".cancel-btn");
+    <label>Compatible Models</label>
+    <div class="checkbox-group" id="edit-compatible">
+      ${[
+        "Grok",
+        "Gemini",
+        "ChatGPT",
+        "Claude",
+        "BlackBox",
+        "GitHub Copilot",
+        "Microsoft Copilot",
+        "Mistral",
+        "DuckDuckGo",
+        "Perplexity",
+        "DeepSeek",
+        "Deepai",
+        "Qwen AI",
+      ]
+        .map(
+          (model) =>
+            `<label><input type="checkbox" name="compatible" value="${model}" ${
+              prompt.compatibleModels?.includes(model) ? "checked" : ""
+            }> ${model}</label>`
+        )
+        .join("")}
+    </div>
 
-    saveBtn.addEventListener("click", () => {
-      chrome.storage.local.get(folderId, (data) => {
+    <label>Incompatible Models</label>
+    <div class="checkbox-group" id="edit-incompatible">
+      ${[
+        "Grok",
+        "Gemini",
+        "ChatGPT",
+        "Claude",
+        "BlackBox",
+        "GitHub Copilot",
+        "Microsoft Copilot",
+        "Mistral",
+        "DuckDuckGo",
+        "Perplexity",
+        "DeepSeek",
+        "Deepai",
+        "Qwen AI",
+      ]
+        .map(
+          (model) =>
+            `<label><input type="checkbox" name="incompatible" value="${model}" ${
+              prompt.incompatibleModels?.includes(model) ? "checked" : ""
+            }> ${model}</label>`
+        )
+        .join("")}
+    </div>
+
+    <label>Tags</label>
+    <div class="checkbox-group" id="edit-tags">
+      ${[
+        "SEO",
+        "Marketing",
+        "Social Media",
+        "Advertisement",
+        "Copywriting",
+        "Productivity",
+        "E-Commerce",
+        "Education",
+        "Tech",
+        "Healthcare",
+        "HR",
+      ]
+        .map(
+          (tag) =>
+            `<label><input type="checkbox" name="tags" value="${tag}" ${
+              prompt.tags?.includes(tag) ? "checked" : ""
+            }> ${tag}</label>`
+        )
+        .join("")}
+    </div>
+
+    <label>Favorite</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" id="edit-favorite" ${
+        prompt.isFavorite ? "checked" : ""
+      }> Als Favorit markieren</label>
+    </div>
+
+    <label>Folder</label>
+    <select id="edit-folder">
+      <option value="" ${
+        !prompt.folderId ? "selected" : ""
+      }>Kein Ordner</option>
+    </select>
+
+    <button class="save-btn">Speichern</button>
+    <button class="cancel-btn">Abbrechen</button>
+  `;
+
+    chrome.storage.local.get(null, (data) => {
+      const folderSelect = sidebarContent.querySelector("#edit-folder");
+      const folders = Object.entries(data)
+        .filter(
+          ([id, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash
+        )
+        .map(([id, topic]) => ({ id, name: topic.name }));
+
+      folders.forEach((folder) => {
+        const option = document.createElement("option");
+        option.value = folder.id;
+        option.textContent = folder.name;
+        if (folderId === folder.id) option.selected = true;
+        folderSelect.appendChild(option);
+      });
+    });
+
+    sidebarContent.querySelector(".save-btn").addEventListener("click", () => {
+      chrome.storage.local.get(null, (data) => {
         const topic = data[folderId];
         if (!topic || !topic.prompts) return;
+
+        let newFolderId = sidebarContent.querySelector("#edit-folder").value;
+        const newFolderName = newFolderId
+          ? data[newFolderId]?.name || "Single Prompt"
+          : "Single Prompt";
+
+        const compatibleModels = Array.from(
+          sidebarContent.querySelectorAll(
+            "#edit-compatible input[name='compatible']:checked"
+          )
+        ).map((cb) => cb.value);
+
+        const incompatibleModels = Array.from(
+          sidebarContent.querySelectorAll(
+            "#edit-incompatible input[name='incompatible']:checked"
+          )
+        ).map((cb) => cb.value);
+
+        const tags = Array.from(
+          sidebarContent.querySelectorAll(
+            "#edit-tags input[name='tags']:checked"
+          )
+        ).map((cb) => cb.value);
 
         const updatedPrompt = {
           ...prompt,
           title: sidebarContent.querySelector("#edit-title").value.trim(),
           description:
             sidebarContent.querySelector("#edit-description")?.value.trim() ||
-            prompt.description ||
             "",
           content: sidebarContent.querySelector("#edit-content").value.trim(),
-          compatibleModels: Array.from(
-            sidebarContent.querySelectorAll(
-              "#edit-compatible input[name='compatible']:checked"
-            )
-          )
-            .map((checkbox) => checkbox.value)
-            .join(", "),
-          incompatibleModels: Array.from(
-            sidebarContent.querySelectorAll(
-              "#edit-incompatible input[name='incompatible']:checked"
-            )
-          )
-            .map((checkbox) => checkbox.value)
-            .join(", "),
-          tags: sidebarContent.querySelector("#edit-tags").value.trim(),
+          type: sidebarContent.querySelector("#edit-type").value,
+          compatibleModels,
+          incompatibleModels,
+          tags,
+          isFavorite: sidebarContent.querySelector("#edit-favorite").checked,
+          folderId: newFolderId || null,
+          folderName: newFolderName,
         };
 
-        // Prüfe, ob Änderungen vorliegen
         const hasChanges =
-          prompt.title !== updatedPrompt.title ||
-          prompt.description !== updatedPrompt.description ||
-          prompt.content !== updatedPrompt.content ||
-          prompt.compatibleModels !== updatedPrompt.compatibleModels ||
-          prompt.incompatibleModels !== updatedPrompt.incompatibleModels ||
-          prompt.tags !== updatedPrompt.tags;
+          (prompt.title || "") !== updatedPrompt.title ||
+          (prompt.description || "") !== updatedPrompt.description ||
+          (prompt.content || "") !== updatedPrompt.content ||
+          (prompt.type || "") !== updatedPrompt.type ||
+          JSON.stringify(prompt.compatibleModels || []) !==
+            JSON.stringify(compatibleModels) ||
+          JSON.stringify(prompt.incompatibleModels || []) !==
+            JSON.stringify(incompatibleModels) ||
+          JSON.stringify(prompt.tags || []) !== JSON.stringify(tags) ||
+          (prompt.isFavorite || false) !== updatedPrompt.isFavorite ||
+          (prompt.folderId || "") !== (updatedPrompt.folderId || "");
 
         if (hasChanges) {
           updatedPrompt.versions = updatedPrompt.versions || [];
@@ -1370,25 +1446,78 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
-        topic.prompts[promptIndex] = updatedPrompt;
+        if (newFolderId !== folderId) {
+          topic.prompts.splice(promptIndex, 1);
+          chrome.storage.local.set({ [folderId]: topic }, () => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Fehler beim Entfernen der Prompt:",
+                chrome.runtime.lastError
+              );
+              alert("Fehler beim Verschieben des Prompts.");
+              return;
+            }
 
-        chrome.storage.local.set({ [folderId]: topic }, () => {
-          if (chrome.runtime.lastError) {
-            console.error("Error saving prompt:", chrome.runtime.lastError);
-            alert("Fehler beim Speichern des Prompts.");
-          } else {
-            showDetailsSidebar(topic.prompts[promptIndex], folderId);
-            const category =
-              document.querySelector(".main-header h1").textContent;
-            handleCategoryClick(category);
-          }
-        });
+            let targetTopic;
+            if (newFolderId) {
+              targetTopic = data[newFolderId] || {
+                name: newFolderName,
+                prompts: [],
+                isHidden: false,
+                isTrash: false,
+              };
+              targetTopic.prompts.push(updatedPrompt);
+            } else {
+              const singlePromptId = `single_prompt_${Date.now()}`;
+              targetTopic = {
+                name: "Single Prompt",
+                prompts: [updatedPrompt],
+                isHidden: true,
+                isTrash: false,
+              };
+              newFolderId = singlePromptId;
+            }
+
+            chrome.storage.local.set({ [newFolderId]: targetTopic }, () => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Fehler beim Speichern im neuen Ordner:",
+                  chrome.runtime.lastError
+                );
+                alert("Fehler beim Speichern des Prompts.");
+              } else {
+                showDetailsSidebar(updatedPrompt, newFolderId);
+                const category =
+                  document.querySelector(".main-header h1").textContent;
+                handleCategoryClick(category);
+              }
+            });
+          });
+        } else {
+          topic.prompts[promptIndex] = updatedPrompt;
+          chrome.storage.local.set({ [folderId]: topic }, () => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Fehler beim Speichern der Prompt:",
+                chrome.runtime.lastError
+              );
+              alert("Fehler beim Speichern des Prompts.");
+            } else {
+              showDetailsSidebar(updatedPrompt, folderId);
+              const category =
+                document.querySelector(".main-header h1").textContent;
+              handleCategoryClick(category);
+            }
+          });
+        }
       });
     });
 
-    cancelBtn.addEventListener("click", () => {
-      showDetailsSidebar(prompt, folderId);
-    });
+    sidebarContent
+      .querySelector(".cancel-btn")
+      .addEventListener("click", () => {
+        showDetailsSidebar(prompt, folderId);
+      });
   }
 
   function editWorkflowDetails(workflowId, workflow, sidebarContent) {
