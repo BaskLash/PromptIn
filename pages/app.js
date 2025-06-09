@@ -578,13 +578,14 @@ document.addEventListener("DOMContentLoaded", () => {
         description,
         content,
         type,
-        compatibleModels: compatibleModels.join(", "),
-        incompatibleModels: incompatibleModels.join(", "),
-        tags: tags.join(", "),
+        compatibleModels: compatibleModels, // Als Array speichern, nicht als String
+        incompatibleModels: incompatibleModels, // Als Array speichern
+        tags: tags, // Als Array speichern
         isFavorite,
         folderId: folderId || null,
         folderName,
         createdAt: Date.now(),
+        updatedAt: Date.now(),
         lastUsed: null,
         versions: [
           {
@@ -595,6 +596,7 @@ document.addEventListener("DOMContentLoaded", () => {
             timestamp: Date.now(),
           },
         ],
+        metaChangeLog: [], // Initial leer
       };
 
       saveNewPrompt(newPrompt, folderId);
@@ -613,6 +615,277 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSpan.onclick = () => modal.remove();
     window.onclick = (event) => {
       if (event.target === modal) modal.remove();
+    };
+  }
+
+  function showCreateWorkflowModal() {
+    const modal = document.createElement("div");
+    modal.className = "modal";
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "modal-header";
+
+    const closeSpan = document.createElement("span");
+    closeSpan.className = "close";
+    closeSpan.innerHTML = "×";
+
+    const headerTitle = document.createElement("h2");
+    headerTitle.textContent = "Create New Workflow";
+
+    const modalBody = document.createElement("div");
+    modalBody.className = "modal-body";
+
+    const form = document.createElement("form");
+
+    const aiOptions = {
+      grok: "Grok",
+      gemini: "Gemini",
+      chatgpt: "ChatGPT",
+      claude: "Claude",
+      blackbox: "BlackBox",
+      githubCopilot: "GitHub Copilot",
+      microsoftCopilot: "Microsoft Copilot",
+      mistral: "Mistral",
+      duckduckgo: "DuckDuckGo",
+      perplexity: "Perplexity",
+      deepseek: "DeepSeek",
+      deepai: "Deepai",
+      qwenAi: "Qwen AI",
+    };
+
+    const aiModelOptions = Object.entries(aiOptions)
+      .map(([key, name]) => `<option value="${key}">${name}</option>`)
+      .join("");
+
+    form.innerHTML = `
+    <label>Name:</label>
+    <input type="text" id="workflow-name" placeholder="Workflow name" required>
+    <label>AI Model:</label>
+    <select id="workflow-ai-model" required>
+      <option value="" disabled selected>Choose a model</option>
+      ${aiModelOptions}
+    </select>
+    <label>Steps:</label>
+    <div id="workflow-steps"></div>
+    <button type="button" class="action-btn" id="add-step-btn">Add Step</button>
+    <button type="submit" class="action-btn">Create Workflow</button>
+  `;
+
+    modalHeader.appendChild(closeSpan);
+    modalHeader.appendChild(headerTitle);
+    modalBody.appendChild(form);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    const stepsContainer = form.querySelector("#workflow-steps");
+    let steps = [];
+
+    const addStep = (stepData = {}, index) => {
+      const stepDiv = document.createElement("div");
+      stepDiv.className = "step-item";
+      stepDiv.dataset.stepIndex = index;
+
+      const isDynamic = stepData.isDynamic !== false;
+
+      stepDiv.innerHTML = `
+      <label>Step Title</label>
+      <input type="text" class="step-title" value="${
+        stepData.title || ""
+      }" placeholder="Enter step title">
+      <label>Prompt Type</label>
+      <div class="prompt-type">
+        <label><input type="radio" name="prompt-type-${index}" value="static" ${
+        !isDynamic ? "checked" : ""
+      }> Static</label>
+        <label><input type="radio" name="prompt-type-${index}" value="dynamic" ${
+        isDynamic ? "checked" : ""
+      }> Dynamic</label>
+      </div>
+      <label>Select Prompt</label>
+      <select class="step-prompt"></select>
+      <label class="params-label" style="display: ${
+        isDynamic ? "block" : "none"
+      }">Parameters (JSON)</label>
+      <textarea class="step-params" style="display: ${
+        isDynamic ? "block" : "none"
+      }" placeholder='{"key": "value"}'>${JSON.stringify(
+        stepData.parameters || {},
+        null,
+        2
+      )}</textarea>
+      <button class="action-btn remove-step">Remove Step</button>
+    `;
+
+      const promptSelect = stepDiv.querySelector(".step-prompt");
+      const paramsTextarea = stepDiv.querySelector(".step-params");
+      const paramsLabel = stepDiv.querySelector(".params-label");
+      const radioButtons = stepDiv.querySelectorAll(
+        `input[name="prompt-type-${index}"]`
+      );
+
+      const loadPrompts = (type) => {
+        chrome.storage.local.get(null, (data) => {
+          promptSelect.innerHTML = "";
+          const defaultOption = document.createElement("option");
+          defaultOption.value = "";
+          defaultOption.textContent = "Select a prompt";
+          promptSelect.appendChild(defaultOption);
+
+          Object.entries(data).forEach(([id, topic]) => {
+            if (topic.prompts && Array.isArray(topic.prompts)) {
+              topic.prompts.forEach((prompt, idx) => {
+                const isDynamicPrompt =
+                  typeof prompt.content === "string" &&
+                  /\{[^}]+\}/.test(prompt.content);
+                if (
+                  (type === "dynamic" && isDynamicPrompt) ||
+                  (type === "static" && !isDynamicPrompt)
+                ) {
+                  const option = document.createElement("option");
+                  option.value = `${id}_${idx}`;
+                  option.textContent = prompt.title || `Prompt ${idx + 1}`;
+                  if (stepData.promptId === option.value)
+                    option.selected = true;
+                  promptSelect.appendChild(option);
+                }
+              });
+            }
+          });
+        });
+      };
+
+      loadPrompts(isDynamic ? "dynamic" : "static");
+
+      radioButtons.forEach((radio) => {
+        radio.addEventListener("change", () => {
+          const selectedType = radio.value;
+          const dynamic = selectedType === "dynamic";
+          paramsLabel.style.display = dynamic ? "block" : "none";
+          paramsTextarea.style.display = dynamic ? "block" : "none";
+          if (!dynamic) {
+            paramsTextarea.value = JSON.stringify({}, null, 2);
+          }
+          loadPrompts(selectedType);
+        });
+      });
+
+      promptSelect.addEventListener("change", () => {
+        const selectedPromptId = promptSelect.value;
+        if (!selectedPromptId) return;
+        const dynamicChecked =
+          stepDiv.querySelector(`input[name="prompt-type-${index}"]:checked`)
+            ?.value === "dynamic";
+
+        if (!dynamicChecked) return;
+
+        chrome.storage.local.get(null, (data) => {
+          let selectedPromptContent = null;
+
+          Object.entries(data).forEach(([id, topic]) => {
+            if (topic.prompts && Array.isArray(topic.prompts)) {
+              topic.prompts.forEach((prompt, idx) => {
+                if (`${id}_${idx}` === selectedPromptId) {
+                  selectedPromptContent = prompt.content;
+                }
+              });
+            }
+          });
+
+          if (selectedPromptContent) {
+            const placeholders = [
+              ...selectedPromptContent.matchAll(/\{([^}]+)\}/g),
+            ].map((m) => m[1]);
+            const params = {};
+            placeholders.forEach((key) => (params[key] = ""));
+            paramsTextarea.value = JSON.stringify(params, null, 2);
+          }
+        });
+      });
+
+      stepDiv.querySelector(".remove-step").addEventListener("click", () => {
+        stepsContainer.removeChild(stepDiv);
+        steps.splice(index, 1);
+        // Reindexierung
+        [...stepsContainer.children].forEach((div, idx) => {
+          div.dataset.stepIndex = idx;
+        });
+      });
+
+      stepsContainer.appendChild(stepDiv);
+      steps[index] = { ...stepData, stepDiv, isDynamic };
+    };
+
+    addStep({}, 0);
+
+    form.querySelector("#add-step-btn").addEventListener("click", () => {
+      addStep({}, steps.length);
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const name = form.querySelector("#workflow-name").value.trim();
+      const aiModel = form.querySelector("#workflow-ai-model").value;
+
+      try {
+        const workflowSteps = steps.map((_, index) => {
+          const stepDiv = stepsContainer.querySelector(
+            `[data-step-index="${index}"]`
+          );
+          const title = stepDiv.querySelector(".step-title").value.trim();
+          const promptId = stepDiv.querySelector(".step-prompt").value;
+          const isDynamic =
+            stepDiv.querySelector(`input[name="prompt-type-${index}"]:checked`)
+              .value === "dynamic";
+          const params = isDynamic
+            ? JSON.parse(
+                stepDiv.querySelector(".step-params").value.trim() || "{}"
+              )
+            : {};
+
+          if (!promptId) {
+            throw new Error(`Step ${index + 1}: No prompt selected`);
+          }
+
+          return {
+            title: title || `Step ${index + 1}`,
+            promptId,
+            parameters: params,
+            isDynamic,
+          };
+        });
+
+        const workflowId = `workflow_${Date.now()}`;
+        const newWorkflow = {
+          name,
+          aiModel,
+          steps: workflowSteps,
+          createdAt: Date.now(),
+          lastUsed: null,
+        };
+
+        chrome.storage.local.set({ [workflowId]: newWorkflow }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error saving workflow:", chrome.runtime.lastError);
+            alert("Fehler beim Speichern.");
+          } else {
+            modal.remove();
+            handleCategoryClick("Workflows");
+          }
+        });
+      } catch (err) {
+        alert(`Fehler: ${err.message}`);
+      }
+    });
+
+    closeSpan.onclick = () => modal.remove();
+    window.onclick = (e) => {
+      if (e.target === modal) modal.remove();
     };
   }
 
@@ -638,7 +911,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const topic = folderEntry[1];
         folderName = topic.name;
         topic.prompts = topic.prompts || [];
-        topic.prompts.push({ ...prompt, folderName });
+
+        topic.prompts.push({
+          ...prompt,
+          folderName,
+          compatibleModels: prompt.compatibleModels || [],
+          incompatibleModels: prompt.incompatibleModels || [],
+          tags: prompt.tags || [],
+          metaChangeLog: prompt.metaChangeLog || [],
+        });
+
         chrome.storage.local.set({ [targetFolderId]: topic }, () => {
           if (chrome.runtime.lastError) {
             console.error("Error saving prompt:", chrome.runtime.lastError);
@@ -765,7 +1047,16 @@ document.addEventListener("DOMContentLoaded", () => {
         folderName = "Single Prompt";
         const newTopic = {
           name: folderName,
-          prompts: [{ ...prompt, folderName }],
+          prompts: [
+            {
+              ...prompt,
+              folderName,
+              compatibleModels: prompt.compatibleModels || [],
+              incompatibleModels: prompt.incompatibleModels || [],
+              tags: prompt.tags || [],
+              metaChangeLog: prompt.metaChangeLog || [],
+            },
+          ],
           isHidden: true,
           isTrash: false,
         };
@@ -1070,6 +1361,45 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function exportPrompt(prompt, folderId) {
+    chrome.storage.local.get(folderId, (data) => {
+      const topic = data[folderId];
+      if (!topic || !topic.prompts) {
+        alert("Fehler: Prompt nicht gefunden.");
+        return;
+      }
+
+      const promptIndex = topic.prompts.findIndex(
+        (p) => p.title === prompt.title && p.content === prompt.content
+      );
+      if (promptIndex === -1) {
+        alert("Fehler: Prompt nicht gefunden.");
+        return;
+      }
+
+      const fullPrompt = topic.prompts[promptIndex];
+      const exportData = {
+        ...fullPrompt,
+        exportedAt: Date.now(), // Zeitstempel des Exports
+      };
+
+      // JSON erstellen und Datei herunterladen
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `prompt_${fullPrompt.title.replace(
+        /[^a-z0-9]/gi,
+        "_"
+      )}_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
   function renderPrompts(prompts) {
     const tbody = document.querySelector(".table-container tbody");
     tbody.innerHTML = "";
@@ -1081,9 +1411,21 @@ document.addEventListener("DOMContentLoaded", () => {
       <td><input type="checkbox" /></td>
       <td>${prompt.title || "N/A"}</td>
       <td>${prompt.type || "N/A"}</td>
-      <td>${prompt.compatibleModels || ""}</td>
-      <td>${prompt.incompatibleModels || "N/A"}</td>
-      <td>${prompt.tags || ""}</td>
+
+      <td>${
+        Array.isArray(prompt.compatibleModels)
+          ? prompt.compatibleModels.join(", ")
+          : prompt.compatibleModels || ""
+      }</td>
+<td>${
+        Array.isArray(prompt.incompatibleModels)
+          ? prompt.incompatibleModels.join(", ")
+          : prompt.incompatibleModels || "N/A"
+      }</td>
+<td>${
+        Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || ""
+      }</td>
+
       <td>${prompt.folderName || ""}</td>
       <td>${
         prompt.lastUsed
@@ -1099,16 +1441,17 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="prompt-actions">
           <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
           <div class="dropdown-menu">
-            <div class="dropdown-item" data-action="copy">Copy Prompt</div>
-            <div class="dropdown-item" data-action="rename">Rename</div>
-            <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
-            <div class="dropdown-item" data-action="share">Share</div>
-            <div class="dropdown-item" data-action="add-to-favorites">${
-              prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
-            }</div>
-            <div class="dropdown-item" data-action="show-versions">Show Versions</div>
-            <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
-          </div>
+  <div class="dropdown-item" data-action="copy">Copy Prompt</div>
+  <div class="dropdown-item" data-action="rename">Rename</div>
+  <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
+  <div class="dropdown-item" data-action="share">Share</div>
+  <div class="dropdown-item" data-action="add-to-favorites">${
+    prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
+  }</div>
+  <div class="dropdown-item" data-action="show-versions">Show Versions</div>
+  <div class="dropdown-item" data-action="export">Export Prompt</div>
+  <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
+</div>
         </div>
       </td>
     `;
@@ -1139,7 +1482,6 @@ document.addEventListener("DOMContentLoaded", () => {
           } else if (action === "add-to-favorites") {
             toggleFavorite(prompt, prompt.folderId, row);
           } else if (action === "show-versions") {
-            // Find prompt index in folder
             chrome.storage.local.get(prompt.folderId, (data) => {
               const topic = data[prompt.folderId];
               if (!topic || !topic.prompts) return;
@@ -1150,6 +1492,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 showPromptVersions(prompt.folderId, promptIndex, row);
               }
             });
+          } else if (action === "export") {
+            exportPrompt(prompt, prompt.folderId);
           } else if (action === "move-to-trash") {
             moveToTrash(prompt, prompt.folderId, row);
           }
@@ -1211,7 +1555,23 @@ document.addEventListener("DOMContentLoaded", () => {
       const saveNewName = () => {
         const newName = input.value.trim();
         if (newName && newName !== originalTitle) {
-          topic.prompts[promptIndex].title = newName;
+          const updatedPrompt = {
+            ...topic.prompts[promptIndex],
+            title: newName,
+            updatedAt: Date.now(),
+            versions: topic.prompts[promptIndex].versions || [],
+          };
+          updatedPrompt.versions.push({
+            versionId: generateUUID(),
+            title: newName,
+            description: updatedPrompt.description || "",
+            content: updatedPrompt.content || "",
+            timestamp: Date.now(),
+          });
+          if (updatedPrompt.versions.length > 50) {
+            updatedPrompt.versions.shift();
+          }
+          topic.prompts[promptIndex] = updatedPrompt;
           chrome.storage.local.set({ [folderId]: topic }, () => {
             if (chrome.runtime.lastError) {
               console.error("Error renaming prompt:", chrome.runtime.lastError);
@@ -1229,6 +1589,55 @@ document.addEventListener("DOMContentLoaded", () => {
       input.addEventListener("blur", saveNewName);
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") saveNewName();
+      });
+    });
+  }
+
+  function toggleFavorite(prompt, folderId, row) {
+    chrome.storage.local.get(folderId, (data) => {
+      const topic = data[folderId];
+      if (!topic || !topic.prompts) return;
+
+      const promptIndex = topic.prompts.findIndex(
+        (p) => p.title === prompt.title && p.content === prompt.content
+      );
+      if (promptIndex === -1) return;
+
+      const updatedPrompt = {
+        ...topic.prompts[promptIndex],
+        isFavorite: !topic.prompts[promptIndex].isFavorite,
+        updatedAt: Date.now(),
+        metaChangeLog: topic.prompts[promptIndex].metaChangeLog || [],
+      };
+
+      updatedPrompt.metaChangeLog.push({
+        timestamp: Date.now(),
+        changes: {
+          isFavorite: {
+            from: topic.prompts[promptIndex].isFavorite,
+            to: updatedPrompt.isFavorite,
+          },
+        },
+      });
+      if (updatedPrompt.metaChangeLog.length > 50) {
+        updatedPrompt.metaChangeLog.shift();
+      }
+
+      topic.prompts[promptIndex] = updatedPrompt;
+      chrome.storage.local.set({ [folderId]: topic }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error toggling favorite:", chrome.runtime.lastError);
+          alert("Error toggling favorite.");
+        } else {
+          prompt.isFavorite = updatedPrompt.isFavorite; // Update local prompt
+          row.querySelector('[data-action="add-to-favorites"]').textContent =
+            updatedPrompt.isFavorite
+              ? "Remove from Favorites"
+              : "Add to Favorites";
+          const category =
+            document.querySelector(".main-header h1").textContent;
+          handleCategoryClick(category);
+        }
       });
     });
   }
@@ -1393,41 +1802,87 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const prompt = topic.prompts[promptIndex];
+
+        const metaChangeLogEntries = (prompt.metaChangeLog || [])
+          .map(
+            (entry) => `
+    <div style="margin-bottom: 10px;">
+      <strong>${new Date(entry.timestamp).toLocaleString("de-DE")}</strong>
+      <ul>
+        ${Object.entries(entry.changes)
+          .map(([key, change]) => {
+            const formatValue = (value) =>
+              Array.isArray(value)
+                ? value.join(", ") || "None"
+                : value === true
+                ? "Yes"
+                : value === false
+                ? "No"
+                : value || "None";
+            return `<li><strong>${key}:</strong> From "${formatValue(
+              change.from
+            )}" to "${formatValue(change.to)}"</li>`;
+          })
+          .join("")}
+      </ul>
+    </div>
+  `
+          )
+          .join("");
+
         sidebarContent.innerHTML = `
-        <label>Title</label>
-        <input type="text" value="${prompt.title || "N/A"}" readonly>
-        <label>Description</label>
-        <textarea readonly>${prompt.description || "N/A"}</textarea>
-        <label>Content</label>
-        <textarea readonly>${prompt.content || "N/A"}</textarea>
-        <label>Type</label>
-        <input type="text" value="${prompt.type || "N/A"}" readonly>
-        <label>Compatible Models</label>
-        <input type="text" value="${prompt.compatibleModels || "N/A"}" readonly>
-        <label>Incompatible Models</label>
-        <input type="text" value="${
-          prompt.incompatibleModels || "N/A"
-        }" readonly>
-        <label>Tags</label>
-        <input type="text" value="${prompt.tags || "N/A"}" readonly>
-        <label>Folder</label>
-        <input type="text" value="${prompt.folderName || "N/A"}" readonly>
-        <label>Favorite</label>
-        <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
-        <label>Created At</label>
-        <input type="text" value="${
-          prompt.createdAt
-            ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-            : "N/A"
-        }" readonly>
-        <label>Last Used</label>
-        <input type="text" value="${
-          prompt.lastUsed
-            ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-            : "N/A"
-        }" readonly>
-        <button class="edit-btn">Edit Prompt</button>
-      `;
+  <label>Title</label>
+  <input type="text" value="${prompt.title || "N/A"}" readonly>
+  <label>Description</label>
+  <textarea readonly>${prompt.description || "N/A"}</textarea>
+  <label>Content</label>
+  <textarea readonly>${prompt.content || "N/A"}</textarea>
+  <label>Type</label>
+  <input type="text" value="${prompt.type || "N/A"}" readonly>
+  <label>Compatible Models</label>
+  <input type="text" value="${
+    Array.isArray(prompt.compatibleModels)
+      ? prompt.compatibleModels.join(", ")
+      : prompt.compatibleModels || "N/A"
+  }" readonly>
+  <label>Incompatible Models</label>
+  <input type="text" value="${
+    Array.isArray(prompt.incompatibleModels)
+      ? prompt.incompatibleModels.join(", ")
+      : prompt.incompatibleModels || "N/A"
+  }" readonly>
+  <label>Tags</label>
+  <input type="text" value="${
+    Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || "N/A"
+  }" readonly>
+  <label>Folder</label>
+  <input type="text" value="${prompt.folderName || "N/A"}" readonly>
+  <label>Favorite</label>
+  <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
+  <label>Created At</label>
+  <input type="text" value="${
+    prompt.createdAt
+      ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+      : "N/A"
+  }" readonly>
+  <label>Updated At</label>
+  <input type="text" value="${
+    prompt.updatedAt
+      ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
+      : "N/A"
+  }" readonly>
+  <label>Last Used</label>
+  <input type="text" value="${
+    prompt.lastUsed
+      ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+      : "N/A"
+  }" readonly>
+  <label>Metadata Change Log</label>
+  <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+    ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
+  </div>
+  <button class="edit-btn">Edit Prompt</button>
+`;
 
         const editBtn = sidebarContent.querySelector(".edit-btn");
         editBtn.addEventListener("click", () => {
@@ -1637,22 +2092,18 @@ document.addEventListener("DOMContentLoaded", () => {
           isFavorite: sidebarContent.querySelector("#edit-favorite").checked,
           folderId: newFolderId || null,
           folderName: newFolderName,
+          updatedAt: Date.now(), // Immer aktualisieren
+          metaChangeLog: prompt.metaChangeLog || [], // Bestehendes Log beibehalten
         };
 
-        const hasChanges =
+        // Prüfen, ob inhaltliche Änderungen (Titel, Beschreibung, Inhalt) vorliegen
+        const hasContentChanges =
           (prompt.title || "") !== updatedPrompt.title ||
           (prompt.description || "") !== updatedPrompt.description ||
-          (prompt.content || "") !== updatedPrompt.content ||
-          (prompt.type || "") !== updatedPrompt.type ||
-          JSON.stringify(prompt.compatibleModels || []) !==
-            JSON.stringify(compatibleModels) ||
-          JSON.stringify(prompt.incompatibleModels || []) !==
-            JSON.stringify(incompatibleModels) ||
-          JSON.stringify(prompt.tags || []) !== JSON.stringify(tags) ||
-          (prompt.isFavorite || false) !== updatedPrompt.isFavorite ||
-          (prompt.folderId || "") !== (updatedPrompt.folderId || "");
+          (prompt.content || "") !== updatedPrompt.content;
 
-        if (hasChanges) {
+        // Neue Version nur bei inhaltlichen Änderungen erstellen
+        if (hasContentChanges) {
           updatedPrompt.versions = updatedPrompt.versions || [];
           updatedPrompt.versions.push({
             versionId: generateUUID(),
@@ -1663,6 +2114,60 @@ document.addEventListener("DOMContentLoaded", () => {
           });
           if (updatedPrompt.versions.length > 50) {
             updatedPrompt.versions.shift();
+          }
+        }
+
+        // Prüfen, ob Metadatenänderungen vorliegen und diese protokollieren
+        const metaChanges = {};
+        if ((prompt.type || "") !== updatedPrompt.type) {
+          metaChanges.type = {
+            from: prompt.type || "",
+            to: updatedPrompt.type,
+          };
+        }
+        if (
+          JSON.stringify(prompt.compatibleModels || []) !==
+          JSON.stringify(compatibleModels)
+        ) {
+          metaChanges.compatibleModels = {
+            from: prompt.compatibleModels || [],
+            to: compatibleModels,
+          };
+        }
+        if (
+          JSON.stringify(prompt.incompatibleModels || []) !==
+          JSON.stringify(incompatibleModels)
+        ) {
+          metaChanges.incompatibleModels = {
+            from: prompt.incompatibleModels || [],
+            to: incompatibleModels,
+          };
+        }
+        if (JSON.stringify(prompt.tags || []) !== JSON.stringify(tags)) {
+          metaChanges.tags = { from: prompt.tags || [], to: tags };
+        }
+        if ((prompt.isFavorite || false) !== updatedPrompt.isFavorite) {
+          metaChanges.isFavorite = {
+            from: prompt.isFavorite || false,
+            to: updatedPrompt.isFavorite,
+          };
+        }
+        if ((prompt.folderId || "") !== (updatedPrompt.folderId || "")) {
+          metaChanges.folderId = {
+            from: prompt.folderId || "",
+            to: updatedPrompt.folderId || "",
+          };
+        }
+
+        // Meta-Änderungen protokollieren, wenn es welche gibt
+        if (Object.keys(metaChanges).length > 0) {
+          updatedPrompt.metaChangeLog.push({
+            timestamp: Date.now(),
+            changes: metaChanges,
+          });
+          // Optional: Begrenze die Länge des metaChangeLog
+          if (updatedPrompt.metaChangeLog.length > 50) {
+            updatedPrompt.metaChangeLog.shift();
           }
         }
 
@@ -2276,6 +2781,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("addItemBtn").addEventListener("click", () => {
     const category = document.querySelector(".main-header h1").textContent;
-    showCreatePromptModal(category);
+    if (category === "Workflows") {
+      showCreateWorkflowModal();
+    } else {
+      showCreatePromptModal(category);
+    }
   });
 });
