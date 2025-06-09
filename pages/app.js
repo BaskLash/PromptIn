@@ -90,166 +90,299 @@ document.addEventListener("DOMContentLoaded", () => {
   function injectStyles() {
     const style = document.createElement("style");
     style.textContent = `
-      .prompt-actions {
-        display: flex;
-        align-items: center;
+    .prompt-actions {
+      display: flex;
+      align-items: center;
+    }
+    .prompt-type {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .prompt-type label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: normal;
+    }
+    .action-btn {
+      background: #1e90ff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    .action-btn:hover {
+      background: #187bcd;
+    }
+    .menu-btn {
+      font-weight: bold;
+    }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      z-index: 1000;
+      min-width: 150px;
+      right: 0;
+    }
+    .dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.9em;
+      color: #333;
+    }
+    .dropdown-item:hover {
+      background: #f0f0f0;
+    }
+    .details-sidebar {
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: 350px;
+      height: 100%;
+      background: #fff;
+      border-left: 1px solid #ddd;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+      overflow-y: auto;
+    }
+    .details-sidebar.open {
+      transform: translateX(0);
+    }
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid #ddd;
+    }
+    .sidebar-header h2 {
+      margin: 0;
+      font-size: 1.5em;
+    }
+    .close-sidebar {
+      cursor: pointer;
+      font-size: 24px;
+      color: #aaa;
+    }
+    .close-sidebar:hover {
+      color: #000;
+    }
+    .sidebar-content {
+      padding: 20px;
+    }
+    .sidebar-content label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+    .sidebar-content input,
+    .sidebar-content textarea,
+    .sidebar-content select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .sidebar-content textarea {
+      min-height: 100px;
+    }
+    .sidebar-content .step-list {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar-content .step-item {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .edit-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .edit-btn:hover {
+      background: #218838;
+    }
+    .save-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .save-btn:hover {
+      background: #218838;
+    }
+    .cancel-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .cancel-btn:hover {
+      background: #c82333;
+    }
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.5em;
+      color: var(--primary-color);
+    }
+    .modal .close {
+      cursor: pointer;
+      font-size: 24px;
+      color: #aaa;
+      transition: color 0.2s ease;
+    }
+    .modal .close:hover {
+      color: var(--primary-color);
+    }
+    .modal-body {
+      padding: 10px 0;
+    }
+    .modal-body label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+    .modal-body input,
+    .modal-body textarea,
+    .modal-body select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .modal-body textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .modal-body select[multiple] {
+      height: 120px;
+      padding: 5px;
+    }
+    .modal-body .checkbox-group {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+    .modal-body .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: normal;
+      cursor: pointer;
+    }
+    .modal-body .checkbox-group input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+    .modal-body .action-btn {
+      background: #1e90ff;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+      display: block;
+      width: 100%;
+    }
+    .modal-body .action-btn:hover {
+      background: #187bcd;
+    }
+    .sidebar-content .checkbox-group {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+    .sidebar-content .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: normal;
+      cursor: pointer;
+    }
+    .sidebar-content .checkbox-group input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+    @media (max-width: 600px) {
+      .modal-content {
+        width: 90%;
+        max-height: 90vh;
       }
-      .prompt-type {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 15px;
+      .modal-body select[multiple] {
+        height: 80px;
       }
-      .prompt-type label {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        font-weight: normal;
+      .modal-body .checkbox-group {
+        max-height: 100px;
       }
-      .action-btn {
-        background: #1e90ff;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-right: 8px;
+      .sidebar-content .checkbox-group {
+        max-height: 100px;
       }
-      .action-btn:hover {
-        background: #187bcd;
-      }
-      .menu-btn {
-        font-weight: bold;
-      }
-      .dropdown-menu {
-        display: none;
-        position: absolute;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        z-index: 1000;
-        min-width: 150px;
-        right: 0;
-      }
-      .dropdown-item {
-        padding: 8px 12px;
-        cursor: pointer;
-        font-size: 0.9em;
-        color: #333;
-      }
-      .dropdown-item:hover {
-        background: #f0f0f0;
-      }
-      .details-sidebar {
-        position: fixed;
-        right: 0;
-        top: 0;
-        width: 350px;
-        height: 100%;
-        background: #fff;
-        border-left: 1px solid #ddd;
-        box-shadow: -2px 0 8px rgba(0,0,0,0.1);
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-        z-index: 1000;
-        overflow-y: auto;
-      }
-      .details-sidebar.open {
-        transform: translateX(0);
-      }
-      .sidebar-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px;
-        border-bottom: 1px solid #ddd;
-      }
-      .sidebar-header h2 {
-        margin: 0;
-        font-size: 1.5em;
-      }
-      .close-sidebar {
-        cursor: pointer;
-        font-size: 24px;
-        color: #aaa;
-      }
-      .close-sidebar:hover {
-        color: #000;
-      }
-      .sidebar-content {
-        padding: 20px;
-      }
-      .sidebar-content label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: 600;
-      }
-      .sidebar-content input,
-      .sidebar-content textarea,
-      .sidebar-content select {
-        width: 100%;
-        padding: 8px;
-        margin-bottom: 15px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-      }
-      .sidebar-content textarea {
-        min-height: 100px;
-      }
-      .sidebar-content .step-list {
-        list-style: none;
-        padding: 0;
-      }
-      .sidebar-content .step-item {
-        margin-bottom: 10px;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-      }
-      .edit-btn {
-        background: #28a745;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .edit-btn:hover {
-        background: #218838;
-      }
-      .save-btn {
-        background: #28a745;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-right: 10px;
-      }
-      .save-btn:hover {
-        background: #218838;
-      }
-      .cancel-btn {
-        background: #dc3545;
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .cancel-btn:hover {
-        background: #c82333;
-      }
-      @media (max-width: 600px) {
-        .details-sidebar {
-          width: 100%;
-        }
-        .dropdown-menu {
-          right: auto;
-          left: 0;
-        }
-      }
-    `;
+    }
+  `;
     document.head.appendChild(style);
   }
 
@@ -289,65 +422,181 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const form = document.createElement("form");
     form.innerHTML = `
-    <label>Title:</label>
-    <input type="text" id="prompt-title" placeholder="Enter prompt title" required>
-    <label>Description:</label>
-    <textarea id="prompt-description" placeholder="Enter prompt description"></textarea>
-    <label>Content:</label>
-    <textarea id="prompt-content" placeholder="Enter prompt content" required></textarea>
-    <label>Type:</label>
-    <input type="text" id="prompt-type" placeholder="Enter prompt type">
-    <label>Compatible Models:</label>
-    <input type="text" id="prompt-compatible" placeholder="Enter compatible models (comma-separated)">
-    <label>Incompatible Models:</label>
-    <input type="text" id="prompt-incompatible" placeholder="Enter incompatible models (comma-separated)">
-    <label>Tags:</label>
-    <input type="text" id="prompt-tags" placeholder="Enter tags (comma-separated)">
-  `;
+      <label>Titel:</label>
+      <input type="text" id="prompt-title" placeholder="Titel eingeben" required>
+      <label>Beschreibung:</label>
+      <textarea id="prompt-description" placeholder="Beschreibung eingeben"></textarea>
+      <label>Inhalt:</label>
+      <textarea id="prompt-content" placeholder="Prompt-Text eingeben" required></textarea>
+      <label>Typ:</label>
+      <select id="prompt-type" required>
+        <option value="" disabled selected>Typ auswählen</option>
+        <option value="System">Textgeneration</option>
+        <option value="User">Zusammenfassung</option>
+        <option value="User">Umschreiben</option>
+        <option value="User">Übersetzen</option>
+        <option value="User">Codegenerierung</option>
+        <option value="User">Analyse</option>
+        <option value="User">Ideenfindung</option>
+        <option value="User">Werbetexte</option>
+        <option value="User">Prompt Engineering</option>
+        <option value="Assistant">Assistant</option>
+      </select>
+      <label>Kompatible Modelle:</label>
+      <div class="checkbox-group" id="prompt-compatible">
+        <label><input type="checkbox" name="compatible" value="Grok"> Grok</label>
+        <label><input type="checkbox" name="compatible" value="Gemini"> Gemini</label>
+        <label><input type="checkbox" name="compatible" value="ChatGPT"> ChatGPT</label>
+        <label><input type="checkbox" name="compatible" value="Claude"> Claude</label>
+        <label><input type="checkbox" name="compatible" value="BlackBox"> BlackBox</label>
+        <label><input type="checkbox" name="compatible" value="GitHub Copilot"> GitHub Copilot</label>
+        <label><input type="checkbox" name="compatible" value="Microsoft Copilot"> Microsoft Copilot</label>
+        <label><input type="checkbox" name="compatible" value="Mistral"> Mistral</label>
+        <label><input type="checkbox" name="compatible" value="DuckDuckGo"> DuckDuckGo</label>
+        <label><input type="checkbox" name="compatible" value="Perplexity"> Perplexity</label>
+        <label><input type="checkbox" name="compatible" value="DeepSeek"> DeepSeek</label>
+        <label><input type="checkbox" name="compatible" value="Deepai"> Deepai</label>
+        <label><input type="checkbox" name="compatible" value="Qwen AI"> Qwen AI</label>
+      </div>
+      <label>Inkompatible Modelle:</label>
+      <div class="checkbox-group" id="prompt-incompatible">
+        <label><input type="checkbox" name="incompatible" value="Grok"> Grok</label>
+        <label><input type="checkbox" name="incompatible" value="Gemini"> Gemini</label>
+        <label><input type="checkbox" name="incompatible" value="ChatGPT"> ChatGPT</label>
+        <label><input type="checkbox" name="incompatible" value="Claude"> Claude</label>
+        <label><input type="checkbox" name="incompatible" value="BlackBox"> BlackBox</label>
+        <label><input type="checkbox" name="incompatible" value="GitHub Copilot"> GitHub Copilot</label>
+        <label><input type="checkbox" name="incompatible" value="Microsoft Copilot"> Microsoft Copilot</label>
+        <label><input type="checkbox" name="incompatible" value="Mistral"> Mistral</label>
+        <label><input type="checkbox" name="incompatible" value="DuckDuckGo"> DuckDuckGo</label>
+        <label><input type="checkbox" name="incompatible" value="Perplexity"> Perplexity</label>
+        <label><input type="checkbox" name="incompatible" value="DeepSeek"> DeepSeek</label>
+        <label><input type="checkbox" name="incompatible" value="Deepai"> Deepai</label>
+        <label><input type="checkbox" name="incompatible" value="Qwen AI"> Qwen AI</label>
+      </div>
+      <label>Tags:</label>
+      <div class="checkbox-group" id="prompt-tags">
+        <label><input type="checkbox" name="tags" value="SEO"> SEO</label>
+        <label><input type="checkbox" name="tags" value="Marketing"> Marketing</label>
+        <label><input type="checkbox" name="tags" value="Social Media"> Social Media</label>
+        <label><input type="checkbox" name="tags" value="Advertisement"> Advertisement</label>
+        <label><input type="checkbox" name="tags" value="Copywriting"> Copywriting</label>
+        <label><input type="checkbox" name="tags" value="Productivity"> Productivity</label>
+        <label><input type="checkbox" name="tags" value="E-Commerce"> E-Commerce</label>
+        <label><input type="checkbox" name="tags" value="Education"> Education</label>
+        <label><input type="checkbox" name="tags" value="Tech"> Tech</label>
+        <label><input type="checkbox" name="tags" value="Healthcare"> Healthcare</label>
+        <label><input type="checkbox" name="tags" value="HR"> HR</label>
+      </div>
+      <label>Favorit:</label>
+      <div class="checkbox-group">
+        <label><input type="checkbox" id="prompt-favorite" name="favorite"> Als Favorit markieren</label>
+      </div>
+      <label>Ordner:</label>
+      <select id="prompt-folder">
+        <option value="" ${
+          !category ||
+          category === "All Prompts" ||
+          category === "Favorites" ||
+          category === "Single Prompts" ||
+          category === "Categorised Prompts" ||
+          category === "Trash" ||
+          category === "Dynamic Prompts" ||
+          category === "Static Prompts" ||
+          category === "Unused Prompts"
+            ? "selected"
+            : ""
+        }>Kein Ordner</option>
+      </select>
+      <button type="submit" class="action-btn">Create Prompt</button>
+    `;
 
-    const createButton = document.createElement("button");
-    createButton.textContent = "Create Prompt";
-    createButton.className = "action-btn";
-    createButton.type = "submit";
+    // Lade verfügbare Ordner in das Dropdown
+    chrome.storage.local.get(null, (data) => {
+      const folderSelect = form.querySelector("#prompt-folder");
+      const folders = Object.entries(data)
+        .filter(
+          ([, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash
+        )
+        .map(([id, topic]) => ({ id, name: topic.name }));
+
+      folders.forEach((folder) => {
+        const option = document.createElement("option");
+        option.value = folder.id;
+        option.textContent = folder.name;
+        if (category && folder.name.toLowerCase() === category.toLowerCase()) {
+          option.selected = true;
+        }
+        folderSelect.appendChild(option);
+      });
+    });
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
+
+      const title = document.getElementById("prompt-title").value.trim();
+      const description = document
+        .getElementById("prompt-description")
+        .value.trim();
+      const content = document.getElementById("prompt-content").value.trim();
+      const type = document.getElementById("prompt-type").value;
+      const compatibleModels = Array.from(
+        document.querySelectorAll(
+          "#prompt-compatible input[name='compatible']:checked"
+        )
+      ).map((checkbox) => checkbox.value);
+      const incompatibleModels = Array.from(
+        document.querySelectorAll(
+          "#prompt-incompatible input[name='incompatible']:checked"
+        )
+      ).map((checkbox) => checkbox.value);
+      const tags = Array.from(
+        document.querySelectorAll("#prompt-tags input[name='tags']:checked")
+      ).map((checkbox) => checkbox.value);
+      const isFavorite = document.getElementById("prompt-favorite").checked;
+      const folderId = document.getElementById("prompt-folder").value;
+
+      // Ermittle folderName aus dem ausgewählten Ordner
+      let folderName = "Single Prompt"; // Standard für Einzelprompts
+      if (folderId) {
+        const selectedOption = document.querySelector(
+          `#prompt-folder option[value="${folderId}"]`
+        );
+        folderName = selectedOption ? selectedOption.textContent : folderName;
+      }
+
       const newPrompt = {
-        title: document.getElementById("prompt-title").value.trim(),
-        description: document.getElementById("prompt-description").value.trim(),
-        content: document.getElementById("prompt-content").value.trim(),
-        type: document.getElementById("prompt-type").value.trim(),
-        compatibleModels: document
-          .getElementById("prompt-compatible")
-          .value.trim(),
-        incompatibleModels: document
-          .getElementById("prompt-incompatible")
-          .value.trim(),
-        tags: document.getElementById("prompt-tags").value.trim(),
+        title,
+        description,
+        content,
+        type,
+        compatibleModels: compatibleModels.join(", "),
+        incompatibleModels: incompatibleModels.join(", "),
+        tags: tags.join(", "),
+        isFavorite,
+        folderId: folderId || null,
+        folderName,
         createdAt: Date.now(),
         lastUsed: null,
         versions: [
           {
             versionId: generateUUID(),
-            title: document.getElementById("prompt-title").value.trim(),
-            description: document
-              .getElementById("prompt-description")
-              .value.trim(),
-            content: document.getElementById("prompt-content").value.trim(),
+            title,
+            description,
+            content,
             timestamp: Date.now(),
           },
         ],
       };
 
-      saveNewPrompt(newPrompt, category);
+      saveNewPrompt(newPrompt, folderId);
       modal.remove();
-      handleCategoryClick(category);
+      handleCategoryClick(category); // Bleibe in der aktuellen Kategorie
     });
 
     modalHeader.appendChild(closeSpan);
     modalHeader.appendChild(headerTitle);
     modalBody.appendChild(form);
-    modalBody.appendChild(createButton);
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
     modal.appendChild(modalContent);
@@ -359,88 +608,265 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  function saveNewPrompt(prompt, category) {
+  function saveNewPrompt(prompt, folderId) {
     chrome.storage.local.get(null, (data) => {
-      let folderId;
-      if (category === "Single Prompts") {
-        folderId = `single_prompt_${Date.now()}`;
-        chrome.storage.local.set({
-          [folderId]: {
-            name: "Single Prompt",
-            prompts: [prompt],
-            isHidden: true,
-            isTrash: false,
-          },
+      let targetFolderId = folderId;
+      let folderName = prompt.folderName || "Single Prompt";
+
+      // Prüfe, ob ein existierender Ordner vorhanden ist
+      const folderEntry = folderId
+        ? Object.entries(data).find(
+            ([id, topic]) =>
+              id === folderId &&
+              topic.prompts &&
+              !topic.isHidden &&
+              !topic.isTrash
+          )
+        : null;
+
+      if (folderEntry) {
+        // Speichere im existierenden Ordner
+        targetFolderId = folderEntry[0];
+        const topic = folderEntry[1];
+        folderName = topic.name;
+        topic.prompts = topic.prompts || [];
+        topic.prompts.push({ ...prompt, folderName });
+        chrome.storage.local.set({ [targetFolderId]: topic }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error saving prompt:", chrome.runtime.lastError);
+            alert("Fehler beim Speichern des Prompts.");
+          } else {
+            // Aktualisiere die Tabelle sofort
+            const updatedPrompts = topic.prompts.map((p) => ({
+              ...p,
+              folderId: targetFolderId,
+              folderName: topic.name,
+            }));
+            const category =
+              document.querySelector(".main-header h1").textContent;
+            if (
+              category === "All Prompts" ||
+              category === topic.name ||
+              (category === "Favorites" && prompt.isFavorite) ||
+              (category === "Single Prompts" && !folderId) ||
+              (category === "Dynamic Prompts" &&
+                prompt.content &&
+                /\{[^}]+\}/.test(prompt.content)) ||
+              (category === "Static Prompts" &&
+                prompt.content &&
+                !/\{[^}]+\}/.test(prompt.content)) ||
+              (category === "Unused Prompts" && !prompt.lastUsed)
+            ) {
+              // Hole die aktuellen Prompts für die Kategorie
+              chrome.storage.local.get(null, (updatedData) => {
+                let filteredPrompts = [];
+                const isVisibleTopic = (t) =>
+                  t.prompts && !t.isHidden && !t.isTrash;
+                const getPromptObjects = (t, id) =>
+                  (t.prompts || []).map((p) => ({
+                    ...p,
+                    folderId: id,
+                    folderName: t.name || "N/A",
+                  }));
+
+                switch (category) {
+                  case "All Prompts":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isVisibleTopic(t))
+                      .flatMap(([id, t]) => getPromptObjects(t, id));
+                    break;
+                  case "Favorites":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isVisibleTopic(t))
+                      .flatMap(([id, t]) =>
+                        t.prompts
+                          .filter((p) => p.isFavorite)
+                          .map((p) => ({
+                            ...p,
+                            folderId: id,
+                            folderName: t.name || "N/A",
+                          }))
+                      );
+                    break;
+                  case "Single Prompts":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => t.prompts && t.isHidden && !t.isTrash)
+                      .flatMap(([id, t]) => getPromptObjects(t, id));
+                    break;
+                  case "Dynamic Prompts":
+                    filteredPrompts = Object.entries(updatedData).flatMap(
+                      ([id, t]) =>
+                        (t.prompts || [])
+                          .filter(
+                            (p) => p.content && /\{[^}]+\}/.test(p.content)
+                          )
+                          .map((p) => ({
+                            ...p,
+                            folderId: id,
+                            folderName: t.name || "N/A",
+                          }))
+                    );
+                    break;
+                  case "Static Prompts":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isVisibleTopic(t))
+                      .flatMap(([id, t]) =>
+                        t.prompts
+                          .filter(
+                            (p) => p.content && !/\{[^}]+\}/.test(p.content)
+                          )
+                          .map((p) => ({
+                            ...p,
+                            folderId: id,
+                            folderName: t.name || "N/A",
+                          }))
+                      );
+                    break;
+                  case "Unused Prompts":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isVisibleTopic(t))
+                      .flatMap(([id, t]) =>
+                        t.prompts
+                          .filter((p) => !p.lastUsed)
+                          .map((p) => ({
+                            ...p,
+                            folderId: id,
+                            folderName: t.name || "N/A",
+                          }))
+                      );
+                    break;
+                  default:
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(
+                        ([, t]) =>
+                          t?.name?.toLowerCase() === category.toLowerCase() &&
+                          !t.isHidden &&
+                          !t.isTrash
+                      )
+                      .flatMap(([id, t]) => getPromptObjects(t, id));
+                    break;
+                }
+                renderPrompts(filteredPrompts);
+              });
+            }
+          }
         });
-      } else if (category === "Categorised Prompts") {
-        // Suche nach einem passenden Ordner oder erstelle einen neuen
-        const existingFolder = Object.entries(data).find(
-          ([, topic]) =>
-            topic.name === "Default Category" &&
-            !topic.isHidden &&
-            !topic.isTrash
-        );
-        if (existingFolder) {
-          folderId = existingFolder[0];
-          const topic = existingFolder[1];
-          topic.prompts.push(prompt);
-          chrome.storage.local.set({ [folderId]: topic });
-        } else {
-          folderId = `category_${Date.now()}`;
-          chrome.storage.local.set({
-            [folderId]: {
-              name: "Default Category",
-              prompts: [prompt],
-              isHidden: false,
-              isTrash: false,
-            },
-          });
-        }
-      } else if (
-        [
-          "All Prompts",
-          "Favorites",
-          "Dynamic Prompts",
-          "Static Prompts",
-          "Unused Prompts",
-        ].includes(category)
-      ) {
-        folderId = `category_${Date.now()}`;
-        chrome.storage.local.set({
-          [folderId]: {
-            name: category,
-            prompts: [prompt],
-            isHidden: false,
-            isTrash: false,
-          },
-        });
-      } else if (category === "Trash") {
-        folderId = "trash_folder";
-        const trashFolder = data[folderId] || { prompts: [], isTrash: true };
-        trashFolder.prompts.push(prompt);
-        chrome.storage.local.set({ [folderId]: trashFolder });
       } else {
-        // Annahme: category ist ein Ordnername
-        const folder = Object.entries(data).find(
-          ([, topic]) =>
-            topic.name === category && !topic.isHidden && !topic.isTrash
-        );
-        if (folder) {
-          folderId = folder[0];
-          const topic = folder[1];
-          topic.prompts.push(prompt);
-          chrome.storage.local.set({ [folderId]: topic });
-        } else {
-          folderId = `folder_${Date.now()}`;
-          chrome.storage.local.set({
-            [folderId]: {
-              name: category,
-              prompts: [prompt],
-              isHidden: false,
-              isTrash: false,
-            },
-          });
-        }
+        // Einzelprompt ohne Ordner
+        targetFolderId = `single_prompt_${Date.now()}`;
+        folderName = "Single Prompt";
+        const newTopic = {
+          name: folderName,
+          prompts: [{ ...prompt, folderName }],
+          isHidden: true,
+          isTrash: false,
+        };
+        chrome.storage.local.set({ [targetFolderId]: newTopic }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error saving prompt:", chrome.runtime.lastError);
+            alert("Fehler beim Speichern des Prompts.");
+          } else {
+            // Aktualisiere die Tabelle sofort
+            const category =
+              document.querySelector(".main-header h1").textContent;
+            if (
+              category === "All Prompts" ||
+              category === "Single Prompts" ||
+              (category === "Favorites" && prompt.isFavorite) ||
+              (category === "Dynamic Prompts" &&
+                prompt.content &&
+                /\{[^}]+\}/.test(prompt.content)) ||
+              (category === "Static Prompts" &&
+                prompt.content &&
+                !/\{[^}]+\}/.test(prompt.content)) ||
+              (category === "Unused Prompts" && !prompt.lastUsed)
+            ) {
+              // Hole die aktuellen Prompts für die Kategorie
+              chrome.storage.local.get(null, (updatedData) => {
+                let filteredPrompts = [];
+                const isVisibleTopic = (t) =>
+                  t.prompts && !t.isHidden && !t.isTrash;
+                const isHiddenTopic = (t) =>
+                  t.prompts && t.isHidden && !t.isTrash;
+                const getPromptObjects = (t, id) =>
+                  (t.prompts || []).map((p) => ({
+                    ...p,
+                    folderId: id,
+                    folderName: t.name || "N/A",
+                  }));
+
+                switch (category) {
+                  case "All Prompts":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isVisibleTopic(t))
+                      .flatMap(([id, t]) => getPromptObjects(t, id));
+                    break;
+                  case "Favorites":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isVisibleTopic(t) || isHiddenTopic(t))
+                      .flatMap(([id, t]) =>
+                        t.prompts
+                          .filter((p) => p.isFavorite)
+                          .map((p) => ({
+                            ...p,
+                            folderId: id,
+                            folderName: t.name || "N/A",
+                          }))
+                      );
+                    break;
+                  case "Single Prompts":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isHiddenTopic(t))
+                      .flatMap(([id, t]) => getPromptObjects(t, id));
+                    break;
+                  case "Dynamic Prompts":
+                    filteredPrompts = Object.entries(updatedData).flatMap(
+                      ([id, t]) =>
+                        (t.prompts || [])
+                          .filter(
+                            (p) => p.content && /\{[^}]+\}/.test(p.content)
+                          )
+                          .map((p) => ({
+                            ...p,
+                            folderId: id,
+                            folderName: t.name || "N/A",
+                          }))
+                    );
+                    break;
+                  case "Static Prompts":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isVisibleTopic(t))
+                      .flatMap(([id, t]) =>
+                        t.prompts
+                          .filter(
+                            (p) => p.content && !/\{[^}]+\}/.test(p.content)
+                          )
+                          .map((p) => ({
+                            ...p,
+                            folderId: id,
+                            folderName: t.name || "N/A",
+                          }))
+                      );
+                    break;
+                  case "Unused Prompts":
+                    filteredPrompts = Object.entries(updatedData)
+                      .filter(([, t]) => isVisibleTopic(t) || isHiddenTopic(t))
+                      .flatMap(([id, t]) =>
+                        t.prompts
+                          .filter((p) => !p.lastUsed)
+                          .map((p) => ({
+                            ...p,
+                            folderId: id,
+                            folderName: t.name || "N/A",
+                          }))
+                      );
+                    break;
+                }
+                renderPrompts(filteredPrompts);
+              });
+            }
+          }
+        });
       }
     });
   }
@@ -792,23 +1218,101 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     sidebarContent.innerHTML = `
-    <label>Title</label>
-    <input type="text" value="${prompt.title || ""}" id="edit-title">
-    <label>Content</label>
-    <textarea id="edit-content">${prompt.content || ""}</textarea>
-    <label>Compatible Models</label>
-    <input type="text" value="${
-      prompt.compatibleModels || ""
-    }" id="edit-compatible">
-    <label>Incompatible Models</label>
-    <input type="text" value="${
-      prompt.incompatibleModels || ""
-    }" id="edit-incompatible">
-    <label>Tags</label>
-    <input type="text" value="${prompt.tags || ""}" id="edit-tags">
-    <button class="save-btn">Save</button>
-    <button class="cancel-btn">Cancel</button>
-  `;
+  <label>Titel</label>
+  <input type="text" value="${prompt.title || ""}" id="edit-title">
+  <label>Beschreibung</label>
+  <textarea id="edit-description">${prompt.description || ""}</textarea>
+  <label>Inhalt</label>
+  <textarea id="edit-content">${prompt.content || ""}</textarea>
+  <label>Kompatible Modelle</label>
+  <div class="checkbox-group" id="edit-compatible">
+    <label><input type="checkbox" name="compatible" value="Grok" ${
+      prompt.compatibleModels?.includes("Grok") ? "checked" : ""
+    }> Grok</label>
+    <label><input type="checkbox" name="compatible" value="Gemini" ${
+      prompt.compatibleModels?.includes("Gemini") ? "checked" : ""
+    }> Gemini</label>
+    <label><input type="checkbox" name="compatible" value="ChatGPT" ${
+      prompt.compatibleModels?.includes("ChatGPT") ? "checked" : ""
+    }> ChatGPT</label>
+    <label><input type="checkbox" name="compatible" value="Claude" ${
+      prompt.compatibleModels?.includes("Claude") ? "checked" : ""
+    }> Claude</label>
+    <label><input type="checkbox" name="compatible" value="BlackBox" ${
+      prompt.compatibleModels?.includes("BlackBox") ? "checked" : ""
+    }> BlackBox</label>
+    <label><input type="checkbox" name="compatible" value="GitHub Copilot" ${
+      prompt.compatibleModels?.includes("GitHub Copilot") ? "checked" : ""
+    }> GitHub Copilot</label>
+    <label><input type="checkbox" name="compatible" value="Microsoft Copilot" ${
+      prompt.compatibleModels?.includes("Microsoft Copilot") ? "checked" : ""
+    }> Microsoft Copilot</label>
+    <label><input type="checkbox" name="compatible" value="Mistral" ${
+      prompt.compatibleModels?.includes("Mistral") ? "checked" : ""
+    }> Mistral</label>
+    <label><input type="checkbox" name="compatible" value="DuckDuckGo" ${
+      prompt.compatibleModels?.includes("DuckDuckGo") ? "checked" : ""
+    }> DuckDuckGo</label>
+    <label><input type="checkbox" name="compatible" value="Perplexity" ${
+      prompt.compatibleModels?.includes("Perplexity") ? "checked" : ""
+    }> Perplexity</label>
+    <label><input type="checkbox" name="compatible" value="DeepSeek" ${
+      prompt.compatibleModels?.includes("DeepSeek") ? "checked" : ""
+    }> DeepSeek</label>
+    <label><input type="checkbox" name="compatible" value="Deepai" ${
+      prompt.compatibleModels?.includes("Deepai") ? "checked" : ""
+    }> Deepai</label>
+    <label><input type="checkbox" name="compatible" value="Qwen AI" ${
+      prompt.compatibleModels?.includes("Qwen AI") ? "checked" : ""
+    }> Qwen AI</label>
+  </div>
+  <label>Inkompatible Modelle</label>
+  <div class="checkbox-group" id="edit-incompatible">
+    <label><input type="checkbox" name="incompatible" value="Grok" ${
+      prompt.incompatibleModels?.includes("Grok") ? "checked" : ""
+    }> Grok</label>
+    <label><input type="checkbox" name="incompatible" value="Gemini" ${
+      prompt.incompatibleModels?.includes("Gemini") ? "checked" : ""
+    }> Gemini</label>
+    <label><input type="checkbox" name="incompatible" value="ChatGPT" ${
+      prompt.incompatibleModels?.includes("ChatGPT") ? "checked" : ""
+    }> ChatGPT</label>
+    <label><input type="checkbox" name="incompatible" value="Claude" ${
+      prompt.incompatibleModels?.includes("Claude") ? "checked" : ""
+    }> Claude</label>
+    <label><input type="checkbox" name="incompatible" value="BlackBox" ${
+      prompt.incompatibleModels?.includes("BlackBox") ? "checked" : ""
+    }> BlackBox</label>
+    <label><input type="checkbox" name="incompatible" value="GitHub Copilot" ${
+      prompt.incompatibleModels?.includes("GitHub Copilot") ? "checked" : ""
+    }> GitHub Copilot</label>
+    <label><input type="checkbox" name="incompatible" value="Microsoft Copilot" ${
+      prompt.incompatibleModels?.includes("Microsoft Copilot") ? "checked" : ""
+    }> Microsoft Copilot</label>
+    <label><input type="checkbox" name="incompatible" value="Mistral" ${
+      prompt.incompatibleModels?.includes("Mistral") ? "checked" : ""
+    }> Mistral</label>
+    <label><input type="checkbox" name="incompatible" value="DuckDuckGo" ${
+      prompt.incompatibleModels?.includes("DuckDuckGo") ? "checked" : ""
+    }> DuckDuckGo</label>
+    <label><input type="checkbox" name="incompatible" value="Perplexity" ${
+      prompt.incompatibleModels?.includes("Perplexity") ? "checked" : ""
+    }> Perplexity</label>
+    <label><input type="checkbox" name="incompatible" value="DeepSeek" ${
+      prompt.incompatibleModels?.includes("DeepSeek") ? "checked" : ""
+    }> DeepSeek</label>
+    <label><input type="checkbox" name="incompatible" value="Deepai" ${
+      prompt.incompatibleModels?.includes("Deepai") ? "checked" : ""
+    }> Deepai</label>
+    <label><input type="checkbox" name="incompatible" value="Qwen AI" ${
+      prompt.incompatibleModels?.includes("Qwen AI") ? "checked" : ""
+    }> Qwen AI</label>
+  </div>
+  <label>Tags</label>
+  <input type="text" value="${prompt.tags || ""}" id="edit-tags">
+  <button class="save-btn">Speichern</button>
+  <button class="cancel-btn">Abbrechen</button>
+`;
 
     const saveBtn = sidebarContent.querySelector(".save-btn");
     const cancelBtn = sidebarContent.querySelector(".cancel-btn");
@@ -821,21 +1325,33 @@ document.addEventListener("DOMContentLoaded", () => {
         const updatedPrompt = {
           ...prompt,
           title: sidebarContent.querySelector("#edit-title").value.trim(),
+          description:
+            sidebarContent.querySelector("#edit-description")?.value.trim() ||
+            prompt.description ||
+            "",
           content: sidebarContent.querySelector("#edit-content").value.trim(),
-          compatibleModels: sidebarContent
-            .querySelector("#edit-compatible")
-            .value.trim(),
-          incompatibleModels: sidebarContent
-            .querySelector("#edit-incompatible")
-            .value.trim(),
+          compatibleModels: Array.from(
+            sidebarContent.querySelectorAll(
+              "#edit-compatible input[name='compatible']:checked"
+            )
+          )
+            .map((checkbox) => checkbox.value)
+            .join(", "),
+          incompatibleModels: Array.from(
+            sidebarContent.querySelectorAll(
+              "#edit-incompatible input[name='incompatible']:checked"
+            )
+          )
+            .map((checkbox) => checkbox.value)
+            .join(", "),
           tags: sidebarContent.querySelector("#edit-tags").value.trim(),
         };
 
         // Prüfe, ob Änderungen vorliegen
         const hasChanges =
           prompt.title !== updatedPrompt.title ||
+          prompt.description !== updatedPrompt.description ||
           prompt.content !== updatedPrompt.content ||
-          prompt.description !== (updatedPrompt.description || "") ||
           prompt.compatibleModels !== updatedPrompt.compatibleModels ||
           prompt.incompatibleModels !== updatedPrompt.incompatibleModels ||
           prompt.tags !== updatedPrompt.tags;
@@ -845,11 +1361,10 @@ document.addEventListener("DOMContentLoaded", () => {
           updatedPrompt.versions.push({
             versionId: generateUUID(),
             title: updatedPrompt.title,
-            description: updatedPrompt.description || "",
+            description: updatedPrompt.description,
             content: updatedPrompt.content,
             timestamp: Date.now(),
           });
-          // Begrenze die Anzahl der Versionen (z. B. 50)
           if (updatedPrompt.versions.length > 50) {
             updatedPrompt.versions.shift();
           }
@@ -860,7 +1375,7 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.storage.local.set({ [folderId]: topic }, () => {
           if (chrome.runtime.lastError) {
             console.error("Error saving prompt:", chrome.runtime.lastError);
-            alert("Error saving prompt.");
+            alert("Fehler beim Speichern des Prompts.");
           } else {
             showDetailsSidebar(topic.prompts[promptIndex], folderId);
             const category =
