@@ -1,82 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="app.css" />
     <script src="app.js" defer></script>
-    <script src="data-aggregations.js" defer></script>
-    <script src="export.js" defer></script>
-    <script src="versioning.js" defer></script>
-    <script src="displayData.js" defer></script>
-    <title>Prompt Overview</title>
+    <title>Dashboard Layout</title>
   </head>
+
   <body>
-    <!-- Seiten-Navigation -->
-    <div class="sidenav">
-      <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Search..." />
-        <button id="clearSearch" title="Clear search">×</button>
+    <header>
+      <div class="header-left">⚙️</div>
+      <div class="header-center">
+        <input type="text" placeholder="Suchen..." />
       </div>
-      <!-- Collapsible Kategorien -->
-      <div class="nav-section">
-        <button class="collapsible">Categories</button>
-        <div class="collapsible-content">
-          <a href="#favorites" id="favoritesLink">Favorites</a>
-          <a href="#home" id="allPromptsLink">All Prompts</a>
-          <a href="#prompts" id="singlePromptsLink">Single Prompts</a>
-          <a href="#folders" id="categorisedPromptsLink">Categorised Prompts</a>
-          <a href="#folders" id="unusedPromptsLink">Unused Prompts</a>
-          <a href="#workflows" id="workflowsLink">Workflows</a>
-          <a href="#trash" id="trashLink">Trash</a>
-        </div>
+      <div class="header-right">
+        <span title="Hilfe" style="margin-left: 10px; cursor: pointer">❓</span>
+        <span title="Survey" style="margin-left: 10px; cursor: pointer"
+          >📋</span
+        >
+        👤
       </div>
-      <hr />
-      <!-- Collapsible Ordner -->
-      <div class="nav-section">
-        <button class="collapsible">
-          Folders
-          <span
-            id="createFolderIcon"
-            class="folder-icon"
-            title="Create new folder"
-            >+</span
-          >
-        </button>
-        <div class="collapsible-content" id="folderNavList"></div>
-      </div>
+    </header>
 
-      <div class="bottom-section">
-        <div class="container">
-          <h2>Storage Usage</h2>
-          <div class="storage-bar">
-            <div class="used-bar" id="usedBar"></div>
-            <span class="percentage-text" id="percentageText">0%</span>
-          </div>
-          <div class="details">
-            <p>Used: <span id="usedMB">0</span> MB</p>
-            <p>Available: <span id="remainingMB">0</span> MB</p>
-            <p>Total Capacity: <span id="totalMB">0</span> MB</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="container">
+      <aside>
+        <nav>
+          <section class="accordion">
+            <h4 class="accordion-header">Kategorien</h4>
+            <ul class="accordion-content">
+              <li>Favorites</li>
+              <li>All Prompts</li>
+              <li>Single Prompts</li>
+              <li>Categorised Prompts</li>
+              <li>Dynamic Prompts</li>
+              <li>Static Prompts</li>
+              <li>Unused Prompts</li>
+              <li>Workflows</li>
+              <li>Trash</li>
+            </ul>
+          </section>
+          <section class="accordion folders-accordion">
+            <h4 class="accordion-header">
+              Folders
+              <button class="add-folder-header-btn" title="Ordner hinzufügen">
+                +
+              </button>
+            </h4>
+            <div class="accordion-content folders-content">
+              <input
+                type="text"
+                class="folder-search"
+                placeholder="Ordner durchsuchen..."
+              />
+              <ul class="folder-list">
+                <li>
+                  📁 Projekte
+                  <span class="folder-actions">
+                    <button class="folder-action" title="Aktionen">⚙️</button>
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </section>
+          <section class="accordion">
+            <h4 class="accordion-header">Tools</h4>
+            <ul class="accordion-content">
+              <!-- Basisfunktionen -->
+              <li>🔧 Editor</li>
+              <!-- Für schnelles Erstellen/Bearbeiten -->
+              <li>📊 Statistiken</li>
+              <!-- Conversion, Performance, Nutzungsdaten -->
+              <li>🗂️ Verwaltung</li>
+              <!-- Tags, Ordner, Filter, Suche -->
 
-    <div class="main-content">
-      <header class="sticky-header">
-        <h1 id="mainHeaderTitle">Prompt Overview</h1>
-        <button id="addPromptBtn" class="add-prompt-btn" title="Add new prompt">
-          Add Prompt
-        </button>
-      </header>
+              <!-- Entwickler-orientiert -->
+              <li>⚙️ Prompt-Logik & Variablen</li>
+              <!-- Für Dynamic Prompts, Input-Validierung -->
+              <li>🔄 API/Code Snippets</li>
+              <!-- Prompt in App integrieren, Export als JSON, etc. -->
+              <li>🧪 Test Playground</li>
+              <!-- Testen mit verschiedenen Inputs -->
+
+              <!-- Marketing-orientiert -->
+              <li>🧠 Prompt-Vorschläge</li>
+              <!-- "Was wäre der nächste sinnvolle Prompt?" -->
+              <li>🧩 Vorlagen & Anwendungsfälle</li>
+              <!-- z. B. Blogposts, Ads, Social Media, SEO -->
+              <li>🎯 Zielgruppen-Tuning</li>
+              <!-- "Ton & Stil anpassen" oder "Persona wählen" -->
+
+              <!-- Cross-Use Funktionen -->
+              <li>🕹️ Workflows</li>
+              <!-- Visuelle Prozesssteuerung mit Prompts -->
+              <li>🔄 Versionskontrolle</li>
+              <!-- Prompt-Historie und Revert-Funktion -->
+              <li>📥 Import / Export</li>
+              <!-- JSON, CSV, Copy/Paste etc. -->
+              <li>👥 Zusammenarbeit</li>
+              <!-- (optional) gemeinsam Prompts bauen oder teilen -->
+
+              <!-- Praktische Zusatztools -->
+              <li>🖍️ Highlight to Prompt</li>
+              <!-- Text auswählen → Prompt generieren -->
+            </ul>
+          </section>
+        </nav>
+      </aside>
+      <div id="sidebar-resizer"></div>
       <main>
-        <section id="promptList" class="prompt-list-section hidden">
-          <div id="promptsContainer" class="prompt-list"></div>
-        </section>
-        <section id="folderList" class="folder-list-section">
-          <div id="foldersContainer" class="folder-list"></div>
-        </section>
-        <div id="searchResults" class="search-results hidden"></div>
+        <div class="main-header">
+          <h1>Dashboard</h1>
+          <button>+ Add Item</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" /></th>
+                <th>Titel</th>
+                <th>Type</th>
+                <th>Compatible Models</th>
+                <th>Incompatible Models</th>
+                <th>Tags</th>
+                <th>Category</th>
+                <th>Zuletzt verwendet</th>
+                <th>Erstellt am</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </main>
     </div>
   </body>

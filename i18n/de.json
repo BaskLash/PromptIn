@@ -8,6 +8,8 @@
   "category_all_prompts": "Alle Prompts",
   "category_single_prompts": "Einzelne Prompts",
   "category_categorised_prompts": "Kategorisierte Prompts",
+  "category_dynamic_prompts": "Dynamische Prompts",
+  "category_static_prompts": "Statische Prompts",
   "category_unused_prompts": "Unbenutzte Prompts",
   "category_workflows": "Workflows",
   "category_trash": "Papierkorb",
