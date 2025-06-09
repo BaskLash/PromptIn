@@ -182,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .sidebar-content label {
       display: block;
       margin-bottom: 5px;
-      font-weight: 600;
+      font-weight: bold;
     }
     .sidebar-content input,
     .sidebar-content textarea,
@@ -291,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .modal-body label {
       display: block;
       margin-bottom: 5px;
-      font-weight: 600;
+      font-weight: bold;
       color: var(--primary-color);
     }
     .modal-body input,
@@ -381,6 +381,14 @@ document.addEventListener("DOMContentLoaded", () => {
       .sidebar-content .checkbox-group {
         max-height: 100px;
       }
+    }
+    .dropdown-menu {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .step-list pre {
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   `;
     document.head.appendChild(style);
@@ -871,43 +879,240 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function moveToFolder(prompt, folderId, row) {
+    const modal = document.createElement("div");
+    modal.className = "modal";
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "modal-header";
+
+    const closeSpan = document.createElement("span");
+    closeSpan.className = "close";
+    closeSpan.innerHTML = "×";
+
+    const headerTitle = document.createElement("h2");
+    headerTitle.textContent = "Prompt in Ordner verschieben";
+
+    const modalBody = document.createElement("div");
+    modalBody.className = "modal-body";
+
+    const form = document.createElement("form");
+    form.innerHTML = `
+    <label>Zielordner:</label>
+    <select id="target-folder" required>
+      <option value="">Kein Ordner</option>
+    </select>
+    <button type="submit" class="action-btn">Verschieben</button>
+  `;
+
+    chrome.storage.local.get(null, (data) => {
+      const folderSelect = form.querySelector("#target-folder");
+      const folders = Object.entries(data)
+        .filter(
+          ([id, topic]) =>
+            topic.prompts &&
+            !topic.isHidden &&
+            !topic.isTrash &&
+            id !== folderId
+        )
+        .map(([id, topic]) => ({ id, name: topic.name }));
+
+      folders.forEach((folder) => {
+        const option = document.createElement("option");
+        option.value = folder.id;
+        option.textContent = folder.name;
+        folderSelect.appendChild(option);
+      });
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const newFolderId = form.querySelector("#target-folder").value;
+
+      chrome.storage.local.get(
+        [folderId, newFolderId, "trash_folder"],
+        (data) => {
+          const topic = data[folderId];
+          if (!topic || !topic.prompts) return;
+
+          const promptIndex = topic.prompts.findIndex(
+            (p) => p.title === prompt.title && p.content === prompt.content
+          );
+          if (promptIndex === -1) return;
+
+          const [movedPrompt] = topic.prompts.splice(promptIndex, 1);
+          let targetTopic;
+          let targetFolderId = newFolderId;
+          let folderName = "Single Prompt";
+
+          if (newFolderId) {
+            targetTopic = data[newFolderId] || {
+              name: data[newFolderId]?.name || "Unbenannt",
+              prompts: [],
+              isHidden: false,
+              isTrash: false,
+            };
+            folderName = targetTopic.name;
+          } else {
+            targetFolderId = `single_prompt_${Date.now()}`;
+            targetTopic = {
+              name: "Single Prompt",
+              prompts: [],
+              isHidden: true,
+              isTrash: false,
+            };
+          }
+
+          movedPrompt.folderId = targetFolderId;
+          movedPrompt.folderName = folderName;
+          targetTopic.prompts.push(movedPrompt);
+
+          chrome.storage.local.set(
+            { [folderId]: topic, [targetFolderId]: targetTopic },
+            () => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Fehler beim Verschieben der Prompt:",
+                  chrome.runtime.lastError
+                );
+                alert("Fehler beim Verschieben der Prompt.");
+              } else {
+                row.remove();
+                const category =
+                  document.querySelector(".main-header h1").textContent;
+                handleCategoryClick(category);
+                modal.remove();
+              }
+            }
+          );
+        }
+      );
+    });
+
+    modalHeader.appendChild(closeSpan);
+    modalHeader.appendChild(headerTitle);
+    modalBody.appendChild(form);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    closeSpan.onclick = () => modal.remove();
+    window.onclick = (event) => {
+      if (event.target === modal) modal.remove();
+    };
+  }
+
+  function moveToTrash(prompt, folderId, row) {
+    if (
+      !confirm(
+        "Möchtest du diese Prompt wirklich in den Papierkorb verschieben?"
+      )
+    )
+      return;
+
+    chrome.storage.local.get([folderId, "trash_folder"], (data) => {
+      const topic = data[folderId];
+      const trashFolder = data["trash_folder"] || {
+        name: "Papierkorb",
+        prompts: [],
+        isTrash: true,
+        isHidden: false,
+      };
+
+      if (!topic || !topic.prompts) return;
+
+      const promptIndex = topic.prompts.findIndex(
+        (p) => p.title === prompt.title && p.content === prompt.content
+      );
+      if (promptIndex === -1) return;
+
+      const [movedPrompt] = topic.prompts.splice(promptIndex, 1);
+      movedPrompt.folderId = "trash_folder";
+      movedPrompt.folderName = "Papierkorb";
+      trashFolder.prompts.push(movedPrompt);
+
+      chrome.storage.local.set(
+        { [folderId]: topic, trash_folder: trashFolder },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Fehler beim Verschieben in den Papierkorb:",
+              chrome.runtime.lastError
+            );
+            alert("Fehler beim Verschieben der Prompt in den Papierkorb.");
+          } else {
+            row.remove();
+            const category =
+              document.querySelector(".main-header h1").textContent;
+            handleCategoryClick(category);
+          }
+        }
+      );
+    });
+  }
+
+  function sharePrompt(prompt) {
+    if (navigator.share) {
+      navigator
+        .share({
+          title: prompt.title,
+          text: prompt.content,
+        })
+        .catch((err) => {
+          console.error("Failed to share prompt:", err);
+        });
+    } else {
+      alert("Sharing is not supported in this browser.");
+    }
+  }
+
   function renderPrompts(prompts) {
     const tbody = document.querySelector(".table-container tbody");
-    tbody.innerHTML = ""; // Clear existing rows
+    tbody.innerHTML = "";
 
     prompts.forEach((prompt, index) => {
       const row = document.createElement("tr");
       row.dataset.index = index;
       row.innerHTML = `
-        <td><input type="checkbox" /></td>
-        <td>${prompt.title || "N/A"}</td>
-        <td>${prompt.type || "N/A"}</td>
-        <td>${prompt.compatibleModels || "N/A"}</td>
-        <td>${prompt.incompatibleModels || "N/A"}</td>
-        <td>${prompt.tags || "N/A"}</td>
-        <td>${prompt.folderName || "N/A"}</td>
-        <td>${
-          prompt.lastUsed
-            ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-            : "N/A"
-        }</td>
-        <td>${
-          prompt.createdAt
-            ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-            : "N/A"
-        }</td>
-        <td>
-          <div class="prompt-actions">
-            <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
-            <div class="dropdown-menu">
-              <div class="dropdown-item" data-action="copy">Copy Prompt</div>
-              <div class="dropdown-item" data-action="rename">Rename</div>
-              <div class="dropdown-item" data-action="delete">Delete</div>
-            </div>
+      <td><input type="checkbox" /></td>
+      <td>${prompt.title || "N/A"}</td>
+      <td>${prompt.type || "N/A"}</td>
+      <td>${prompt.compatibleModels || ""}</td>
+      <td>${prompt.incompatibleModels || "N/A"}</td>
+      <td>${prompt.tags || ""}</td>
+      <td>${prompt.folderName || ""}</td>
+      <td>${
+        prompt.lastUsed
+          ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+          : "N/A"
+      }</td>
+      <td>${
+        prompt.createdAt
+          ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+          : "N/A"
+      }</td>
+      <td>
+        <div class="prompt-actions">
+          <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
+          <div class="dropdown-menu">
+            <div class="dropdown-item" data-action="copy">Copy Prompt</div>
+            <div class="dropdown-item" data-action="rename">Rename</div>
+            <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
+            <div class="dropdown-item" data-action="share">Share</div>
+            <div class="dropdown-item" data-action="add-to-favorites">${
+              prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
+            }</div>
+            <div class="dropdown-item" data-action="show-versions">Show Versions</div>
+            <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
           </div>
-        </td>
-      `;
-      // Event-Listener für Dropdown
+        </div>
+      </td>
+    `;
+
       const menuBtn = row.querySelector(".menu-btn");
       const dropdown = row.querySelector(".dropdown-menu");
       menuBtn.addEventListener("click", (e) => {
@@ -919,7 +1124,6 @@ document.addEventListener("DOMContentLoaded", () => {
           dropdown.style.display === "block" ? "none" : "block";
       });
 
-      // Event-Listener für Dropdown-Aktionen
       row.querySelectorAll(".dropdown-item").forEach((item) => {
         item.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -928,14 +1132,31 @@ document.addEventListener("DOMContentLoaded", () => {
             copyPrompt(prompt, prompt.folderId);
           } else if (action === "rename") {
             renamePrompt(prompt, prompt.folderId, row);
-          } else if (action === "delete") {
-            deletePrompt(prompt, prompt.folderId, row);
+          } else if (action === "move-to-folder") {
+            moveToFolder(prompt, prompt.folderId, row);
+          } else if (action === "share") {
+            sharePrompt(prompt);
+          } else if (action === "add-to-favorites") {
+            toggleFavorite(prompt, prompt.folderId, row);
+          } else if (action === "show-versions") {
+            // Find prompt index in folder
+            chrome.storage.local.get(prompt.folderId, (data) => {
+              const topic = data[prompt.folderId];
+              if (!topic || !topic.prompts) return;
+              const promptIndex = topic.prompts.findIndex(
+                (p) => p.title === prompt.title && p.content === prompt.content
+              );
+              if (promptIndex !== -1) {
+                showPromptVersions(prompt.folderId, promptIndex, row);
+              }
+            });
+          } else if (action === "move-to-trash") {
+            moveToTrash(prompt, prompt.folderId, row);
           }
           dropdown.style.display = "none";
         });
       });
 
-      // Event-Listener für Klick auf die Zeile
       row.addEventListener("click", (e) => {
         if (!e.target.closest(".prompt-actions")) {
           showDetailsSidebar(prompt, prompt.folderId);
@@ -945,7 +1166,6 @@ document.addEventListener("DOMContentLoaded", () => {
       tbody.appendChild(row);
     });
 
-    // Schließe Dropdowns bei Klick außerhalb
     document.addEventListener("click", (e) => {
       if (!e.target.closest(".prompt-actions")) {
         document.querySelectorAll(".dropdown-menu").forEach((menu) => {
