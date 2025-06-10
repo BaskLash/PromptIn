@@ -1,4 +1,5 @@
 const overviewBtn = document.getElementById("overview-btn");
+const faqBtn = document.getElementById("faq-btn");
 
 document.addEventListener("DOMContentLoaded", () => {
   // Übersicht öffnen
@@ -39,6 +40,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // FAQ
+  faqBtn.addEventListener("click", () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL("/pages/faq.html") });
+  });
 
   // Initiale Sprache laden
   loadTranslations(currentLang);

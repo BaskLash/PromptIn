@@ -310,6 +310,49 @@ table thead {
   color: var(--btn-bg);
 }
 
+.blue-dots-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 16px;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
+.folder-actions {
+  position: relative;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.folder-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  min-width: 120px;
+  z-index: 10;
+}
+
+.folder-dropdown .dropdown-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.folder-dropdown .dropdown-option:hover {
+  background-color: #f0f0f0;
+}
+
+.hidden {
+  display: none;
+}
 @media (max-width: 768px) {
   aside {
     display: none;

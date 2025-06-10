@@ -17,7 +17,12 @@
         <input id="searchInput" type="text" placeholder="Suchen..." />
       </div>
       <div class="header-right">
-        <span title="Hilfe" style="margin-left: 10px; cursor: pointer">❓</span>
+        <span
+          id="faq-btn"
+          title="Hilfe"
+          style="margin-left: 10px; cursor: pointer"
+          >❓</span
+        >
         <span title="Survey" style="margin-left: 10px; cursor: pointer"
           >📋</span
         >
@@ -45,24 +50,18 @@
           <section class="accordion folders-accordion">
             <h4 class="accordion-header">
               Folders
-              <button class="add-folder-header-btn" title="Ordner hinzufügen">
+              <button id="addFolderBtn" class="add-folder-header-btn" title="Ordner hinzufügen">
                 +
               </button>
             </h4>
             <div class="accordion-content folders-content">
-              <input id="folder-search"
+              <input
+                id="folder-search"
                 type="text"
                 class="folder-search"
                 placeholder="Ordner durchsuchen..."
               />
-              <ul class="folder-list">
-                <li>
-                  📁 Projekte
-                  <span class="folder-actions">
-                    <button class="folder-action" title="Aktionen">⚙️</button>
-                  </span>
-                </li>
-              </ul>
+              <ul class="folder-list"></ul>
             </div>
           </section>
           <section class="accordion">
