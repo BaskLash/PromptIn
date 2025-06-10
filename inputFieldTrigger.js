@@ -615,21 +615,50 @@ function inputFieldTrigger() {
         contentPanel.innerHTML = "";
         clearFocus();
 
+        const normalizedQuery = query.trim().toLowerCase();
+
         const allPrompts = [];
         promptSourceMap.forEach((source, key) => {
           const title = key.split("_")[0];
-          allPrompts.push({ title, source });
+          const content =
+            typeof source.prompt === "string"
+              ? source.prompt
+              : source.prompt.content || "";
+          allPrompts.push({ title, content, source });
         });
 
-        const scoredPrompts = allPrompts.map(({ title, source }) => {
-          const distance = levenshteinDistance(
-            title.toLowerCase(),
-            query.toLowerCase()
+        const scoredPrompts = allPrompts.map(({ title, content, source }) => {
+          const titleLower = title.toLowerCase();
+          const contentLower = content.toLowerCase();
+
+          const titleIncludes = titleLower.includes(normalizedQuery);
+          const contentIncludes = contentLower.includes(normalizedQuery);
+
+          const titleDistance = levenshteinDistance(
+            titleLower,
+            normalizedQuery
           );
-          return { title, source, distance };
+          const contentDistance = levenshteinDistance(
+            contentLower,
+            normalizedQuery
+          );
+
+          // Bessere Gewichtung: 1. direkte Matches, 2. Distanz-Mix
+          const score =
+            (titleIncludes ? -20 : 0) +
+            (contentIncludes ? -10 : 0) +
+            titleDistance * 1.5 +
+            contentDistance * 0.5;
+
+          return {
+            title,
+            source,
+            score,
+            folder: source.folder || source.category || "Uncategorized",
+          };
         });
 
-        scoredPrompts.sort((a, b) => a.distance - b.distance);
+        scoredPrompts.sort((a, b) => a.score - b.score);
 
         if (scoredPrompts.length === 0) {
           const noResults = document.createElement("div");
@@ -638,83 +667,101 @@ function inputFieldTrigger() {
           noResults.style.color = "#888";
           contentPanel.appendChild(noResults);
         } else {
-          scoredPrompts.forEach(({ title, source }) => {
-            const contentItem = document.createElement("div");
-            const displayText = source.folder
-              ? `${title} (in ${source.folder})`
-              : `${title} (${source.category})`;
-            contentItem.textContent = displayText;
-            contentItem.style.padding = "10px";
-            contentItem.style.cursor = "pointer";
-            contentItem.style.borderRadius = "4px";
-            contentItem.style.transition = "background-color 0.2s ease";
-            contentItem.className = "dropdown-item";
-            contentItem.tabIndex = 0;
+          // Optional: Gruppieren nach Folder/Kategorie
+          const grouped = new Map();
+          for (const prompt of scoredPrompts) {
+            if (!grouped.has(prompt.folder)) grouped.set(prompt.folder, []);
+            grouped.get(prompt.folder).push(prompt);
+          }
 
-            contentItem.addEventListener("mouseover", () => {
-              if (!currentFocusElement || currentFocusElement !== contentItem) {
-                contentItem.style.backgroundColor = "#f8f8f8";
-              }
-            });
+          for (const [folder, prompts] of grouped) {
+            const groupTitle = document.createElement("div");
+            groupTitle.textContent = folder;
+            groupTitle.style.padding = "6px 10px";
+            groupTitle.style.fontWeight = "bold";
+            groupTitle.style.background = "#f0f0f0";
+            contentPanel.appendChild(groupTitle);
 
-            contentItem.addEventListener("mouseout", () => {
-              if (!currentFocusElement || currentFocusElement !== contentItem) {
-                contentItem.style.backgroundColor = "white";
-              }
-            });
+            prompts.forEach(({ title, source }) => {
+              const contentItem = document.createElement("div");
+              contentItem.textContent = title;
+              contentItem.style.padding = "10px";
+              contentItem.style.cursor = "pointer";
+              contentItem.style.borderRadius = "4px";
+              contentItem.style.transition = "background-color 0.2s ease";
+              contentItem.className = "dropdown-item";
+              contentItem.tabIndex = 0;
 
-            contentItem.addEventListener("click", async () => {
-              const currentText = getInputText(inputField);
-              const slashIndex = currentText.indexOf("/");
-              let newText = "";
-              const selectedPrompt =
-                typeof source.prompt === "string"
-                  ? source.prompt
-                  : source.prompt.content || "";
-
-              if (slashIndex !== -1) {
-                const textBeforeSlash = currentText
-                  .substring(0, slashIndex)
-                  .trim();
-                if (textBeforeSlash === "") {
-                  newText = selectedPrompt;
-                } else {
-                  const hasSpace =
-                    currentText[slashIndex - 1] === " " ||
-                    currentText[slashIndex + 1] === " ";
-                  newText = hasSpace
-                    ? `${textBeforeSlash} ${selectedPrompt}`
-                    : `${textBeforeSlash}${selectedPrompt}`;
+              contentItem.addEventListener("mouseover", () => {
+                if (
+                  !currentFocusElement ||
+                  currentFocusElement !== contentItem
+                ) {
+                  contentItem.style.backgroundColor = "#f8f8f8";
                 }
-              } else {
-                newText = currentText
-                  ? `${currentText} ${selectedPrompt}`
-                  : selectedPrompt;
-              }
+              });
 
-              setInputText(inputField, newText);
-              inputField.focus();
-              setCursorToEnd(inputField);
-              dropdown.style.display = "none";
-              clearFocus();
+              contentItem.addEventListener("mouseout", () => {
+                if (
+                  !currentFocusElement ||
+                  currentFocusElement !== contentItem
+                ) {
+                  contentItem.style.backgroundColor = "white";
+                }
+              });
 
-              // Aktualisiere lastUsed
-              const promptIndex = await findPromptIndex(
-                source.folderId,
-                source.prompt
-              );
-              if (promptIndex !== -1) {
-                updatePromptLastUsed(source.folderId, promptIndex);
-              } else {
-                console.error(
-                  "Prompt index not found for folder:",
-                  source.folderId
+              contentItem.addEventListener("click", async () => {
+                const currentText = getInputText(inputField);
+                const slashIndex = currentText.indexOf("/");
+                let newText = "";
+                const selectedPrompt =
+                  typeof source.prompt === "string"
+                    ? source.prompt
+                    : source.prompt.content || "";
+
+                if (slashIndex !== -1) {
+                  const textBeforeSlash = currentText
+                    .substring(0, slashIndex)
+                    .trim();
+                  if (textBeforeSlash === "") {
+                    newText = selectedPrompt;
+                  } else {
+                    const hasSpace =
+                      currentText[slashIndex - 1] === " " ||
+                      currentText[slashIndex + 1] === " ";
+                    newText = hasSpace
+                      ? `${textBeforeSlash} ${selectedPrompt}`
+                      : `${textBeforeSlash}${selectedPrompt}`;
+                  }
+                } else {
+                  newText = currentText
+                    ? `${currentText} ${selectedPrompt}`
+                    : selectedPrompt;
+                }
+
+                setInputText(inputField, newText);
+                inputField.focus();
+                setCursorToEnd(inputField);
+                dropdown.style.display = "none";
+                clearFocus();
+
+                const promptIndex = await findPromptIndex(
+                  source.folderId,
+                  source.prompt
                 );
-              }
-            });
+                if (promptIndex !== -1) {
+                  updatePromptLastUsed(source.folderId, promptIndex);
+                } else {
+                  console.error(
+                    "Prompt index not found for folder:",
+                    source.folderId
+                  );
+                }
+              });
 
-            contentPanel.appendChild(contentItem);
-          });
+              contentPanel.appendChild(contentItem);
+            });
+          }
         }
 
         requestAnimationFrame(() => {
@@ -999,7 +1046,7 @@ function inputFieldTrigger() {
 
       // Listen for Chrome storage changes
       chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === "sync") {
+        if (area === "local") {
           console.log("Chrome storage changed, updating dropdown...");
           updateDropdownData(() => {
             if (dropdown.style.display === "flex") {
