@@ -510,8 +510,73 @@ function removeTagFromPrompt(tag, storageKey, promptId) {
         return;
       }
       console.log(`Tag ${tag} removed from prompt ${promptId}`);
-      // Modal und Tags aktualisieren
-      loadTags(); // Dies lädt die Tags neu und aktualisiert das Modal indirekt
+      // Lade aktualisierte Prompts, um das Modal neu zu rendern
+      chrome.storage.local.get(null, (allData) => {
+        const folderPrompts = Object.entries(allData)
+          .filter(
+            ([key, topic]) =>
+              topic.prompts && !topic.isTrash && key.startsWith("folder_")
+          )
+          .flatMap(([key, topic]) =>
+            topic.prompts.map((prompt) => ({
+              ...prompt,
+              storageKey: key,
+              folderId: prompt.folderId || key,
+              tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+            }))
+          );
+
+        const hiddenFolderPrompts = Object.entries(allData)
+          .filter(
+            ([key, topic]) =>
+              topic.prompts &&
+              !topic.isTrash &&
+              key.startsWith("hidden_folder_")
+          )
+          .flatMap(([key, topic]) =>
+            topic.prompts.map((prompt) => ({
+              ...prompt,
+              storageKey: key,
+              folderId: prompt.folderId || key,
+              tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+            }))
+          );
+
+        const singlePrompts = Object.entries(allData)
+          .filter(
+            ([key, topic]) =>
+              topic.prompts &&
+              !topic.isTrash &&
+              key.startsWith("single_prompt_")
+          )
+          .flatMap(([key, topic]) =>
+            topic.prompts.map((prompt) => ({
+              ...prompt,
+              storageKey: key,
+              folderId: prompt.folderId || key,
+              tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+            }))
+          );
+
+        const noFolderPrompts = (allData.noFolderPrompts || []).map(
+          (prompt) => ({
+            ...prompt,
+            storageKey: "noFolderPrompts",
+            folderId: null,
+            tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+          })
+        );
+
+        const prompts = [
+          ...folderPrompts,
+          ...hiddenFolderPrompts,
+          ...singlePrompts,
+          ...noFolderPrompts,
+        ];
+
+        // Aktualisiere das Modal mit den neuen Prompts
+        showPromptModal(tag, prompts);
+      });
     });
   });
 }
