@@ -388,6 +388,19 @@ table thead {
     );
   }
 
+  .tag-input-group {
+    display: flex;
+    gap: 10px;
+  }
+
+  .delete-tag-btn {
+    background: #dc3545;
+  }
+
+  .delete-tag-btn:hover {
+    background: #c82333;
+  }
+
   tbody tr:nth-child(even) {
     background-color: #f9f9f9;
   }

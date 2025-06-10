@@ -1,4 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // URL-Parameter auslesen und Kategorie verarbeiten
+  const urlParams = new URLSearchParams(window.location.search);
+  const categoryFromUrl = urlParams.get("category");
+  if (categoryFromUrl) {
+    console.log("Kategorie aus URL:", categoryFromUrl); // Debugging
+    handleCategoryClick(decodeURIComponent(categoryFromUrl));
+  } else {
+    // Standard-Kategorie, falls keine URL-Parameter vorhanden
+    handleCategoryClick("All Prompts");
+  }
+
   // Search functionality
   const searchInput = document.getElementById("searchInput");
   const goalsList = document.querySelector(".table-container tbody");
@@ -110,7 +121,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".accordion-content li").forEach((item) => {
     item.addEventListener("click", () => {
       const category = item.textContent.trim();
-      handleCategoryClick(category);
+      if (category === "Tag Overview") {
+        // Weiterleitung zur Tag-Übersicht-Seite
+        window.location.assign(
+          chrome.runtime.getURL("tools/tools-overview.html")
+        );
+      } else {
+        handleCategoryClick(category);
+      }
     });
   });
 
@@ -125,8 +143,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialisiere die Ordnerliste
   loadFolders();
 
-  // Initialisiere die Prompts
-  initializePrompts();
+  // Initialisiere die Prompts nur, wenn kein URL-Parameter vorhanden ist
+  if (!categoryFromUrl) {
+    initializePrompts();
+  }
 
   document.getElementById("addItemBtn").addEventListener("click", () => {
     const category = document.querySelector(".main-header h1").textContent;
@@ -137,3 +157,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+function initializeTags() {
+  chrome.storage.local.get("tags", (data) => {
+    if (!data.tags) {
+      const defaultTags = [
+        "SEO",
+        "Marketing",
+        "Social Media",
+        "Advertising",
+        "Creative Writing",
+        "Productivity",
+        "E-Commerce",
+        "Education",
+        "Technology",
+        "Healthcare",
+        "Human Resources",
+      ];
+      chrome.storage.local.set({ tags: defaultTags }, () => {
+        console.log("Default tags initialized");
+      });
+    }
+  });
+}

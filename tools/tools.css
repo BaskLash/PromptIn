@@ -1,0 +1,358 @@
+/* Container für Tags */
+.tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 20px;
+}
+
+/* Tag-Box */
+.tag-box {
+  width: 120px;
+  height: 120px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative; /* Hinzugefügt für absolute Positionierung des Lösch-Buttons */
+}
+
+.tag-box:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tag-box .tag-name {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.tag-box .prompt-count {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.close-modal {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+#modalPromptList {
+  margin-top: 20px;
+}
+
+.prompt-item {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  position: relative; /* Hinzugefügt für absolute Positionierung des Remove-Tag-Buttons */
+}
+
+.prompt-item:last-child {
+  border-bottom: none;
+}
+
+/* Plus-Button */
+.header-right .action-btn {
+  padding: 8px 12px;
+  font-size: 18px;
+  background-color: var(--btn-bg);
+  color: var(--btn-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Navigation-Stile (aus app.css übernommen) */
+aside {
+  position: sticky;
+  top: var(--header-height);
+  height: calc(100vh - var(--header-height));
+  overflow-y: auto;
+  width: var(--sidebar-width);
+  background-color: #fff;
+  border-right: 1px solid var(--border-color);
+  padding: 20px;
+}
+
+aside nav {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+aside nav section h4 {
+  margin-bottom: 8px;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--accent-color);
+}
+
+aside nav ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+aside nav ul li {
+  margin: 6px 0;
+  font-size: 14px;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
+aside nav ul li:hover,
+aside nav ul li.active {
+  background-color: #e0e0e0;
+}
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  user-select: none;
+  gap: 8px;
+}
+
+.accordion-header::after {
+  content: "▾";
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.accordion-content.open {
+  max-height: 500px;
+}
+
+.accordion-content.open ~ .accordion-header::after {
+  transform: rotate(180deg);
+}
+
+.folders-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.add-folder-header-btn {
+  background-color: var(--btn-bg);
+  color: var(--btn-color);
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.folder-search {
+  display: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  width: 100%;
+}
+
+.folder-search.block {
+  display: block;
+}
+
+.folder-list {
+  list-style: none;
+  padding-left: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.folder-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  font-size: 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.folder-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.folder-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  transition: color 0.2s ease;
+  color: var(--primary-color);
+}
+
+.folder-action:hover {
+  color: var(--btn-bg);
+}
+
+.blue-dots-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 16px;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
+.folder-actions {
+  position: relative;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.folder-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  min-width: 120px;
+  z-index: 10;
+}
+
+.folder-dropdown .dropdown-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.folder-dropdown .dropdown-option:hover {
+  background-color: #f0f0f0;
+}
+
+.hidden {
+  display: none;
+}
+.action-btn {
+  background-color: var(--btn-bg);
+  color: var(--btn-color);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+}
+
+.main-header .action-btn {
+  font-size: 18px;
+  padding: 6px 12px;
+}
+.delete-tag-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #dc3545; /* Rote Farbe für Lösch-Button */
+}
+
+.delete-tag-btn:hover {
+  color: #a71d2a; /* Dunklere Farbe bei Hover */
+}
+.remove-tag-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #dc3545; /* Rote Farbe für Lösch-Button */
+}
+
+.remove-tag-btn:hover {
+  color: #a71d2a; /* Dunklere Farbe bei Hover */
+}
+/* Responsive Design (aus app.css übernommen) */
+@media (max-width: 768px) {
+  aside {
+    display: none;
+  }
+
+  #sidebar-resizer {
+    display: none;
+  }
+
+  .container {
+    flex-direction: column;
+  }
+
+  .main-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    width: calc(100% - 60px);
+  }
+
+  .header-right .action-btn {
+    font-size: 16px;
+  }
+}

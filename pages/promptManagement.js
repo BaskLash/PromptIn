@@ -74,17 +74,10 @@ function showCreatePromptModal(category) {
       </div>
       <label>Tags:</label>
       <div class="checkbox-group" id="prompt-tags">
-        <label><input type="checkbox" name="tags" value="SEO"> SEO</label>
-        <label><input type="checkbox" name="tags" value="Marketing"> Marketing</label>
-        <label><input type="checkbox" name="tags" value="Social Media"> Social Media</label>
-        <label><input type="checkbox" name="tags" value="Advertisement"> Advertisement</label>
-        <label><input type="checkbox" name="tags" value="Copywriting"> Copywriting</label>
-        <label><input type="checkbox" name="tags" value="Productivity"> Productivity</label>
-        <label><input type="checkbox" name="tags" value="E-Commerce"> E-Commerce</label>
-        <label><input type="checkbox" name="tags" value="Education"> Education</label>
-        <label><input type="checkbox" name="tags" value="Tech"> Tech</label>
-        <label><input type="checkbox" name="tags" value="Healthcare"> Healthcare</label>
-        <label><input type="checkbox" name="tags" value="HR"> HR</label>
+      </div>
+      <div class="tag-input-group">
+        <input type="text" id="new-tag" placeholder="Neuer Tag">
+        <button type="button" class="action-btn" id="add-tag-btn">Tag hinzufügen</button>
       </div>
       <label>Favorit:</label>
       <div class="checkbox-group">
@@ -109,6 +102,29 @@ function showCreatePromptModal(category) {
       <button type="submit" class="action-btn">Create Prompt</button>
     `;
 
+  // Lade verfügbare Tags
+  chrome.storage.local.get("tags", (data) => {
+    const tagContainer = form.querySelector("#prompt-tags");
+    const tags = data.tags || [
+      "SEO",
+      "Marketing",
+      "Social Media",
+      "Advertisement",
+      "Copywriting",
+      "Productivity",
+      "E-Commerce",
+      "Education",
+      "Tech",
+      "Healthcare",
+      "HR",
+    ];
+    tags.forEach((tag) => {
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" name="tags" value="${tag}"> ${tag}`;
+      tagContainer.appendChild(label);
+    });
+  });
+
   // Lade verfügbare Ordner in das Dropdown
   chrome.storage.local.get(null, (data) => {
     const folderSelect = form.querySelector("#prompt-folder");
@@ -125,6 +141,34 @@ function showCreatePromptModal(category) {
       }
       folderSelect.appendChild(option);
     });
+  });
+
+  // Tag hinzufügen
+  form.querySelector("#add-tag-btn").addEventListener("click", () => {
+    const newTagInput = form.querySelector("#new-tag");
+    const newTag = newTagInput.value.trim();
+    if (
+      newTag &&
+      !form.querySelector(`#prompt-tags input[value="${newTag}"]`)
+    ) {
+      chrome.storage.local.get("tags", (data) => {
+        const tags = data.tags || [];
+        if (!tags.includes(newTag)) {
+          tags.push(newTag);
+          chrome.storage.local.set({ tags }, () => {
+            const tagContainer = form.querySelector("#prompt-tags");
+            const label = document.createElement("label");
+            label.innerHTML = `<input type="checkbox" name="tags" value="${newTag}" checked> ${newTag}`;
+            tagContainer.appendChild(label);
+            newTagInput.value = "";
+          });
+        } else {
+          alert("Tag existiert bereits!");
+        }
+      });
+    } else if (!newTag) {
+      alert("Tag darf nicht leer sein!");
+    }
   });
 
   form.addEventListener("submit", (e) => {
@@ -166,9 +210,9 @@ function showCreatePromptModal(category) {
       description,
       content,
       type,
-      compatibleModels: compatibleModels, // Als Array speichern, nicht als String
-      incompatibleModels: incompatibleModels, // Als Array speichern
-      tags: tags, // Als Array speichern
+      compatibleModels: compatibleModels,
+      incompatibleModels: incompatibleModels,
+      tags: tags,
       isFavorite,
       folderId: folderId || null,
       folderName,
@@ -184,12 +228,12 @@ function showCreatePromptModal(category) {
           timestamp: Date.now(),
         },
       ],
-      metaChangeLog: [], // Initial leer
+      metaChangeLog: [],
     };
 
     saveNewPrompt(newPrompt, folderId);
     modal.remove();
-    handleCategoryClick(category); // Bleibe in der aktuellen Kategorie
+    handleCategoryClick(category);
   });
 
   modalHeader.appendChild(closeSpan);
@@ -206,6 +250,9 @@ function showCreatePromptModal(category) {
   };
 }
 function saveNewPrompt(prompt, folderId) {
+  if (!prompt.id) {
+    prompt.id = generateUUID(); // Korrigierter Tippfehler
+  }
   chrome.storage.local.get(null, (data) => {
     let targetFolderId = folderId;
     let folderName = prompt.folderName || "Single Prompt";
@@ -230,6 +277,7 @@ function saveNewPrompt(prompt, folderId) {
 
       topic.prompts.push({
         ...prompt,
+        folderId: targetFolderId, // Setze folderId explizit
         folderName,
         compatibleModels: prompt.compatibleModels || [],
         incompatibleModels: prompt.incompatibleModels || [],
@@ -364,6 +412,7 @@ function saveNewPrompt(prompt, folderId) {
         prompts: [
           {
             ...prompt,
+            folderId: targetFolderId, // Setze folderId explizit
             folderName,
             compatibleModels: prompt.compatibleModels || [],
             incompatibleModels: prompt.incompatibleModels || [],
@@ -860,14 +909,31 @@ function deletePrompt(prompt, folderId, row) {
     );
   });
 }
+
+function escapeHTML(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
+  // Validierung der Eingaben
+  if (!folderId || promptIndex < 0 || !prompt || !sidebarContent) {
+    console.error("Invalid parameters in editPromptDetails");
+    return;
+  }
+
   sidebarContent.innerHTML = `
     <label>Title</label>
-    <input type="text" value="${prompt.title || ""}" id="edit-title">
+    <input type="text" value="${escapeHTML(
+      prompt.title || ""
+    )}" id="edit-title">
     <label>Description</label>
-    <textarea id="edit-description">${prompt.description || ""}</textarea>
+    <textarea id="edit-description">${escapeHTML(
+      prompt.description || ""
+    )}</textarea>
     <label>Content</label>
-    <textarea id="edit-content">${prompt.content || ""}</textarea>
+    <textarea id="edit-content">${escapeHTML(prompt.content || "")}</textarea>
     <label>Type</label>
     <select id="edit-type">
       <option value="System" ${
@@ -921,9 +987,11 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
       ]
         .map(
           (model) =>
-            `<label><input type="checkbox" name="compatible" value="${model}" ${
+            `<label><input type="checkbox" name="compatible" value="${escapeHTML(
+              model
+            )}" ${
               prompt.compatibleModels?.includes(model) ? "checked" : ""
-            }> ${model}</label>`
+            }> ${escapeHTML(model)}</label>`
         )
         .join("")}
     </div>
@@ -947,56 +1015,107 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
       ]
         .map(
           (model) =>
-            `<label><input type="checkbox" name="incompatible" value="${model}" ${
+            `<label><input type="checkbox" name="incompatible" value="${escapeHTML(
+              model
+            )}" ${
               prompt.incompatibleModels?.includes(model) ? "checked" : ""
-            }> ${model}</label>`
+            }> ${escapeHTML(model)}</label>`
         )
         .join("")}
     </div>
 
     <label>Tags</label>
     <div class="checkbox-group" id="edit-tags">
-      ${[
-        "SEO",
-        "Marketing",
-        "Social Media",
-        "Advertisement",
-        "Copywriting",
-        "Productivity",
-        "E-Commerce",
-        "Education",
-        "Tech",
-        "Healthcare",
-        "HR",
-      ]
-        .map(
-          (tag) =>
-            `<label><input type="checkbox" name="tags" value="${tag}" ${
-              prompt.tags?.includes(tag) ? "checked" : ""
-            }> ${tag}</label>`
-        )
-        .join("")}
+    </div>
+    <div class="tag-input-group">
+      <input type="text" id="new-tag" placeholder="New Tag">
+      <button type="button" class="action-btn" id="add-tag-btn">Add Tag</button>
     </div>
 
     <label>Favorite</label>
     <div class="checkbox-group">
       <label><input type="checkbox" id="edit-favorite" ${
         prompt.isFavorite ? "checked" : ""
-      }> Als Favorit markieren</label>
+      }> Mark as Favorite</label>
     </div>
 
     <label>Folder</label>
     <select id="edit-folder">
-      <option value="" ${
-        !prompt.folderId ? "selected" : ""
-      }>Kein Ordner</option>
+      <option value="" ${!prompt.folderId ? "selected" : ""}>No Folder</option>
     </select>
 
-    <button class="save-btn">Speichern</button>
-    <button class="cancel-btn">Abbrechen</button>
+    <button class="save-btn">Save</button>
+    <button class="cancel-btn">Cancel</button>
   `;
 
+  // Lade Tags
+  chrome.storage.local.get("tags", (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading tags:", chrome.runtime.lastError);
+      return;
+    }
+
+    const tagContainer = sidebarContent.querySelector("#edit-tags");
+    const tags = data.tags || [];
+    tags.forEach((tag) => {
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" name="tags" value="${escapeHTML(
+        tag
+      )}" ${prompt.tags?.includes(tag) ? "checked" : ""}> ${escapeHTML(tag)}`;
+      tagContainer.appendChild(label);
+    });
+  });
+
+  // Tag hinzufügen
+  sidebarContent.querySelector("#add-tag-btn").addEventListener("click", () => {
+    const newTagInput = sidebarContent.querySelector("#new-tag");
+    const newTag = newTagInput.value.trim();
+
+    if (!newTag) {
+      alert("Tag cannot be empty!");
+      return;
+    }
+
+    if (
+      sidebarContent.querySelector(
+        `#edit-tags input[value="${escapeHTML(newTag)}"]`
+      )
+    ) {
+      alert("Tag already exists!");
+      return;
+    }
+
+    chrome.storage.local.get("tags", (data) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting tags:", chrome.runtime.lastError);
+        return;
+      }
+
+      const tags = data.tags || [];
+      tags.push(newTag);
+      chrome.storage.local.set({ tags }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving tags:", chrome.runtime.lastError);
+          return;
+        }
+
+        const tagContainer = sidebarContent.querySelector("#edit-tags");
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" name="tags" value="${escapeHTML(
+          newTag
+        )}" checked> ${escapeHTML(newTag)}`;
+        tagContainer.appendChild(label);
+        newTagInput.value = "";
+      });
+    });
+  });
+
   chrome.storage.local.get(null, (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading folders:", chrome.runtime.lastError);
+      return;
+    }
+
     const folderSelect = sidebarContent.querySelector("#edit-folder");
     const folders = Object.entries(data)
       .filter(
@@ -1015,8 +1134,17 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
 
   sidebarContent.querySelector(".save-btn").addEventListener("click", () => {
     chrome.storage.local.get(null, (data) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error loading data:", chrome.runtime.lastError);
+        alert("Error loading data.");
+        return;
+      }
+
       const topic = data[folderId];
-      if (!topic || !topic.prompts) return;
+      if (!topic || !topic.prompts) {
+        alert("Invalid folder or prompts data.");
+        return;
+      }
 
       let newFolderId = sidebarContent.querySelector("#edit-folder").value;
       const newFolderName = newFolderId
@@ -1039,9 +1167,15 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         sidebarContent.querySelectorAll("#edit-tags input[name='tags']:checked")
       ).map((cb) => cb.value);
 
+      const title = sidebarContent.querySelector("#edit-title").value.trim();
+      if (!title) {
+        alert("Title cannot be empty!");
+        return;
+      }
+
       const updatedPrompt = {
         ...prompt,
-        title: sidebarContent.querySelector("#edit-title").value.trim(),
+        title,
         description:
           sidebarContent.querySelector("#edit-description")?.value.trim() || "",
         content: sidebarContent.querySelector("#edit-content").value.trim(),
@@ -1052,8 +1186,8 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         isFavorite: sidebarContent.querySelector("#edit-favorite").checked,
         folderId: newFolderId || null,
         folderName: newFolderName,
-        updatedAt: Date.now(), // Immer aktualisieren
-        metaChangeLog: prompt.metaChangeLog || [], // Bestehendes Log beibehalten
+        updatedAt: Date.now(),
+        metaChangeLog: prompt.metaChangeLog || [],
       };
 
       // Prüfen, ob inhaltliche Änderungen (Titel, Beschreibung, Inhalt) vorliegen
@@ -1125,7 +1259,6 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
           timestamp: Date.now(),
           changes: metaChanges,
         });
-        // Optional: Begrenze die Länge des metaChangeLog
         if (updatedPrompt.metaChangeLog.length > 50) {
           updatedPrompt.metaChangeLog.shift();
         }
@@ -1135,11 +1268,8 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         topic.prompts.splice(promptIndex, 1);
         chrome.storage.local.set({ [folderId]: topic }, () => {
           if (chrome.runtime.lastError) {
-            console.error(
-              "Fehler beim Entfernen der Prompt:",
-              chrome.runtime.lastError
-            );
-            alert("Fehler beim Verschieben des Prompts.");
+            console.error("Error removing prompt:", chrome.runtime.lastError);
+            alert("Error moving prompt.");
             return;
           }
 
@@ -1166,14 +1296,14 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
           chrome.storage.local.set({ [newFolderId]: targetTopic }, () => {
             if (chrome.runtime.lastError) {
               console.error(
-                "Fehler beim Speichern im neuen Ordner:",
+                "Error saving to new folder:",
                 chrome.runtime.lastError
               );
-              alert("Fehler beim Speichern des Prompts.");
+              alert("Error saving prompt.");
             } else {
               showDetailsSidebar(updatedPrompt, newFolderId);
               const category =
-                document.querySelector(".main-header h1").textContent;
+                document.querySelector(".main-header h1")?.textContent || "";
               handleCategoryClick(category);
             }
           });
@@ -1182,15 +1312,12 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         topic.prompts[promptIndex] = updatedPrompt;
         chrome.storage.local.set({ [folderId]: topic }, () => {
           if (chrome.runtime.lastError) {
-            console.error(
-              "Fehler beim Speichern der Prompt:",
-              chrome.runtime.lastError
-            );
-            alert("Fehler beim Speichern des Prompts.");
+            console.error("Error saving prompt:", chrome.runtime.lastError);
+            alert("Error saving prompt.");
           } else {
             showDetailsSidebar(updatedPrompt, folderId);
             const category =
-              document.querySelector(".main-header h1").textContent;
+              document.querySelector(".main-header h1")?.textContent || "";
             handleCategoryClick(category);
           }
         });

@@ -490,19 +490,25 @@ function showDetailsSidebar(item, folderId) {
   });
 }
 function initializePrompts() {
-  chrome.storage.local.get(null, function (data) {
-    const allPrompts = Object.entries(data)
-      .filter(([, topic]) => topic.prompts && !topic.isTrash)
-      .flatMap(([id, topic]) =>
-        topic.prompts.map((prompt) => ({
-          ...prompt,
-          folderId: id,
-          folderName: topic.name,
-        }))
-      );
-    renderPrompts(allPrompts);
-    document.querySelector(".main-header h1").textContent = "All Prompts";
-  });
+  const urlParams = new URLSearchParams(window.location.search);
+  const categoryFromUrl = urlParams.get("category");
+  if (categoryFromUrl) {
+    handleCategoryClick(decodeURIComponent(categoryFromUrl));
+  } else {
+    chrome.storage.local.get(null, function (data) {
+      const allPrompts = Object.entries(data)
+        .filter(([, topic]) => topic.prompts && !topic.isTrash)
+        .flatMap(([id, topic]) =>
+          topic.prompts.map((prompt) => ({
+            ...prompt,
+            folderId: id,
+            folderName: topic.name,
+          }))
+        );
+      renderPrompts(allPrompts);
+      document.querySelector(".main-header h1").textContent = "All Prompts";
+    });
+  }
 }
 function handleCategoryClick(category) {
   chrome.storage.local.get(null, function (data) {
