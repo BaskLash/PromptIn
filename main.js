@@ -397,29 +397,62 @@ document.addEventListener("DOMContentLoaded", () => {
   function attachMainTableEvents() {
     document
       .querySelectorAll(".entry-table:not(.folder-entry-table) tr")
-      .forEach((row) => {
-        row.addEventListener("click", (event) => {
+      .forEach((tr) => {
+        const btn = tr.querySelector(".action-btn");
+        if (btn) {
+          tr.addEventListener("mouseenter", () => {
+            hoveredRow = tr;
+            keepActionButtonVisible(btn);
+          });
+
+          tr.addEventListener("mouseleave", () => {
+            if (!isDropdownOpen || btn !== currentButton) {
+              hideActionButton(btn);
+            }
+            hoveredRow = null;
+          });
+
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            handleActionButtonClick(btn, tr);
+          });
+        }
+
+        // Bestehender Klick-Handler für die Zeile
+        tr.addEventListener("click", (event) => {
           if (!event.target.classList.contains("action-btn")) {
-            const folderId = row.dataset.folderId;
-            const promptIndex = parseInt(row.dataset.promptIndex);
+            const folderId = tr.dataset.folderId;
+            const promptIndex = parseInt(tr.dataset.promptIndex);
             navigationState = { source: "main", folderId: null };
             showPromptDetails(folderId, promptIndex);
           }
         });
-
-        const actionBtn = row.querySelector(".action-btn");
-        if (actionBtn) {
-          actionBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            handleActionButtonClick(actionBtn, row);
-          });
-        }
       });
   }
 
   // Attach Folder Table Events
   function attachFolderTableEvents() {
     document.querySelectorAll(".folder-entry-table tr").forEach((row) => {
+      const actionBtn = row.querySelector(".action-btn");
+      if (actionBtn) {
+        row.addEventListener("mouseenter", () => {
+          hoveredRow = row;
+          keepActionButtonVisible(actionBtn);
+        });
+
+        row.addEventListener("mouseleave", () => {
+          if (!isDropdownOpen || actionBtn !== currentButton) {
+            hideActionButton(actionBtn);
+          }
+          hoveredRow = null;
+        });
+
+        actionBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          handleActionButtonClick(actionBtn, row);
+        });
+      }
+
       row.addEventListener("click", (event) => {
         if (!event.target.classList.contains("action-btn")) {
           const folderId = row.dataset.folderId;
@@ -428,14 +461,6 @@ document.addEventListener("DOMContentLoaded", () => {
           document.getElementById("folder-overlay").classList.remove("open");
         }
       });
-
-      const actionBtn = row.querySelector(".action-btn");
-      if (actionBtn) {
-        actionBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          handleActionButtonClick(actionBtn, row);
-        });
-      }
     });
   }
 
@@ -825,8 +850,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     dropdown.style.display = "none";
     isDropdownOpen = false;
-    if (currentButton && currentButton.closest("tr") !== hoveredRow) {
-      hideActionButton(currentButton);
+    if (currentButton) {
+      if (currentButton.closest("tr") === hoveredRow) {
+        keepActionButtonVisible(currentButton);
+      } else {
+        hideActionButton(currentButton);
+      }
     }
     currentButton = null;
   });
@@ -852,8 +881,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     dropdown.style.display = "none";
     isDropdownOpen = false;
-    if (currentButton && currentButton.closest("tr") !== hoveredRow) {
-      hideActionButton(currentButton);
+    if (currentButton) {
+      if (currentButton.closest("tr") === hoveredRow) {
+        keepActionButtonVisible(currentButton);
+      } else {
+        hideActionButton(currentButton);
+      }
     }
     currentButton = null;
   });
@@ -883,8 +916,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     dropdown.style.display = "none";
     isDropdownOpen = false;
-    if (currentButton && currentButton.closest("tr") !== hoveredRow) {
-      hideActionButton(currentButton);
+    if (currentButton) {
+      if (currentButton.closest("tr") === hoveredRow) {
+        keepActionButtonVisible(currentButton);
+      } else {
+        hideActionButton(currentButton);
+      }
     }
     currentButton = null;
   });
