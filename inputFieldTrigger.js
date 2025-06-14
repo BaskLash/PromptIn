@@ -241,6 +241,7 @@ function inputFieldTrigger() {
           }
 
           categories = {
+            "Last Used": [],
             Favorites: [],
             "All Prompts": [],
             "Single Prompts": [],
@@ -248,6 +249,7 @@ function inputFieldTrigger() {
           };
           promptSourceMap = new Map();
 
+          const allPrompts = [];
           Object.entries(data).forEach(([id, topic]) => {
             if (
               topic.prompts &&
@@ -261,7 +263,16 @@ function inputFieldTrigger() {
                     : prompt.title || "Untitled Prompt";
                 const content =
                   typeof prompt === "string" ? prompt : prompt.content || "";
-
+                // Store for Latest sorting
+                if (prompt.lastUsed) {
+                  allPrompts.push({
+                    title,
+                    prompt,
+                    folderId: id,
+                    lastUsed: prompt.lastUsed,
+                    folder: topic.isHidden ? null : topic.name,
+                  });
+                }
                 // Add to All Prompts
                 categories["All Prompts"].push(title);
                 promptSourceMap.set(title + "_" + id, {
@@ -270,7 +281,6 @@ function inputFieldTrigger() {
                   prompt: prompt,
                   folderId: id,
                 });
-
                 // Add to Single Prompts if hidden
                 if (topic.isHidden) {
                   categories["Single Prompts"].push(title);
@@ -281,7 +291,6 @@ function inputFieldTrigger() {
                     folderId: id,
                   });
                 }
-
                 // Add to Categorised Prompts if not hidden
                 if (!topic.isHidden) {
                   if (!categories["Categorised Prompts"][topic.name]) {
@@ -298,7 +307,6 @@ function inputFieldTrigger() {
                     folderId: id,
                   });
                 }
-
                 // Add to Favorites if isFavorite is true
                 if (prompt.isFavorite) {
                   categories["Favorites"].push(title);
@@ -312,6 +320,19 @@ function inputFieldTrigger() {
               });
             }
           });
+          // Sort and populate Latest category (up to 10 prompts)
+          allPrompts.sort((a, b) => b.lastUsed - a.lastUsed);
+          allPrompts
+            .slice(0, 10)
+            .forEach(({ title, prompt, folderId, folder }) => {
+              categories["Last Used"].push(title);
+              promptSourceMap.set(title + "_" + folderId, {
+                category: "Last Used",
+                folder,
+                prompt,
+                folderId,
+              });
+            });
 
           Object.keys(categories).forEach((key) => {
             if (Array.isArray(categories[key])) {
