@@ -87,7 +87,7 @@
               </ul>
             </div>
           </div>
-          <div class="accordion-item">
+          <!-- <div class="accordion-item">
             <div class="accordion-header" data-i18n="tools"></div>
             <div class="accordion-content">
               <ul>
@@ -95,72 +95,118 @@
                 <li data-i18n="category_2"></li>
               </ul>
             </div>
-          </div>
+          </div> -->
         </div>
       </div>
 
       <!-- Detailansicht -->
       <div class="detail-overlay" id="detail-overlay">
-        <div class="detail-header">
-          <button id="back-btn">←</button>
-          <h2 id="detail-title" data-i18n="entry_details"></h2>
-          <button id="edit-btn" data-i18n="edit_button"></button>
-        </div>
-        <div class="detail-content">
-          <div class="detail-field">
-            <label data-i18n="title_label"></label>
-            <input
-              type="text"
-              id="entry-title"
-              readonly
-              data-i18n-placeholder="title_placeholder"
-            />
-          </div>
-          <div class="detail-field">
-            <label data-i18n="description_label"></label>
-            <textarea
-              id="entry-description"
-              readonly
-              data-i18n-placeholder="description_placeholder"
-            ></textarea>
-          </div>
-          <div class="detail-field">
-            <label data-i18n="content_label"></label>
-            <textarea
-              id="entry-content"
-              readonly
-              data-i18n-placeholder="content_placeholder"
-            ></textarea>
-          </div>
-          <div class="detail-field">
-            <label data-i18n="favorite_label"></label>
-            <input type="checkbox" id="entry-favorite" disabled />
-          </div>
-          <div class="detail-field">
-            <label data-i18n="created_at_label"></label>
-            <input type="datetime-local" id="entry-created-at" readonly />
-          </div>
-          <div class="detail-field">
-            <label data-i18n="last_used_label"></label>
-            <input type="datetime-local" id="entry-last-used" readonly />
-          </div>
-          <div class="detail-field">
-            <label data-i18n="versions_label"></label>
-            <ul id="entry-versions" class="version-list"></ul>
-          </div>
-          <div class="detail-field">
-            <label data-i18n="folder_label"></label>
-            <select id="entry-folder" disabled>
-              <option value="" data-i18n="folder_select"></option>
-              <!-- Dynamisch gefüllt durch JavaScript -->
-            </select>
-          </div>
-          <div class="detail-actions">
-            <button class="save-btn" data-i18n="save_button"></button>
-            <button class="cancel-btn" data-i18n="cancel_button"></button>
-          </div>
-        </div>
+  <div class="detail-header">
+    <button id="back-btn">←</button>
+    <h2 id="detail-title" data-i18n="entry_details"></h2>
+    <button id="edit-btn" data-i18n="edit_button"></button>
+  </div>
+  <div class="detail-content">
+    <div class="detail-field">
+      <label data-i18n="title_label"></label>
+      <input type="text" id="entry-title" readonly data-i18n-placeholder="title_placeholder" />
+    </div>
+    <div class="detail-field">
+      <label data-i18n="description_label"></label>
+      <textarea id="entry-description" readonly data-i18n-placeholder="description_placeholder"></textarea>
+    </div>
+    <div class="detail-field">
+      <label data-i18n="content_label"></label>
+      <textarea id="entry-content" readonly data-i18n-placeholder="content_placeholder"></textarea>
+    </div>
+    <div class="detail-field">
+      <label data-i18n="type_label"></label>
+      <select id="entry-type" disabled>
+        <option value="" disabled selected data-i18n="type_select"></option>
+        <option value="System">Textgeneration</option>
+        <option value="Zusammenfassung">Zusammenfassung</option>
+        <option value="Umschreiben">Umschreiben</option>
+        <option value="Übersetzen">Übersetzen</option>
+        <option value="Codegenerierung">Codegenerierung</option>
+        <option value="Analyse">Analyse</option>
+        <option value="Ideenfindung">Ideenfindung</option>
+        <option value="Werbetexte">Werbetexte</option>
+        <option value="Prompt Engineering">Prompt Engineering</option>
+        <option value="Assistant">Assistant</option>
+      </select>
+    </div>
+    <div class="detail-field">
+      <label data-i18n="compatible_models_label"></label>
+      <div class="checkbox-group" id="entry-compatible">
+        <label><input type="checkbox" name="compatible" value="Grok" disabled> Grok</label>
+        <label><input type="checkbox" name="compatible" value="Gemini" disabled> Gemini</label>
+        <label><input type="checkbox" name="compatible" value="ChatGPT" disabled> ChatGPT</label>
+        <label><input type="checkbox" name="compatible" value="Claude" disabled> Claude</label>
+        <label><input type="checkbox" name="compatible" value="BlackBox" disabled> BlackBox</label>
+        <label><input type="checkbox" name="compatible" value="GitHub Copilot" disabled> GitHub Copilot</label>
+        <label><input type="checkbox" name="compatible" value="Microsoft Copilot" disabled> Microsoft Copilot</label>
+        <label><input type="checkbox" name="compatible" value="Mistral" disabled> Mistral</label>
+        <label><input type="checkbox" name="compatible" value="DuckDuckGo" disabled> DuckDuckGo</label>
+        <label><input type="checkbox" name="compatible" value="Perplexity" disabled> Perplexity</label>
+        <label><input type="checkbox" name="compatible" value="DeepSeek" disabled> DeepSeek</label>
+        <label><input type="checkbox" name="compatible" value="Deepai" disabled> Deepai</label>
+        <label><input type="checkbox" name="compatible" value="Qwen AI" disabled> Qwen AI</label>
       </div>
+    </div>
+    <div class="detail-field">
+      <label data-i18n="incompatible_models_label"></label>
+      <div class="checkbox-group" id="entry-incompatible">
+        <label><input type="checkbox" name="incompatible" value="Grok" disabled> Grok</label>
+        <label><input type="checkbox" name="incompatible" value="Gemini" disabled> Gemini</label>
+        <label><input type="checkbox" name="incompatible" value="ChatGPT" disabled> ChatGPT</label>
+        <label><input type="checkbox" name="incompatible" value="Claude" disabled> Claude</label>
+        <label><input type="checkbox" name="incompatible" value="BlackBox" disabled> BlackBox</label>
+        <label><input type="checkbox" name="incompatible" value="GitHub Copilot" disabled> GitHub Copilot</label>
+        <label><input type="checkbox" name="incompatible" value="Microsoft Copilot" disabled> Microsoft Copilot</label>
+        <label><input type="checkbox" name="incompatible" value="Mistral" disabled> Mistral</label>
+        <label><input type="checkbox" name="incompatible" value="DuckDuckGo" disabled> DuckDuckGo</label>
+        <label><input type="checkbox" name="incompatible" value="Perplexity" disabled> Perplexity</label>
+        <label><input type="checkbox" name="incompatible" value="DeepSeek" disabled> DeepSeek</label>
+        <label><input type="checkbox" name="incompatible" value="Deepai" disabled> Deepai</label>
+        <label><input type="checkbox" name="incompatible" value="Qwen AI" disabled> Qwen AI</label>
+      </div>
+    </div>
+    <div class="detail-field">
+      <label data-i18n="tags_label"></label>
+      <div class="checkbox-group" id="entry-tags"></div>
+      <div class="tag-input-group">
+        <input type="text" id="new-tag" placeholder="Neuer Tag" readonly>
+        <button type="button" class="action-btn" id="add-tag-btn" disabled>Tag hinzufügen</button>
+      </div>
+    </div>
+    <div class="detail-field">
+      <label data-i18n="favorite_label"></label>
+      <input type="checkbox" id="entry-favorite" disabled />
+    </div>
+    <div class="detail-field">
+      <label data-i18n="created_at_label"></label>
+      <input type="datetime-local" id="entry-created-at" readonly />
+    </div>
+    <div class="detail-field">
+      <label data-i18n="last_used_label"></label>
+      <input type="datetime-local" id="entry-last-used" readonly />
+    </div>
+    <div class="detail-field">
+      <label data-i18n="versions_label"></label>
+      <ul id="entry-versions" class="version-list"></ul>
+    </div>
+    <div class="detail-field">
+      <label data-i18n="folder_label"></label>
+      <select id="entry-folder" disabled>
+        <option value="" data-i18n="folder_select"></option>
+      </select>
+    </div>
+    <div class="detail-actions">
+      <button class="save-btn" data-i18n="save_button"></button>
+      <button class="cancel-btn" data-i18n="cancel_button"></button>
+    </div>
+  </div>
+</div>
 
       <!-- Einstellungsansicht -->
       <div class="detail-overlay" id="settings-overlay">

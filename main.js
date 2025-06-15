@@ -1012,6 +1012,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const entryTitle = document.getElementById("entry-title");
     const entryDescription = document.getElementById("entry-description");
     const entryContent = document.getElementById("entry-content");
+    const entryType = document.getElementById("entry-type");
+    const entryCompatible = document.getElementById("entry-compatible");
+    const entryIncompatible = document.getElementById("entry-incompatible");
+    const entryTags = document.getElementById("entry-tags");
+    const newTagInput = document.getElementById("new-tag");
+    const addTagBtn = document.getElementById("add-tag-btn");
     const entryFavorite = document.getElementById("entry-favorite");
     const entryCreatedAt = document.getElementById("entry-created-at");
     const entryLastUsed = document.getElementById("entry-last-used");
@@ -1023,6 +1029,7 @@ document.addEventListener("DOMContentLoaded", () => {
     entryTitle.value = "";
     entryDescription.value = "";
     entryContent.value = "";
+    entryType.value = "";
     entryFavorite.checked = false;
     entryCreatedAt.value = "";
     entryLastUsed.value = "";
@@ -1030,6 +1037,51 @@ document.addEventListener("DOMContentLoaded", () => {
     entryFolder.innerHTML =
       '<option value="" data-i18n="folder_select"></option>';
 
+    // Clear and enable compatible models checkboxes
+    entryCompatible
+      .querySelectorAll("input[type='checkbox']")
+      .forEach((checkbox) => {
+        checkbox.checked = false;
+        checkbox.disabled = false;
+      });
+
+    // Clear and enable incompatible models checkboxes
+    entryIncompatible
+      .querySelectorAll("input[type='checkbox']")
+      .forEach((checkbox) => {
+        checkbox.checked = false;
+        checkbox.disabled = false;
+      });
+
+    // Clear and populate tags
+    entryTags.innerHTML = "";
+    chrome.storage.local.get("tags", (data) => {
+      const tags = data.tags || [
+        "SEO",
+        "Marketing",
+        "Social Media",
+        "Advertisement",
+        "Copywriting",
+        "Productivity",
+        "E-Commerce",
+        "Education",
+        "Tech",
+        "Healthcare",
+        "HR",
+      ];
+      tags.forEach((tag) => {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" name="tags" value="${tag}"> ${tag}`;
+        entryTags.appendChild(label);
+      });
+    });
+
+    // Enable new tag input and button
+    newTagInput.readOnly = false;
+    newTagInput.value = "";
+    addTagBtn.disabled = false;
+
+    // Populate folder dropdown
     chrome.storage.local.get(null, function (data) {
       Object.entries(data).forEach(([id, topic]) => {
         if (
@@ -1047,13 +1099,18 @@ document.addEventListener("DOMContentLoaded", () => {
       applyTranslations(currentLang);
     });
 
+    // Enable fields
     entryTitle.readOnly = false;
     entryDescription.readOnly = false;
     entryContent.readOnly = false;
+    entryType.disabled = false;
     entryFavorite.disabled = false;
     entryFolder.disabled = false;
+
+    // Show save/cancel buttons
     document.querySelector(".detail-actions").style.display = "flex";
 
+    // Clear dataset attributes
     entryTitle.removeAttribute("data-folderId");
     entryTitle.removeAttribute("data-promptIndex");
     navigationState = { source: "main", folderId: null };
@@ -1070,6 +1127,20 @@ document.addEventListener("DOMContentLoaded", () => {
         .getElementById("entry-description")
         .value.trim();
       const content = document.getElementById("entry-content").value.trim();
+      const type = document.getElementById("entry-type").value;
+      const compatibleModels = Array.from(
+        document.querySelectorAll(
+          "#entry-compatible input[name='compatible']:checked"
+        )
+      ).map((checkbox) => checkbox.value);
+      const incompatibleModels = Array.from(
+        document.querySelectorAll(
+          "#entry-incompatible input[name='incompatible']:checked"
+        )
+      ).map((checkbox) => checkbox.value);
+      const tags = Array.from(
+        document.querySelectorAll("#entry-tags input[name='tags']:checked")
+      ).map((checkbox) => checkbox.value);
       const isFavorite = document.getElementById("entry-favorite").checked;
       const folderId = document.getElementById("entry-folder").value;
 
@@ -1092,6 +1163,10 @@ document.addEventListener("DOMContentLoaded", () => {
         title,
         description,
         content,
+        type,
+        compatibleModels,
+        incompatibleModels,
+        tags,
         isFavorite,
         createdAt: Date.now(),
         lastUsed: Date.now(),
@@ -1104,6 +1179,11 @@ document.addEventListener("DOMContentLoaded", () => {
             timestamp: Date.now(),
           },
         ],
+        folderId,
+        folderName:
+          document.querySelector(`#entry-folder option[value="${folderId}"]`)
+            ?.textContent || "Single Prompt",
+        metaChangeLog: [],
       };
 
       chrome.storage.local.get(folderId, function (data) {
@@ -1116,6 +1196,62 @@ document.addEventListener("DOMContentLoaded", () => {
           loadFolders();
           loadPromptsTable();
         });
+      });
+
+      // Load tags
+      chrome.storage.local.get("tags", (data) => {
+        const tagContainer = document.querySelector("#entry-tags");
+        const tags = data.tags || [
+          "SEO",
+          "Marketing",
+          "Social Media",
+          "Advertisement",
+          "Copywriting",
+          "Productivity",
+          "E-Commerce",
+          "Education",
+          "Tech",
+          "Healthcare",
+          "HR",
+        ];
+        tags.forEach((tag) => {
+          const label = document.createElement("label");
+          label.innerHTML = `<input type="checkbox" name="tags" value="${tag}"> ${tag}`;
+          tagContainer.appendChild(label);
+        });
+      });
+
+      // Add tag functionality
+      document.querySelector("#add-tag-btn").addEventListener("click", () => {
+        const newTagInput = document.querySelector("#new-tag");
+        const newTag = newTagInput.value.trim();
+        if (
+          newTag &&
+          !document.querySelector(`#entry-tags input[value="${newTag}"]`)
+        ) {
+          chrome.storage.local.get("tags", (data) => {
+            const tags = data.tags || [];
+            if (!tags.includes(newTag)) {
+              tags.push(newTag);
+              chrome.storage.local.set({ tags }, () => {
+                const tagContainer = document.querySelector("#entry-tags");
+                const label = document.createElement("label");
+                label.innerHTML = `<input type="checkbox" name="tags" value="${newTag}" checked> ${newTag}`;
+                tagContainer.appendChild(label);
+                newTagInput.value = "";
+              });
+            } else {
+              alert(
+                translations[currentLang]?.tag_exists ||
+                  "Tag existiert bereits!"
+              );
+            }
+          });
+        } else if (!newTag) {
+          alert(
+            translations[currentLang]?.tag_empty || "Tag darf nicht leer sein!"
+          );
+        }
       });
     }
   });

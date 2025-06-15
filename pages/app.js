@@ -16,11 +16,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const folderList = document.querySelector(".folder-list");
   const accordionItems = document.querySelectorAll(".accordion-content li");
   const faqBtn = document.getElementById("faq-btn");
+  const surveyBtn = document.getElementById("survey-btn");
   const addFolderBtn = document.getElementById("addFolderBtn");
 
   // FAQ
   faqBtn.addEventListener("click", () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("faq.html") });
+    chrome.tabs.create({ url: chrome.runtime.getURL("pages/faq.html") });
+  });
+
+  surveyBtn.addEventListener("click", () => {
+    chrome.tabs.create({ url: "https://forms.gle/wZ43fNgqrBSPPE6N8" });
   });
 
   let folderSearchInput = document.querySelector("#folder-search");

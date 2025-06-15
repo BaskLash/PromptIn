@@ -18,17 +18,19 @@ function showCreatePromptModal(category) {
   const modalBody = document.createElement("div");
   modalBody.className = "modal-body";
 
-  const form = document.createElement("form");
-  form.innerHTML = `
-      <label>Titel:</label>
-      <input type="text" id="prompt-title" placeholder="Titel eingeben" required>
-      <label>Beschreibung:</label>
-      <textarea id="prompt-description" placeholder="Beschreibung eingeben"></textarea>
-      <label>Inhalt:</label>
-      <textarea id="prompt-content" placeholder="Prompt-Text eingeben" required></textarea>
-      <label>Typ:</label>
+  const formContainer = document.createElement("div");
+  formContainer.className = "form-container";
+
+  formContainer.innerHTML = `
+      <label>Title:</label>
+      <input type="text" id="prompt-title" placeholder="Title eingeben" required>
+      <label>Description:</label>
+      <textarea id="prompt-description" placeholder="Enter a description"></textarea>
+      <label>Content:</label>
+      <textarea id="prompt-content" placeholder="Enter prompt content" required></textarea>
+      <label>Type:</label>
       <select id="prompt-type" required>
-        <option value="" disabled selected>Typ auswählen</option>
+        <option value="" disabled selected>Select type</option>
         <option value="System">Textgeneration</option>
         <option value="User">Zusammenfassung</option>
         <option value="User">Umschreiben</option>
@@ -40,7 +42,7 @@ function showCreatePromptModal(category) {
         <option value="User">Prompt Engineering</option>
         <option value="Assistant">Assistant</option>
       </select>
-      <label>Kompatible Modelle:</label>
+      <label>Compatible Models:</label>
       <div class="checkbox-group" id="prompt-compatible">
         <label><input type="checkbox" name="compatible" value="Grok"> Grok</label>
         <label><input type="checkbox" name="compatible" value="Gemini"> Gemini</label>
@@ -56,7 +58,7 @@ function showCreatePromptModal(category) {
         <label><input type="checkbox" name="compatible" value="Deepai"> Deepai</label>
         <label><input type="checkbox" name="compatible" value="Qwen AI"> Qwen AI</label>
       </div>
-      <label>Inkompatible Modelle:</label>
+      <label>Incompatible Models:</label>
       <div class="checkbox-group" id="prompt-incompatible">
         <label><input type="checkbox" name="incompatible" value="Grok"> Grok</label>
         <label><input type="checkbox" name="incompatible" value="Gemini"> Gemini</label>
@@ -76,14 +78,14 @@ function showCreatePromptModal(category) {
       <div class="checkbox-group" id="prompt-tags">
       </div>
       <div class="tag-input-group">
-        <input type="text" id="new-tag" placeholder="Neuer Tag">
-        <button type="button" class="action-btn" id="add-tag-btn">Tag hinzufügen</button>
+        <input type="text" id="new-tag" placeholder="New Tag">
+        <button type="button" class="action-btn" id="add-tag-btn">Add new Tag</button>
       </div>
-      <label>Favorit:</label>
+      <label>Favorite:</label>
       <div class="checkbox-group">
-        <label><input type="checkbox" id="prompt-favorite" name="favorite"> Als Favorit markieren</label>
+        <label><input type="checkbox" id="prompt-favorite" name="favorite"> Mark as favorite</label>
       </div>
-      <label>Ordner:</label>
+      <label>Folder:</label>
       <select id="prompt-folder">
         <option value="" ${
           !category ||
@@ -97,14 +99,14 @@ function showCreatePromptModal(category) {
           category === "Unused Prompts"
             ? "selected"
             : ""
-        }>Kein Ordner</option>
+        }>No Folder</option>
       </select>
-      <button type="submit" class="action-btn">Create Prompt</button>
+      <button type="button" class="action-btn" id="create-prompt-btn">Create Prompt</button>
     `;
 
   // Lade verfügbare Tags
   chrome.storage.local.get("tags", (data) => {
-    const tagContainer = form.querySelector("#prompt-tags");
+    const tagContainer = formContainer.querySelector("#prompt-tags");
     const tags = data.tags || [
       "SEO",
       "Marketing",
@@ -127,7 +129,7 @@ function showCreatePromptModal(category) {
 
   // Lade verfügbare Ordner in das Dropdown
   chrome.storage.local.get(null, (data) => {
-    const folderSelect = form.querySelector("#prompt-folder");
+    const folderSelect = formContainer.querySelector("#prompt-folder");
     const folders = Object.entries(data)
       .filter(([, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash)
       .map(([id, topic]) => ({ id, name: topic.name }));
@@ -144,19 +146,19 @@ function showCreatePromptModal(category) {
   });
 
   // Tag hinzufügen
-  form.querySelector("#add-tag-btn").addEventListener("click", () => {
-    const newTagInput = form.querySelector("#new-tag");
+  formContainer.querySelector("#add-tag-btn").addEventListener("click", () => {
+    const newTagInput = formContainer.querySelector("#new-tag");
     const newTag = newTagInput.value.trim();
     if (
       newTag &&
-      !form.querySelector(`#prompt-tags input[value="${newTag}"]`)
+      !formContainer.querySelector(`#prompt-tags input[value="${newTag}"]`)
     ) {
       chrome.storage.local.get("tags", (data) => {
         const tags = data.tags || [];
         if (!tags.includes(newTag)) {
           tags.push(newTag);
           chrome.storage.local.set({ tags }, () => {
-            const tagContainer = form.querySelector("#prompt-tags");
+            const tagContainer = formContainer.querySelector("#prompt-tags");
             const label = document.createElement("label");
             label.innerHTML = `<input type="checkbox" name="tags" value="${newTag}" checked> ${newTag}`;
             tagContainer.appendChild(label);
@@ -171,74 +173,74 @@ function showCreatePromptModal(category) {
     }
   });
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+  // Event-Listener für den "Create Prompt"-Button
+  formContainer
+    .querySelector("#create-prompt-btn")
+    .addEventListener("click", () => {
+      const title = document.getElementById("prompt-title").value.trim();
+      const description = document
+        .getElementById("prompt-description")
+        .value.trim();
+      const content = document.getElementById("prompt-content").value.trim();
+      const type = document.getElementById("prompt-type").value;
+      const compatibleModels = Array.from(
+        document.querySelectorAll(
+          "#prompt-compatible input[name='compatible']:checked"
+        )
+      ).map((checkbox) => checkbox.value);
+      const incompatibleModels = Array.from(
+        document.querySelectorAll(
+          "#prompt-incompatible input[name='incompatible']:checked"
+        )
+      ).map((checkbox) => checkbox.value);
+      const tags = Array.from(
+        document.querySelectorAll("#prompt-tags input[name='tags']:checked")
+      ).map((checkbox) => checkbox.value);
+      const isFavorite = document.getElementById("prompt-favorite").checked;
+      const folderId = document.getElementById("prompt-folder").value;
 
-    const title = document.getElementById("prompt-title").value.trim();
-    const description = document
-      .getElementById("prompt-description")
-      .value.trim();
-    const content = document.getElementById("prompt-content").value.trim();
-    const type = document.getElementById("prompt-type").value;
-    const compatibleModels = Array.from(
-      document.querySelectorAll(
-        "#prompt-compatible input[name='compatible']:checked"
-      )
-    ).map((checkbox) => checkbox.value);
-    const incompatibleModels = Array.from(
-      document.querySelectorAll(
-        "#prompt-incompatible input[name='incompatible']:checked"
-      )
-    ).map((checkbox) => checkbox.value);
-    const tags = Array.from(
-      document.querySelectorAll("#prompt-tags input[name='tags']:checked")
-    ).map((checkbox) => checkbox.value);
-    const isFavorite = document.getElementById("prompt-favorite").checked;
-    const folderId = document.getElementById("prompt-folder").value;
+      let folderName = "Single Prompt";
+      if (folderId) {
+        const selectedOption = document.querySelector(
+          `#prompt-folder option[value="${folderId}"]`
+        );
+        folderName = selectedOption ? selectedOption.textContent : folderName;
+      }
 
-    // Ermittle folderName aus dem ausgewählten Ordner
-    let folderName = "Single Prompt"; // Standard für Einzelprompts
-    if (folderId) {
-      const selectedOption = document.querySelector(
-        `#prompt-folder option[value="${folderId}"]`
-      );
-      folderName = selectedOption ? selectedOption.textContent : folderName;
-    }
+      const newPrompt = {
+        title,
+        description,
+        content,
+        type,
+        compatibleModels: compatibleModels,
+        incompatibleModels: incompatibleModels,
+        tags: tags,
+        isFavorite,
+        folderId: folderId || null,
+        folderName,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        lastUsed: null,
+        versions: [
+          {
+            versionId: generateUUID(),
+            title,
+            description,
+            content,
+            timestamp: Date.now(),
+          },
+        ],
+        metaChangeLog: [],
+      };
 
-    const newPrompt = {
-      title,
-      description,
-      content,
-      type,
-      compatibleModels: compatibleModels,
-      incompatibleModels: incompatibleModels,
-      tags: tags,
-      isFavorite,
-      folderId: folderId || null,
-      folderName,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      lastUsed: null,
-      versions: [
-        {
-          versionId: generateUUID(),
-          title,
-          description,
-          content,
-          timestamp: Date.now(),
-        },
-      ],
-      metaChangeLog: [],
-    };
-
-    saveNewPrompt(newPrompt, folderId);
-    modal.remove();
-    handleCategoryClick(category);
-  });
+      saveNewPrompt(newPrompt, folderId);
+      modal.remove();
+      handleCategoryClick(category);
+    });
 
   modalHeader.appendChild(closeSpan);
   modalHeader.appendChild(headerTitle);
-  modalBody.appendChild(form);
+  modalBody.appendChild(formContainer);
   modalContent.appendChild(modalHeader);
   modalContent.appendChild(modalBody);
   modal.appendChild(modalContent);
