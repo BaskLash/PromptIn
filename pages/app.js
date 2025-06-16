@@ -505,15 +505,28 @@ function showPromptModal(tag, prompts) {
     item.addEventListener("click", (e) => {
       if (!e.target.classList.contains("remove-tag-btn")) {
         const folder = item.dataset.folder;
-        console.log(`Prompt item clicked, navigating to folder: ${folder}`);
-        if (folder === "Kein Ordner") {
+        const storageKey = item.dataset.storageKey;
+        console.log(
+          `Prompt item clicked, navigating to folder: ${folder}, storageKey: ${storageKey}`
+        );
+        if (
+          folder === "Kein Ordner" ||
+          storageKey.startsWith("single_prompt_") ||
+          storageKey === "noFolderPrompts"
+        ) {
           modal.style.display = "none";
           switchView("prompts-view", {
             view: "prompts",
             category: "Single Prompts",
           });
+          // Verwende den übersetzten Text aus der Navigation
+          const singlePromptsNavItem = document.querySelector(
+            '.accordion-content li[data-folder="Single Prompts"]'
+          );
           document.getElementById("prompts-header").textContent =
-            "Single Prompts";
+            singlePromptsNavItem
+              ? singlePromptsNavItem.textContent.trim()
+              : "Single Prompts"; // Fallback
           handleCategoryClick("Single Prompts");
         } else {
           modal.style.display = "none";

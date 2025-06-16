@@ -137,6 +137,14 @@ function renderPrompts(prompts) {
   const tbody = document.querySelector(".table-container tbody");
   tbody.innerHTML = "";
 
+  // Sortiere Prompts nach createdAt (absteigend) oder title (alphabetisch)
+  prompts.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (dateB !== dateA) return dateB - dateA; // Neueste zuerst
+    return (a.title || "N/A").localeCompare(b.title || "N/A"); // Alphabetisch als Fallback
+  });
+
   prompts.forEach((prompt, index) => {
     const row = document.createElement("tr");
     row.dataset.index = index;
@@ -567,6 +575,12 @@ function handleCategoryClick(category) {
               folderName: "Kein Ordner",
               storageKey: key,
             }));
+          })
+          .sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            if (dateB !== dateA) return dateB - dateA; // Neueste zuerst
+            return (a.title || "N/A").localeCompare(b.title || "N/A"); // Alphabetisch als Fallback
           });
         break;
 
