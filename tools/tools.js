@@ -406,11 +406,14 @@ function showPromptModal(tag, prompts) {
   } else {
     modalPromptList.innerHTML = filteredPrompts
       .map((prompt) => {
-        // Keine temporäre ID-Generierung mehr nötig
         return `
           <div class="prompt-item" data-prompt-id="${
             prompt.id
-          }" data-storage-key="${escapeHTML(prompt.storageKey)}">
+          }" data-storage-key="${escapeHTML(
+          prompt.storageKey
+        )}" data-folder="${escapeHTML(
+          prompt.folderName || "Kein Ordner"
+        )}" style="cursor: pointer;">
             <h3>${escapeHTML(prompt.title || "Untitled")}</h3>
             <p>Category: ${escapeHTML(prompt.folderName || "Kein Ordner")}</p>
             <p>Created: ${new Date(prompt.createdAt || 0).toLocaleString()}</p>
@@ -425,17 +428,17 @@ function showPromptModal(tag, prompts) {
       .join("");
   }
 
-  // Entferne alte Event-Listener
+  // Entferne alte Event-Listener für remove-tag-btn
   const removeTagButtons = document.querySelectorAll(".remove-tag-btn");
   removeTagButtons.forEach((btn) => {
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
   });
 
-  // Füge neue Event-Listener hinzu
+  // Füge neue Event-Listener für remove-tag-btn hinzu
   document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
-      e.stopPropagation();
+      e.stopPropagation(); // Verhindert, dass der Klick auf das prompt-item auslöst
       const tag = btn.dataset.tag;
       const promptId = btn.getAttribute("data-prompt-id");
       const storageKey = btn.dataset.storageKey;
@@ -446,6 +449,21 @@ function showPromptModal(tag, prompts) {
         console.error("Prompt-ID fehlt oder ist undefined!");
       }
       removeTagFromPrompt(tag, storageKey, promptId);
+    });
+  });
+
+  // Füge Event-Listener für Klicks auf prompt-item hinzu
+  document.querySelectorAll(".prompt-item").forEach((item) => {
+    item.addEventListener("click", (e) => {
+      // Nur ausführen, wenn nicht auf den Remove-Button geklickt wurde
+      if (!e.target.classList.contains("remove-tag-btn")) {
+        const folder = item.dataset.folder;
+        if (folder !== "Kein Ordner") {
+          modal.style.display = "none"; // Modal schließen
+          switchView("prompts-view", { view: "prompts", folder: folder }); // Zur Prompts-Ansicht wechseln
+          handleFolderClick(folder); // Folder-Inhalte laden
+        }
+      }
     });
   });
 

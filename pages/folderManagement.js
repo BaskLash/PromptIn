@@ -15,6 +15,7 @@ function loadFolders() {
     folders.forEach(([id, topic]) => {
       const li = document.createElement("li");
       li.classList.add("folder-item");
+      li.setAttribute("data-folder", topic.name);
       li.innerHTML = `
         📁 ${topic.name}
         <span class="folder-actions">
@@ -25,16 +26,6 @@ function loadFolders() {
           </div>
         </span>
       `;
-
-      // Hauptklick auf Ordner (nicht auf Button)
-      li.addEventListener("click", (event) => {
-        if (
-          event.target.classList.contains("folder-action") ||
-          event.target.classList.contains("dropdown-option")
-        )
-          return;
-        handleFolderClick(topic.name);
-      });
 
       // Button mit drei Punkten → Dropdown anzeigen/ausblenden
       li.querySelector(".folder-action").addEventListener("click", (event) => {

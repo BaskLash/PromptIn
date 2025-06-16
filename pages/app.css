@@ -405,3 +405,92 @@ table thead {
     background-color: #f9f9f9;
   }
 }
+.prompt-item {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  position: relative;
+}
+.prompt-item:hover {
+  background-color: #f0f0f0;
+  cursor: pointer;
+}
+.remove-tag-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+/* Container für Tags */
+.tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 20px;
+}
+
+/* Tag-Box */
+.tag-box {
+  width: 120px;
+  height: 120px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative; /* Hinzugefügt für absolute Positionierung des Lösch-Buttons */
+}
+
+.tag-box:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tag-box .tag-name {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.tag-box .prompt-count {
+  font-size: 14px;
+  color: #6c757d;
+}
+.delete-tag-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #dc3545; /* Rote Farbe für Lösch-Button */
+}
+
+.delete-tag-btn:hover {
+  color: #a71d2a; /* Dunklere Farbe bei Hover */
+}
+.remove-tag-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #dc3545; /* Rote Farbe für Lösch-Button */
+}
+
+.remove-tag-btn:hover {
+  color: #a71d2a; /* Dunklere Farbe bei Hover */
+}
+.close-modal {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  cursor: pointer;
+}

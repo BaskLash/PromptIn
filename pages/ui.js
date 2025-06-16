@@ -141,7 +141,9 @@ function renderPrompts(prompts) {
     const row = document.createElement("tr");
     row.dataset.index = index;
     row.innerHTML = `
-      <td><input type="checkbox" /></td>
+      <td><input type="checkbox" id="prompt-checkbox-${
+        prompt.id || index
+      }" name="prompt-checkbox" /></td>
       <td>${prompt.title || "N/A"}</td>
       <td>${prompt.type || "N/A"}</td>
       <td>${
@@ -662,6 +664,7 @@ function handleFolderClick(folder) {
           folderName: topic.name,
         }))
       );
+    console.log(`Filtered prompts for folder ${folder}:`, filteredPrompts);
 
     renderPrompts(filteredPrompts);
     document.querySelector(".main-header h1").textContent = folder;
