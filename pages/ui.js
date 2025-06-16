@@ -1,7 +1,10 @@
 function filterGoals() {
+  const folderList = document.querySelector(".folder-list");
+  const goalsList = document.querySelector(".table-container tbody");
   const filter = searchInput.value.toLowerCase().trim();
   const rows = Array.from(goalsList.getElementsByTagName("tr"));
   const folders = Array.from(folderList.getElementsByTagName("li"));
+  const accordionItems = document.querySelectorAll(".accordion-content li");
   const categories = Array.from(accordionItems);
 
   if (!filter) {
@@ -91,8 +94,9 @@ function filterGoals() {
   }
 }
 function filterFolders() {
+  const folderList = document.querySelector(".folder-list");
   const filter = folderSearchInput.value.toLowerCase().trim();
-  const folders = Array.from(folderList.getElementsByTagName("li"));
+  const folders = Array.from(folderList.querySelectorAll("li.folder-item"));
 
   if (!filter) {
     // No input: Reset to original state
@@ -106,11 +110,7 @@ function filterFolders() {
 
   // Calculate Levenshtein distance for folders
   const scoredFolders = folders.map((folder) => {
-    const folderText = folder.textContent
-      .toLowerCase()
-      .replace("📁", "")
-      .trim()
-      .split(" ")[0]; // Extract folder name, remove emoji and actions
+    const folderText = folder.getAttribute("data-folder").toLowerCase().trim(); // Verwende data-folder statt textContent
     const distance = levenshteinDistance(folderText, filter);
     return { item: folder, distance };
   });
