@@ -190,14 +190,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.querySelectorAll(".accordion-content li").forEach((item) => {
     item.addEventListener("click", () => {
-      const text = item.textContent.trim();
-      if (text === "Tag Overview") {
+      const view = item.getAttribute("data-view");
+      const folder = item.getAttribute("data-folder");
+      if (view === "tags") {
         switchView("tags-view", { view: "tags" });
-        loadTags(); // Funktion zum Laden der Tags
-      } else {
-        switchView("prompts-view", { view: "prompts", category: text });
-        document.getElementById("prompts-header").textContent = text; // Header aktualisieren
-        handleCategoryClick(text);
+        loadTags();
+      } else if (folder) {
+        switchView("prompts-view", { view: "prompts", category: folder });
+        document.getElementById("prompts-header").textContent =
+          item.textContent.trim(); // Text für Anzeige beibehalten
+        handleCategoryClick(folder);
       }
     });
   });
@@ -504,7 +506,16 @@ function showPromptModal(tag, prompts) {
       if (!e.target.classList.contains("remove-tag-btn")) {
         const folder = item.dataset.folder;
         console.log(`Prompt item clicked, navigating to folder: ${folder}`);
-        if (folder !== "Kein Ordner") {
+        if (folder === "Kein Ordner") {
+          modal.style.display = "none";
+          switchView("prompts-view", {
+            view: "prompts",
+            category: "Single Prompts",
+          });
+          document.getElementById("prompts-header").textContent =
+            "Single Prompts";
+          handleCategoryClick("Single Prompts");
+        } else {
           modal.style.display = "none";
           switchView("prompts-view", { view: "prompts", folder: folder });
           handleFolderClick(folder);
@@ -523,6 +534,7 @@ function showPromptModal(tag, prompts) {
 
   modal.style.display = "flex";
 }
+
 function removeTagFromPrompt(tag, storageKey, promptId) {
   chrome.storage.local.get(storageKey, (data) => {
     if (chrome.runtime.lastError) {
@@ -561,7 +573,22 @@ function removeTagFromPrompt(tag, storageKey, promptId) {
         return;
       }
       console.log(`Tag ${tag} removed from prompt ${promptId}`);
-      loadTags(); // Tags neu laden, um Modal zu aktualisieren
+      // DOM direkt aktualisieren
+      const promptItem = document.querySelector(
+        `.prompt-item[data-prompt-id="${escapeHTML(
+          promptId
+        )}"][data-storage-key="${escapeHTML(storageKey)}"]`
+      );
+      if (promptItem) {
+        const remainingTags =
+          updatedPrompts.find((p) => String(p.id) === String(promptId))?.tags ||
+          [];
+        if (!remainingTags.includes(tag)) {
+          promptItem.remove(); // Entferne das prompt-item, wenn der Tag nicht mehr vorhanden ist
+        }
+      }
+      // Optional: loadTags(), falls die Tag-Boxen aktualisiert werden sollen
+      loadTags(); // Tags neu laden, um Modal und Tag-Counts zu aktualisieren
     });
   });
 }

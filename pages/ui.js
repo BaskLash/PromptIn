@@ -516,7 +516,7 @@ function handleCategoryClick(category) {
   chrome.storage.local.get(null, function (data) {
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
-    const isVisibleOrHiddenTopic = (topic) => topic.prompts && !topic.isTrash; // Definition hinzugefügt
+    const isVisibleOrHiddenTopic = (topic) => topic.prompts && !topic.isTrash;
     const isVisibleTopic = (topic) =>
       topic.prompts && !topic.isHidden && !topic.isTrash;
     const isHiddenTopic = (topic) =>
@@ -554,8 +554,20 @@ function handleCategoryClick(category) {
 
       case "Single Prompts":
         filteredPrompts = Object.entries(data)
-          .filter(([, topic]) => isHiddenTopic(topic))
-          .flatMap(([id, topic]) => getPromptObjects(topic, id));
+          .filter(
+            ([key]) =>
+              key.startsWith("single_prompt_") || key === "noFolderPrompts"
+          )
+          .flatMap(([key, topic]) => {
+            const promptList =
+              key === "noFolderPrompts" ? topic : topic.prompts || [];
+            return promptList.map((prompt) => ({
+              ...prompt,
+              folderId: key,
+              folderName: "Kein Ordner",
+              storageKey: key,
+            }));
+          });
         break;
 
       case "Categorised Prompts":
