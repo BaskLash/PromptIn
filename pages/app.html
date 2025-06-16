@@ -29,7 +29,10 @@
           style="margin-left: 10px; cursor: pointer"
           >❓</span
         >
-        <span title="Survey" id="survey-btn" style="margin-left: 10px; cursor: pointer"
+        <span
+          title="Survey"
+          id="survey-btn"
+          style="margin-left: 10px; cursor: pointer"
           >📋</span
         >
         👤
@@ -99,29 +102,47 @@
       <div id="sidebar-resizer"></div>
 
       <main>
-        <div class="main-header">
-          <h1>Dashboard</h1>
-          <button id="addItemBtn">+ Add Item</button>
+        <div id="prompts-view" style="display: none">
+          <div class="main-header">
+            <h1 id="prompts-header"></h1>
+            <!-- Dynamisch mit der Kategorie gefüllt -->
+            <button id="addItemBtn">+ Add Item</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" /></th>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>Compatible Models</th>
+                  <th>Incompatible Models</th>
+                  <th>Tags</th>
+                  <th>Category</th>
+                  <th>Last used</th>
+                  <th>Created on</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th><input type="checkbox" /></th>
-                <th>Title</th>
-                <th>Type</th>
-                <th>Compatible Models</th>
-                <th>Incompatible Models</th>
-                <th>Tags</th>
-                <th>Category</th>
-                <th>Last used</th>
-                <th>Created on</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <div id="tags-view" style="display: none">
+          <div class="main-header">
+            <h1>Tag Overview</h1>
+            <button id="addTagBtn">+ Add Tag</button>
+          </div>
+          <div class="tag-container" id="tag-container"></div>
         </div>
+        <div id="promptModal" class="modal" style="display: none">
+          <div class="modal-content">
+            <span class="close-modal" title="Schließen">×</span>
+            <h2>Prompts for Tag: <span id="modalTagName"></span></h2>
+            <div id="modalPromptList"></div>
+          </div>
+        </div>
+        <!-- Weitere Ansichten können hier hinzugefügt werden -->
       </main>
       <div class="details-sidebar" id="details-sidebar">
         <div class="sidebar-header">

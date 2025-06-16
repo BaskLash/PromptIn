@@ -1,12 +1,18 @@
 document.addEventListener("DOMContentLoaded", () => {
   // URL-Parameter auslesen und Kategorie verarbeiten
   const urlParams = new URLSearchParams(window.location.search);
-  const categoryFromUrl = urlParams.get("category");
-  if (categoryFromUrl) {
-    console.log("Kategorie aus URL:", categoryFromUrl); // Debugging
-    handleCategoryClick(decodeURIComponent(categoryFromUrl));
+  const view = urlParams.get("view");
+  if (view === "prompts") {
+    const category = urlParams.get("category") || "All Prompts";
+    switchView("prompts-view", { view: "prompts", category: category });
+    document.getElementById("prompts-header").textContent = category;
+    handleCategoryClick(category);
+  } else if (view === "tags") {
+    switchView("tags-view", { view: "tags" });
+    loadTags();
   } else {
-    // Standard-Kategorie, falls keine URL-Parameter vorhanden
+    switchView("prompts-view", { view: "prompts", category: "All Prompts" });
+    document.getElementById("prompts-header").textContent = "All Prompts";
     handleCategoryClick("All Prompts");
   }
 
@@ -44,6 +50,24 @@ document.addEventListener("DOMContentLoaded", () => {
       `${savedWidth}px`
     );
   }
+
+  window.addEventListener("popstate", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const view = urlParams.get("view");
+    if (view === "prompts") {
+      const category = urlParams.get("category") || "All Prompts";
+      switchView("prompts-view");
+      document.getElementById("prompts-header").textContent = category;
+      handleCategoryClick(category);
+    } else if (view === "tags") {
+      switchView("tags-view");
+      loadTags();
+    } else {
+      switchView("prompts-view");
+      document.getElementById("prompts-header").textContent = "All Prompts";
+      handleCategoryClick("All Prompts");
+    }
+  });
 
   // Accordion-Mechanik
   document.querySelectorAll(".accordion-header").forEach((header) => {
@@ -123,16 +147,49 @@ document.addEventListener("DOMContentLoaded", () => {
   // Call injectStyles
   injectStyles();
 
+  searchInput.addEventListener("input", () => {
+    const filter = searchInput.value.toLowerCase();
+    if (document.getElementById("prompts-view").style.display === "block") {
+      filterGoals(); // Bestehende Funktion zum Filtern der Prompts
+    } else if (document.getElementById("tags-view").style.display === "block") {
+      const tagBoxes = document.querySelectorAll(".tag-box");
+      tagBoxes.forEach((box) => {
+        const tagName = box
+          .querySelector(".tag-name")
+          .textContent.toLowerCase();
+        box.style.display = tagName.includes(filter) ? "" : "none";
+      });
+    }
+  });
+
+  document.getElementById("addTagBtn").addEventListener("click", () => {
+    const tagName = prompt("Neuen Tag eingeben:");
+    if (tagName && tagName.trim()) {
+      const newTag = tagName.trim();
+      chrome.storage.local.get("tags", (data) => {
+        const tags = data.tags || [];
+        if (tags.includes(newTag)) {
+          alert("Tag exists already!");
+          return;
+        }
+        tags.push(newTag);
+        chrome.storage.local.set({ tags }, () => {
+          loadTags();
+        });
+      });
+    }
+  });
+
   document.querySelectorAll(".accordion-content li").forEach((item) => {
     item.addEventListener("click", () => {
-      const category = item.textContent.trim();
-      if (category === "Tag Overview") {
-        // Weiterleitung zur Tag-Übersicht-Seite
-        window.location.assign(
-          chrome.runtime.getURL("tools/tools-overview.html")
-        );
+      const text = item.textContent.trim();
+      if (text === "Tag Overview") {
+        switchView("tags-view", { view: "tags" });
+        loadTags(); // Funktion zum Laden der Tags
       } else {
-        handleCategoryClick(category);
+        switchView("prompts-view", { view: "prompts", category: text });
+        document.getElementById("prompts-header").textContent = text; // Header aktualisieren
+        handleCategoryClick(text);
       }
     });
   });
@@ -162,6 +219,61 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+function loadTags() {
+  chrome.storage.local.get(null, (data) => {
+    const tags = data.tags || [];
+    const tagContainer = document.getElementById("tag-container");
+    const prompts = 0;
+    tagContainer.innerHTML = tags
+      .map((tag) => {
+        const promptCount = prompts.filter((prompt) =>
+          prompt.tags.includes(tag)
+        ).length;
+        return `
+          <div class="tag-box" data-tag="${escapeHTML(tag)}">
+            <span class="tag-name">${escapeHTML(tag)}</span>
+            <span class="prompt-count">${promptCount} Prompt${
+          promptCount !== 1 ? "s" : ""
+        }</span>
+            <button class="delete-tag-btn" data-tag="${escapeHTML(
+              tag
+            )}" title="Tag löschen">×</button>
+          </div>
+        `;
+      })
+      .join("");
+    document.querySelectorAll(".tag-box").forEach((box) => {
+      box.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("delete-tag-btn")) {
+          const tag = box.dataset.tag;
+          showPromptModal(tag, prompts);
+        }
+      });
+    });
+    document.querySelectorAll(".delete-tag-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteTag(btn.dataset.tag);
+      });
+    });
+  });
+}
+
+function switchView(viewId, params = {}) {
+  document.querySelectorAll("main > div").forEach((div) => {
+    div.style.display = "none";
+  });
+  const selectedView = document.getElementById(viewId);
+  if (selectedView) {
+    selectedView.style.display = "block";
+  }
+  const url = new URL(window.location);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  window.history.pushState({}, "", url);
+}
 
 function initializeTags() {
   chrome.storage.local.get("tags", (data) => {
