@@ -253,11 +253,12 @@ function showCreatePromptModal(category) {
 }
 function saveNewPrompt(prompt, folderId) {
   if (!prompt.id) {
-    prompt.id = generateUUID(); // Korrigierter Tippfehler
+    prompt.id = generateUUID();
   }
   chrome.storage.local.get(null, (data) => {
     let targetFolderId = folderId;
     let folderName = prompt.folderName || "Single Prompt";
+    let isHidden = false;
 
     // Prüfe, ob ein existierender Ordner vorhanden ist
     const folderEntry = folderId
@@ -277,144 +278,38 @@ function saveNewPrompt(prompt, folderId) {
       folderName = topic.name;
       topic.prompts = topic.prompts || [];
 
-      topic.prompts.push({
+      const newPrompt = {
         ...prompt,
-        folderId: targetFolderId, // Setze folderId explizit
+        folderId: targetFolderId,
         folderName,
         compatibleModels: prompt.compatibleModels || [],
         incompatibleModels: prompt.incompatibleModels || [],
         tags: prompt.tags || [],
         metaChangeLog: prompt.metaChangeLog || [],
-      });
+      };
+
+      topic.prompts.push(newPrompt);
 
       chrome.storage.local.set({ [targetFolderId]: topic }, () => {
         if (chrome.runtime.lastError) {
           console.error("Error saving prompt:", chrome.runtime.lastError);
           alert("Fehler beim Speichern des Prompts.");
         } else {
-          // Aktualisiere die Tabelle sofort
-          const updatedPrompts = topic.prompts.map((p) => ({
-            ...p,
-            folderId: targetFolderId,
-            folderName: topic.name,
-          }));
-          const category =
-            document.querySelector(".main-header h1").textContent;
-          if (
-            category === "All Prompts" ||
-            category === topic.name ||
-            (category === "Favorites" && prompt.isFavorite) ||
-            (category === "Single Prompts" && !folderId) ||
-            (category === "Dynamic Prompts" &&
-              prompt.content &&
-              /\{[^}]+\}/.test(prompt.content)) ||
-            (category === "Static Prompts" &&
-              prompt.content &&
-              !/\{[^}]+\}/.test(prompt.content)) ||
-            (category === "Unused Prompts" && !prompt.lastUsed)
-          ) {
-            // Hole die aktuellen Prompts für die Kategorie
-            chrome.storage.local.get(null, (updatedData) => {
-              let filteredPrompts = [];
-              const isVisibleTopic = (t) =>
-                t.prompts && !t.isHidden && !t.isTrash;
-              const getPromptObjects = (t, id) =>
-                (t.prompts || []).map((p) => ({
-                  ...p,
-                  folderId: id,
-                  folderName: t.name || "N/A",
-                }));
-
-              switch (category) {
-                case "All Prompts":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isVisibleTopic(t))
-                    .flatMap(([id, t]) => getPromptObjects(t, id));
-                  break;
-                case "Favorites":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isVisibleTopic(t))
-                    .flatMap(([id, t]) =>
-                      t.prompts
-                        .filter((p) => p.isFavorite)
-                        .map((p) => ({
-                          ...p,
-                          folderId: id,
-                          folderName: t.name || "N/A",
-                        }))
-                    );
-                  break;
-                case "Single Prompts":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => t.prompts && t.isHidden && !t.isTrash)
-                    .flatMap(([id, t]) => getPromptObjects(t, id));
-                  break;
-                case "Dynamic Prompts":
-                  filteredPrompts = Object.entries(updatedData).flatMap(
-                    ([id, t]) =>
-                      (t.prompts || [])
-                        .filter((p) => p.content && /\{[^}]+\}/.test(p.content))
-                        .map((p) => ({
-                          ...p,
-                          folderId: id,
-                          folderName: t.name || "N/A",
-                        }))
-                  );
-                  break;
-                case "Static Prompts":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isVisibleTopic(t))
-                    .flatMap(([id, t]) =>
-                      t.prompts
-                        .filter(
-                          (p) => p.content && !/\{[^}]+\}/.test(p.content)
-                        )
-                        .map((p) => ({
-                          ...p,
-                          folderId: id,
-                          folderName: t.name || "N/A",
-                        }))
-                    );
-                  break;
-                case "Unused Prompts":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isVisibleTopic(t))
-                    .flatMap(([id, t]) =>
-                      t.prompts
-                        .filter((p) => !p.lastUsed)
-                        .map((p) => ({
-                          ...p,
-                          folderId: id,
-                          folderName: t.name || "N/A",
-                        }))
-                    );
-                  break;
-                default:
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(
-                      ([, t]) =>
-                        t?.name?.toLowerCase() === category.toLowerCase() &&
-                        !t.isHidden &&
-                        !t.isTrash
-                    )
-                    .flatMap(([id, t]) => getPromptObjects(t, id));
-                  break;
-              }
-              renderPrompts(filteredPrompts);
-            });
-          }
+          // Aktualisiere die Tabelle sofort im DOM, wenn passend
+          updateTable(newPrompt, targetFolderId, folderName, isHidden);
         }
       });
     } else {
       // Einzelprompt ohne Ordner
       targetFolderId = `single_prompt_${Date.now()}`;
       folderName = "Single Prompt";
+      isHidden = true;
       const newTopic = {
         name: folderName,
         prompts: [
           {
             ...prompt,
-            folderId: targetFolderId, // Setze folderId explizit
+            folderId: targetFolderId,
             folderName,
             compatibleModels: prompt.compatibleModels || [],
             incompatibleModels: prompt.incompatibleModels || [],
@@ -430,107 +325,158 @@ function saveNewPrompt(prompt, folderId) {
           console.error("Error saving prompt:", chrome.runtime.lastError);
           alert("Fehler beim Speichern des Prompts.");
         } else {
-          // Aktualisiere die Tabelle sofort
-          const category =
-            document.querySelector(".main-header h1").textContent;
-          if (
-            category === "All Prompts" ||
-            category === "Single Prompts" ||
-            (category === "Favorites" && prompt.isFavorite) ||
-            (category === "Dynamic Prompts" &&
-              prompt.content &&
-              /\{[^}]+\}/.test(prompt.content)) ||
-            (category === "Static Prompts" &&
-              prompt.content &&
-              !/\{[^}]+\}/.test(prompt.content)) ||
-            (category === "Unused Prompts" && !prompt.lastUsed)
-          ) {
-            // Hole die aktuellen Prompts für die Kategorie
-            chrome.storage.local.get(null, (updatedData) => {
-              let filteredPrompts = [];
-              const isVisibleTopic = (t) =>
-                t.prompts && !t.isHidden && !t.isTrash;
-              const isHiddenTopic = (t) =>
-                t.prompts && t.isHidden && !t.isTrash;
-              const getPromptObjects = (t, id) =>
-                (t.prompts || []).map((p) => ({
-                  ...p,
-                  folderId: id,
-                  folderName: t.name || "N/A",
-                }));
-
-              switch (category) {
-                case "All Prompts":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isVisibleTopic(t))
-                    .flatMap(([id, t]) => getPromptObjects(t, id));
-                  break;
-                case "Favorites":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isVisibleTopic(t) || isHiddenTopic(t))
-                    .flatMap(([id, t]) =>
-                      t.prompts
-                        .filter((p) => p.isFavorite)
-                        .map((p) => ({
-                          ...p,
-                          folderId: id,
-                          folderName: t.name || "N/A",
-                        }))
-                    );
-                  break;
-                case "Single Prompts":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isHiddenTopic(t))
-                    .flatMap(([id, t]) => getPromptObjects(t, id));
-                  break;
-                case "Dynamic Prompts":
-                  filteredPrompts = Object.entries(updatedData).flatMap(
-                    ([id, t]) =>
-                      (t.prompts || [])
-                        .filter((p) => p.content && /\{[^}]+\}/.test(p.content))
-                        .map((p) => ({
-                          ...p,
-                          folderId: id,
-                          folderName: t.name || "N/A",
-                        }))
-                  );
-                  break;
-                case "Static Prompts":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isVisibleTopic(t))
-                    .flatMap(([id, t]) =>
-                      t.prompts
-                        .filter(
-                          (p) => p.content && !/\{[^}]+\}/.test(p.content)
-                        )
-                        .map((p) => ({
-                          ...p,
-                          folderId: id,
-                          folderName: t.name || "N/A",
-                        }))
-                    );
-                  break;
-                case "Unused Prompts":
-                  filteredPrompts = Object.entries(updatedData)
-                    .filter(([, t]) => isVisibleTopic(t) || isHiddenTopic(t))
-                    .flatMap(([id, t]) =>
-                      t.prompts
-                        .filter((p) => !p.lastUsed)
-                        .map((p) => ({
-                          ...p,
-                          folderId: id,
-                          folderName: t.name || "N/A",
-                        }))
-                    );
-                  break;
-              }
-              renderPrompts(filteredPrompts);
-            });
-          }
+          // Aktualisiere die Tabelle sofort im DOM, wenn passend
+          updateTable(
+            newTopic.prompts[0],
+            targetFolderId,
+            folderName,
+            isHidden
+          );
         }
       });
     }
   });
+
+  function updateTable(newPrompt, targetFolderId, folderName, isHidden) {
+    const tableBody = document.querySelector(".table-container tbody");
+    const header = document.querySelector("#prompts-header");
+    const category = header ? header.dataset.category : "All Prompts"; // Fallback auf "All Prompts"
+    const isFolderPrompt =
+      !isHidden &&
+      targetFolderId &&
+      !targetFolderId.startsWith("single_prompt_");
+
+    // Prüfe, ob die Prompt in der aktuellen Kategorie angezeigt werden soll
+    const shouldDisplay =
+      category === "All Prompts" ||
+      (category === folderName && isFolderPrompt) ||
+      (category === "Favorites" && newPrompt.isFavorite) ||
+      (category === "Single Prompts" &&
+        (!targetFolderId || targetFolderId.startsWith("single_prompt_"))) ||
+      (category === "Categorised Prompts" && isFolderPrompt) ||
+      (category === "Dynamic Prompts" &&
+        newPrompt.content &&
+        /\{[^}]+\}/.test(newPrompt.content)) ||
+      (category === "Static Prompts" &&
+        newPrompt.content &&
+        !/\{[^}]+\}/.test(newPrompt.content)) ||
+      (category === "Unused Prompts" && !newPrompt.lastUsed);
+
+    if (tableBody && shouldDisplay) {
+      const row = document.createElement("tr");
+      row.dataset.index = newPrompt.id;
+      row.innerHTML = `
+        <td><input type="checkbox" id="prompt-checkbox-${
+          newPrompt.id
+        }" name="prompt-checkbox" /></td>
+        <td>${escapeHTML(newPrompt.title || "N/A")}</td>
+        <td>${escapeHTML(newPrompt.type || "N/A")}</td>
+        <td>${
+          Array.isArray(newPrompt.compatibleModels)
+            ? escapeHTML(newPrompt.compatibleModels.join(", "))
+            : escapeHTML(newPrompt.compatibleModels || "")
+        }</td>
+        <td>${
+          Array.isArray(newPrompt.incompatibleModels)
+            ? escapeHTML(newPrompt.incompatibleModels.join(", "))
+            : escapeHTML(newPrompt.incompatibleModels || "N/A")
+        }</td>
+        <td>${
+          Array.isArray(newPrompt.tags)
+            ? escapeHTML(newPrompt.tags.join(", "))
+            : escapeHTML(newPrompt.tags || "")
+        }</td>
+        <td>${escapeHTML(folderName || "")}</td>
+        <td>${
+          newPrompt.lastUsed
+            ? new Date(newPrompt.lastUsed).toLocaleDateString("de-DE")
+            : "N/A"
+        }</td>
+        <td>${
+          newPrompt.createdAt
+            ? new Date(newPrompt.createdAt).toLocaleDateString("de-DE")
+            : "N/A"
+        }</td>
+        <td>
+          <div class="prompt-actions">
+            <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
+            <div class="dropdown-menu">
+              <div class="dropdown-item" data-action="copy">Copy Prompt</div>
+              <div class="dropdown-item" data-action="rename">Rename</div>
+              <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
+              <div class="dropdown-item" data-action="share">Share</div>
+              <div class="dropdown-item" data-action="add-to-favorites">${
+                newPrompt.isFavorite
+                  ? "Remove from Favorites"
+                  : "Add to Favorites"
+              }</div>
+              <div class="dropdown-item" data-action="show-versions">Show Versions</div>
+              <div class="dropdown-item" data-action="export">Export Prompt</div>
+              <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
+            </div>
+          </div>
+        </td>
+      `;
+
+      // Füge Event-Listener für die Dropdown-Menü-Aktionen hinzu
+      const menuBtn = row.querySelector(".menu-btn");
+      const dropdown = row.querySelector(".dropdown-menu");
+      menuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        document.querySelectorAll(".dropdown-menu").forEach((menu) => {
+          if (menu !== dropdown) menu.style.display = "none";
+        });
+        dropdown.style.display =
+          dropdown.style.display === "block" ? "none" : "block";
+      });
+
+      row.querySelectorAll(".dropdown-item").forEach((item) => {
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const action = item.dataset.action;
+          if (action === "copy") {
+            copyPrompt(newPrompt, targetFolderId);
+          } else if (action === "rename") {
+            renamePrompt(newPrompt, targetFolderId, row);
+          } else if (action === "move-to-folder") {
+            moveToFolder(newPrompt, targetFolderId, row);
+          } else if (action === "share") {
+            sharePrompt(newPrompt);
+          } else if (action === "add-to-favorites") {
+            toggleFavorite(newPrompt, targetFolderId, row);
+          } else if (action === "show-versions") {
+            chrome.storage.local.get(targetFolderId, (data) => {
+              const topic = data[targetFolderId];
+              if (!topic || !topic.prompts) return;
+              const promptIndex = topic.prompts.findIndex(
+                (p) => p.id === newPrompt.id
+              );
+              if (promptIndex !== -1) {
+                showPromptVersions(targetFolderId, promptIndex, row);
+              }
+            });
+          } else if (action === "export") {
+            exportPrompt(newPrompt, targetFolderId);
+          } else if (action === "move-to-trash") {
+            moveToTrash(newPrompt, targetFolderId, row);
+          }
+          dropdown.style.display = "none";
+        });
+      });
+
+      // Füge Event-Listener für Klick auf die Zeile hinzu (Details-Sidebar)
+      row.addEventListener("click", (e) => {
+        if (!e.target.closest(".prompt-actions")) {
+          showDetailsSidebar(newPrompt, targetFolderId);
+        }
+      });
+
+      tableBody.appendChild(row);
+    }
+
+    // Aktualisiere die gesamte Tabelle für Konsistenz
+    handleCategoryClick(category);
+  }
 }
 function moveToFolder(prompt, folderId, row) {
   const modal = document.createElement("div");

@@ -669,7 +669,11 @@ function handleCategoryClick(category) {
     }
 
     renderPrompts(filteredPrompts);
-    document.querySelector(".main-header h1").textContent = category;
+    const header = document.querySelector("#prompts-header");
+    if (header) {
+      header.textContent = category; // Später für Übersetzung anpassbar
+      header.dataset.category = category; // Setze das data-category-Attribut
+    }
   });
 }
 function handleFolderClick(folder) {
