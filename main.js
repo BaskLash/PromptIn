@@ -926,6 +926,21 @@ document.addEventListener("DOMContentLoaded", () => {
     currentButton = null;
   });
 
+  // Tools Overlay
+  const toolsIcon = document.getElementById("tools-icon");
+  const toolsOverlay = document.getElementById("tools-overlay");
+  const toolsBackBtn = document.getElementById("tools-back-btn");
+
+  toolsIcon.addEventListener("click", () => {
+    toolsOverlay.classList.add("open");
+    document.getElementById("plus-btn").style.display = "none";
+  });
+
+  toolsBackBtn.addEventListener("click", () => {
+    toolsOverlay.classList.remove("open");
+    document.getElementById("plus-btn").style.display = "block";
+  });
+
   // Settings Overlay
   const settingsIcon = document.getElementById("settings-icon");
   const settingsOverlay = document.getElementById("settings-overlay");
@@ -954,6 +969,17 @@ document.addEventListener("DOMContentLoaded", () => {
       translations[currentLang]?.export_prompt ||
         "Funktion zum Exportieren von Prompts wird implementiert."
     );
+  });
+
+  /* Highlight Text Section */
+  const toggle = document.getElementById("highlight-toggle");
+
+  chrome.storage.local.get(["enabled", "savedTexts"], (result) => {
+    toggle.checked = result.enabled || false;
+  });
+
+  toggle.addEventListener("change", () => {
+    chrome.storage.local.set({ enabled: toggle.checked });
   });
 
   // Delete Data
