@@ -256,41 +256,47 @@ function inputFieldTrigger() {
               Array.isArray(topic.prompts) &&
               !topic.isTrash
             ) {
-              topic.prompts.forEach((prompt) => {
+              topic.prompts.forEach((prompt, index) => {
                 const title =
                   typeof prompt === "string"
                     ? prompt.slice(0, 50)
                     : prompt.title || "Untitled Prompt";
                 const content =
                   typeof prompt === "string" ? prompt : prompt.content || "";
-                // Store for Latest sorting
-                if (prompt.lastUsed) {
-                  allPrompts.push({
-                    title,
-                    prompt,
-                    folderId: id,
-                    lastUsed: prompt.lastUsed,
-                    folder: topic.isHidden ? null : topic.name,
-                  });
-                }
+
+                // Store for Last Used sorting, including prompts without lastUsed
+                allPrompts.push({
+                  title,
+                  prompt,
+                  folderId: id,
+                  promptIndex: index, // Speichere den Index für spätere Updates
+                  lastUsed: prompt.lastUsed || 0, // Fallback auf 0, wenn kein lastUsed existiert
+                  folder: topic.isHidden ? null : topic.name,
+                });
+
                 // Add to All Prompts
                 categories["All Prompts"].push(title);
-                promptSourceMap.set(title + "_" + id, {
+                promptSourceMap.set(title + "_" + id + "_" + index, {
+                  // Eindeutiger Schlüssel
                   category: "All Prompts",
                   folder: null,
                   prompt: prompt,
                   folderId: id,
+                  promptIndex: index,
                 });
+
                 // Add to Single Prompts if hidden
                 if (topic.isHidden) {
                   categories["Single Prompts"].push(title);
-                  promptSourceMap.set(title + "_" + id, {
+                  promptSourceMap.set(title + "_" + id + "_" + index, {
                     category: "Single Prompts",
                     folder: null,
                     prompt: prompt,
                     folderId: id,
+                    promptIndex: index,
                   });
                 }
+
                 // Add to Categorised Prompts if not hidden
                 if (!topic.isHidden) {
                   if (!categories["Categorised Prompts"][topic.name]) {
@@ -300,42 +306,59 @@ function inputFieldTrigger() {
                   categories["Categorised Prompts"].all.push(
                     `${topic.name}: ${title}`
                   );
-                  promptSourceMap.set(title + "_" + id, {
+                  promptSourceMap.set(title + "_" + id + "_" + index, {
                     category: "Categorised Prompts",
                     folder: topic.name,
                     prompt: prompt,
                     folderId: id,
+                    promptIndex: index,
                   });
                 }
+
                 // Add to Favorites if isFavorite is true
                 if (prompt.isFavorite) {
                   categories["Favorites"].push(title);
-                  promptSourceMap.set(title + "_" + id, {
+                  promptSourceMap.set(title + "_" + id + "_" + index, {
                     category: "Favorites",
                     folder: topic.isHidden ? null : topic.name,
                     prompt: prompt,
                     folderId: id,
+                    promptIndex: index,
                   });
                 }
               });
             }
           });
-          // Sort and populate Latest category (up to 10 prompts)
-          allPrompts.sort((a, b) => b.lastUsed - a.lastUsed);
+
+          // Sort and populate Last Used category (up to 10 prompts)
+          allPrompts.sort((a, b) => b.lastUsed - a.lastUsed); // Sort descending by lastUsed timestamp
+          categories["Last Used"] = [];
+          promptSourceMap.forEach((source, key) => {
+            if (source.category === "Last Used") {
+              promptSourceMap.delete(key); // Clear previous Last Used mappings
+            }
+          });
           allPrompts
             .slice(0, 10)
-            .forEach(({ title, prompt, folderId, folder }) => {
+            .forEach(({ title, prompt, folderId, promptIndex, folder }) => {
+              const key = title + "_" + folderId + "_" + promptIndex;
+              if (!promptSourceMap.has(key)) {
+                console.warn(`Duplicate or missing prompt key: ${key}`);
+                return;
+              }
               categories["Last Used"].push(title);
-              promptSourceMap.set(title + "_" + folderId, {
+              promptSourceMap.set(key, {
                 category: "Last Used",
                 folder,
                 prompt,
                 folderId,
+                promptIndex,
               });
             });
 
+          // Sort other categories alphabetically
           Object.keys(categories).forEach((key) => {
-            if (Array.isArray(categories[key])) {
+            if (Array.isArray(categories[key]) && key !== "Last Used") {
               categories[key] = [...new Set(categories[key])].sort();
             } else if (key === "Categorised Prompts") {
               categories[key].all = [...new Set(categories[key].all)].sort();
@@ -417,6 +440,25 @@ function inputFieldTrigger() {
           message.style.color = "#888";
           contentPanel.appendChild(message);
         } else {
+          // Für Last Used: Sortiere explizit nach lastUsed
+          if (categoryOrFolder === "Last Used") {
+            const sortedItems = items
+              .map((itemText) => {
+                const key = Array.from(promptSourceMap.keys()).find((k) =>
+                  k.startsWith(itemText + "_")
+                );
+                const source = promptSourceMap.get(key);
+                return { itemText, source };
+              })
+              .sort((a, b) => {
+                const lastUsedA = a.source.prompt.lastUsed || 0;
+                const lastUsedB = b.source.prompt.lastUsed || 0;
+                return lastUsedB - lastUsedA; // Absteigend sortieren
+              })
+              .map(({ itemText }) => itemText);
+            items = sortedItems;
+          }
+
           items.forEach((itemText) => {
             const contentItem = document.createElement("div");
             const title = itemText.includes(": ")
@@ -490,12 +532,8 @@ function inputFieldTrigger() {
               clearFocus();
 
               // Aktualisiere lastUsed
-              const promptIndex = await findPromptIndex(
-                source.folderId,
-                source.prompt
-              );
-              if (promptIndex !== -1) {
-                updatePromptLastUsed(source.folderId, promptIndex);
+              if (source.promptIndex !== undefined) {
+                updatePromptLastUsed(source.folderId, source.promptIndex);
               } else {
                 console.error(
                   "Prompt index not found for folder:",
@@ -1655,7 +1693,12 @@ function updatePromptLastUsed(folderId, promptIndex) {
       return;
     }
     const topic = data[folderId];
-    if (!topic || !topic.prompts[promptIndex]) return;
+    if (!topic || !topic.prompts[promptIndex]) {
+      console.error(
+        `No prompt found at index ${promptIndex} in folder ${folderId}`
+      );
+      return;
+    }
 
     topic.prompts[promptIndex].lastUsed = Date.now();
     topic.prompts[promptIndex].usageCount =
@@ -1668,6 +1711,14 @@ function updatePromptLastUsed(folderId, promptIndex) {
         console.log(
           `lastUsed and usageCount updated for prompt in ${folderId}`
         );
+        updateDropdownData(() => {
+          if (dropdown.style.display === "flex") {
+            renderCategoryNavigation();
+            if (selectedCategoryOrFolder) {
+              renderContentPanel(selectedCategoryOrFolder);
+            }
+          }
+        });
       }
     });
   });
@@ -1695,6 +1746,9 @@ function findPromptIndex(folderId, prompt) {
             p.title === prompt.title &&
             p.content === prompt.content)
       );
+      if (index === -1) {
+        console.warn(`Prompt not found in folder ${folderId}:`, prompt);
+      }
       resolve(index);
     });
   });
