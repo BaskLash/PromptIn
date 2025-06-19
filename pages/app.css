@@ -517,3 +517,24 @@ table thead {
 .history-item {
   margin-bottom: 10px;
 }
+.storage-bar {
+  width: 100%;
+  background: #eee;
+  height: 25px;
+  border-radius: 5px;
+  position: relative;
+}
+
+.used-bar {
+  background: #4caf50;
+  height: 100%;
+}
+
+.percentage-text {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  color: black;
+  font-weight: bold;
+}

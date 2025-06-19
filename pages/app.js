@@ -13,6 +13,9 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "analytics") {
     switchView("analytics-view", { view: "analytics" });
     initializeAnalytics();
+  } else if (view === "storage") {
+    switchView("storage-view", { view: "storage" });
+    initializeStorage();
   } else {
     switchView("prompts-view", { view: "prompts", category: "All Prompts" });
     document.getElementById("prompts-header").textContent = "All Prompts";
@@ -201,6 +204,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (view === "analytics") {
         switchView("analytics-view", { view: "analytics" });
         initializeAnalytics();
+      } else if (view === "storage") {
+        switchView("storage-view", { view: "storage" });
+        initializeStorage();
       } else if (folder) {
         switchView("prompts-view", { view: "prompts", category: folder });
         document.getElementById("prompts-header").textContent =

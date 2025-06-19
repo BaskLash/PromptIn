@@ -14,6 +14,7 @@
     <script src="export.js" defer></script>
     <script src="chart.umd.min.js" defer></script>
     <script src="statistics.js" defer></script>
+    <script src="storage.js" defer></script>
     <script src="app.js" defer></script>
     <title>Dashboard Layout</title>
   </head>
@@ -84,6 +85,7 @@
             <ul class="accordion-content">
               <li data-view="tags">Tag Overview</li>
               <li data-view="analytics">Prompt Analytics</li>
+              <li data-view="storage">Storage</li>
             </ul>
           </section>
         </nav>
@@ -136,6 +138,13 @@
             <h1>Prompt Analytics</h1>
           </div>
           <div id="analytics-container"></div>
+        </div>
+        <!-- Storage Bereich -->
+        <div id="storage-view" style="display: none">
+          <div class="main-header">
+            <h1>Storage</h1>
+          </div>
+          <div id="storage-container"></div>
         </div>
         <div id="promptModal" class="modal" style="display: none">
           <div class="modal-content">

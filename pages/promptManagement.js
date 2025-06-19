@@ -220,6 +220,7 @@ function showCreatePromptModal(category) {
         folderName,
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        usageCount: 0,
         lastUsed: null,
         versions: [
           {
@@ -231,6 +232,7 @@ function showCreatePromptModal(category) {
           },
         ],
         metaChangeLog: [],
+        performanceHistory: [], // Neues Feld für Leistungsmetriken
       };
 
       saveNewPrompt(newPrompt, folderId);

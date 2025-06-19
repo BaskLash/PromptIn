@@ -8,6 +8,7 @@ function initializeAnalytics() {
           ...prompt,
           folderId: key,
           folderName: topic.name || "Single Prompt",
+          performanceHistory: prompt.performanceHistory || [], // Neues Feld
         }))
       );
     console.log("Geladene Prompts:", prompts);
@@ -57,6 +58,18 @@ function renderAnalytics(prompts) {
   const tagUsage = calculateTagUsage(prompts);
   const tagSection = createTagSection(tagUsage);
   container.appendChild(tagSection);
+
+  // Änderungshäufigkeit der Top-5-Prompts
+  const changeFrequency = calculateChangeFrequency(prompts);
+  container.appendChild(createChangeFrequencySection(changeFrequency));
+
+  // // Performance trends
+  // const perfTrends = calculatePerformanceTrends(prompts);
+  // container.appendChild(createPerformanceSection(perfTrends));
+
+  // // Predictions / suggestions
+  // const suggestionSection = createSuggestionSection(prompts);
+  // container.appendChild(suggestionSection);
 
   // Append new container to analytics-container
   analyticsContainer.appendChild(container);
@@ -144,7 +157,8 @@ function calculateTopPromptsUsageOverTime(prompts) {
     if (prompt.usageHistory && Array.isArray(prompt.usageHistory)) {
       prompt.usageHistory.forEach((usage) => {
         const date = new Date(usage.timestamp).toISOString().split("T")[0];
-        usageOverTime[promptKey][date] = (usageOverTime[promptKey][date] || 0) + 1;
+        usageOverTime[promptKey][date] =
+          (usageOverTime[promptKey][date] || 0) + 1;
         allDates.add(date);
       });
     } else if (prompt.lastUsed && prompt.usageCount) {
@@ -156,7 +170,11 @@ function calculateTopPromptsUsageOverTime(prompts) {
 
   // Sortiere die Daten für die Darstellung
   const sortedDates = Array.from(allDates).sort();
-  return { usageOverTime, dates: sortedDates, prompts: sortedPrompts.map(p => p.title) };
+  return {
+    usageOverTime,
+    dates: sortedDates,
+    prompts: sortedPrompts.map((p) => p.title),
+  };
 }
 
 // Neue Funktion zur Erstellung des Punktediagramms für Top-5-Prompts
@@ -180,7 +198,9 @@ function createTopPromptsUsageSection(topPromptsUsage) {
   const colors = ["#4e73df", "#1cc88a", "#36b9cc", "#f6c23e", "#e74a3b"];
   const datasets = topPromptsUsage.prompts.map((prompt, index) => ({
     label: prompt,
-    data: topPromptsUsage.dates.map((date) => topPromptsUsage.usageOverTime[prompt][date] || 0),
+    data: topPromptsUsage.dates.map(
+      (date) => topPromptsUsage.usageOverTime[prompt][date] || 0
+    ),
     borderColor: colors[index % colors.length],
     backgroundColor: colors[index % colors.length],
     fill: false,
@@ -517,6 +537,282 @@ function createTagSection(tagUsage) {
 
   const canvas = section.querySelector("#tagChart");
   new Chart(canvas, chartConfig);
+
+  return section;
+}
+// Analyze performance over time
+function calculatePerformanceTrends(prompts) {
+  const trends = {};
+  prompts.forEach((p) => {
+    if (Array.isArray(p.performanceHistory)) {
+      trends[p.title] = p.performanceHistory
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .map((h) => ({
+          date: new Date(h.timestamp).toISOString().split("T")[0],
+          score: h.metrics.score,
+          tokens: h.metrics.tokens,
+        }));
+    }
+  });
+  return trends;
+}
+
+// Predict next step based on historical trends
+function predictNextStep(prompt) {
+  const hist = prompt.performanceHistory || [];
+  if (!hist.length) return null;
+  const last = hist[hist.length - 1].metrics;
+  if (last.score < 0.6) return "Add chain-of-thought or constraints";
+  if (last.tokens > 1000) return "Consider reducing prompt or token usage";
+  return "Try few-shot examples or adjust temperature";
+}
+function createPerformanceSection(trends) {
+  const section = document.createElement("div");
+  section.className = "analytics-section";
+  section.innerHTML = `<h2>Leistungsentwicklung</h2>`;
+  Object.entries(trends).forEach(([title, data]) => {
+    section.innerHTML += `<h3>${escapeHTML(title)}</h3>
+      <p>Letzter Score: ${data[data.length - 1]?.score || "N/A"}</p>
+      <div class="chart-container" style="height: 300px;">
+        <canvas id="perfChart-${title.replace(
+          /\s+/g,
+          "-"
+        )}" style="max-height: 300px;"></canvas>
+      </div>`;
+
+    if (data.length > 0) {
+      const ctx = section.querySelector(
+        `#perfChart-${title.replace(/\s+/g, "-")}`
+      );
+      if (ctx) {
+        const chart = {
+          type: "line",
+          data: {
+            labels: data.map((d) => d.date),
+            datasets: [
+              {
+                label: "Score",
+                data: data.map((d) => d.score),
+                borderColor: "#ff9900",
+                backgroundColor: "rgba(255, 153, 0, 0.2)",
+                fill: true,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 1,
+                title: { display: true, text: "Score" },
+              },
+              x: { title: { display: true, text: "Datum" } },
+            },
+          },
+        };
+        new Chart(ctx, chart);
+      }
+    }
+  });
+  return section;
+}
+
+function createSuggestionSection(prompts) {
+  const section = document.createElement("div");
+  section.className = "analytics-section";
+  section.innerHTML = `<h2>Empfohlene nächste Schritte</h2>`;
+  prompts.forEach((p) => {
+    const next = predictNextStep(p);
+    if (next) {
+      section.innerHTML += `<p><strong>${escapeHTML(
+        p.title
+      )}:</strong> ${escapeHTML(next)}</p>`;
+    }
+  });
+  return section;
+}
+function logPromptPerformance(promptId, folderId, metrics) {
+  chrome.storage.local.get([folderId], (data) => {
+    const topic = data[folderId];
+    if (!topic || !topic.prompts) {
+      console.error(`Folder ${folderId} not found or has no prompts`);
+      return;
+    }
+
+    // Finde den Prompt
+    const promptIndex = topic.prompts.findIndex((p) => p.title === promptId);
+    if (promptIndex === -1) {
+      console.error(`Prompt ${promptId} not found in folder ${folderId}`);
+      return;
+    }
+
+    // Aktualisiere performanceHistory
+    const prompt = topic.prompts[promptIndex];
+    if (!prompt.performanceHistory) {
+      prompt.performanceHistory = [];
+    }
+
+    // Füge neue Metriken hinzu
+    prompt.performanceHistory = [
+      ...prompt.performanceHistory,
+      {
+        timestamp: Date.now(),
+        metrics: {
+          score: metrics.score || 0, // z. B. Qualitätsbewertung (0–1)
+          tokens: metrics.tokens || 0, // Token-Anzahl
+          latency: metrics.latency || 0, // Antwortzeit in ms
+        },
+      },
+    ];
+
+    // Aktualisiere usageCount und lastUsed
+    prompt.usageCount = (prompt.usageCount || 0) + 1;
+    prompt.lastUsed = Date.now();
+
+    // Speichere die aktualisierten Daten
+    topic.prompts[promptIndex] = prompt;
+    chrome.storage.local.set({ [folderId]: topic }, () => {
+      console.log(`Performance metrics for prompt ${promptId} saved`);
+      // Optional: Analytics neu rendern
+      initializeAnalytics();
+    });
+  });
+}
+function calculateChangeFrequency(prompts) {
+  // Aggregiere Änderungen pro Prompt
+  const changeCounts = {};
+  prompts.forEach((prompt) => {
+    if (prompt.metaChangeLog && Array.isArray(prompt.metaChangeLog)) {
+      changeCounts[prompt.title] = prompt.metaChangeLog.length;
+    }
+  });
+
+  // Wähle die Top-5-Prompts basierend auf Änderungsanzahl
+  const sortedPrompts = Object.entries(changeCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([title]) => title);
+
+  const changeOverTime = {};
+  const allDates = new Set();
+
+  // Aggregiere Änderungen nach Datum für Top-5-Prompts
+  prompts
+    .filter((prompt) => sortedPrompts.includes(prompt.title))
+    .forEach((prompt) => {
+      const promptKey = prompt.title;
+      changeOverTime[promptKey] = {};
+
+      if (prompt.metaChangeLog && Array.isArray(prompt.metaChangeLog)) {
+        prompt.metaChangeLog.forEach((change) => {
+          const date = new Date(change.timestamp).toISOString().split("T")[0];
+          changeOverTime[promptKey][date] =
+            (changeOverTime[promptKey][date] || 0) + 1;
+          allDates.add(date);
+        });
+      }
+    });
+
+  const sortedDates = Array.from(allDates).sort();
+  return {
+    changeOverTime,
+    dates: sortedDates,
+    prompts: sortedPrompts,
+  };
+}
+function createChangeFrequencySection(changeFrequency) {
+  const section = document.createElement("div");
+  section.className = "analytics-section";
+  section.innerHTML = `
+    <h2>Änderungshäufigkeit der Top-5-Prompts</h2>
+    <div class="chart-container" style="height: 300px;">
+      <canvas id="changeFrequencyChart"></canvas>
+    </div>
+  `;
+
+  if (!changeFrequency.dates.length || !changeFrequency.prompts.length) {
+    section.innerHTML = `<h2>Änderungshäufigkeit der Top-5-Prompts</h2><p>Keine Änderungsdaten verfügbar.</p>`;
+    console.warn("Keine Daten für Änderungshäufigkeits-Chart verfügbar.");
+    return section;
+  }
+
+  const colors = ["#4e73df", "#1cc88a", "#36b9cc", "#f6c23e", "#e74a3b"];
+  const datasets = changeFrequency.prompts.map((prompt, index) => ({
+    label: prompt,
+    data: changeFrequency.dates.map(
+      (date) => changeFrequency.changeOverTime[prompt][date] || 0
+    ),
+    borderColor: colors[index % colors.length],
+    backgroundColor: colors[index % colors.length],
+    fill: false,
+    tension: 0.4,
+    pointRadius: 5,
+    pointHoverRadius: 8,
+  }));
+
+  const chartConfig = {
+    type: "line",
+    data: {
+      labels: changeFrequency.dates,
+      datasets: datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: "category",
+          labels: changeFrequency.dates,
+          title: {
+            display: true,
+            text: "Datum",
+          },
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Anzahl Änderungen",
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: true,
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              return `${context.dataset.label}: ${context.raw} Änderungen am ${context.label}`;
+            },
+          },
+        },
+      },
+    },
+  };
+
+  try {
+    const canvas = section.querySelector("#changeFrequencyChart");
+    if (!canvas) {
+      console.error("Canvas-Element für changeFrequencyChart nicht gefunden.");
+      section.innerHTML = `<h2>Änderungshäufigkeit der Top-5-Prompts</h2><p>Fehler: Diagramm konnte nicht erstellt werden.</p>`;
+      return section;
+    }
+    if (typeof Chart === "undefined") {
+      console.error("Chart.js ist nicht geladen.");
+      section.innerHTML = `<h2>Änderungshäufigkeit der Top-5-Prompts</h2><p>Fehler: Chart.js ist nicht verfügbar.</p>`;
+      return section;
+    }
+    new Chart(canvas, chartConfig);
+  } catch (error) {
+    console.error(
+      "Fehler beim Initialisieren des Änderungshäufigkeits-Charts:",
+      error
+    );
+    section.innerHTML = `<h2>Änderungshäufigkeit der Top-5-Prompts</h2><p>Fehler beim Rendern des Diagramms: ${error.message}</p>`;
+  }
 
   return section;
 }
