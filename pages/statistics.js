@@ -1,4 +1,3 @@
-// statistics.js
 function initializeAnalytics() {
   console.log("Analytics wird initialisiert");
   chrome.storage.local.get(null, (data) => {
@@ -17,8 +16,14 @@ function initializeAnalytics() {
 }
 
 function renderAnalytics(prompts) {
-  const analyticsView = document.getElementById("analytics-view");
-  // Clear existing content in analytics-view
+  const analyticsContainer = document.getElementById("analytics-container");
+  if (!analyticsContainer) {
+    console.error("Analytics container not found");
+    return;
+  }
+
+  // Clear existing content in analytics-container
+  analyticsContainer.innerHTML = ""; // Nur den analytics-container leeren
   const container = document.createElement("div");
   container.className = "analytics-container";
   container.style.padding = "20px";
@@ -43,9 +48,8 @@ function renderAnalytics(prompts) {
   const tagSection = createTagSection(tagUsage);
   container.appendChild(tagSection);
 
-  // Clear existing content and append new container
-  analyticsView.innerHTML = ""; // Clear previous content
-  analyticsView.appendChild(container);
+  // Append new container to analytics-container
+  analyticsContainer.appendChild(container);
   console.log("Berechnete Daten für Nutzung:", calculateUsageByTime(prompts));
   console.log("Berechnete Daten für Modelle:", calculateUsageByModel(prompts));
   console.log("Berechnete Daten für Tags:", calculateTagUsage(prompts));
