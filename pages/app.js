@@ -10,6 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "tags") {
     switchView("tags-view", { view: "tags" });
     loadTags();
+  } else if (view === "analytics") {
+    switchView("analytics-view", { view: "analytics" });
+    initializeAnalytics();
   } else {
     switchView("prompts-view", { view: "prompts", category: "All Prompts" });
     document.getElementById("prompts-header").textContent = "All Prompts";
@@ -195,10 +198,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (view === "tags") {
         switchView("tags-view", { view: "tags" });
         loadTags();
+      } else if (view === "analytics") {
+        switchView("analytics-view", { view: "analytics" });
+        initializeAnalytics();
       } else if (folder) {
         switchView("prompts-view", { view: "prompts", category: folder });
         document.getElementById("prompts-header").textContent =
-          item.textContent.trim(); // Text für Anzeige beibehalten
+          item.textContent.trim();
         handleCategoryClick(folder);
       }
     });

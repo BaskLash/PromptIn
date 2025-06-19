@@ -706,6 +706,17 @@ function copyPrompt(prompt, folderId) {
     .writeText(textToCopy)
     .then(() => {
       alert("Prompt copied to clipboard!");
+      // Update lastUsed
+      chrome.storage.local.get(folderId, (data) => {
+        const topic = data[folderId];
+        if (!topic || !topic.prompts) return;
+        const promptIndex = topic.prompts.findIndex(
+          (p) => p.title === prompt.title && p.content === prompt.content
+        );
+        if (promptIndex === -1) return;
+        topic.prompts[promptIndex].lastUsed = Date.now();
+        chrome.storage.local.set({ [folderId]: topic });
+      });
     })
     .catch((err) => {
       console.error("Failed to copy prompt:", err);

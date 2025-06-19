@@ -12,6 +12,8 @@
     <script src="ui.js" defer></script>
     <script src="versioning.js" defer></script>
     <script src="export.js" defer></script>
+    <script src="chart.umd.min.js" defer></script>
+    <script src="statistics.js" defer></script>
     <script src="app.js" defer></script>
     <title>Dashboard Layout</title>
   </head>
@@ -81,6 +83,7 @@
             <h4 class="accordion-header">Tools</h4>
             <ul class="accordion-content">
               <li data-view="tags">Tag Overview</li>
+              <li data-view="analytics">Prompt Analytics</li>
             </ul>
           </section>
         </nav>
@@ -126,6 +129,13 @@
             <button id="addTagBtn">+ Add Tag</button>
           </div>
           <div class="tag-container" id="tag-container"></div>
+        </div>
+        <!-- Analitics Bereich -->
+        <div id="analytics-view" style="display: none">
+          <div class="main-header">
+            <h1>Prompt Analytics</h1>
+          </div>
+          <div id="analytics-container"></div>
         </div>
         <div id="promptModal" class="modal" style="display: none">
           <div class="modal-content">

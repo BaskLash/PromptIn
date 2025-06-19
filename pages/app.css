@@ -494,3 +494,26 @@ table thead {
   font-size: 24px;
   cursor: pointer;
 }
+.analytics-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.analytics-section {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+.history-list {
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 4px;
+}
+.history-item {
+  margin-bottom: 10px;
+}
