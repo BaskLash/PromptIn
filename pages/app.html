@@ -96,8 +96,242 @@
         <div id="prompts-view" style="display: none">
           <div class="main-header">
             <h1 id="prompts-header" data-category="All Prompts">All Prompts</h1>
-            <!-- Dynamisch mit der Kategorie gefüllt -->
+            <button id="toggleFilterBtn" title="Filter ein-/ausblenden">
+              🔍 Filter
+            </button>
             <button id="addItemBtn">+ Add Item</button>
+          </div>
+          <div class="filter-container" id="filter-container">
+            <div class="filter-group">
+              <h3>Compatible Models</h3>
+              <div id="compatible-models-filter" class="checkbox-group">
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Grok"
+                  />
+                  Grok</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Gemini"
+                  />
+                  Gemini</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="ChatGPT"
+                  />
+                  ChatGPT</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Claude"
+                  />
+                  Claude</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="BlackBox"
+                  />
+                  BlackBox</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="GitHub Copilot"
+                  />
+                  GitHub Copilot</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Microsoft Copilot"
+                  />
+                  Microsoft Copilot</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Mistral"
+                  />
+                  Mistral</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="DuckDuckGo"
+                  />
+                  DuckDuckGo</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Perplexity"
+                  />
+                  Perplexity</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="DeepSeek"
+                  />
+                  DeepSeek</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Deepai"
+                  />
+                  Deepai</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Qwen AI"
+                  />
+                  Qwen AI</label
+                >
+              </div>
+            </div>
+            <div class="filter-group">
+              <h3>Incompatible Models</h3>
+              <div id="incompatible-models-filter" class="checkbox-group">
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Grok"
+                  />
+                  Grok</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Gemini"
+                  />
+                  Gemini</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="ChatGPT"
+                  />
+                  ChatGPT</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Claude"
+                  />
+                  Claude</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="BlackBox"
+                  />
+                  BlackBox</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="GitHub Copilot"
+                  />
+                  GitHub Copilot</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Microsoft Copilot"
+                  />
+                  Microsoft Copilot</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Mistral"
+                  />
+                  Mistral</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="DuckDuckGo"
+                  />
+                  DuckDuckGo</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Perplexity"
+                  />
+                  Perplexity</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="DeepSeek"
+                  />
+                  DeepSeek</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Deepai"
+                  />
+                  Deepai</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Qwen AI"
+                  />
+                  Qwen AI</label
+                >
+              </div>
+            </div>
+            <div class="filter-group">
+              <h3>Tags</h3>
+              <div id="tags-filter" class="checkbox-group"></div>
+            </div>
+            <div class="filter-group">
+              <h3>Category Filter</h3>
+              <select id="category-filter">
+                <option value="all">All</option>
+                <option value="recentlyUsed">Recently Used</option>
+                <option value="rarelyUsed">Rarely Used</option>
+              </select>
+            </div>
           </div>
           <div class="table-container">
             <table>
