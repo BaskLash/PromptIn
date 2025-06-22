@@ -64,6 +64,23 @@ function showCreateWorkflowModal() {
     isDynamic: true,
     useCustomPrompt: false,
     customPrompt: "",
+    parameters: {},
+  };
+
+  const updateRemoveButtons = () => {
+    const removeButtons = stepsContainer.querySelectorAll(".remove-step");
+    removeButtons.forEach((btn, idx) => {
+      btn.disabled = steps.length === 1;
+      btn.style.opacity = steps.length === 1 ? "0.5" : "1";
+      btn.style.cursor = steps.length === 1 ? "not-allowed" : "pointer";
+    });
+  };
+
+  // Function to maintain scroll position
+  const maintainScrollPosition = (callback) => {
+    const scrollPosition = modalBody.scrollTop;
+    callback();
+    modalBody.scrollTop = scrollPosition;
   };
 
   const addStep = (stepData = {}, index) => {
@@ -78,7 +95,11 @@ function showCreateWorkflowModal() {
     const isDynamic = stepData.isDynamic ?? lastStepConfig.isDynamic;
     const useCustomPrompt =
       stepData.useCustomPrompt ?? lastStepConfig.useCustomPrompt;
-    const customPrompt = stepData.customPrompt ?? lastStepConfig.customPrompt;
+    // Do not inherit customPrompt for new steps, use empty string if useCustomPrompt is true
+    const customPrompt = useCustomPrompt
+      ? stepData.customPrompt ?? ""
+      : lastStepConfig.customPrompt;
+    const parameters = stepData.parameters ?? lastStepConfig.parameters;
 
     stepDiv.innerHTML = `
       <style>
@@ -177,7 +198,7 @@ function showCreateWorkflowModal() {
       <textarea class="step-params" style="display: ${
         isDynamic && !useCustomPrompt ? "block" : "none"
       }" placeholder='{"key": "value"}'>${JSON.stringify(
-      stepData.parameters || {},
+      parameters,
       null,
       2
     )}</textarea>
@@ -234,6 +255,12 @@ function showCreateWorkflowModal() {
             });
           }
         });
+
+        // Trigger prompt selection to initialize parameters
+        if (stepData.promptId && type === "dynamic" && !useCustomPrompt) {
+          promptSelect.value = stepData.promptId;
+          promptSelect.dispatchEvent(new Event("change"));
+        }
       });
     };
 
@@ -241,26 +268,29 @@ function showCreateWorkflowModal() {
 
     radioButtons.forEach((radio) => {
       radio.addEventListener("change", () => {
-        const selectedType = radio.value;
-        const isCustom = selectedType === "custom";
-        const dynamic = selectedType === "dynamic";
-        promptSelect.style.display = isCustom ? "none" : "block";
-        promptLabel.style.display = isCustom ? "none" : "block";
-        customPromptTextarea.style.display = isCustom ? "block" : "none";
-        customPromptLabel.style.display = isCustom ? "block" : "none";
-        paramsLabel.style.display = dynamic && !isCustom ? "block" : "none";
-        paramsTextarea.style.display = dynamic && !isCustom ? "block" : "none";
-        if (!dynamic && !isCustom) {
-          paramsTextarea.value = JSON.stringify({}, null, 2);
-        }
-        if (!isCustom) {
-          loadPrompts(selectedType);
-        }
-        lastStepConfig.isDynamic = dynamic;
-        lastStepConfig.useCustomPrompt = isCustom;
-        if (isCustom) {
-          paramsTextarea.value = JSON.stringify({}, null, 2);
-        }
+        maintainScrollPosition(() => {
+          const selectedType = radio.value;
+          const isCustom = selectedType === "custom";
+          const dynamic = selectedType === "dynamic";
+          promptSelect.style.display = isCustom ? "none" : "block";
+          promptLabel.style.display = isCustom ? "none" : "block";
+          customPromptTextarea.style.display = isCustom ? "block" : "none";
+          customPromptLabel.style.display = isCustom ? "block" : "none";
+          paramsLabel.style.display = dynamic && !isCustom ? "block" : "none";
+          paramsTextarea.style.display =
+            dynamic && !isCustom ? "block" : "none";
+          if (!dynamic && !isCustom) {
+            paramsTextarea.value = JSON.stringify({}, null, 2);
+          }
+          if (!isCustom) {
+            loadPrompts(selectedType);
+          }
+          lastStepConfig.isDynamic = dynamic;
+          lastStepConfig.useCustomPrompt = isCustom;
+          if (isCustom) {
+            paramsTextarea.value = JSON.stringify({}, null, 2);
+          }
+        });
       });
     });
 
@@ -286,11 +316,15 @@ function showCreateWorkflowModal() {
 
         if (selectedPromptContent) {
           const placeholders = [
-            ...selectedPromptContent.matchAll(/\{[^}]+\}/g),
+            ...selectedPromptContent.matchAll(/\{([^}]+)\}/g),
           ].map((m) => m[1]);
           const params = {};
           placeholders.forEach((key) => (params[key] = ""));
           paramsTextarea.value = JSON.stringify(params, null, 2);
+          lastStepConfig.parameters = params;
+        } else {
+          paramsTextarea.value = JSON.stringify({}, null, 2);
+          lastStepConfig.parameters = {};
         }
       });
     });
@@ -312,6 +346,7 @@ function showCreateWorkflowModal() {
     });
 
     stepDiv.querySelector(".remove-step").addEventListener("click", () => {
+      if (steps.length <= 1) return; // Prevent removal if only one step
       stepsContainer.removeChild(stepLabel);
       stepsContainer.removeChild(stepDiv);
       steps.splice(index, 1);
@@ -322,6 +357,7 @@ function showCreateWorkflowModal() {
           child.dataset.stepIndex = Math.floor(idx / 2);
         }
       });
+      updateRemoveButtons();
     });
 
     stepsContainer.appendChild(stepDiv);
@@ -331,9 +367,11 @@ function showCreateWorkflowModal() {
       isDynamic,
       useCustomPrompt,
       customPrompt,
+      parameters,
       aiModel: aiModelSelect.value,
       openInNewTab: newTabCheckbox.checked,
     };
+    updateRemoveButtons();
   };
 
   addStep({}, 0);
@@ -356,11 +394,22 @@ function showCreateWorkflowModal() {
         lastStepDiv.querySelector(
           `input[name="prompt-type-${lastStepIndex}"]:checked`
         )?.value === "custom";
-      lastStepConfig.customPrompt = lastStepDiv.querySelector(
-        ".step-custom-prompt-text"
-      ).value;
+      // Clear customPrompt in lastStepConfig for new steps if useCustomPrompt is true
+      lastStepConfig.customPrompt = lastStepConfig.useCustomPrompt
+        ? ""
+        : lastStepDiv.querySelector(".step-custom-prompt-text").value;
+      lastStepConfig.parameters = JSON.parse(
+        lastStepDiv.querySelector(".step-params").value.trim() || "{}"
+      );
     }
     addStep({}, steps.length);
+    // Scroll to the new step
+    const newStepLabel = stepsContainer.querySelector(
+      `h2:nth-child(${steps.length * 2 - 1})`
+    );
+    if (newStepLabel) {
+      newStepLabel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   });
 
   form.addEventListener("submit", (e) => {
@@ -441,6 +490,7 @@ function showCreateWorkflowModal() {
       isDynamic: true,
       useCustomPrompt: false,
       customPrompt: "",
+      parameters: {},
     };
   };
 
@@ -452,7 +502,6 @@ function showCreateWorkflowModal() {
   window.onclick = (e) => {
     if (e.target === modal) {
       resetConfig();
-      modal.remove();
     }
   };
 }
