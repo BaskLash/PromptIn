@@ -43,12 +43,6 @@ function showCreateWorkflowModal() {
   form.innerHTML = `
     <label>Name:</label>
     <input type="text" id="workflow-name" placeholder="Workflow name" required>
-    <label>AI Model:</label>
-    <select id="workflow-ai-model" required>
-      <option value="" disabled selected>Choose a model</option>
-      ${aiModelOptions}
-    </select>
-    <label>Steps:</label>
     <div id="workflow-steps"></div>
     <button type="button" class="action-btn" id="add-step-btn">Add Step</button>
     <button type="submit" class="action-btn">Create Workflow</button>
@@ -64,35 +58,124 @@ function showCreateWorkflowModal() {
 
   const stepsContainer = form.querySelector("#workflow-steps");
   let steps = [];
+  let lastStepConfig = {
+    aiModel: "",
+    openInNewTab: false,
+    isDynamic: true,
+    useCustomPrompt: false,
+    customPrompt: "",
+  };
 
   const addStep = (stepData = {}, index) => {
     const stepDiv = document.createElement("div");
     stepDiv.className = "step-item";
     stepDiv.dataset.stepIndex = index;
 
-    const isDynamic = stepData.isDynamic !== false;
+    const stepLabel = document.createElement("h2");
+    stepLabel.textContent = `Step ${index + 1}:`;
+    stepsContainer.appendChild(stepLabel);
+
+    const isDynamic = stepData.isDynamic ?? lastStepConfig.isDynamic;
+    const useCustomPrompt =
+      stepData.useCustomPrompt ?? lastStepConfig.useCustomPrompt;
+    const customPrompt = stepData.customPrompt ?? lastStepConfig.customPrompt;
 
     stepDiv.innerHTML = `
+      <style>
+        .prompt-type-container {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+        }
+        .prompt-type {
+          display: flex;
+          gap: 15px;
+          align-items: center;
+        }
+        .custom-prompt-container {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+        }
+        .radio-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 5px 10px;
+        }
+        .radio-group label {
+          margin-left: 5px;
+          font-size: 14px;
+          white-space: nowrap;
+        }
+        .checkbox-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 5px 10px;
+        }
+      </style>
       <label>Step Title</label>
       <input type="text" class="step-title" value="${
         stepData.title || ""
       }" placeholder="Enter step title">
-      <label>Prompt Type</label>
-      <div class="prompt-type">
-        <label><input type="radio" name="prompt-type-${index}" value="static" ${
-      !isDynamic ? "checked" : ""
-    }> Static</label>
-        <label><input type="radio" name="prompt-type-${index}" value="dynamic" ${
-      isDynamic ? "checked" : ""
-    }> Dynamic</label>
+      <label>AI Model</label>
+      <select class="step-ai-model" required>
+        <option value="" disabled ${
+          !stepData.aiModel ? "selected" : ""
+        }>Choose a model</option>
+        ${aiModelOptions}
+      </select>
+      <label for="new-tab-${index}">Open in New Tab</label>
+      <div class="checkbox-group">
+        <input type="checkbox" id="new-tab-${index}" class="step-new-tab" ${
+      stepData.openInNewTab ?? lastStepConfig.openInNewTab ? "checked" : ""
+    }>
+        <label for="new-tab-${index}">Open AI in new tab</label>
       </div>
-      <label>Select Prompt</label>
-      <select class="step-prompt"></select>
+      <div class="prompt-type-container">
+        <div>
+          <label>Prompt Type</label>
+          <div class="prompt-type">
+            <div class="radio-group">
+              <input type="radio" id="static-${index}" name="prompt-type-${index}" value="static" ${
+      !isDynamic && !useCustomPrompt ? "checked" : ""
+    }>
+              <label for="static-${index}">Static</label>
+            </div>
+            <div class="radio-group">
+              <input type="radio" id="dynamic-${index}" name="prompt-type-${index}" value="dynamic" ${
+      isDynamic && !useCustomPrompt ? "checked" : ""
+    }>
+              <label for="dynamic-${index}">Dynamic</label>
+            </div>
+            <div class="radio-group">
+              <input type="radio" id="custom-${index}" name="prompt-type-${index}" value="custom" ${
+      useCustomPrompt ? "checked" : ""
+    }>
+              <label for="custom-${index}">Use custom prompt</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <label class="prompt-label" style="display: ${
+        useCustomPrompt ? "none" : "block"
+      }">Select Prompt</label>
+      <select class="step-prompt" style="display: ${
+        useCustomPrompt ? "none" : "block"
+      }"></select>
+      <label class="custom-prompt-text-label" style="display: ${
+        useCustomPrompt ? "block" : "none"
+      }">Custom Prompt</label>
+      <textarea class="step-custom-prompt-text" style="display: ${
+        useCustomPrompt ? "block" : "none"
+      }" placeholder="Enter custom prompt">${customPrompt}</textarea>
       <label class="params-label" style="display: ${
-        isDynamic ? "block" : "none"
+        isDynamic && !useCustomPrompt ? "block" : "none"
       }">Parameters (JSON)</label>
       <textarea class="step-params" style="display: ${
-        isDynamic ? "block" : "none"
+        isDynamic && !useCustomPrompt ? "block" : "none"
       }" placeholder='{"key": "value"}'>${JSON.stringify(
       stepData.parameters || {},
       null,
@@ -104,9 +187,25 @@ function showCreateWorkflowModal() {
     const promptSelect = stepDiv.querySelector(".step-prompt");
     const paramsTextarea = stepDiv.querySelector(".step-params");
     const paramsLabel = stepDiv.querySelector(".params-label");
+    const customPromptTextarea = stepDiv.querySelector(
+      ".step-custom-prompt-text"
+    );
+    const customPromptLabel = stepDiv.querySelector(
+      ".custom-prompt-text-label"
+    );
+    const promptLabel = stepDiv.querySelector(".prompt-label");
     const radioButtons = stepDiv.querySelectorAll(
       `input[name="prompt-type-${index}"]`
     );
+    const aiModelSelect = stepDiv.querySelector(".step-ai-model");
+    const newTabCheckbox = stepDiv.querySelector(".step-new-tab");
+
+    // Set AI model for the step
+    if (stepData.aiModel) {
+      aiModelSelect.value = stepData.aiModel;
+    } else if (lastStepConfig.aiModel && aiOptions[lastStepConfig.aiModel]) {
+      aiModelSelect.value = lastStepConfig.aiModel;
+    }
 
     const loadPrompts = (type) => {
       chrome.storage.local.get(null, (data) => {
@@ -138,27 +237,37 @@ function showCreateWorkflowModal() {
       });
     };
 
-    loadPrompts(isDynamic ? "dynamic" : "static");
+    loadPrompts(isDynamic && !useCustomPrompt ? "dynamic" : "static");
 
     radioButtons.forEach((radio) => {
       radio.addEventListener("change", () => {
         const selectedType = radio.value;
+        const isCustom = selectedType === "custom";
         const dynamic = selectedType === "dynamic";
-        paramsLabel.style.display = dynamic ? "block" : "none";
-        paramsTextarea.style.display = dynamic ? "block" : "none";
-        if (!dynamic) {
+        promptSelect.style.display = isCustom ? "none" : "block";
+        promptLabel.style.display = isCustom ? "none" : "block";
+        customPromptTextarea.style.display = isCustom ? "block" : "none";
+        customPromptLabel.style.display = isCustom ? "block" : "none";
+        paramsLabel.style.display = dynamic && !isCustom ? "block" : "none";
+        paramsTextarea.style.display = dynamic && !isCustom ? "block" : "none";
+        if (!dynamic && !isCustom) {
           paramsTextarea.value = JSON.stringify({}, null, 2);
         }
-        loadPrompts(selectedType);
+        if (!isCustom) {
+          loadPrompts(selectedType);
+        }
+        lastStepConfig.isDynamic = dynamic;
+        lastStepConfig.useCustomPrompt = isCustom;
+        if (isCustom) {
+          paramsTextarea.value = JSON.stringify({}, null, 2);
+        }
       });
     });
 
     promptSelect.addEventListener("change", () => {
       const selectedPromptId = promptSelect.value;
-      if (!selectedPromptId) return;
-      const dynamicChecked =
-        stepDiv.querySelector(`input[name="prompt-type-${index}"]:checked`)
-          ?.value === "dynamic";
+      if (!selectedPromptId || radioButtons[2].checked) return;
+      const dynamicChecked = radioButtons[1].checked;
 
       if (!dynamicChecked) return;
 
@@ -177,7 +286,7 @@ function showCreateWorkflowModal() {
 
         if (selectedPromptContent) {
           const placeholders = [
-            ...selectedPromptContent.matchAll(/\{([^}]+)\}/g),
+            ...selectedPromptContent.matchAll(/\{[^}]+\}/g),
           ].map((m) => m[1]);
           const params = {};
           placeholders.forEach((key) => (params[key] = ""));
@@ -186,22 +295,71 @@ function showCreateWorkflowModal() {
       });
     });
 
+    aiModelSelect.addEventListener("change", () => {
+      if (steps.length > 0) {
+        lastStepConfig.aiModel = aiModelSelect.value;
+      }
+    });
+
+    newTabCheckbox.addEventListener("change", () => {
+      if (steps.length > 0) {
+        lastStepConfig.openInNewTab = newTabCheckbox.checked;
+      }
+    });
+
+    customPromptTextarea.addEventListener("input", () => {
+      lastStepConfig.customPrompt = customPromptTextarea.value;
+    });
+
     stepDiv.querySelector(".remove-step").addEventListener("click", () => {
+      stepsContainer.removeChild(stepLabel);
       stepsContainer.removeChild(stepDiv);
       steps.splice(index, 1);
-      // Reindexierung
-      [...stepsContainer.children].forEach((div, idx) => {
-        div.dataset.stepIndex = idx;
+      [...stepsContainer.children].forEach((child, idx) => {
+        if (child.tagName === "H2") {
+          child.textContent = `Step ${Math.floor(idx / 2) + 1}:`;
+        } else if (child.classList.contains("step-item")) {
+          child.dataset.stepIndex = Math.floor(idx / 2);
+        }
       });
     });
 
     stepsContainer.appendChild(stepDiv);
-    steps[index] = { ...stepData, stepDiv, isDynamic };
+    steps[index] = {
+      ...stepData,
+      stepDiv,
+      isDynamic,
+      useCustomPrompt,
+      customPrompt,
+      aiModel: aiModelSelect.value,
+      openInNewTab: newTabCheckbox.checked,
+    };
   };
 
   addStep({}, 0);
 
   form.querySelector("#add-step-btn").addEventListener("click", () => {
+    const lastStepIndex = steps.length - 1;
+    if (lastStepIndex >= 0) {
+      const lastStepDiv = stepsContainer.querySelector(
+        `[data-step-index="${lastStepIndex}"]`
+      );
+      lastStepConfig.aiModel =
+        lastStepDiv.querySelector(".step-ai-model").value;
+      lastStepConfig.openInNewTab =
+        lastStepDiv.querySelector(".step-new-tab").checked;
+      lastStepConfig.isDynamic =
+        lastStepDiv.querySelector(
+          `input[name="prompt-type-${lastStepIndex}"]:checked`
+        )?.value === "dynamic";
+      lastStepConfig.useCustomPrompt =
+        lastStepDiv.querySelector(
+          `input[name="prompt-type-${lastStepIndex}"]:checked`
+        )?.value === "custom";
+      lastStepConfig.customPrompt = lastStepDiv.querySelector(
+        ".step-custom-prompt-text"
+      ).value;
+    }
     addStep({}, steps.length);
   });
 
@@ -209,7 +367,6 @@ function showCreateWorkflowModal() {
     e.preventDefault();
 
     const name = form.querySelector("#workflow-name").value.trim();
-    const aiModel = form.querySelector("#workflow-ai-model").value;
 
     try {
       const workflowSteps = steps.map((_, index) => {
@@ -218,31 +375,46 @@ function showCreateWorkflowModal() {
         );
         const title = stepDiv.querySelector(".step-title").value.trim();
         const promptId = stepDiv.querySelector(".step-prompt").value;
+        const customPrompt = stepDiv
+          .querySelector(".step-custom-prompt-text")
+          .value.trim();
         const isDynamic =
           stepDiv.querySelector(`input[name="prompt-type-${index}"]:checked`)
-            .value === "dynamic";
+            ?.value === "dynamic" || customPrompt;
+        const useCustomPrompt =
+          stepDiv.querySelector(`input[name="prompt-type-${index}"]:checked`)
+            ?.value === "custom";
         const params = isDynamic
           ? JSON.parse(
               stepDiv.querySelector(".step-params").value.trim() || "{}"
             )
           : {};
+        const stepAIModel = stepDiv.querySelector(".step-ai-model").value;
+        const openInNewTab = stepDiv.querySelector(".step-new-tab").checked;
 
-        if (!promptId) {
-          throw new Error(`Step ${index + 1}: No prompt selected`);
+        if (!promptId && !useCustomPrompt) {
+          throw new Error(
+            `Step ${index + 1}: No prompt selected or custom prompt provided`
+          );
+        }
+        if (!stepAIModel) {
+          throw new Error(`Step ${index + 1}: No AI model selected`);
         }
 
         return {
           title: title || `Step ${index + 1}`,
-          promptId,
+          promptId: useCustomPrompt ? null : promptId,
+          customPrompt: useCustomPrompt ? customPrompt : null,
           parameters: params,
           isDynamic,
+          aiModel: stepAIModel,
+          openInNewTab,
         };
       });
 
       const workflowId = `workflow_${Date.now()}`;
       const newWorkflow = {
         name,
-        aiModel,
         steps: workflowSteps,
         createdAt: Date.now(),
         lastUsed: null,
@@ -262,9 +434,26 @@ function showCreateWorkflowModal() {
     }
   });
 
-  closeSpan.onclick = () => modal.remove();
+  const resetConfig = () => {
+    lastStepConfig = {
+      aiModel: "",
+      openInNewTab: false,
+      isDynamic: true,
+      useCustomPrompt: false,
+      customPrompt: "",
+    };
+  };
+
+  closeSpan.onclick = () => {
+    resetConfig();
+    modal.remove();
+  };
+
   window.onclick = (e) => {
-    if (e.target === modal) modal.remove();
+    if (e.target === modal) {
+      resetConfig();
+      modal.remove();
+    }
   };
 }
 function executeWorkflow(workflowId) {
@@ -656,12 +845,12 @@ function addStepToEdit(stepData, index, stepsContainer, steps) {
     }" placeholder="Enter step title">
     <label>Prompt Type</label>
     <div class="prompt-type">
-      <label><input type="radio" name="prompt-type-${index}" value="static" ${
+      <label for="static">Static</label><input type="radio" id="static" name="prompt-type-${index}" value="static" ${
     !isDynamic ? "checked" : ""
-  }> Static</label>
-      <label><input type="radio" name="prompt-type-${index}" value="dynamic" ${
+  }> 
+      <label for="dynamic">Dynamic</label><input type="radio" id="dynamic" name="prompt-type-${index}" value="dynamic" ${
     isDynamic ? "checked" : ""
-  }> Dynamic</label>
+  }> 
     </div>
     <label>Select Prompt</label>
     <select class="step-prompt"></select>
