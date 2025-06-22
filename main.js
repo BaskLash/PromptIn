@@ -9,7 +9,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Übersetzungen
   let translations = {};
-  let currentLang = localStorage.getItem("language") || "de";
+  let currentLang =
+    navigator.language.split("-")[0] ||
+    localStorage.getItem("language") ||
+    "en";
 
   let navigationState = { source: "main", folderId: null };
 

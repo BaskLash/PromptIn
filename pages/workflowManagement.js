@@ -755,130 +755,537 @@ function executeWorkflow(workflowId) {
   });
 }
 function editWorkflowDetails(workflowId, workflow, sidebarContent) {
+  /*
+   * This version mirrors the behaviour of `showCreateWorkflowModal`.
+   * 1. The user’s latest selections (prompt‑type, AI‑model, etc.) are stored
+   *    in the `lastStepDefaults` object while the modal is open.
+   * 2. When the user adds a new step these defaults are applied, so the new
+   *    step starts with the same configuration the user most recently chose.
+   * 3. All change handlers update `lastStepDefaults` in the background so the
+   *    state always stays in sync.
+   */
+
+  // ---------------------------------------------------------------------------
+  //  Shared helpers
+  // ---------------------------------------------------------------------------
   const aiOptions = {
-    grok: { name: "Grok" },
-    gemini: { name: "Gemini" },
-    chatgpt: { name: "ChatGPT" },
-    claude: { name: "Claude" },
-    blackbox: { name: "BlackBox" },
-    githubCopilot: { name: "GitHub Copilot" },
-    microsoftCopilot: { name: "Microsoft Copilot" },
-    mistral: { name: "Mistral" },
-    duckduckgo: { name: "DuckDuckGo" },
-    perplexity: { name: "Perplexity" },
-    deepseek: { name: "DeepSeek" },
-    deepai: { name: "Deepai" },
-    qwenAi: { name: "Qwen AI" },
+    grok: "Grok",
+    gemini: "Gemini",
+    chatgpt: "ChatGPT",
+    claude: "Claude",
+    blackbox: "BlackBox",
+    githubCopilot: "GitHub Copilot",
+    microsoftCopilot: "Microsoft Copilot",
+    mistral: "Mistral",
+    duckduckgo: "DuckDuckGo",
+    perplexity: "Perplexity",
+    deepseek: "DeepSeek",
+    deepai: "Deepai",
+    qwenAi: "Qwen AI",
   };
 
+  const aiModelOptions = Object.entries(aiOptions)
+    .map(([key, name]) => `<option value="${key}">${name}</option>`)
+    .join("");
+
+  /**
+   * The last settings chosen by the user while the modal is open. They are
+   * updated live by the various change handlers and applied automatically
+   * whenever the user adds a new step.
+   */
+  const lastStepDefaults = {
+    // If the workflow has a global AI‑model start with that, otherwise empty.
+    aiModel: workflow.aiModel || "",
+    // Prompt type → one of: "static" | "dynamic" | "custom"  (matches radio value)
+    promptType: "static",
+    // Convenience flags derived from promptType so we don’t need to recompute.
+    isDynamic: false,
+    useCustomPrompt: false,
+    // Other frequently reused settings
+    openInNewTab: false,
+  };
+
+  // ---------------------------------------------------------------------------
+  //  Build the sidebar skeleton (same outer HTML as before)
+  // ---------------------------------------------------------------------------
   sidebarContent.innerHTML = `
+    <style>
+      .prompt-type-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      .prompt-type {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+      }
+      .radio-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 10px;
+      }
+      .radio-group label {
+        margin-left: 5px;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 10px;
+      }
+      .step-item {
+        margin-bottom: 20px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      .action-btn,
+      .save-btn,
+      .cancel-btn {
+        margin: 5px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+    </style>
     <label>Name</label>
-    <input type="text" value="${workflow.name || ""}" id="edit-name">
-    <label>AI Model</label>
-    <select id="edit-ai-model">
-      ${Object.keys(aiOptions)
-        .map(
-          (key) => `
-          <option value="${key}" ${
-            workflow.aiModel === key ? "selected" : ""
-          }>${aiOptions[key].name}</option>
-        `
-        )
-        .join("")}
-    </select>
-    <label>Steps</label>
+    <input type="text" value="${workflow.name || ""}" id="edit-name" />
     <div id="edit-steps"></div>
     <button class="action-btn" id="add-step">Add Step</button>
     <button class="save-btn">Save</button>
     <button class="cancel-btn">Cancel</button>
   `;
 
+  //--------------------------------------------------------------------------
+  // Utility: keep scroll when UI re‑flows
+  //--------------------------------------------------------------------------
+  const sidebar = sidebarContent.closest(".sidebar");
+  const maintainScrollPosition = (cb) => {
+    const pos = sidebar.scrollTop;
+    cb();
+    sidebar.scrollTop = pos;
+  };
+
+  //--------------------------------------------------------------------------
+  // Building individual editable step blocks
+  //--------------------------------------------------------------------------
   const stepsContainer = sidebarContent.querySelector("#edit-steps");
-  let steps = workflow.steps.map((step) => ({ ...step }));
+  let steps = workflow.steps.map((s) => ({ ...s }));
 
-  steps.forEach((step, index) => {
-    addStepToEdit(step, index, stepsContainer, steps);
-  });
+  const updateRemoveButtons = () => {
+    const removeBtns = stepsContainer.querySelectorAll(".remove-step");
+    removeBtns.forEach((btn) => {
+      btn.disabled = steps.length === 1;
+      btn.style.opacity = steps.length === 1 ? "0.5" : "1";
+      btn.style.cursor = steps.length === 1 ? "not-allowed" : "pointer";
+    });
+  };
 
+  /**
+   * Creates an editable UI block for a single step and wires up all listeners.
+   * If `rawStepData` is empty we start with `lastStepDefaults` so the user gets
+   * the same experience as in the create‑workflow modal.
+   */
+  const addStepToEdit = (rawStepData, index, container, stepsArray) => {
+    const stepData = {
+      title: "",
+      promptId: null,
+      customPrompt: "",
+      parameters: {},
+      ...lastStepDefaults,
+      ...rawStepData, // explicit data (from existing workflow) overrides defaults
+    };
+
+    const stepDiv = document.createElement("div");
+    stepDiv.className = "step-item";
+    stepDiv.dataset.stepIndex = index;
+
+    // Determine flags for convenience
+    const isDynamic =
+      stepData.promptType === "dynamic" || stepData.isDynamic === true;
+    const useCustomPrompt =
+      stepData.promptType === "custom" || stepData.useCustomPrompt === true;
+
+    // ────────────────────────────────────────────────────────────────────────
+    //  Build the inner HTML for the step (mostly unchanged, but initial state
+    //  now comes from stepData which already includes lastStepDefaults).
+    // ────────────────────────────────────────────────────────────────────────
+    container.appendChild(document.createElement("h2")).textContent = `Step ${
+      index + 1
+    }:`;
+
+    stepDiv.innerHTML = `
+      <label>Step Title</label>
+      <input type="text" class="step-title" value="${
+        stepData.title || ""
+      }" placeholder="Enter step title" />
+
+      <label>AI Model</label>
+      <select class="step-ai-model" required>
+        <option value="" disabled ${
+          !stepData.aiModel ? "selected" : ""
+        }>Choose a model</option>
+        ${aiModelOptions}
+      </select>
+
+      <label for="new-tab-${index}">Open in New Tab</label>
+      <div class="checkbox-group">
+        <input type="checkbox" id="new-tab-${index}" class="step-new-tab" ${
+      stepData.openInNewTab ? "checked" : ""
+    } />
+        <label for="new-tab-${index}">Open AI in new tab</label>
+      </div>
+
+      <div class="prompt-type-container">
+        <div>
+          <label>Prompt Type</label>
+          <div class="prompt-type">
+            <div class="radio-group">
+              <input type="radio" id="static-${index}" name="prompt-type-${index}" value="static" ${
+      !isDynamic && !useCustomPrompt ? "checked" : ""
+    } />
+              <label for="static-${index}">Static</label>
+            </div>
+            <div class="radio-group">
+              <input type="radio" id="dynamic-${index}" name="prompt-type-${index}" value="dynamic" ${
+      isDynamic && !useCustomPrompt ? "checked" : ""
+    } />
+              <label for="dynamic-${index}">Dynamic</label>
+            </div>
+            <div class="radio-group">
+              <input type="radio" id="custom-${index}" name="prompt-type-${index}" value="custom" ${
+      useCustomPrompt ? "checked" : ""
+    } />
+              <label for="custom-${index}">Use custom prompt</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <label class="prompt-label" style="display: ${
+        useCustomPrompt ? "none" : "block"
+      }">Select Prompt</label>
+      <select class="step-prompt" style="display: ${
+        useCustomPrompt ? "none" : "block"
+      }"></select>
+
+      <label class="prompt-content-label" style="display: ${
+        useCustomPrompt ? "none" : "block"
+      }">Prompt Content</label>
+      <textarea class="step-prompt-content" readonly style="display: ${
+        useCustomPrompt ? "none" : "block"
+      }" placeholder="Prompt content will appear here"></textarea>
+
+      <label class="custom-prompt-text-label" style="display: ${
+        useCustomPrompt ? "block" : "none"
+      }">Custom Prompt</label>
+      <textarea class="step-custom-prompt-text" style="display: ${
+        useCustomPrompt ? "block" : "none"
+      }" placeholder="Enter custom prompt">${
+      stepData.customPrompt || ""
+    }</textarea>
+
+      <label class="params-label" style="display: ${
+        isDynamic && !useCustomPrompt ? "block" : "none"
+      }">Parameters (JSON)</label>
+      <textarea class="step-params" style="display: ${
+        isDynamic && !useCustomPrompt ? "block" : "none"
+      }" placeholder='{"key": "value"}'>${JSON.stringify(
+      stepData.parameters || {},
+      null,
+      2
+    )}</textarea>
+
+      <button class="action-btn remove-step">Remove Step</button>
+    `;
+
+    container.appendChild(stepDiv);
+
+    // -----------------------------------------------------------------------
+    //  Element handles & initial state
+    // -----------------------------------------------------------------------
+    const aiModelSelect = stepDiv.querySelector(".step-ai-model");
+    const newTabCheckbox = stepDiv.querySelector(".step-new-tab");
+    const radioButtons = stepDiv.querySelectorAll(
+      `input[name="prompt-type-${index}"]`
+    );
+    const promptSelect = stepDiv.querySelector(".step-prompt");
+    const promptContentTextarea = stepDiv.querySelector(".step-prompt-content");
+    const paramsTextarea = stepDiv.querySelector(".step-params");
+    const paramsLabel = stepDiv.querySelector(".params-label");
+    const customPromptTextarea = stepDiv.querySelector(
+      ".step-custom-prompt-text"
+    );
+    const customPromptLabel = stepDiv.querySelector(
+      ".custom-prompt-text-label"
+    );
+    const promptLabel = stepDiv.querySelector(".prompt-label");
+    const promptContentLabel = stepDiv.querySelector(".prompt-content-label");
+
+    // Set AI‑model (existing → default → none)
+    if (stepData.aiModel) {
+      aiModelSelect.value = stepData.aiModel;
+    }
+
+    //-----------------------------------------------------------------------
+    //  Prompt list loader (unchanged except „type" derives from radio value)
+    //-----------------------------------------------------------------------
+    const loadPrompts = (type) => {
+      chrome.storage.local.get(null, (data) => {
+        promptSelect.innerHTML = "";
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "Select a prompt";
+        defaultOption.disabled = true;
+        defaultOption.selected = !stepData.promptId;
+        promptSelect.appendChild(defaultOption);
+
+        Object.entries(data).forEach(([id, topic]) => {
+          if (Array.isArray(topic.prompts)) {
+            topic.prompts.forEach((prompt, idx) => {
+              const isDynamicPrompt =
+                typeof prompt.content === "string" &&
+                /\{[^}]+\}/.test(prompt.content);
+              if (
+                (type === "dynamic" && isDynamicPrompt) ||
+                (type === "static" && !isDynamicPrompt)
+              ) {
+                const option = document.createElement("option");
+                option.value = generatePromptId(id, idx);
+                option.textContent = prompt.title || `Prompt ${idx + 1}`;
+                if (stepData.promptId === option.value) option.selected = true;
+                promptSelect.appendChild(option);
+              }
+            });
+          }
+        });
+
+        // Trigger change so the content/params update visually
+        if (stepData.promptId) {
+          promptSelect.value = stepData.promptId;
+          promptSelect.dispatchEvent(new Event("change"));
+        }
+      });
+    };
+
+    loadPrompts(isDynamic && !useCustomPrompt ? "dynamic" : "static");
+
+    //-----------------------------------------------------------------------
+    //  Live update of UI + lastStepDefaults when the user interacts
+    //-----------------------------------------------------------------------
+
+    // Prompt‑type radios
+    radioButtons.forEach((radio) => {
+      radio.addEventListener("change", () => {
+        maintainScrollPosition(() => {
+          const pt = radio.value; // static | dynamic | custom
+          const custom = pt === "custom";
+          const dynamic = pt === "dynamic";
+
+          // Toggle UI elements
+          promptSelect.style.display = custom ? "none" : "block";
+          promptLabel.style.display = custom ? "none" : "block";
+          promptContentTextarea.style.display = custom ? "none" : "block";
+          promptContentLabel.style.display = custom ? "none" : "block";
+          customPromptTextarea.style.display = custom ? "block" : "none";
+          customPromptLabel.style.display = custom ? "block" : "none";
+          paramsLabel.style.display = dynamic && !custom ? "block" : "none";
+          paramsTextarea.style.display = dynamic && !custom ? "block" : "none";
+          if (!dynamic || custom) {
+            paramsTextarea.value = JSON.stringify({}, null, 2);
+          }
+
+          // Reload prompt list when switching static⇄dynamic, ignore for custom
+          if (!custom) loadPrompts(pt);
+          if (custom) {
+            promptContentTextarea.value = "";
+            paramsTextarea.value = JSON.stringify({}, null, 2);
+          }
+
+          // ─ Update last‑defaults so newly added steps inherit this choice ─
+          lastStepDefaults.promptType = pt;
+          lastStepDefaults.isDynamic = dynamic;
+          lastStepDefaults.useCustomPrompt = custom;
+        });
+      });
+    });
+
+    // AI‑model select
+    aiModelSelect.addEventListener("change", (e) => {
+      lastStepDefaults.aiModel = e.target.value;
+    });
+
+    // Open‑in‑new‑tab checkbox
+    newTabCheckbox.addEventListener("change", (e) => {
+      lastStepDefaults.openInNewTab = e.target.checked;
+    });
+
+    //-----------------------------------------------------------------------
+    //  Prompt selection → preview + (if dynamic) update parameter template
+    //-----------------------------------------------------------------------
+    promptSelect.addEventListener("change", () => {
+      const selId = promptSelect.value;
+      if (!selId || radioButtons[2].checked) {
+        promptContentTextarea.value = "";
+        paramsTextarea.value = JSON.stringify({}, null, 2);
+        return;
+      }
+
+      const dynamicChecked = radioButtons[1].checked;
+      chrome.storage.local.get(null, (data) => {
+        let content = null;
+        Object.entries(data).forEach(([id, topic]) => {
+          if (Array.isArray(topic.prompts)) {
+            topic.prompts.forEach((prompt, idx) => {
+              if (generatePromptId(id, idx) === selId) content = prompt.content;
+            });
+          }
+        });
+        if (content) {
+          promptContentTextarea.value = content;
+          if (dynamicChecked) {
+            const placeholders = [...content.matchAll(/\{([^}]+)\}/g)].map(
+              (m) => m[1]
+            );
+            const params = stepData.parameters || {};
+            placeholders.forEach((k) => {
+              if (!(k in params)) params[k] = "";
+            });
+            paramsTextarea.value = JSON.stringify(params, null, 2);
+          } else {
+            paramsTextarea.value = JSON.stringify({}, null, 2);
+          }
+        } else {
+          promptContentTextarea.value = "";
+          paramsTextarea.value = JSON.stringify({}, null, 2);
+        }
+      });
+    });
+
+    //-----------------------------------------------------------------------
+    //  Remove step
+    //-----------------------------------------------------------------------
+    stepDiv.querySelector(".remove-step").addEventListener("click", () => {
+      if (stepsArray.length <= 1) return;
+      // Remove label (the <h2>) and div in tandem → they always come in pairs
+      const labelNode = container.querySelector(`h2:nth-of-type(${index + 1})`);
+      if (labelNode) container.removeChild(labelNode);
+      container.removeChild(stepDiv);
+      stepsArray.splice(index, 1);
+      // Re‑index remaining blocks & labels
+      [...container.children].forEach((child, idx) => {
+        if (child.tagName === "H2") {
+          child.textContent = `Step ${Math.floor(idx / 2) + 1}:`;
+        } else if (child.classList.contains("step-item")) {
+          child.dataset.stepIndex = Math.floor(idx / 2);
+        }
+      });
+      updateRemoveButtons();
+    });
+
+    //-----------------------------------------------------------------------
+    //  Persist internal reference for later SAVE click
+    //-----------------------------------------------------------------------
+    stepsArray[index] = {
+      ...stepData,
+      stepDiv,
+    };
+
+    updateRemoveButtons();
+  };
+
+  //--------------------------------------------------------------------------
+  //  Initially render existing steps
+  //--------------------------------------------------------------------------
+  steps.forEach((step, idx) => addStepToEdit(step, idx, stepsContainer, steps));
+
+  //--------------------------------------------------------------------------
+  //  Add‑step button (inherits lastStepDefaults)
+  //--------------------------------------------------------------------------
   const addStepBtn = sidebarContent.querySelector("#add-step");
   addStepBtn.addEventListener("click", () => {
     addStepToEdit({}, steps.length, stepsContainer, steps);
+    // Smooth scroll to the new step’s label (every step adds 2 children: <h2> + .step-item)
+    const newStepLabel = stepsContainer.querySelector(
+      `h2:nth-of-type(${steps.length})`
+    );
+    if (newStepLabel) newStepLabel.scrollIntoView({ behavior: "smooth" });
   });
 
+  //--------------------------------------------------------------------------
+  //  SAVE and CANCEL buttons (mostly unchanged)
+  //--------------------------------------------------------------------------
   const saveBtn = sidebarContent.querySelector(".save-btn");
   const cancelBtn = sidebarContent.querySelector(".cancel-btn");
 
   saveBtn.addEventListener("click", () => {
-    const updatedWorkflow = {
-      ...workflow,
-      name: sidebarContent.querySelector("#edit-name").value.trim(),
-      aiModel: sidebarContent.querySelector("#edit-ai-model").value,
-      steps: steps.map((step, index) => {
-        const stepDiv = stepsContainer.querySelector(
-          `[data-step-index="${index}"]`
-        );
-        try {
-          const isDynamic =
-            stepDiv.querySelector(`input[name="prompt-type-${index}"]:checked`)
-              ?.value === "dynamic";
-          const promptId = stepDiv.querySelector(".step-prompt").value;
+    try {
+      const updatedWorkflow = {
+        ...workflow,
+        name: sidebarContent.querySelector("#edit-name").value.trim(),
+        steps: steps.map((_) => {
+          const idx = _.stepDiv.dataset.stepIndex;
+          const sd = _.stepDiv; // shorthand
+          const title = sd.querySelector(".step-title").value.trim();
+          const promptId = sd.querySelector(".step-prompt").value;
+          const customPrompt = sd
+            .querySelector(".step-custom-prompt-text")
+            .value.trim();
+          const pType = sd.querySelector(
+            `input[name="prompt-type-${idx}"]:checked`
+          )?.value;
+          const isDyn = pType === "dynamic";
+          const useCust = pType === "custom";
+          const params = isDyn
+            ? JSON.parse(sd.querySelector(".step-params").value.trim() || "{}")
+            : {};
+          const aiModel = sd.querySelector(".step-ai-model").value;
+          const openInNewTab = sd.querySelector(".step-new-tab").checked;
 
-          // Validierung der promptId
-          if (
-            !promptId &&
-            !stepDiv
-              .querySelector(".step-prompt option:checked")
-              .textContent.includes("Select a prompt")
-          ) {
-            alert(`Please select a valid prompt for step ${index + 1}.`);
-            throw new Error(`Invalid prompt for step ${index + 1}`);
-          }
+          if (!aiModel) throw new Error(`Step ${+idx + 1}: no AI‑model chosen`);
+          if (!promptId && !useCust)
+            throw new Error(`Step ${+idx + 1}: no prompt selected/provided`);
 
           return {
-            ...step,
-            title:
-              stepDiv.querySelector(".step-title").value.trim() ||
-              `Step ${index + 1}`,
-            promptId: promptId || null,
-            parameters: isDynamic
-              ? JSON.parse(
-                  stepDiv.querySelector(".step-params").value.trim() || "{}"
-                )
-              : {},
-            isDynamic,
+            title: title || `Step ${+idx + 1}`,
+            promptId: useCust ? null : promptId,
+            customPrompt: useCust ? customPrompt : null,
+            parameters: params,
+            isDynamic: isDyn,
+            useCustomPrompt: useCust,
+            aiModel,
+            openInNewTab,
+            promptType: pType,
           };
-        } catch (e) {
-          if (e.message.includes("Invalid prompt")) {
-            throw e; // Abbruch, wenn kein Prompt ausgewählt
-          }
-          alert(
-            `Invalid JSON in parameters for step ${index + 1}: ${e.message}`
-          );
-          throw e;
-        }
-      }),
-    };
+        }),
+      };
 
-    chrome.storage.local.set({ [workflowId]: updatedWorkflow }, () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error saving workflow:", chrome.runtime.lastError);
-        alert("Error saving workflow.");
-      } else {
-        // Korrektes Objekt für showDetailsSidebar
-        showDetailsSidebar(
-          { type: "Workflow", folderId: workflowId },
-          workflowId
-        );
-        // Refresh the table
-        handleCategoryClick("Workflows");
-      }
-    });
+      chrome.storage.local.set({ [workflowId]: updatedWorkflow }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving workflow:", chrome.runtime.lastError);
+          alert("Error saving workflow.");
+        } else {
+          showDetailsSidebar(
+            { type: "Workflow", folderId: workflowId },
+            workflowId
+          );
+          handleCategoryClick("Workflows");
+        }
+      });
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
   });
 
   cancelBtn.addEventListener("click", () => {
     showDetailsSidebar({ type: "Workflow", folderId: workflowId }, workflowId);
   });
 }
+
 function addStepToEdit(stepData, index, stepsContainer, steps) {
   const stepDiv = document.createElement("div");
   stepDiv.className = "step-item";
