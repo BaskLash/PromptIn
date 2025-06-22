@@ -1,3 +1,19 @@
+let filterStat = document.getElementById("toggleFilterBtn");
+let filterArea = document.getElementById("filter-container");
+
+filterStat.addEventListener("click", function () {
+  if (filterArea.style.display === "none" || !filterArea.style.display) {
+    filterArea.style.display = "flex";
+    loadTagsFilter(); // Ensure tags are loaded when filter is shown
+  } else {
+    filterArea.style.display = "none";
+  }
+});
+
+// Set initial visibility to flex to ensure tags are visible
+filterArea.style.display = "flex";
+loadTagsFilter(); // Load tags immediately on page load
+
 function filterGoals() {
   const folderList = document.querySelector(".folder-list");
   const goalsList = document.querySelector(".table-container tbody");
@@ -8,7 +24,6 @@ function filterGoals() {
   const categories = Array.from(accordionItems);
 
   if (!filter) {
-    // No input: Reset to original state
     rows.forEach((row) => {
       row.style.display = "";
       row.classList.remove("highlight");
@@ -21,78 +36,73 @@ function filterGoals() {
       category.style.display = "";
       category.classList.remove("highlight");
     });
-    // Restore original order
     rows.forEach((row) => goalsList.appendChild(row));
     folders.forEach((folder) => folderList.appendChild(folder));
     return;
   }
 
-  // Calculate Levenshtein distance for prompts
+  // Score prompts based on both title and content
   const scoredRows = rows.map((row) => {
-    const goalCell = row.getElementsByTagName("td")[1]; // Title column
-    if (!goalCell) return { item: row, distance: Infinity, type: "prompt" };
-    const goalText = goalCell.textContent.toLowerCase();
-    const distance = levenshteinDistance(goalText, filter);
+    const titleCell = row.getElementsByTagName("td")[1]; // Title column
+    const contentCell = row.getElementsByTagName("td")[2]; // Content column (adjust index if needed)
+    if (!titleCell || !contentCell)
+      return { item: row, distance: Infinity, type: "prompt" };
+
+    const combinedText =
+      `${titleCell.textContent} ${contentCell.textContent}`.toLowerCase();
+    const distance = levenshteinDistance(combinedText, filter);
+
     return { item: row, distance, type: "prompt" };
   });
 
-  // Calculate Levenshtein distance for folders
   const scoredFolders = folders.map((folder) => {
     const folderText = folder.textContent
       .toLowerCase()
       .replace("📁", "")
       .trim()
-      .split(" ")[0]; // Extract folder name, remove emoji and actions
+      .split(" ")[0];
     const distance = levenshteinDistance(folderText, filter);
     return { item: folder, distance, type: "folder" };
   });
 
-  // Calculate Levenshtein distance for categories
   const scoredCategories = categories.map((category) => {
     const categoryText = category.textContent.toLowerCase().trim();
     const distance = levenshteinDistance(categoryText, filter);
     return { item: category, distance, type: "category" };
   });
 
-  // Combine and sort all results
   const allScoredItems = [
     ...scoredRows,
     ...scoredFolders,
     ...scoredCategories,
   ].sort((a, b) => a.distance - b.distance);
 
-  // Clear current display
   rows.forEach((row) => (row.style.display = "none"));
   folders.forEach((folder) => (folder.style.display = "none"));
   categories.forEach((category) => (category.style.display = "none"));
 
-  // Apply sorted order and display
   allScoredItems.forEach(({ item, distance, type }, index) => {
     item.style.display = "";
-    // Highlight top 3 results
     if (index < 3 && distance !== Infinity) {
       item.classList.add("highlight");
     } else {
       item.classList.remove("highlight");
     }
-    // Re-append to respective container to reflect sorted order
+
     if (type === "prompt") {
       goalsList.appendChild(item);
     } else if (type === "folder") {
       folderList.appendChild(item);
     } else if (type === "category") {
-      item.parentElement.appendChild(item); // Re-append to accordion-content
+      item.parentElement.appendChild(item);
     }
   });
 
-  // Ensure folder search input visibility
   folderSearchInput = document.querySelector(".folder-search");
-  if (folderList.children.length > 5) {
-    folderSearchInput.style.display = "block";
-  } else {
-    folderSearchInput.style.display = "none";
-  }
+  folderSearchInput.style.display =
+    folderList.children.length > 5 ? "block" : "none";
 }
+
 function filterFolders() {
   const folderList = document.querySelector(".folder-list");
   const filter = folderSearchInput.value.toLowerCase().trim();
@@ -139,43 +149,55 @@ function renderPrompts(prompts) {
 
   // Sortierstatus verwalten
   let sortState = {
-    column: 'createdAt',
-    direction: 'desc'
+    column: "createdAt",
+    direction: "desc",
   };
 
   // Filterstatus für Modelle, Tags und Kategorie
   const compatibleFilters = Array.from(
-    document.querySelectorAll("#compatible-models-filter input[name='compatible-filter']:checked")
-  ).map(cb => cb.value);
+    document.querySelectorAll(
+      "#compatible-models-filter input[name='compatible-filter']:checked"
+    )
+  ).map((cb) => cb.value);
   const incompatibleFilters = Array.from(
-    document.querySelectorAll("#incompatible-models-filter input[name='incompatible-filter']:checked")
-  ).map(cb => cb.value);
+    document.querySelectorAll(
+      "#incompatible-models-filter input[name='incompatible-filter']:checked"
+    )
+  ).map((cb) => cb.value);
   const tagsFilters = Array.from(
     document.querySelectorAll("#tags-filter input[name='tags-filter']:checked")
-  ).map(cb => cb.value);
-  const categoryFilter = document.getElementById("category-filter")?.value || "all";
+  ).map((cb) => cb.value);
+  const categoryFilter =
+    document.getElementById("category-filter")?.value || "all";
 
   // Filter anwenden
-  let filteredPrompts = prompts.filter(prompt => {
+  let filteredPrompts = prompts.filter((prompt) => {
     const hasCompatible =
       compatibleFilters.length === 0 ||
       (Array.isArray(prompt.compatibleModels) &&
-       compatibleFilters.every(model => prompt.compatibleModels.includes(model)));
+        compatibleFilters.every((model) =>
+          prompt.compatibleModels.includes(model)
+        ));
     const hasIncompatible =
       incompatibleFilters.length === 0 ||
       (Array.isArray(prompt.incompatibleModels) &&
-       incompatibleFilters.every(model => prompt.incompatibleModels.includes(model)));
+        incompatibleFilters.every((model) =>
+          prompt.incompatibleModels.includes(model)
+        ));
     const hasTags =
       tagsFilters.length === 0 ||
       (Array.isArray(prompt.tags) &&
-       tagsFilters.every(tag => prompt.tags.includes(tag)));
+        tagsFilters.every((tag) => prompt.tags.includes(tag)));
     const matchesCategory =
       categoryFilter === "all" ||
       (categoryFilter === "recentlyUsed" &&
-       prompt.lastUsed &&
-       new Date(prompt.lastUsed).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000) ||
+        prompt.lastUsed &&
+        new Date(prompt.lastUsed).getTime() >
+          Date.now() - 7 * 24 * 60 * 60 * 1000) ||
       (categoryFilter === "rarelyUsed" &&
-       (!prompt.lastUsed || new Date(prompt.lastUsed).getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000));
+        (!prompt.lastUsed ||
+          new Date(prompt.lastUsed).getTime() <
+            Date.now() - 30 * 24 * 60 * 60 * 1000));
     return hasCompatible && hasIncompatible && hasTags && matchesCategory;
   });
 
@@ -185,38 +207,58 @@ function renderPrompts(prompts) {
     sortedPrompts.sort((a, b) => {
       let valueA, valueB;
       switch (column) {
-        case 'title':
+        case "title":
           valueA = (a.title || "N/A").toLowerCase();
           valueB = (b.title || "N/A").toLowerCase();
-          return direction === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-        case 'type':
+          return direction === "asc"
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        case "type":
           valueA = (a.type || "N/A").toLowerCase();
           valueB = (b.type || "N/A").toLowerCase();
-          return direction === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-        case 'compatibleModels':
-          valueA = Array.isArray(a.compatibleModels) ? a.compatibleModels.join(", ").toLowerCase() : "";
-          valueB = Array.isArray(b.compatibleModels) ? b.compatibleModels.join(", ").toLowerCase() : "";
-          return direction === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-        case 'incompatibleModels':
-          valueA = Array.isArray(a.incompatibleModels) ? a.incompatibleModels.join(", ").toLowerCase() : "";
-          valueB = Array.isArray(b.incompatibleModels) ? b.incompatibleModels.join(", ").toLowerCase() : "";
-          return direction === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-        case 'tags':
+          return direction === "asc"
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        case "compatibleModels":
+          valueA = Array.isArray(a.compatibleModels)
+            ? a.compatibleModels.join(", ").toLowerCase()
+            : "";
+          valueB = Array.isArray(b.compatibleModels)
+            ? b.compatibleModels.join(", ").toLowerCase()
+            : "";
+          return direction === "asc"
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        case "incompatibleModels":
+          valueA = Array.isArray(a.incompatibleModels)
+            ? a.incompatibleModels.join(", ").toLowerCase()
+            : "";
+          valueB = Array.isArray(b.incompatibleModels)
+            ? b.incompatibleModels.join(", ").toLowerCase()
+            : "";
+          return direction === "asc"
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        case "tags":
           valueA = Array.isArray(a.tags) ? a.tags.join(", ").toLowerCase() : "";
           valueB = Array.isArray(b.tags) ? b.tags.join(", ").toLowerCase() : "";
-          return direction === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-        case 'category':
+          return direction === "asc"
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        case "category":
           valueA = (a.folderName || "").toLowerCase();
           valueB = (b.folderName || "").toLowerCase();
-          return direction === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-        case 'lastUsed':
+          return direction === "asc"
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        case "lastUsed":
           valueA = a.lastUsed ? new Date(a.lastUsed).getTime() : 0;
           valueB = b.lastUsed ? new Date(b.lastUsed).getTime() : 0;
-          return direction === 'asc' ? valueA - valueB : valueB - valueA;
-        case 'createdAt':
+          return direction === "asc" ? valueA - valueB : valueB - valueA;
+        case "createdAt":
           valueA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           valueB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return direction === 'asc' ? valueA - valueB : valueB - valueA;
+          return direction === "asc" ? valueA - valueB : valueB - valueA;
         default:
           return 0;
       }
@@ -225,31 +267,61 @@ function renderPrompts(prompts) {
   }
 
   // Initiale Sortierung
-  const sortedPrompts = sortPrompts(filteredPrompts, sortState.column, sortState.direction);
+  const sortedPrompts = sortPrompts(
+    filteredPrompts,
+    sortState.column,
+    sortState.direction
+  );
 
   // Render der Prompts
   sortedPrompts.forEach((prompt, index) => {
     const row = document.createElement("tr");
     row.dataset.index = index;
     row.innerHTML = `
-      <td><input type="checkbox" id="prompt-checkbox-${prompt.id || index}" name="prompt-checkbox" /></td>
+      <td><input type="checkbox" id="prompt-checkbox-${
+        prompt.id || index
+      }" name="prompt-checkbox" /></td>
       <td>${prompt.title || "N/A"}</td>
       <td>${prompt.type || "N/A"}</td>
-      <td>${Array.isArray(prompt.compatibleModels) ? prompt.compatibleModels.join(", ") : prompt.compatibleModels || ""}</td>
-      <td>${Array.isArray(prompt.incompatibleModels) ? prompt.incompatibleModels.join(", ") : prompt.incompatibleModels || "N/A"}</td>
-      <td>${Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || ""}</td>
+      <td>${
+        Array.isArray(prompt.compatibleModels)
+          ? prompt.compatibleModels.join(", ")
+          : prompt.compatibleModels || ""
+      }</td>
+      <td>${
+        Array.isArray(prompt.incompatibleModels)
+          ? prompt.incompatibleModels.join(", ")
+          : prompt.incompatibleModels || "N/A"
+      }</td>
+      <td>${
+        Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || ""
+      }</td>
       <td>${prompt.folderName || ""}</td>
-      <td>${prompt.lastUsed ? new Date(prompt.lastUsed).toLocaleDateString("de-DE") : "N/A"}</td>
-      <td>${prompt.createdAt ? new Date(prompt.createdAt).toLocaleDateString("de-DE") : "N/A"}</td>
+      <td>${
+        prompt.lastUsed
+          ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+          : "N/A"
+      }</td>
+      <td>${
+        prompt.createdAt
+          ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+          : "N/A"
+      }</td>
       <td>
         <div class="prompt-actions">
           <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
           <div class="dropdown-menu">
-            ${prompt.type === "Workflow" ? '<div class="dropdown-item" data-action="execute-workflow">Execute Workflow</div>' : '<div class="dropdown-item" data-action="copy">Copy Prompt</div>'}
+            ${
+              prompt.type === "Workflow"
+                ? '<div class="dropdown-item" data-action="execute-workflow">Execute Workflow</div>'
+                : '<div class="dropdown-item" data-action="copy">Copy Prompt</div>'
+            }
             <div class="dropdown-item" data-action="rename">Rename</div>
             <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
             <div class="dropdown-item" data-action="share">Share</div>
-            <div class="dropdown-item" data-action="add-to-favorites">${prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"}</div>
+            <div class="dropdown-item" data-action="add-to-favorites">${
+              prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
+            }</div>
             <div class="dropdown-item" data-action="show-versions">Show Versions</div>
             <div class="dropdown-item" data-action="export">Export Prompt</div>
             <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
@@ -265,7 +337,8 @@ function renderPrompts(prompts) {
       document.querySelectorAll(".dropdown-menu").forEach((menu) => {
         if (menu !== dropdown) menu.style.display = "none";
       });
-      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+      dropdown.style.display =
+        dropdown.style.display === "block" ? "none" : "block";
     });
 
     row.querySelectorAll(".dropdown-item").forEach((item) => {
@@ -320,20 +393,32 @@ function renderPrompts(prompts) {
     header.style.cursor = "pointer";
     header.addEventListener("click", () => {
       const columnMap = [
-        'title', 'type', 'compatibleModels', 'incompatibleModels',
-        'tags', 'category', 'lastUsed', 'createdAt'
+        "title",
+        "type",
+        "compatibleModels",
+        "incompatibleModels",
+        "tags",
+        "category",
+        "lastUsed",
+        "createdAt",
       ];
       const column = columnMap[index - 1];
       if (sortState.column === column) {
-        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+        sortState.direction = sortState.direction === "asc" ? "desc" : "asc";
       } else {
         sortState.column = column;
-        sortState.direction = 'asc';
+        sortState.direction = "asc";
       }
-      const sortedPrompts = sortPrompts(filteredPrompts, sortState.column, sortState.direction);
+      const sortedPrompts = sortPrompts(
+        filteredPrompts,
+        sortState.column,
+        sortState.direction
+      );
       renderPrompts(prompts); // Original prompts übergeben, um Filter zu behalten
-      headers.forEach(h => h.innerHTML = h.innerHTML.replace(/ (↑|↓)$/, ''));
-      header.innerHTML += sortState.direction === 'asc' ? ' ↑' : ' ↓';
+      headers.forEach(
+        (h) => (h.innerHTML = h.innerHTML.replace(/ (↑|↓)$/, ""))
+      );
+      header.innerHTML += sortState.direction === "asc" ? " ↑" : " ↓";
     });
   });
 
@@ -341,7 +426,7 @@ function renderPrompts(prompts) {
   const filterCheckboxes = document.querySelectorAll(
     "#compatible-models-filter input, #incompatible-models-filter input, #tags-filter input"
   );
-  filterCheckboxes.forEach(checkbox => {
+  filterCheckboxes.forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
       renderPrompts(prompts);
     });
@@ -375,7 +460,6 @@ function showDetailsSidebar(item, folderId) {
         return;
       }
 
-      // Für jeden Schritt den Prompt-Titel und Inhalt abrufen
       const stepDetails = workflow.steps.map((step, index) => {
         if (!step.promptId) {
           return `
@@ -393,21 +477,23 @@ function showDetailsSidebar(item, folderId) {
           `;
         }
 
-        // Split beim letzten Unterstrich
-
-        // In showDetailsSidebar, mit parsePromptId
         const parsedId = parsePromptId(step.promptId);
         if (!parsedId) {
           return `
-    <li class="step-item">
-      <strong>Step ${index + 1}: ${step.title || "Untitled Step"}</strong><br>
-      Prompt: Ungültige Prompt-ID (${step.promptId})<br>
-      Parameters: <pre>${JSON.stringify(step.parameters || {}, null, 2)}</pre>
-    </li>
-  `;
+            <li class="step-item">
+              <strong>Step ${index + 1}: ${
+            step.title || "Untitled Step"
+          }</strong><br>
+              Prompt: Ungültige Prompt-ID (${step.promptId})<br>
+              Parameters: <pre>${JSON.stringify(
+                step.parameters || {},
+                null,
+                2
+              )}</pre>
+            </li>
+          `;
         }
         const { folderId: promptFolderId, promptIndex } = parsedId;
-
         const topic = data[promptFolderId];
 
         if (
@@ -469,13 +555,13 @@ function showDetailsSidebar(item, folderId) {
         <button class="edit-btn">Edit Workflow</button>
       `;
 
-      const editBtn = sidebarContent.querySelector(".edit-btn");
-      editBtn.addEventListener("click", () => {
-        editWorkflowDetails(folderId, workflow, sidebarContent);
-      });
+      sidebarContent
+        .querySelector(".edit-btn")
+        .addEventListener("click", () => {
+          editWorkflowDetails(folderId, workflow, sidebarContent);
+        });
     });
   } else {
-    // Prüfen, ob item gültige Prompt-Daten enthält
     if (!item || !item.title || !item.content) {
       sidebarContent.innerHTML = "<p>Error: Invalid prompt data.</p>";
       return;
@@ -501,39 +587,44 @@ function showDetailsSidebar(item, folderId) {
       const metaChangeLogEntries = (prompt.metaChangeLog || [])
         .map(
           (entry) => `
-            <div style="margin-bottom: 10px;">
-              <strong>${new Date(entry.timestamp).toLocaleString(
-                "de-DE"
-              )}</strong>
-              <ul>
-                ${Object.entries(entry.changes)
-                  .map(([key, change]) => {
-                    const formatValue = (value) =>
-                      Array.isArray(value)
-                        ? value.join(", ") || "None"
-                        : value === true
-                        ? "Yes"
-                        : value === false
-                        ? "No"
-                        : value || "None";
-                    return `<li><strong>${key}:</strong> From "${formatValue(
-                      change.from
-                    )}" to "${formatValue(change.to)}"</li>`;
-                  })
-                  .join("")}
-              </ul>
-            </div>
-          `
+        <div style="margin-bottom: 10px;">
+          <strong>${new Date(entry.timestamp).toLocaleString("de-DE")}</strong>
+          <ul>
+            ${Object.entries(entry.changes)
+              .map(([key, change]) => {
+                const formatValue = (v) =>
+                  Array.isArray(v)
+                    ? v.join(", ") || "None"
+                    : v === true
+                    ? "Yes"
+                    : v === false
+                    ? "No"
+                    : v || "None";
+                return `<li><strong>${key}:</strong> From "${formatValue(
+                  change.from
+                )}" to "${formatValue(change.to)}"</li>`;
+              })
+              .join("")}
+          </ul>
+        </div>
+      `
         )
         .join("");
 
       sidebarContent.innerHTML = `
         <label>Title</label>
         <input type="text" value="${prompt.title || "N/A"}" readonly>
+
         <label>Description</label>
         <textarea readonly>${prompt.description || "N/A"}</textarea>
+
         <label>Content</label>
         <textarea readonly>${prompt.content || "N/A"}</textarea>
+
+        <!-- ▸▸ NEU: Notizfeld anzeigen (read-only) ◂◂ -->
+        <label>Notes</label>
+        <textarea readonly>${prompt.notes || "N/A"}</textarea>
+
         <label>Type</label>
         <input type="text" value="${prompt.type || "N/A"}" readonly>
         <label>Compatible Models</label>
@@ -576,25 +667,28 @@ function showDetailsSidebar(item, folderId) {
             ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
             : "N/A"
         }" readonly>
+
         <label>Metadata Change Log</label>
         <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
           ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
         </div>
+
         <button class="edit-btn">Edit Prompt</button>
       `;
 
-      const editBtn = sidebarContent.querySelector(".edit-btn");
-      editBtn.addEventListener("click", () => {
-        editPromptDetails(folderId, promptIndex, prompt, sidebarContent);
-      });
+      sidebarContent
+        .querySelector(".edit-btn")
+        .addEventListener("click", () => {
+          editPromptDetails(folderId, promptIndex, prompt, sidebarContent);
+        });
     });
   }
 
-  const closeBtn = sidebar.querySelector(".close-sidebar");
-  closeBtn.addEventListener("click", () => {
+  sidebar.querySelector(".close-sidebar").addEventListener("click", () => {
     sidebar.classList.remove("open");
   });
 }
+
 function initializePrompts() {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryFromUrl = urlParams.get("category");
@@ -800,12 +894,40 @@ function handleFolderClick(folder) {
 function loadTagsFilter() {
   chrome.storage.local.get("tags", (data) => {
     const tagsFilter = document.getElementById("tags-filter");
-    tagsFilter.innerHTML = "";
-    const tags = data.tags || [];
-    tags.forEach(tag => {
+    if (!tagsFilter) return; // Exit if container is not found
+    tagsFilter.innerHTML = ""; // Clear existing content
+
+    const tags = data.tags || []; // Fallback to empty array if no tags
+    if (tags.length === 0) {
+      tagsFilter.innerHTML = "<p>Keine Tags verfügbar</p>";
+      return;
+    }
+
+    tags.forEach((tag) => {
       const label = document.createElement("label");
-      label.innerHTML = `<input type="checkbox" name="tags-filter" value="${escapeHTML(tag)}"> ${escapeHTML(tag)}`;
+      label.className = "tag-checkbox-label";
+      label.innerHTML = `<input type="checkbox" name="tags-filter" value="${escapeHTML(
+        tag
+      )}"> ${escapeHTML(tag)}`;
       tagsFilter.appendChild(label);
+
+      // Add event listener to trigger filtering on change
+      const checkbox = label.querySelector("input");
+      checkbox.addEventListener("change", () => {
+        // Fetch all prompts and re-render with updated filters
+        chrome.storage.local.get(null, (data) => {
+          const allPrompts = Object.entries(data)
+            .filter(([, topic]) => topic.prompts && !topic.isTrash)
+            .flatMap(([id, topic]) =>
+              topic.prompts.map((prompt) => ({
+                ...prompt,
+                folderId: id,
+                folderName: topic.name,
+              }))
+            );
+          renderPrompts(allPrompts);
+        });
+      });
     });
   });
 }

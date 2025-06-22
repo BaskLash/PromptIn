@@ -222,6 +222,7 @@ function showCreatePromptModal(category) {
         updatedAt: Date.now(),
         usageCount: 0,
         lastUsed: null,
+        notes: "", // Neuer Notizbereich für eine große Notiz
         versions: [
           {
             versionId: generateUUID(),
@@ -877,54 +878,73 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 
+/**
+ * Öffnet das Edit-Formular für einen Prompt, erlaubt Änderungen
+ * (inkl. neuem Notizfeld) und speichert alles zurück in chrome.storage.local.
+ *
+ * @param {string}  folderId        – ID des aktuellen Ordners
+ * @param {number}  promptIndex     – Index des Prompts im Ordner-Array
+ * @param {object}  prompt          – Das zu bearbeitende Prompt-Objekt
+ * @param {HTMLElement} sidebarContent – Container für das Edit-Formular
+ */
 function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
-  // Validierung der Eingaben
+  // --- Basis-Validierung ----------------------------------------------------
   if (!folderId || promptIndex < 0 || !prompt || !sidebarContent) {
     console.error("Invalid parameters in editPromptDetails");
     return;
   }
 
+  // --- Formular-HTML --------------------------------------------------------
   sidebarContent.innerHTML = `
     <label>Title</label>
     <input type="text" value="${escapeHTML(
       prompt.title || ""
     )}" id="edit-title">
+
     <label>Description</label>
     <textarea id="edit-description">${escapeHTML(
       prompt.description || ""
     )}</textarea>
+
     <label>Content</label>
     <textarea id="edit-content">${escapeHTML(prompt.content || "")}</textarea>
+
+    <!-- ▸▸ NEU: Freie Notizen ◂◂ -->
+    <label>Notes</label>
+    <textarea id="edit-notes" placeholder="Freie Notiz …">${escapeHTML(
+      prompt.notes || ""
+    )}</textarea>
+
     <label>Type</label>
     <select id="edit-type">
-      <option value="System" ${
+      <option value="System"             ${
         prompt.type === "System" ? "selected" : ""
       }>System (Textgeneration)</option>
-      <option value="Zusammenfassung" ${
+      <option value="Zusammenfassung"    ${
         prompt.type === "Zusammenfassung" ? "selected" : ""
       }>User (Zusammenfassung)</option>
-      <option value="Umschreiben" ${
+      <option value="Umschreiben"        ${
         prompt.type === "Umschreiben" ? "selected" : ""
       }>User (Umschreiben)</option>
-      <option value="Übersetzen" ${
+      <option value="Übersetzen"         ${
         prompt.type === "Übersetzen" ? "selected" : ""
       }>User (Übersetzen)</option>
-      <option value="Codegenerierung" ${
+      <option value="Codegenerierung"    ${
         prompt.type === "Codegenerierung" ? "selected" : ""
       }>User (Codegenerierung)</option>
-      <option value="Analyse" ${
+      <option value="Analyse"            ${
         prompt.type === "Analyse" ? "selected" : ""
       }>User (Analyse)</option>
-      <option value="Ideenfindung" ${
+      <option value="Ideenfindung"       ${
         prompt.type === "Ideenfindung" ? "selected" : ""
       }>User (Ideenfindung)</option>
-      <option value="Werbetexte" ${
+      <option value="Werbetexte"         ${
         prompt.type === "Werbetexte" ? "selected" : ""
       }>User (Werbetexte)</option>
       <option value="Prompt Engineering" ${
         prompt.type === "Prompt Engineering" ? "selected" : ""
       }>User (Prompt Engineering)</option>
-      <option value="Assistant" ${
+      <option value="Assistant"          ${
         prompt.type === "Assistant" ? "selected" : ""
       }>Assistant</option>
     </select>
@@ -986,8 +1006,8 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     </div>
 
     <label>Tags</label>
-    <div class="checkbox-group" id="edit-tags">
-    </div>
+    <div class="checkbox-group" id="edit-tags"></div>
+
     <div class="tag-input-group">
       <input type="text" id="new-tag" placeholder="New Tag">
       <button type="button" class="action-btn" id="add-tag-btn">Add Tag</button>
@@ -1009,7 +1029,9 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     <button class="cancel-btn">Cancel</button>
   `;
 
-  // Lade Tags
+  // --------------------------------------------------------------------------
+  // TAGS LADEN
+  // --------------------------------------------------------------------------
   chrome.storage.local.get("tags", (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error loading tags:", chrome.runtime.lastError);
@@ -1027,7 +1049,7 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     });
   });
 
-  // Tag hinzufügen
+  // Neuer Tag hinzufügen
   sidebarContent.querySelector("#add-tag-btn").addEventListener("click", () => {
     const newTagInput = sidebarContent.querySelector("#new-tag");
     const newTag = newTagInput.value.trim();
@@ -1037,6 +1059,7 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
       return;
     }
 
+    // Prüfen, ob Tag bereits existiert
     if (
       sidebarContent.querySelector(
         `#edit-tags input[value="${escapeHTML(newTag)}"]`
@@ -1071,6 +1094,9 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     });
   });
 
+  // --------------------------------------------------------------------------
+  // FOLDER DROPDOWN LADEN
+  // --------------------------------------------------------------------------
   chrome.storage.local.get(null, (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error loading folders:", chrome.runtime.lastError);
@@ -1093,6 +1119,9 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     });
   });
 
+  // --------------------------------------------------------------------------
+  // SPEICHERN
+  // --------------------------------------------------------------------------
   sidebarContent.querySelector(".save-btn").addEventListener("click", () => {
     chrome.storage.local.get(null, (data) => {
       if (chrome.runtime.lastError) {
@@ -1107,7 +1136,8 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         return;
       }
 
-      let newFolderId = sidebarContent.querySelector("#edit-folder").value;
+      // -------- Formulardaten auslesen --------
+      const newFolderId = sidebarContent.querySelector("#edit-folder").value;
       const newFolderName = newFolderId
         ? data[newFolderId]?.name || "Single Prompt"
         : "Single Prompt";
@@ -1134,12 +1164,14 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         return;
       }
 
+      // -------- Prompt-Objekt aktualisieren --------
       const updatedPrompt = {
         ...prompt,
         title,
         description:
           sidebarContent.querySelector("#edit-description")?.value.trim() || "",
         content: sidebarContent.querySelector("#edit-content").value.trim(),
+        notes: sidebarContent.querySelector("#edit-notes").value.trim(), // ◄◄  NEU
         type: sidebarContent.querySelector("#edit-type").value,
         compatibleModels,
         incompatibleModels,
@@ -1151,13 +1183,13 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         metaChangeLog: prompt.metaChangeLog || [],
       };
 
-      // Prüfen, ob inhaltliche Änderungen (Titel, Beschreibung, Inhalt) vorliegen
+      // -------- Versionslogik (inkl. Notes) --------
       const hasContentChanges =
         (prompt.title || "") !== updatedPrompt.title ||
         (prompt.description || "") !== updatedPrompt.description ||
-        (prompt.content || "") !== updatedPrompt.content;
+        (prompt.content || "") !== updatedPrompt.content ||
+        (prompt.notes || "") !== updatedPrompt.notes;
 
-      // Neue Version nur bei inhaltlichen Änderungen erstellen
       if (hasContentChanges) {
         updatedPrompt.versions = updatedPrompt.versions || [];
         updatedPrompt.versions.push({
@@ -1165,6 +1197,7 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
           title: updatedPrompt.title,
           description: updatedPrompt.description,
           content: updatedPrompt.content,
+          notes: updatedPrompt.notes,
           timestamp: Date.now(),
         });
         if (updatedPrompt.versions.length > 50) {
@@ -1172,13 +1205,10 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         }
       }
 
-      // Prüfen, ob Metadatenänderungen vorliegen und diese protokollieren
+      // -------- Meta-Change-Log --------
       const metaChanges = {};
       if ((prompt.type || "") !== updatedPrompt.type) {
-        metaChanges.type = {
-          from: prompt.type || "",
-          to: updatedPrompt.type,
-        };
+        metaChanges.type = { from: prompt.type || "", to: updatedPrompt.type };
       }
       if (
         JSON.stringify(prompt.compatibleModels || []) !==
@@ -1213,8 +1243,14 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
           to: updatedPrompt.folderId || "",
         };
       }
+      if ((prompt.notes || "") !== updatedPrompt.notes) {
+        // ◄◄  NEU
+        metaChanges.notes = {
+          from: prompt.notes || "",
+          to: updatedPrompt.notes,
+        };
+      }
 
-      // Meta-Änderungen protokollieren, wenn es welche gibt
       if (Object.keys(metaChanges).length > 0) {
         updatedPrompt.metaChangeLog.push({
           timestamp: Date.now(),
@@ -1225,7 +1261,9 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         }
       }
 
+      // -------- Abspeichern (ggf. Folder-Wechsel) --------
       if (newFolderId !== folderId) {
+        // Prompt aus altem Ordner entfernen
         topic.prompts.splice(promptIndex, 1);
         chrome.storage.local.set({ [folderId]: topic }, () => {
           if (chrome.runtime.lastError) {
@@ -1234,7 +1272,10 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
             return;
           }
 
+          // Ziel-Ordner vorbereiten
           let targetTopic;
+          let targetId = newFolderId;
+
           if (newFolderId) {
             targetTopic = data[newFolderId] || {
               name: newFolderName,
@@ -1244,17 +1285,18 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
             };
             targetTopic.prompts.push(updatedPrompt);
           } else {
-            const singlePromptId = `single_prompt_${Date.now()}`;
+            // Wenn kein Folder ausgewählt, Single-Prompt-Ordner anlegen
+            targetId = `single_prompt_${Date.now()}`;
             targetTopic = {
               name: "Single Prompt",
               prompts: [updatedPrompt],
               isHidden: true,
               isTrash: false,
             };
-            newFolderId = singlePromptId;
           }
 
-          chrome.storage.local.set({ [newFolderId]: targetTopic }, () => {
+          // Speichern im Ziel-Ordner
+          chrome.storage.local.set({ [targetId]: targetTopic }, () => {
             if (chrome.runtime.lastError) {
               console.error(
                 "Error saving to new folder:",
@@ -1262,7 +1304,7 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
               );
               alert("Error saving prompt.");
             } else {
-              showDetailsSidebar(updatedPrompt, newFolderId);
+              showDetailsSidebar(updatedPrompt, targetId);
               const category =
                 document.querySelector(".main-header h1")?.textContent || "";
               handleCategoryClick(category);
@@ -1270,6 +1312,7 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
           });
         });
       } else {
+        // Im selben Ordner aktualisieren
         topic.prompts[promptIndex] = updatedPrompt;
         chrome.storage.local.set({ [folderId]: topic }, () => {
           if (chrome.runtime.lastError) {
@@ -1286,6 +1329,9 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     });
   });
 
+  // --------------------------------------------------------------------------
+  // CANCEL-BUTTON
+  // --------------------------------------------------------------------------
   sidebarContent.querySelector(".cancel-btn").addEventListener("click", () => {
     showDetailsSidebar(prompt, folderId);
   });
