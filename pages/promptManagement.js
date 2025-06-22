@@ -30,18 +30,37 @@ function showCreatePromptModal(category) {
       <textarea id="prompt-content" placeholder="Enter prompt content" required></textarea>
       <label>Type:</label>
       <select id="prompt-type" required>
-        <option value="" disabled selected>Select type</option>
-        <option value="System">Textgeneration</option>
-        <option value="User">Zusammenfassung</option>
-        <option value="User">Umschreiben</option>
-        <option value="User">Übersetzen</option>
-        <option value="User">Codegenerierung</option>
-        <option value="User">Analyse</option>
-        <option value="User">Ideenfindung</option>
-        <option value="User">Werbetexte</option>
-        <option value="User">Prompt Engineering</option>
-        <option value="Assistant">Assistant</option>
-      </select>
+  <option value="" disabled selected>Wähle Typ</option>
+
+  <!-- Generative Aufgaben -->
+  <option value="textgen">Textgeneration</option>
+  <option value="rewrite">Umschreiben</option>
+  <option value="summarize">Zusammenfassen</option>
+  <option value="translate">Übersetzen</option>
+  <option value="ideation">Ideenfindung</option>
+  <option value="adcopy">Werbetexten</option>
+  <option value="storytelling">Storytelling</option>
+
+  <!-- Analytische Aufgaben -->
+  <option value="analyze">Analyse</option>
+  <option value="classify">Klassifikation</option>
+  <option value="extract">Informationsextraktion</option>
+  <option value="compare">Vergleichen / Bewerten</option>
+
+  <!-- Technische Aufgaben -->
+  <option value="codegen">Codegenerierung</option>
+  <option value="debug">Fehleranalyse</option>
+  <option value="refactor">Code-Umschreiben</option>
+  <option value="explain-code">Code erklären</option>
+
+  <!-- Prompt-spezifische Aufgaben -->
+  <option value="prompt-engineering">Prompt Engineering</option>
+  <option value="meta-prompt">Meta-Prompt</option>
+
+  <!-- Sonstige -->
+  <option value="assistant">Assistant</option>
+</select>
+
       <label>Compatible Models:</label>
       <div class="checkbox-group" id="prompt-compatible">
         <label><input type="checkbox" name="compatible" value="Grok"> Grok</label>
@@ -933,38 +952,73 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     )}</textarea>
 
     <label>Type</label>
-    <select id="edit-type">
-      <option value="System"             ${
-        prompt.type === "System" ? "selected" : ""
-      }>System (Textgeneration)</option>
-      <option value="Zusammenfassung"    ${
-        prompt.type === "Zusammenfassung" ? "selected" : ""
-      }>User (Zusammenfassung)</option>
-      <option value="Umschreiben"        ${
-        prompt.type === "Umschreiben" ? "selected" : ""
-      }>User (Umschreiben)</option>
-      <option value="Übersetzen"         ${
-        prompt.type === "Übersetzen" ? "selected" : ""
-      }>User (Übersetzen)</option>
-      <option value="Codegenerierung"    ${
-        prompt.type === "Codegenerierung" ? "selected" : ""
-      }>User (Codegenerierung)</option>
-      <option value="Analyse"            ${
-        prompt.type === "Analyse" ? "selected" : ""
-      }>User (Analyse)</option>
-      <option value="Ideenfindung"       ${
-        prompt.type === "Ideenfindung" ? "selected" : ""
-      }>User (Ideenfindung)</option>
-      <option value="Werbetexte"         ${
-        prompt.type === "Werbetexte" ? "selected" : ""
-      }>User (Werbetexte)</option>
-      <option value="Prompt Engineering" ${
-        prompt.type === "Prompt Engineering" ? "selected" : ""
-      }>User (Prompt Engineering)</option>
-      <option value="Assistant"          ${
-        prompt.type === "Assistant" ? "selected" : ""
-      }>Assistant</option>
-    </select>
+<select id="edit-type">
+  <option value="" ${!prompt.type ? "selected" : ""}>Wähle Typ</option>
+
+  <!-- Generative Aufgaben -->
+  <option value="textgen" ${
+    prompt.type === "textgen" ? "selected" : ""
+  }>Textgeneration</option>
+  <option value="rewrite" ${
+    prompt.type === "rewrite" ? "selected" : ""
+  }>Umschreiben</option>
+  <option value="summarize" ${
+    prompt.type === "summarize" ? "selected" : ""
+  }>Zusammenfassen</option>
+  <option value="translate" ${
+    prompt.type === "translate" ? "selected" : ""
+  }>Übersetzen</option>
+  <option value="ideation" ${
+    prompt.type === "ideation" ? "selected" : ""
+  }>Ideenfindung</option>
+  <option value="adcopy" ${
+    prompt.type === "adcopy" ? "selected" : ""
+  }>Werbetexten</option>
+  <option value="storytelling" ${
+    prompt.type === "storytelling" ? "selected" : ""
+  }>Storytelling</option>
+
+  <!-- Analytische Aufgaben -->
+  <option value="analyze" ${
+    prompt.type === "analyze" ? "selected" : ""
+  }>Analyse</option>
+  <option value="classify" ${
+    prompt.type === "classify" ? "selected" : ""
+  }>Klassifikation</option>
+  <option value="extract" ${
+    prompt.type === "extract" ? "selected" : ""
+  }>Informationsextraktion</option>
+  <option value="compare" ${
+    prompt.type === "compare" ? "selected" : ""
+  }>Vergleichen / Bewerten</option>
+
+  <!-- Technische Aufgaben -->
+  <option value="codegen" ${
+    prompt.type === "codegen" ? "selected" : ""
+  }>Codegenerierung</option>
+  <option value="debug" ${
+    prompt.type === "debug" ? "selected" : ""
+  }>Fehleranalyse</option>
+  <option value="refactor" ${
+    prompt.type === "refactor" ? "selected" : ""
+  }>Code-Umschreiben</option>
+  <option value="explain-code" ${
+    prompt.type === "explain-code" ? "selected" : ""
+  }>Code erklären</option>
+
+  <!-- Prompt-spezifische Aufgaben -->
+  <option value="prompt-engineering" ${
+    prompt.type === "prompt-engineering" ? "selected" : ""
+  }>Prompt Engineering</option>
+  <option value="meta-prompt" ${
+    prompt.type === "meta-prompt" ? "selected" : ""
+  }>Meta-Prompt</option>
+
+  <!-- Sonstige -->
+  <option value="assistant" ${
+    prompt.type === "assistant" ? "selected" : ""
+  }>Assistant</option>
+</select>
 
     <label>Compatible Models</label>
     <div class="checkbox-group" id="edit-compatible">
