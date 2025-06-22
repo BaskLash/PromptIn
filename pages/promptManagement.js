@@ -232,7 +232,24 @@ function showCreatePromptModal(category) {
             timestamp: Date.now(),
           },
         ],
-        metaChangeLog: [],
+        metaChangeLog: [
+          {
+            timestamp: Date.now(),
+            changes: {
+              title: { from: null, to: title },
+              description: { from: null, to: description },
+              content: { from: null, to: content },
+              type: { from: null, to: type },
+              compatibleModels: { from: [], to: compatibleModels },
+              incompatibleModels: { from: [], to: incompatibleModels },
+              tags: { from: [], to: tags },
+              isFavorite: { from: false, to: isFavorite },
+              folderId: { from: null, to: folderId || null },
+              folderName: { from: null, to: folderName },
+              notes: { from: null, to: "" }, // Track initial notes creation
+            },
+          },
+        ],
         performanceHistory: [], // Neues Feld für Leistungsmetriken
       };
 
@@ -911,7 +928,7 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
 
     <!-- ▸▸ NEU: Freie Notizen ◂◂ -->
     <label>Notes</label>
-    <textarea id="edit-notes" placeholder="Freie Notiz …">${escapeHTML(
+    <textarea id="edit-notes" placeholder="Add here more details about the model and how this prompt should be used for example …">${escapeHTML(
       prompt.notes || ""
     )}</textarea>
 
