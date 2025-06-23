@@ -39,12 +39,12 @@ function renderStorageUI(
   // Tabelle für tägliche Änderungen
   let dailyChangesHTML = `
     <div class="daily-changes" style="margin-top: 20px;">
-      <h3>Tägliche Speicherzuwächse</h3>
+      <h3>Daily storage increases</h3>
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="background: #f5f5f5;">
-            <th style="padding: 8px; border: 1px solid #ddd;">Datum</th>
-            <th style="padding: 8px; border: 1px solid #ddd;">Zuwachs (MB)</th>
+            <th style="padding: 8px; border: 1px solid #ddd;">Date</th>
+            <th style="padding: 8px; border: 1px solid #ddd;">Growth (MB)</th>
           </tr>
         </thead>
         <tbody>
@@ -68,7 +68,7 @@ function renderStorageUI(
   // HTML für die Speicher-UI
   container.innerHTML = `
     <div class="storage-section">
-      <h2>Speichernutzung</h2>
+      <h2>Memory utilization</h2>
       <div class="storage-bar" style="position: relative; background: #eee; height: 25px; border-radius: 5px; overflow: hidden;">
         <div class="used-bar" style="background: ${barColor}; height: 100%; width: ${usedPercentage}%;"></div>
         <span class="percentage-text" style="position: absolute; left: 50%; top: 0; transform: translateX(-50%); color: black; font-weight: bold;">
@@ -76,31 +76,31 @@ function renderStorageUI(
         </span>
       </div>
       <div class="details" style="margin-top: 10px;">
-        <p>Verwendet: <strong>${usedMB.toFixed(2)}</strong> MB</p>
-        <p>Verfügbar: <strong>${remainingMB.toFixed(2)}</strong> MB</p>
-        <p>Gesamt: <strong>${totalMB.toFixed(2)}</strong> MB</p>
-        <p>Ladezeit: <strong>${loadTimeMs}</strong> ms</p>
+        <p>Uses: <strong>${usedMB.toFixed(2)}</strong> MB</p>
+        <p>Available: <strong>${remainingMB.toFixed(2)}</strong> MB</p>
+        <p>Total: <strong>${totalMB.toFixed(2)}</strong> MB</p>
+        <p>Loading time: <strong>${loadTimeMs}</strong> ms</p>
       </div>
     </div>
 
     <div class="analysis" style="margin-top: 20px;">
-      <h3>Analyse</h3>
-      <p>Durchschnitt pro Tag: <strong>${avgDaily.toFixed(2)}</strong> MB</p>
-      <p>Geschätzte Tage bis voll: <strong>${
+      <h3>Analysis</h3>
+      <p>Average per day: <strong>${avgDaily.toFixed(2)}</strong> MB</p>
+      <p>Estimated days to full: <strong>${
         isFinite(daysLeft) ? Math.ceil(daysLeft) : "∞"
       }</strong></p>
-      <p>Letzte Aktualisierung: <strong>${today}</strong></p>
+      <p>Last update: <strong>${today}</strong></p>
     </div>
 
     ${dailyChangesHTML}
 
     <div class="chart-section" style="margin-top: 20px;">
-      <h3>Tägliche Speichernutzung</h3>
+      <h3>Daily memory usage</h3>
       <canvas id="storageChart"></canvas>
     </div>
 
     <div class="forecast-chart-section" style="margin-top: 20px;">
-      <h3>Prognose Speichernutzung (Nächste 30 Tage)</h3>
+      <h3>Forecast storage utilization (Nächste 30 Tage)</h3>
       <canvas id="forecastChart"></canvas>
     </div>
 
@@ -136,7 +136,7 @@ function renderStorageUI(
         labels: dates,
         datasets: [
           {
-            label: "Speichernutzung (MB)",
+            label: "Memory utilization (MB)",
             data: values,
             borderColor: "#4caf50",
             backgroundColor: "rgba(76, 175, 80, 0.2)",
@@ -147,15 +147,15 @@ function renderStorageUI(
       options: {
         responsive: true,
         scales: {
-          x: { title: { display: true, text: "Datum" } },
+          x: { title: { display: true, text: "Date" } },
           y: {
-            title: { display: true, text: "Verwendeter Speicher (MB)" },
+            title: { display: true, text: "Memory used (MB)" },
             beginAtZero: true,
           },
         },
         plugins: {
           legend: { display: true },
-          title: { display: true, text: "Tägliche Speichernutzung" },
+          title: { display: true, text: "Daily memory usage" },
         },
       },
     });
@@ -171,14 +171,16 @@ function renderStorageUI(
       forecastValues.push(Math.min(usedMB + avgDaily * i, totalMB));
     }
 
-    const forecastCtx = document.getElementById("forecastChart").getContext("2d");
+    const forecastCtx = document
+      .getElementById("forecastChart")
+      .getContext("2d");
     new Chart(forecastCtx, {
       type: "line",
       data: {
         labels: forecastDates,
         datasets: [
           {
-            label: "Prognostizierter Speicherverbrauch (MB)",
+            label: "Forecasted storage consumption (MB)",
             data: forecastValues,
             borderColor: "#2196f3",
             backgroundColor: "rgba(33, 150, 243, 0.2)",
@@ -189,16 +191,16 @@ function renderStorageUI(
       options: {
         responsive: true,
         scales: {
-          x: { title: { display: true, text: "Datum" } },
+          x: { title: { display: true, text: "Date" } },
           y: {
-            title: { display: true, text: "Verwendeter Speicher (MB)" },
+            title: { display: true, text: "Memory used (MB)" },
             beginAtZero: true,
             max: totalMB,
           },
         },
         plugins: {
           legend: { display: true },
-          title: { display: true, text: "Prognose Speichernutzung" },
+          title: { display: true, text: "Forecast storage utilization" },
         },
       },
     });

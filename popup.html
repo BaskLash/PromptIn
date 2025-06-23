@@ -132,25 +132,9 @@
           </div>
           <div class="detail-field">
             <label data-i18n="type_label"></label>
-            <select id="entry-type" disabled>
-              <option
-                value=""
-                disabled
-                selected
-                data-i18n="type_select"
-              ></option>
-              <option value="System">Textgeneration</option>
-              <option value="Zusammenfassung">Zusammenfassung</option>
-              <option value="Umschreiben">Umschreiben</option>
-              <option value="Übersetzen">Übersetzen</option>
-              <option value="Codegenerierung">Codegenerierung</option>
-              <option value="Analyse">Analyse</option>
-              <option value="Ideenfindung">Ideenfindung</option>
-              <option value="Werbetexte">Werbetexte</option>
-              <option value="Prompt Engineering">Prompt Engineering</option>
-              <option value="Assistant">Assistant</option>
-            </select>
+            <input type="text" id="entry-type" readonly />
           </div>
+
           <div class="detail-field">
             <label data-i18n="compatible_models_label"></label>
             <div class="checkbox-group" id="entry-compatible">
@@ -395,24 +379,26 @@
               >
             </div>
           </div>
+
           <div class="detail-field">
             <label data-i18n="tags_label"></label>
-            <div class="checkbox-group" id="entry-tags"></div>
-            <div class="tag-input-group">
+            <div class="tag-display" id="entry-tags"></div>
+            <div
+              class="tag-input-group"
+              id="tag-input-group"
+              style="display: none"
+            >
               <input
                 type="text"
                 id="new-tag"
-                placeholder="Neuer Tag"
-                readonly
+                data-i18n-placeholder="new_tag_placeholder"
               />
               <button
                 type="button"
                 class="action-btn"
                 id="add-tag-btn"
-                disabled
-              >
-                Tag hinzufügen
-              </button>
+                data-i18n="add_tag_button"
+              ></button>
             </div>
           </div>
           <div class="detail-field">
@@ -421,15 +407,11 @@
           </div>
           <div class="detail-field">
             <label data-i18n="created_at_label"></label>
-            <input type="datetime-local" id="entry-created-at" readonly />
+            <input type="text" id="entry-created-at" readonly />
           </div>
           <div class="detail-field">
             <label data-i18n="last_used_label"></label>
-            <input type="datetime-local" id="entry-last-used" readonly />
-          </div>
-          <div class="detail-field">
-            <label data-i18n="versions_label"></label>
-            <ul id="entry-versions" class="version-list"></ul>
+            <input type="text" id="entry-last-used" readonly />
           </div>
           <div class="detail-field">
             <label data-i18n="folder_label"></label>

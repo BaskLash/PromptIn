@@ -86,17 +86,17 @@ function createMostUsedPromptSection(mostUsedPrompt) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Am häufigsten verwendeter Prompt</h2>
+    <h2>Most frequently used prompt</h2>
     <p>${
       mostUsedPrompt.mostUsed
-        ? `Meistgenutzter Prompt: ${escapeHTML(mostUsedPrompt.mostUsed)} (${
+        ? `Most used prompt: ${escapeHTML(mostUsedPrompt.mostUsed)} (${
             mostUsedPrompt.maxUsage
-          } Nutzungen)`
+          } Uses)`
         : "Keine Daten verfügbar"
     }</p>
     <p>${
       mostUsedPrompt.peakUsageDate
-        ? `Höchste Nutzung am: ${mostUsedPrompt.peakUsageDate}`
+        ? `Highest utilization on: ${mostUsedPrompt.peakUsageDate}`
         : ""
     }</p>
     <div class="chart-container" style="height: 300px;">
@@ -117,7 +117,7 @@ function createMostUsedPromptSection(mostUsedPrompt) {
       labels: labels,
       datasets: [
         {
-          label: "Prompt-Nutzung",
+          label: "Prompt-Usage",
           data: data,
           backgroundColor: "#1cc88a",
         },
@@ -182,7 +182,7 @@ function createTopPromptsUsageSection(topPromptsUsage) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Nutzung der Top-5-Prompts über die Zeit</h2>
+    <h2>Use of the top 5 prompts over time</h2>
     <div class="chart-container" style="height: 300px;">
       <canvas id="topPromptsChart"></canvas>
     </div>
@@ -190,7 +190,7 @@ function createTopPromptsUsageSection(topPromptsUsage) {
 
   // Prüfe, ob Daten vorhanden sind
   if (!topPromptsUsage.dates.length || !topPromptsUsage.prompts.length) {
-    section.innerHTML = `<h2>Nutzung der Top-5-Prompts über die Zeit</h2><p>Keine Nutzungsdaten verfügbar.</p>`;
+    section.innerHTML = `<h2>Use of the top 5 prompts over time</h2><p>No usage data available.</p>`;
     console.warn("Keine Daten für Top-Prompts-Chart verfügbar.");
     return section;
   }
@@ -231,7 +231,7 @@ function createTopPromptsUsageSection(topPromptsUsage) {
           beginAtZero: true,
           title: {
             display: true,
-            text: "Nutzungen",
+            text: "Uses",
           },
         },
       },
@@ -242,7 +242,7 @@ function createTopPromptsUsageSection(topPromptsUsage) {
         tooltip: {
           callbacks: {
             label: function (context) {
-              return `${context.dataset.label}: ${context.raw} Nutzungen am ${context.label}`;
+              return `${context.dataset.label}: ${context.raw} Uses on the ${context.label}`;
             },
           },
         },
@@ -253,19 +253,19 @@ function createTopPromptsUsageSection(topPromptsUsage) {
   try {
     const canvas = section.querySelector("#topPromptsChart");
     if (!canvas) {
-      console.error("Canvas-Element für topPromptsChart nicht gefunden.");
-      section.innerHTML = `<h2>Nutzung der Top-5-Prompts über die Zeit</h2><p>Fehler: Diagramm konnte nicht erstellt werden.</p>`;
+      console.error("Canvas element for topPromptsChart not found.");
+      section.innerHTML = `<h2>Use of the top 5 prompts over time</h2><p>Error: Diagram could not be created.</p>`;
       return section;
     }
     if (typeof Chart === "undefined") {
-      console.error("Chart.js ist nicht geladen.");
-      section.innerHTML = `<h2>Nutzung der Top-5-Prompts über die Zeit</h2><p>Fehler: Chart.js ist nicht verfügbar.</p>`;
+      console.error("Chart.js is not loaded.");
+      section.innerHTML = `<h2>Use of the top 5 prompts over time</h2><p>Error: Chart.js is not available.</p>`;
       return section;
     }
     new Chart(canvas, chartConfig);
   } catch (error) {
-    console.error("Fehler beim Initialisieren des Top-Prompts-Charts:", error);
-    section.innerHTML = `<h2>Nutzung der Top-5-Prompts über die Zeit</h2><p>Fehler beim Rendern des Diagramms: ${error.message}</p>`;
+    console.error("Error initializing the top prompts chart:", error);
+    section.innerHTML = `<h2>Use of the top 5 prompts over time</h2><p>Error while rendering the diagram: ${error.message}</p>`;
   }
 
   return section;
@@ -390,7 +390,7 @@ function createUsageSection(usageByTime) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Nutzungshäufigkeit</h2>
+    <h2>Frequency of use</h2>
     <div class="chart-container" style="height: 300px;">
       <canvas id="usageChart"></canvas>
     </div>
@@ -405,7 +405,7 @@ function createUsageSection(usageByTime) {
       labels: labels,
       datasets: [
         {
-          label: "Prompt-Nutzung pro Monat",
+          label: "Prompt usage per month",
           data: data,
           borderColor: "#4e73df",
           backgroundColor: "rgba(78, 115, 223, 0.2)",
@@ -432,7 +432,7 @@ function createModelSection(usageByModel) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Nutzung nach Modell</h2>
+    <h2>Use according to model</h2>
     <div class="chart-container" style="height: 300px;">
       <canvas id="modelChart"></canvas>
     </div>
@@ -447,7 +447,7 @@ function createModelSection(usageByModel) {
       labels: labels,
       datasets: [
         {
-          label: "Prompt-Nutzung nach Modell",
+          label: "Prompt usage by model",
           data: data,
           backgroundColor: "#36b9cc",
         },
@@ -472,7 +472,7 @@ function createHistorySection(changeHistory) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Änderungshistorie</h2>
+    <h2>Change history</h2>
     <div class="history-list" style="max-height: 300px; overflow-y: auto;">
       ${changeHistory
         .slice(0, 50)
@@ -503,7 +503,7 @@ function createTagSection(tagUsage) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Tag-Verwendung</h2>
+    <h2>Tag usage</h2>
     <div class="chart-container" style="height: 300px;">
       <canvas id="tagChart"></canvas>
     </div>
@@ -726,15 +726,15 @@ function createChangeFrequencySection(changeFrequency) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Änderungshäufigkeit der Top-5-Prompts</h2>
+    <h2>Change frequency of the top 5 prompts</h2>
     <div class="chart-container" style="height: 300px;">
       <canvas id="changeFrequencyChart"></canvas>
     </div>
   `;
 
   if (!changeFrequency.dates.length || !changeFrequency.prompts.length) {
-    section.innerHTML = `<h2>Änderungshäufigkeit der Top-5-Prompts</h2><p>Keine Änderungsdaten verfügbar.</p>`;
-    console.warn("Keine Daten für Änderungshäufigkeits-Chart verfügbar.");
+    section.innerHTML = `<h2>Change frequency of the top 5 prompts</h2><p>No change data available.</p>`;
+    console.warn("No data available for change frequency chart.");
     return section;
   }
 
@@ -774,7 +774,7 @@ function createChangeFrequencySection(changeFrequency) {
           beginAtZero: true,
           title: {
             display: true,
-            text: "Anzahl Änderungen",
+            text: "Number of changes",
           },
         },
       },
@@ -785,7 +785,7 @@ function createChangeFrequencySection(changeFrequency) {
         tooltip: {
           callbacks: {
             label: function (context) {
-              return `${context.dataset.label}: ${context.raw} Änderungen am ${context.label}`;
+              return `${context.dataset.label}: ${context.raw} Changes to the ${context.label}`;
             },
           },
         },
@@ -796,22 +796,19 @@ function createChangeFrequencySection(changeFrequency) {
   try {
     const canvas = section.querySelector("#changeFrequencyChart");
     if (!canvas) {
-      console.error("Canvas-Element für changeFrequencyChart nicht gefunden.");
-      section.innerHTML = `<h2>Änderungshäufigkeit der Top-5-Prompts</h2><p>Fehler: Diagramm konnte nicht erstellt werden.</p>`;
+      console.error("Canvas element for changeFrequencyChart not found.");
+      section.innerHTML = `<h2>Change frequency of the top 5 prompts</h2><p>Error: Chart could not be created.</p>`;
       return section;
     }
     if (typeof Chart === "undefined") {
-      console.error("Chart.js ist nicht geladen.");
-      section.innerHTML = `<h2>Änderungshäufigkeit der Top-5-Prompts</h2><p>Fehler: Chart.js ist nicht verfügbar.</p>`;
+      console.error("Chart.js is not loaded.");
+      section.innerHTML = `<h2>Change frequency of the top 5 prompts</h2><p>Error: Chart.js is not available.</p>`;
       return section;
     }
     new Chart(canvas, chartConfig);
   } catch (error) {
-    console.error(
-      "Fehler beim Initialisieren des Änderungshäufigkeits-Charts:",
-      error
-    );
-    section.innerHTML = `<h2>Änderungshäufigkeit der Top-5-Prompts</h2><p>Fehler beim Rendern des Diagramms: ${error.message}</p>`;
+    console.error("Error when initializing the change frequency chart:", error);
+    section.innerHTML = `<h2>Change frequency of the top 5 prompts</h2><p>Error when rendering the diagram: ${error.message}</p>`;
   }
 
   return section;

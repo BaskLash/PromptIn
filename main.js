@@ -323,35 +323,54 @@ document.addEventListener("DOMContentLoaded", () => {
         const entryTitle = document.getElementById("entry-title");
         const entryDescription = document.getElementById("entry-description");
         const entryContent = document.getElementById("entry-content");
+        const entryType = document.getElementById("entry-type");
+        const entryCompatible = document.getElementById("entry-compatible");
+        const entryIncompatible = document.getElementById("entry-incompatible");
+        const entryTags = document.getElementById("entry-tags");
+        const tagInputGroup = document.getElementById("tag-input-group");
+        const newTagInput = document.getElementById("new-tag");
+        const addTagBtn = document.getElementById("add-tag-btn");
         const entryFavorite = document.getElementById("entry-favorite");
         const entryCreatedAt = document.getElementById("entry-created-at");
         const entryLastUsed = document.getElementById("entry-last-used");
-        const entryVersions = document.getElementById("entry-versions");
         const entryFolder = document.getElementById("entry-folder");
 
         detailTitle.textContent = prompt.title;
         entryTitle.value = prompt.title || "";
         entryDescription.value = prompt.description || "";
         entryContent.value = prompt.content || "";
+        entryType.value = prompt.type || "N/A";
         entryFavorite.checked = prompt.isFavorite || false;
         entryCreatedAt.value = prompt.createdAt
-          ? new Date(prompt.createdAt).toISOString().slice(0, 16)
-          : "";
+          ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+          : "N/A";
         entryLastUsed.value = prompt.lastUsed
-          ? new Date(prompt.lastUsed).toISOString().slice(0, 16)
-          : "";
-        entryVersions.innerHTML = "";
-        if (prompt.versions && Array.isArray(prompt.versions)) {
-          prompt.versions.forEach((version) => {
-            const li = document.createElement("li");
-            li.textContent = `Version vom ${new Date(
-              version.timestamp
-            ).toLocaleString()}: ${version.title}`;
-            entryVersions.appendChild(li);
+          ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+          : "N/A";
+
+        // Update compatible models checkboxes
+        entryCompatible
+          .querySelectorAll("input[name='compatible']")
+          .forEach((checkbox) => {
+            checkbox.checked =
+              prompt.compatibleModels?.includes(checkbox.value) || false;
+            checkbox.disabled = true;
           });
-        } else {
-          entryVersions.innerHTML = "<li>Keine Versionen vorhanden</li>";
-        }
+
+        // Update incompatible models checkboxes
+        entryIncompatible
+          .querySelectorAll("input[name='incompatible']")
+          .forEach((checkbox) => {
+            checkbox.checked =
+              prompt.incompatibleModels?.includes(checkbox.value) || false;
+            checkbox.disabled = true;
+          });
+
+        // Display tags
+        entryTags.textContent = prompt.tags?.length
+          ? prompt.tags.join(", ")
+          : "None";
+        tagInputGroup.style.display = "none";
 
         // Populate folder dropdown
         entryFolder.innerHTML =
@@ -371,17 +390,20 @@ document.addEventListener("DOMContentLoaded", () => {
               entryFolder.appendChild(option);
             }
           });
-          applyTranslations(currentLang); // Re-apply translations for dynamic content
+          applyTranslations(currentLang);
         });
 
         // Set readonly/disabled
         entryTitle.readOnly = true;
         entryDescription.readOnly = true;
         entryContent.readOnly = true;
+        entryType.readOnly = true;
         entryFavorite.disabled = true;
         entryCreatedAt.readOnly = true;
         entryLastUsed.readOnly = true;
         entryFolder.disabled = true;
+        newTagInput.readOnly = true;
+        addTagBtn.disabled = true;
 
         // Hide detail-actions initially
         document.querySelector(".detail-actions").style.display = "none";
@@ -559,6 +581,26 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("entry-content").readOnly = false;
     document.getElementById("entry-favorite").disabled = false;
     document.getElementById("entry-folder").disabled = false;
+    const tagInputGroup = document.getElementById("tag-input-group");
+    const entryTags = document.getElementById("entry-tags");
+    const newTagInput = document.getElementById("new-tag");
+    const addTagBtn = document.getElementById("add-tag-btn");
+    if (!entryTags.textContent || entryTags.textContent === "None") {
+      tagInputGroup.style.display = "block";
+      newTagInput.readOnly = false;
+      addTagBtn.disabled = false;
+    }
+    // Ensure model checkboxes remain disabled
+    document
+      .querySelectorAll("#entry-compatible input[name='compatible']")
+      .forEach((checkbox) => {
+        checkbox.disabled = true;
+      });
+    document
+      .querySelectorAll("#entry-incompatible input[name='incompatible']")
+      .forEach((checkbox) => {
+        checkbox.disabled = true;
+      });
     document.querySelector(".detail-actions").style.display = "flex";
   });
 
@@ -574,6 +616,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("entry-title").dataset.promptIndex
     );
     const newFolderId = document.getElementById("entry-folder").value;
+    const newTag = document.getElementById("new-tag").value.trim();
 
     if (!title) {
       alert(
@@ -590,25 +633,16 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const promptObj = {
+        ...topic.prompts[promptIndex],
         title,
         description,
         content,
         isFavorite,
-        createdAt: topic.prompts[promptIndex].createdAt || Date.now(),
+        tags: newTag ? [newTag] : topic.prompts[promptIndex].tags || [],
         lastUsed: Date.now(),
-        versions: topic.prompts[promptIndex].versions || [],
       };
 
-      promptObj.versions.unshift({
-        versionId: generateUUID(),
-        title,
-        description,
-        content,
-        timestamp: Date.now(),
-      });
-
       if (newFolderId && newFolderId !== folderId) {
-        // Move to new folder
         topic.prompts.splice(promptIndex, 1);
         chrome.storage.local.set({ [folderId]: topic }, () => {
           chrome.storage.local.get(newFolderId, function (newData) {
@@ -620,7 +654,6 @@ document.addEventListener("DOMContentLoaded", () => {
           });
         });
       } else {
-        // Update in current folder
         topic.prompts[promptIndex] = promptObj;
         chrome.storage.local.set({ [folderId]: topic }, () => {
           finalizeSave();
@@ -1045,12 +1078,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const entryCompatible = document.getElementById("entry-compatible");
     const entryIncompatible = document.getElementById("entry-incompatible");
     const entryTags = document.getElementById("entry-tags");
+    const tagInputGroup = document.getElementById("tag-input-group");
     const newTagInput = document.getElementById("new-tag");
     const addTagBtn = document.getElementById("add-tag-btn");
     const entryFavorite = document.getElementById("entry-favorite");
     const entryCreatedAt = document.getElementById("entry-created-at");
     const entryLastUsed = document.getElementById("entry-last-used");
-    const entryVersions = document.getElementById("entry-versions");
     const entryFolder = document.getElementById("entry-folder");
 
     detailTitle.textContent =
@@ -1058,17 +1091,21 @@ document.addEventListener("DOMContentLoaded", () => {
     entryTitle.value = "";
     entryDescription.value = "";
     entryContent.value = "";
-    entryType.value = "";
+    entryType.value = "N/A";
+    entryTags.textContent = "None";
+    tagInputGroup.style.display = "block";
+    newTagInput.value = "";
+    newTagInput.readOnly = false;
+    addTagBtn.disabled = false;
     entryFavorite.checked = false;
     entryCreatedAt.value = "";
     entryLastUsed.value = "";
-    entryVersions.innerHTML = "";
     entryFolder.innerHTML =
       '<option value="" data-i18n="folder_select"></option>';
 
     // Clear and enable compatible models checkboxes
     entryCompatible
-      .querySelectorAll("input[type='checkbox']")
+      .querySelectorAll("input[name='compatible']")
       .forEach((checkbox) => {
         checkbox.checked = false;
         checkbox.disabled = false;
@@ -1076,39 +1113,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Clear and enable incompatible models checkboxes
     entryIncompatible
-      .querySelectorAll("input[type='checkbox']")
+      .querySelectorAll("input[name='incompatible']")
       .forEach((checkbox) => {
         checkbox.checked = false;
         checkbox.disabled = false;
       });
-
-    // Clear and populate tags
-    entryTags.innerHTML = "";
-    chrome.storage.local.get("tags", (data) => {
-      const tags = data.tags || [
-        "SEO",
-        "Marketing",
-        "Social Media",
-        "Advertisement",
-        "Copywriting",
-        "Productivity",
-        "E-Commerce",
-        "Education",
-        "Tech",
-        "Healthcare",
-        "HR",
-      ];
-      tags.forEach((tag) => {
-        const label = document.createElement("label");
-        label.innerHTML = `<input type="checkbox" name="tags" value="${tag}"> ${tag}`;
-        entryTags.appendChild(label);
-      });
-    });
-
-    // Enable new tag input and button
-    newTagInput.readOnly = false;
-    newTagInput.value = "";
-    addTagBtn.disabled = false;
 
     // Populate folder dropdown
     chrome.storage.local.get(null, function (data) {
@@ -1132,7 +1141,6 @@ document.addEventListener("DOMContentLoaded", () => {
     entryTitle.readOnly = false;
     entryDescription.readOnly = false;
     entryContent.readOnly = false;
-    entryType.disabled = false;
     entryFavorite.disabled = false;
     entryFolder.disabled = false;
 
@@ -1156,7 +1164,9 @@ document.addEventListener("DOMContentLoaded", () => {
         .getElementById("entry-description")
         .value.trim();
       const content = document.getElementById("entry-content").value.trim();
-      const type = document.getElementById("entry-type").value;
+      const newTag = document.getElementById("new-tag").value.trim();
+      const isFavorite = document.getElementById("entry-favorite").checked;
+      const folderId = document.getElementById("entry-folder").value;
       const compatibleModels = Array.from(
         document.querySelectorAll(
           "#entry-compatible input[name='compatible']:checked"
@@ -1167,11 +1177,6 @@ document.addEventListener("DOMContentLoaded", () => {
           "#entry-incompatible input[name='incompatible']:checked"
         )
       ).map((checkbox) => checkbox.value);
-      const tags = Array.from(
-        document.querySelectorAll("#entry-tags input[name='tags']:checked")
-      ).map((checkbox) => checkbox.value);
-      const isFavorite = document.getElementById("entry-favorite").checked;
-      const folderId = document.getElementById("entry-folder").value;
 
       if (!title) {
         alert(
@@ -1192,22 +1197,12 @@ document.addEventListener("DOMContentLoaded", () => {
         title,
         description,
         content,
-        type,
+        tags: newTag ? [newTag] : [],
+        isFavorite,
         compatibleModels,
         incompatibleModels,
-        tags,
-        isFavorite,
         createdAt: Date.now(),
         lastUsed: Date.now(),
-        versions: [
-          {
-            versionId: generateUUID(),
-            title,
-            description,
-            content,
-            timestamp: Date.now(),
-          },
-        ],
         folderId,
         folderName:
           document.querySelector(`#entry-folder option[value="${folderId}"]`)
@@ -1226,62 +1221,21 @@ document.addEventListener("DOMContentLoaded", () => {
           loadPromptsTable();
         });
       });
+    }
+  });
 
-      // Load tags
-      chrome.storage.local.get("tags", (data) => {
-        const tagContainer = document.querySelector("#entry-tags");
-        const tags = data.tags || [
-          "SEO",
-          "Marketing",
-          "Social Media",
-          "Advertisement",
-          "Copywriting",
-          "Productivity",
-          "E-Commerce",
-          "Education",
-          "Tech",
-          "Healthcare",
-          "HR",
-        ];
-        tags.forEach((tag) => {
-          const label = document.createElement("label");
-          label.innerHTML = `<input type="checkbox" name="tags" value="${tag}"> ${tag}`;
-          tagContainer.appendChild(label);
-        });
-      });
-
-      // Add tag functionality
-      document.querySelector("#add-tag-btn").addEventListener("click", () => {
-        const newTagInput = document.querySelector("#new-tag");
-        const newTag = newTagInput.value.trim();
-        if (
-          newTag &&
-          !document.querySelector(`#entry-tags input[value="${newTag}"]`)
-        ) {
-          chrome.storage.local.get("tags", (data) => {
-            const tags = data.tags || [];
-            if (!tags.includes(newTag)) {
-              tags.push(newTag);
-              chrome.storage.local.set({ tags }, () => {
-                const tagContainer = document.querySelector("#entry-tags");
-                const label = document.createElement("label");
-                label.innerHTML = `<input type="checkbox" name="tags" value="${newTag}" checked> ${newTag}`;
-                tagContainer.appendChild(label);
-                newTagInput.value = "";
-              });
-            } else {
-              alert(
-                translations[currentLang]?.tag_exists ||
-                  "Tag existiert bereits!"
-              );
-            }
-          });
-        } else if (!newTag) {
-          alert(
-            translations[currentLang]?.tag_empty || "Tag darf nicht leer sein!"
-          );
-        }
-      });
+  document.getElementById("add-tag-btn").addEventListener("click", () => {
+    const newTagInput = document.getElementById("new-tag");
+    const newTag = newTagInput.value.trim();
+    if (newTag) {
+      document.getElementById("entry-tags").textContent = newTag;
+      newTagInput.readOnly = true;
+      document.getElementById("add-tag-btn").disabled = true;
+      document.getElementById("tag-input-group").style.display = "none";
+    } else {
+      alert(
+        translations[currentLang]?.tag_empty || "Tag darf nicht leer sein!"
+      );
     }
   });
 

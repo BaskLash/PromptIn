@@ -982,6 +982,22 @@ body.dark-theme .prompt-search:focus {
   background-color: var(--dark-popup-bg);
 }
 
+.model-display, .tag-display {
+  padding: 8px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-height: 20px;
+}
+.tag-input-group {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+.tag-input-group input {
+  flex-grow: 1;
+}
+
 /* Responsive Adjustments */
 @media (max-width: 600px) {
   .folder-content {

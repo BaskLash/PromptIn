@@ -177,7 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("addTagBtn").addEventListener("click", () => {
-    const tagName = prompt("Neuen Tag eingeben:");
+    const tagName = prompt("Enter a new tag:");
     if (tagName && tagName.trim()) {
       const newTag = tagName.trim();
       chrome.storage.local.get("tags", (data) => {
