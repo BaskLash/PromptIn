@@ -333,6 +333,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const entryFavorite = document.getElementById("entry-favorite");
         const entryCreatedAt = document.getElementById("entry-created-at");
         const entryLastUsed = document.getElementById("entry-last-used");
+        const entryLastModified = document.getElementById(
+          "entry-last-modified"
+        );
+        const entryNotes = document.getElementById("entry-notes");
         const entryFolder = document.getElementById("entry-folder");
 
         detailTitle.textContent = prompt.title;
@@ -347,10 +351,14 @@ document.addEventListener("DOMContentLoaded", () => {
         entryLastUsed.value = prompt.lastUsed
           ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
           : "N/A";
+        entryLastModified.value = prompt.lastModified
+          ? new Date(prompt.lastModified).toLocaleDateString("de-DE")
+          : "N/A";
+        entryNotes.value = prompt.notes || "";
 
         // Update compatible models checkboxes
         entryCompatible
-          .querySelectorAll("input[name='compatible']")
+          .querySelectorAll("input[type='checkbox']")
           .forEach((checkbox) => {
             checkbox.checked =
               prompt.compatibleModels?.includes(checkbox.value) || false;
@@ -359,18 +367,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Update incompatible models checkboxes
         entryIncompatible
-          .querySelectorAll("input[name='incompatible']")
+          .querySelectorAll("input[type='checkbox']")
           .forEach((checkbox) => {
             checkbox.checked =
               prompt.incompatibleModels?.includes(checkbox.value) || false;
             checkbox.disabled = true;
           });
 
-        // Display tags
-        entryTags.textContent = prompt.tags?.length
-          ? prompt.tags.join(", ")
-          : "None";
-        tagInputGroup.style.display = "none";
+        // Load tags
+        chrome.storage.local.get("tags", (tagData) => {
+          const storedTags = tagData.tags || [];
+          const promptTags = Array.isArray(prompt.tags) ? prompt.tags : [];
+          const validTags = promptTags.filter((tag) =>
+            storedTags.includes(tag)
+          );
+          entryTags.textContent = validTags.length
+            ? validTags.join(", ")
+            : "None";
+          tagInputGroup.style.display = "none";
+        });
 
         // Populate folder dropdown
         entryFolder.innerHTML =
@@ -401,6 +416,8 @@ document.addEventListener("DOMContentLoaded", () => {
         entryFavorite.disabled = true;
         entryCreatedAt.readOnly = true;
         entryLastUsed.readOnly = true;
+        entryLastModified.readOnly = true;
+        entryNotes.readOnly = true;
         entryFolder.disabled = true;
         newTagInput.readOnly = true;
         addTagBtn.disabled = true;
@@ -576,32 +593,84 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   editBtn.addEventListener("click", () => {
-    document.getElementById("entry-title").readOnly = false;
-    document.getElementById("entry-description").readOnly = false;
-    document.getElementById("entry-content").readOnly = false;
-    document.getElementById("entry-favorite").disabled = false;
-    document.getElementById("entry-folder").disabled = false;
+    const entryCompatible = document.getElementById("entry-compatible");
+    const entryIncompatible = document.getElementById("entry-incompatible");
+    const entryTitle = document.getElementById("entry-title");
+    const entryDescription = document.getElementById("entry-description");
+    const entryContent = document.getElementById("entry-content");
+    const entryNotes = document.getElementById("entry-notes");
+    const entryType = document.getElementById("entry-type");
+    const entryFavorite = document.getElementById("entry-favorite");
+    const entryFolder = document.getElementById("entry-folder");
     const tagInputGroup = document.getElementById("tag-input-group");
-    const entryTags = document.getElementById("entry-tags");
     const newTagInput = document.getElementById("new-tag");
     const addTagBtn = document.getElementById("add-tag-btn");
-    if (!entryTags.textContent || entryTags.textContent === "None") {
-      tagInputGroup.style.display = "block";
-      newTagInput.readOnly = false;
-      addTagBtn.disabled = false;
-    }
-    // Ensure model checkboxes remain disabled
-    document
-      .querySelectorAll("#entry-compatible input[name='compatible']")
+    const entryTags = document.getElementById("entry-tags");
+
+    // Enable input fields
+    entryTitle.readOnly = false;
+    entryDescription.readOnly = false;
+    entryContent.readOnly = false;
+    entryNotes.readOnly = false;
+    entryType.readOnly = false;
+    entryFavorite.disabled = false;
+    entryFolder.disabled = false;
+    newTagInput.readOnly = false;
+    addTagBtn.disabled = false;
+    tagInputGroup.style.display = "block";
+
+    // Enable checkboxes for compatible models
+    entryCompatible
+      .querySelectorAll("input[type='checkbox']")
       .forEach((checkbox) => {
-        checkbox.disabled = true;
+        checkbox.disabled = false;
       });
-    document
-      .querySelectorAll("#entry-incompatible input[name='incompatible']")
+
+    // Enable checkboxes for incompatible models
+    entryIncompatible
+      .querySelectorAll("input[type='checkbox']")
       .forEach((checkbox) => {
-        checkbox.disabled = true;
+        checkbox.disabled = false;
       });
-    document.querySelector(".detail-actions").style.display = "flex";
+
+    // Transform tags into editable spans with remove buttons
+    const tagsText = entryTags.textContent.trim();
+    const tags = tagsText === "None" ? [] : tagsText.split(", ");
+    entryTags.innerHTML = "";
+    tags.forEach((tag) => {
+      const tagSpan = document.createElement("span");
+      tagSpan.classList.add("tag");
+      tagSpan.textContent = tag;
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "x";
+      removeBtn.classList.add("remove-tag-btn");
+      removeBtn.addEventListener("click", () => tagSpan.remove());
+      tagSpan.appendChild(removeBtn);
+      entryTags.appendChild(tagSpan);
+    });
+
+    // Populate existing tags dropdown
+    chrome.storage.local.get("tags", (tagData) => {
+      const storedTags = tagData.tags || [];
+      const dropdown = document.getElementById("existing-tags-dropdown");
+      dropdown.innerHTML =
+        '<option value="" data-i18n="select_tag">Select Tag</option>';
+      storedTags.forEach((tag) => {
+        const option = document.createElement("option");
+        option.value = tag;
+        option.textContent = tag;
+        dropdown.appendChild(option);
+      });
+      applyTranslations(currentLang);
+    });
+
+    // Show save/cancel buttons
+    document.querySelector(".detail-actions").style.display = "block";
+
+    // Toggle edit button text
+    this.textContent =
+      translations[currentLang]?.finish_editing || "Bearbeitung beenden";
+    this.dataset.editing = "true";
   });
 
   saveBtn.addEventListener("click", () => {
@@ -617,6 +686,20 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const newFolderId = document.getElementById("entry-folder").value;
     const newTag = document.getElementById("new-tag").value.trim();
+    const compatibleModels = Array.from(
+      document.querySelectorAll(
+        "#entry-compatible input[type='checkbox']:checked"
+      )
+    ).map((checkbox) => checkbox.value);
+    const incompatibleModels = Array.from(
+      document.querySelectorAll(
+        "#entry-incompatible input[type='checkbox']:checked"
+      )
+    ).map((checkbox) => checkbox.value);
+    const notes = document.getElementById("entry-notes").value.trim();
+    const tags = Array.from(
+      document.getElementById("entry-tags").querySelectorAll(".tag")
+    ).map((tagSpan) => tagSpan.textContent.replace("x", "").trim());
 
     if (!title) {
       alert(
@@ -625,47 +708,99 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    chrome.storage.local.get(folderId, function (data) {
-      const topic = data[folderId];
-      if (!topic || !topic.prompts || !topic.prompts[promptIndex]) {
-        alert("Prompt nicht gefunden!");
+    if (!document.getElementById("entry-title").dataset.folderId) {
+      // New prompt case
+      const folderId = document.getElementById("entry-folder").value;
+      if (!folderId) {
+        alert(
+          translations[currentLang]?.select_folder ||
+            "Bitte einen Ordner auswählen!"
+        );
         return;
       }
 
       const promptObj = {
-        ...topic.prompts[promptIndex],
         title,
         description,
         content,
+        tags: tags.length ? tags : newTag ? [newTag] : [],
         isFavorite,
-        tags: newTag ? [newTag] : topic.prompts[promptIndex].tags || [],
+        compatibleModels,
+        incompatibleModels,
+        createdAt: Date.now(),
         lastUsed: Date.now(),
+        lastModified: Date.now(),
+        notes,
+        folderId,
+        folderName:
+          document.querySelector(`#entry-folder option[value="${folderId}"]`)
+            ?.textContent || "Single Prompt",
+        metaChangeLog: [],
       };
 
-      if (newFolderId && newFolderId !== folderId) {
-        topic.prompts.splice(promptIndex, 1);
+      chrome.storage.local.get(folderId, function (data) {
+        const topic = data[folderId] || { name: "Unbekannt", prompts: [] };
+        topic.prompts = topic.prompts || [];
+        topic.prompts.push(promptObj);
         chrome.storage.local.set({ [folderId]: topic }, () => {
-          chrome.storage.local.get(newFolderId, function (newData) {
-            const newTopic = newData[newFolderId];
-            newTopic.prompts.push(promptObj);
-            chrome.storage.local.set({ [newFolderId]: newTopic }, () => {
-              finalizeSave();
+          document.getElementById("detail-overlay").classList.remove("open");
+          document.getElementById("plus-btn").style.display = "block";
+          loadFolders();
+          loadPromptsTable();
+        });
+      });
+    } else {
+      // Update existing prompt
+      chrome.storage.local.get(folderId, function (data) {
+        const topic = data[folderId];
+        if (!topic || !topic.prompts || !topic.prompts[promptIndex]) {
+          alert("Prompt nicht gefunden!");
+          return;
+        }
+
+        const promptObj = {
+          ...topic.prompts[promptIndex],
+          title,
+          description,
+          content,
+          isFavorite,
+          compatibleModels,
+          incompatibleModels,
+          tags: tags.length
+            ? tags
+            : newTag
+            ? [newTag]
+            : topic.prompts[promptIndex].tags || [],
+          lastUsed: Date.now(),
+          lastModified: Date.now(),
+          notes,
+        };
+
+        if (newFolderId && newFolderId !== folderId) {
+          topic.prompts.splice(promptIndex, 1);
+          chrome.storage.local.set({ [folderId]: topic }, () => {
+            chrome.storage.local.get(newFolderId, function (newData) {
+              const newTopic = newData[newFolderId];
+              newTopic.prompts.push(promptObj);
+              chrome.storage.local.set({ [newFolderId]: newTopic }, () => {
+                finalizeSave();
+              });
             });
           });
-        });
-      } else {
-        topic.prompts[promptIndex] = promptObj;
-        chrome.storage.local.set({ [folderId]: topic }, () => {
-          finalizeSave();
-        });
-      }
-    });
+        } else {
+          topic.prompts[promptIndex] = promptObj;
+          chrome.storage.local.set({ [folderId]: topic }, () => {
+            finalizeSave();
+          });
+        }
+      });
 
-    function finalizeSave() {
-      document.getElementById("detail-overlay").classList.remove("open");
-      document.getElementById("plus-btn").style.display = "block";
-      loadFolders();
-      loadPromptsTable();
+      function finalizeSave() {
+        document.getElementById("detail-overlay").classList.remove("open");
+        document.getElementById("plus-btn").style.display = "block";
+        loadFolders();
+        loadPromptsTable();
+      }
     }
   });
 
@@ -702,26 +837,24 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data) {
           Object.entries(data).forEach(([id, topic]) => {
             if (topic.prompts && !topic.isTrash) {
-              filteredPrompts = filteredPrompts.concat(
-                topic.prompts
-                  .filter((prompt) => {
-                    return (
-                      prompt.title.toLowerCase().includes(searchTerm) ||
-                      (prompt.description &&
-                        prompt.description
-                          .toLowerCase()
-                          .includes(searchTerm)) ||
-                      prompt.content.toLowerCase().includes(searchTerm)
-                    );
-                  })
-                  .map((prompt, index) => ({
-                    prompt,
-                    folderId: id,
-                    index,
-                    isHidden: topic.isHidden || false,
-                    isTrash: topic.isTrash || false,
-                  }))
-              );
+              const filtered = topic.prompts
+                .map((prompt, idx) => ({ prompt, idx }))
+                .filter(({ prompt }) => {
+                  return (
+                    prompt.title.toLowerCase().includes(searchTerm) ||
+                    (prompt.description &&
+                      prompt.description.toLowerCase().includes(searchTerm)) ||
+                    prompt.content.toLowerCase().includes(searchTerm)
+                  );
+                })
+                .map(({ prompt, idx }) => ({
+                  prompt,
+                  folderId: id,
+                  index: idx,
+                  isHidden: topic.isHidden || false,
+                  isTrash: topic.isTrash || false,
+                }));
+              filteredPrompts = filteredPrompts.concat(filtered);
             }
           });
         }
@@ -736,11 +869,11 @@ document.addEventListener("DOMContentLoaded", () => {
             tr.dataset.folderId = folderId;
             tr.dataset.promptIndex = index;
             tr.innerHTML = `
-            <td>${prompt.title}</td>
-            <td class="action-cell">
-              <button class="action-btn">⋮</button>
-            </td>
-          `;
+          <td>${prompt.title}</td>
+          <td class="action-cell">
+            <button class="action-btn">⋮</button>
+          </td>
+        `;
             tableBody.appendChild(tr);
           });
         }
@@ -1092,11 +1225,18 @@ document.addEventListener("DOMContentLoaded", () => {
     entryDescription.value = "";
     entryContent.value = "";
     entryType.value = "N/A";
-    entryTags.textContent = "None";
-    tagInputGroup.style.display = "block";
-    newTagInput.value = "";
-    newTagInput.readOnly = false;
-    addTagBtn.disabled = false;
+
+    chrome.storage.local.get("tags", (tagData) => {
+      const storedTags = tagData.tags || [];
+      entryTags.textContent = storedTags.length
+        ? storedTags.join(", ")
+        : "None";
+      tagInputGroup.style.display = "block";
+      newTagInput.value = "";
+      newTagInput.readOnly = false;
+      addTagBtn.disabled = false;
+    });
+
     entryFavorite.checked = false;
     entryCreatedAt.value = "";
     entryLastUsed.value = "";
@@ -1227,12 +1367,35 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("add-tag-btn").addEventListener("click", () => {
     const newTagInput = document.getElementById("new-tag");
     const newTag = newTagInput.value.trim();
-    if (newTag) {
-      document.getElementById("entry-tags").textContent = newTag;
-      newTagInput.readOnly = true;
-      document.getElementById("add-tag-btn").disabled = true;
-      document.getElementById("tag-input-group").style.display = "none";
-    } else {
+    const entryTags = document.getElementById("entry-tags");
+    const existingTags = Array.from(entryTags.querySelectorAll(".tag")).map(
+      (tagSpan) => tagSpan.textContent.replace("x", "").trim()
+    );
+
+    if (newTag && !existingTags.includes(newTag)) {
+      const tagSpan = document.createElement("span");
+      tagSpan.classList.add("tag");
+      tagSpan.textContent = newTag;
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "x";
+      removeBtn.classList.add("remove-tag-btn");
+      removeBtn.addEventListener("click", () => tagSpan.remove());
+      tagSpan.appendChild(removeBtn);
+      entryTags.appendChild(tagSpan);
+
+      // Save new tag to storage
+      chrome.storage.local.get("tags", (tagData) => {
+        const storedTags = tagData.tags || [];
+        if (!storedTags.includes(newTag)) {
+          storedTags.push(newTag);
+          chrome.storage.local.set({ tags: storedTags }, () => {
+            console.log(`Tag "${newTag}" saved to chrome.storage.local`);
+          });
+        }
+      });
+
+      newTagInput.value = "";
+    } else if (!newTag) {
       alert(
         translations[currentLang]?.tag_empty || "Tag darf nicht leer sein!"
       );

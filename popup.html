@@ -131,12 +131,24 @@
             ></textarea>
           </div>
           <div class="detail-field">
+            <label data-i18n="notes_label">Notes</label>
+            <textarea
+              id="entry-notes"
+              readonly
+              data-i18n-placeholder="notes_placeholder"
+            ></textarea>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="last_modified_label">Last Modified</label>
+            <input type="text" id="entry-last-modified" readonly />
+          </div>
+          <div class="detail-field">
             <label data-i18n="type_label"></label>
             <input type="text" id="entry-type" readonly />
           </div>
 
           <div class="detail-field">
-            <label data-i18n="compatible_models_label"></label>
+            <label data-i18n="compatible_models_label">Compatible Models</label>
             <div class="checkbox-group" id="entry-compatible">
               <label
                 ><input
@@ -166,18 +178,12 @@
                 ChatGPT</label
               >
               <label
-                ><input
-                  type="checkbox"
-                  name="compatible"
-                  value="Claude"
-                  disabled
-                />
-                Claude</label
-              >
+                ><input type="checkbox" name="Claude" disabled /> Claude</label
+              ><br />
               <label
                 ><input
                   type="checkbox"
-                  name="compatible"
+                  name="checkbox"
                   value="BlackBox"
                   disabled
                 />
@@ -191,7 +197,7 @@
                   disabled
                 />
                 GitHub Copilot</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -204,21 +210,22 @@
               <label
                 ><input
                   type="checkbox"
-                  name="compatible"
-                  value="Mistral"
+                  name="Mistralin"
+                  value="Mistralin"
                   disabled
                 />
-                Mistral</label
-              >
+                Mistralin</label
+              ><br />
+              <br />
               <label
                 ><input
                   type="checkbox"
-                  name="compatible"
+                  name="DuckDuck"
                   value="DuckDuckGo"
                   disabled
                 />
                 DuckDuckGo</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -227,11 +234,11 @@
                   disabled
                 />
                 Perplexity</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
-                  name="compatible"
+                  name="checkbox"
                   value="DeepSeek"
                   disabled
                 />
@@ -240,16 +247,17 @@
               <label
                 ><input
                   type="checkbox"
-                  name="compatible"
+                  name="checkbox"
                   value="Deepai"
                   disabled
                 />
                 Deepai</label
-              >
+              ><br />
+              <br />
               <label
                 ><input
                   type="checkbox"
-                  name="compatible"
+                  name="checkbox"
                   value="Qwen AI"
                   disabled
                 />
@@ -258,7 +266,9 @@
             </div>
           </div>
           <div class="detail-field">
-            <label data-i18n="incompatible_models_label"></label>
+            <label data-i18n="incompatible_models_label"
+              >Incompatible Models</label
+            >
             <div class="checkbox-group" id="entry-incompatible">
               <label
                 ><input
@@ -268,7 +278,7 @@
                   disabled
                 />
                 Grok</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -277,7 +287,7 @@
                   disabled
                 />
                 Gemini</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -286,7 +296,7 @@
                   disabled
                 />
                 ChatGPT</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -295,7 +305,7 @@
                   disabled
                 />
                 Claude</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -304,7 +314,7 @@
                   disabled
                 />
                 BlackBox</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -313,7 +323,7 @@
                   disabled
                 />
                 GitHub Copilot</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -322,16 +332,16 @@
                   disabled
                 />
                 Microsoft Copilot</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
                   name="incompatible"
-                  value="Mistral"
+                  value="Mistralin"
                   disabled
                 />
-                Mistral</label
-              >
+                Mistralin</label
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -340,7 +350,7 @@
                   disabled
                 />
                 DuckDuckGo</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -349,7 +359,7 @@
                   disabled
                 />
                 Perplexity</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -358,7 +368,7 @@
                   disabled
                 />
                 DeepSeek</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -367,7 +377,7 @@
                   disabled
                 />
                 Deepai</label
-              >
+              ><br />
               <label
                 ><input
                   type="checkbox"
@@ -376,7 +386,7 @@
                   disabled
                 />
                 Qwen AI</label
-              >
+              ><br />
             </div>
           </div>
 
@@ -388,6 +398,9 @@
               id="tag-input-group"
               style="display: none"
             >
+              <select id="existing-tags-dropdown">
+                <option value="" data-i18n="select_tag">Select Tag</option>
+              </select>
               <input
                 type="text"
                 id="new-tag"
@@ -398,7 +411,9 @@
                 class="action-btn"
                 id="add-tag-btn"
                 data-i18n="add_tag_button"
-              ></button>
+              >
+                Add New Tag
+              </button>
             </div>
           </div>
           <div class="detail-field">
