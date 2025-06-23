@@ -1,12 +1,38 @@
-let filterStat = document.getElementById("toggleFilterBtn");
-let filterArea = document.getElementById("filter-container");
+// Konstanten
+const DISPLAY_KEY = "filterAreaDisplay"; // Speicher-Schlüssel
 
-filterStat.addEventListener("click", function () {
-  if (filterArea.style.display === "none" || !filterArea.style.display) {
-    filterArea.style.display = "flex";
-    loadTagsFilter(); // Ensure tags are loaded when filter is shown
-  } else {
-    filterArea.style.display = "none";
+// DOM-Elemente
+const filterStat = document.getElementById("toggleFilterBtn");
+const filterArea = document.getElementById("filter-container");
+
+/* ------------------------------------------------------------------ */
+/* 1) BEIM LADEN: gespeicherten Status holen und anwenden             */
+/* ------------------------------------------------------------------ */
+document.addEventListener("DOMContentLoaded", async () => {
+  // Wert aus storage lesen (default: 'none')
+  const { [DISPLAY_KEY]: saved = "none" } = await chrome.storage.local.get(
+    DISPLAY_KEY
+  );
+
+  filterArea.style.display = saved;
+  if (saved === "flex") {
+    loadTagsFilter(); // Beim Öffnen direkt nachladen
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* 2) BEIM KLICK: Status umschalten und speichern                     */
+/* ------------------------------------------------------------------ */
+filterStat.addEventListener("click", async () => {
+  const hidden =
+    filterArea.style.display === "none" || !filterArea.style.display;
+  const newDisplay = hidden ? "flex" : "none";
+
+  filterArea.style.display = newDisplay;
+  await chrome.storage.local.set({ [DISPLAY_KEY]: newDisplay });
+
+  if (newDisplay === "flex") {
+    loadTagsFilter();
   }
 });
 
