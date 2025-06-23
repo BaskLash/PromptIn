@@ -85,15 +85,6 @@
               <ul class="folder-list"></ul>
             </div>
           </div>
-          <!-- <div class="accordion-item">
-            <div class="accordion-header" data-i18n="tools"></div>
-            <div class="accordion-content">
-              <ul>
-                <li data-i18n="category_favorites"></li>
-                <li data-i18n="category_2"></li>
-              </ul>
-            </div>
-          </div> -->
         </div>
       </div>
 
@@ -144,12 +135,31 @@
           </div>
           <div class="detail-field">
             <label data-i18n="type_label"></label>
-            <input type="text" id="entry-type" readonly />
+            <select id="entry-type" disabled>
+              <option value="" disabled selected>Wähle Typ</option>
+              <option value="textgen">Textgeneration</option>
+              <option value="rewrite">Umschreiben</option>
+              <option value="summarize">Zusammenfassen</option>
+              <option value="translate">Übersetzen</option>
+              <option value="ideation">Ideenfindung</option>
+              <option value="adcopy">Werbetexten</option>
+              <option value="storytelling">Storytelling</option>
+              <option value="analyze">Analyse</option>
+              <option value="classify">Klassifikation</option>
+              <option value="extract">Informationsextraktion</option>
+              <option value="compare">Vergleichen / Bewerten</option>
+              <option value="codegen">Codegenerierung</option>
+              <option value="debug">Fehleranalyse</option>
+              <option value="refactor">Code-Umschreiben</option>
+              <option value="explain-code">Code erklären</option>
+              <option value="prompt-engineering">Prompt Engineering</option>
+              <option value="meta-prompt">Meta-Prompt</option>
+              <option value="assistant">Assistant</option>
+            </select>
           </div>
-
           <div class="detail-field">
             <label data-i18n="compatible_models_label">Compatible Models</label>
-            <div class="checkbox-group" id="entry-compatible">
+            <div class="checkbox-group scrollable" id="entry-compatible">
               <label
                 ><input
                   type="checkbox"
@@ -178,12 +188,18 @@
                 ChatGPT</label
               >
               <label
-                ><input type="checkbox" name="Claude" disabled /> Claude</label
-              ><br />
+                ><input
+                  type="checkbox"
+                  name="compatible"
+                  value="Claude"
+                  disabled
+                />
+                Claude</label
+              >
               <label
                 ><input
                   type="checkbox"
-                  name="checkbox"
+                  name="compatible"
                   value="BlackBox"
                   disabled
                 />
@@ -197,7 +213,7 @@
                   disabled
                 />
                 GitHub Copilot</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -210,22 +226,21 @@
               <label
                 ><input
                   type="checkbox"
-                  name="Mistralin"
-                  value="Mistralin"
+                  name="compatible"
+                  value="Mistral"
                   disabled
                 />
-                Mistralin</label
-              ><br />
-              <br />
+                Mistral</label
+              >
               <label
                 ><input
                   type="checkbox"
-                  name="DuckDuck"
+                  name="compatible"
                   value="DuckDuckGo"
                   disabled
                 />
                 DuckDuckGo</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -234,11 +249,11 @@
                   disabled
                 />
                 Perplexity</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
-                  name="checkbox"
+                  name="compatible"
                   value="DeepSeek"
                   disabled
                 />
@@ -247,21 +262,20 @@
               <label
                 ><input
                   type="checkbox"
-                  name="checkbox"
+                  name="compatible"
                   value="Deepai"
                   disabled
                 />
                 Deepai</label
-              ><br />
-              <br />
+              >
               <label
                 ><input
                   type="checkbox"
-                  name="checkbox"
+                  name="compatible"
                   value="Qwen AI"
                   disabled
                 />
-                Qwen AI</label
+                Q năng AI</label
               >
             </div>
           </div>
@@ -269,7 +283,7 @@
             <label data-i18n="incompatible_models_label"
               >Incompatible Models</label
             >
-            <div class="checkbox-group" id="entry-incompatible">
+            <div class="checkbox-group scrollable" id="entry-incompatible">
               <label
                 ><input
                   type="checkbox"
@@ -278,7 +292,7 @@
                   disabled
                 />
                 Grok</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -287,7 +301,7 @@
                   disabled
                 />
                 Gemini</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -296,7 +310,7 @@
                   disabled
                 />
                 ChatGPT</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -305,7 +319,7 @@
                   disabled
                 />
                 Claude</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -314,7 +328,7 @@
                   disabled
                 />
                 BlackBox</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -323,7 +337,7 @@
                   disabled
                 />
                 GitHub Copilot</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -332,16 +346,16 @@
                   disabled
                 />
                 Microsoft Copilot</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
                   name="incompatible"
-                  value="Mistralin"
+                  value="Mistral"
                   disabled
                 />
-                Mistralin</label
-              ><br />
+                Mistral</label
+              >
               <label
                 ><input
                   type="checkbox"
@@ -350,7 +364,7 @@
                   disabled
                 />
                 DuckDuckGo</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -359,7 +373,7 @@
                   disabled
                 />
                 Perplexity</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -368,7 +382,7 @@
                   disabled
                 />
                 DeepSeek</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -377,7 +391,7 @@
                   disabled
                 />
                 Deepai</label
-              ><br />
+              >
               <label
                 ><input
                   type="checkbox"
@@ -386,21 +400,19 @@
                   disabled
                 />
                 Qwen AI</label
-              ><br />
+              >
             </div>
           </div>
-
           <div class="detail-field">
             <label data-i18n="tags_label"></label>
-            <div class="tag-display" id="entry-tags"></div>
+            <div class="checkbox-group scrollable" id="entry-tags">
+              <!-- Checkboxes will be dynamically populated -->
+            </div>
             <div
               class="tag-input-group"
               id="tag-input-group"
               style="display: none"
             >
-              <select id="existing-tags-dropdown">
-                <option value="" data-i18n="select_tag">Select Tag</option>
-              </select>
               <input
                 type="text"
                 id="new-tag"

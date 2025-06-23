@@ -242,12 +242,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const searchTerm = this.value.trim().toLowerCase();
 
         if (!searchTerm) {
-          // Keine Eingabe: Alle Prompts in Originalreihenfolge anzeigen
           renderPrompts(topic.prompts);
           return;
         }
 
-        // Prompts mit Distanz berechnen
         const scoredPrompts = topic.prompts.map((prompt) => {
           const titleDistance = levenshteinDistance(
             prompt.title.toLowerCase(),
@@ -261,7 +259,6 @@ document.addEventListener("DOMContentLoaded", () => {
             searchTerm
           );
 
-          // Minimale Distanz von Titel, Beschreibung und Inhalt
           const minDistance = Math.min(
             titleDistance,
             descriptionDistance,
@@ -271,15 +268,12 @@ document.addEventListener("DOMContentLoaded", () => {
           return { prompt, distance: minDistance };
         });
 
-        // Nach Distanz sortieren
         scoredPrompts.sort((a, b) => a.distance - b.distance);
 
-        // Gefilterte und sortierte Prompts rendern
         const filteredPrompts = scoredPrompts.map(({ prompt }) => prompt);
         renderPrompts(filteredPrompts);
       });
 
-      // Levenshtein-Distanz Funktion (unverändert)
       function levenshteinDistance(a, b) {
         const matrix = [];
 
@@ -343,7 +337,6 @@ document.addEventListener("DOMContentLoaded", () => {
         entryTitle.value = prompt.title || "";
         entryDescription.value = prompt.description || "";
         entryContent.value = prompt.content || "";
-        entryType.value = prompt.type || "N/A";
         entryFavorite.checked = prompt.isFavorite || false;
         entryCreatedAt.value = prompt.createdAt
           ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
@@ -351,40 +344,86 @@ document.addEventListener("DOMContentLoaded", () => {
         entryLastUsed.value = prompt.lastUsed
           ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
           : "N/A";
-        entryLastModified.value = prompt.lastModified
-          ? new Date(prompt.lastModified).toLocaleDateString("de-DE")
+        entryLastModified.value = prompt.updatedAt
+          ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
           : "N/A";
         entryNotes.value = prompt.notes || "";
 
-        // Update compatible models checkboxes
-        entryCompatible
-          .querySelectorAll("input[type='checkbox']")
-          .forEach((checkbox) => {
-            checkbox.checked =
-              prompt.compatibleModels?.includes(checkbox.value) || false;
-            checkbox.disabled = true;
-          });
+        // Populate type dropdown
+        entryType.value = prompt.type || "";
 
-        // Update incompatible models checkboxes
-        entryIncompatible
-          .querySelectorAll("input[type='checkbox']")
-          .forEach((checkbox) => {
-            checkbox.checked =
-              prompt.incompatibleModels?.includes(checkbox.value) || false;
-            checkbox.disabled = true;
-          });
+        // Populate compatible models
+        entryCompatible.innerHTML = [
+          "Grok",
+          "Gemini",
+          "ChatGPT",
+          "Claude",
+          "BlackBox",
+          "GitHub Copilot",
+          "Microsoft Copilot",
+          "Mistral",
+          "DuckDuckGo",
+          "Perplexity",
+          "DeepSeek",
+          "Deepai",
+          "Qwen AI",
+        ]
+          .map(
+            (model) => `
+          <label>
+            <input type="checkbox" name="compatible" value="${model}" 
+              ${
+                prompt.compatibleModels?.includes(model) ? "checked" : ""
+              } disabled>
+            ${model}
+          </label>
+        `
+          )
+          .join("");
 
-        // Load tags
+        // Populate incompatible models
+        entryIncompatible.innerHTML = [
+          "Grok",
+          "Gemini",
+          "ChatGPT",
+          "Claude",
+          "BlackBox",
+          "GitHub Copilot",
+          "Microsoft Copilot",
+          "Mistral",
+          "DuckDuckGo",
+          "Perplexity",
+          "DeepSeek",
+          "Deepai",
+          "Qwen AI",
+        ]
+          .map(
+            (model) => `
+          <label>
+            <input type="checkbox" name="incompatible" value="${model}" 
+              ${
+                prompt.incompatibleModels?.includes(model) ? "checked" : ""
+              } disabled>
+            ${model}
+          </label>
+        `
+          )
+          .join("");
+
+        // Populate tags
         chrome.storage.local.get("tags", (tagData) => {
           const storedTags = tagData.tags || [];
-          const promptTags = Array.isArray(prompt.tags) ? prompt.tags : [];
-          const validTags = promptTags.filter((tag) =>
-            storedTags.includes(tag)
-          );
-          entryTags.textContent = validTags.length
-            ? validTags.join(", ")
-            : "None";
-          tagInputGroup.style.display = "none";
+          entryTags.innerHTML = storedTags
+            .map(
+              (tag) => `
+            <label>
+              <input type="checkbox" name="tags" value="${tag}" 
+                ${prompt.tags?.includes(tag) ? "checked" : ""} disabled>
+              ${tag}
+            </label>
+          `
+            )
+            .join("");
         });
 
         // Populate folder dropdown
@@ -412,7 +451,7 @@ document.addEventListener("DOMContentLoaded", () => {
         entryTitle.readOnly = true;
         entryDescription.readOnly = true;
         entryContent.readOnly = true;
-        entryType.readOnly = true;
+        entryType.disabled = true;
         entryFavorite.disabled = true;
         entryCreatedAt.readOnly = true;
         entryLastUsed.readOnly = true;
@@ -421,6 +460,7 @@ document.addEventListener("DOMContentLoaded", () => {
         entryFolder.disabled = true;
         newTagInput.readOnly = true;
         addTagBtn.disabled = true;
+        tagInputGroup.style.display = "none";
 
         // Hide detail-actions initially
         document.querySelector(".detail-actions").style.display = "none";
@@ -460,7 +500,6 @@ document.addEventListener("DOMContentLoaded", () => {
           });
         }
 
-        // Bestehender Klick-Handler für die Zeile
         tr.addEventListener("click", (event) => {
           if (!event.target.classList.contains("action-btn")) {
             const folderId = tr.dataset.folderId;
@@ -607,67 +646,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const addTagBtn = document.getElementById("add-tag-btn");
     const entryTags = document.getElementById("entry-tags");
 
-    // Enable input fields
     entryTitle.readOnly = false;
     entryDescription.readOnly = false;
     entryContent.readOnly = false;
     entryNotes.readOnly = false;
-    entryType.readOnly = false;
+    entryType.disabled = false;
     entryFavorite.disabled = false;
     entryFolder.disabled = false;
     newTagInput.readOnly = false;
     addTagBtn.disabled = false;
     tagInputGroup.style.display = "block";
 
-    // Enable checkboxes for compatible models
     entryCompatible
       .querySelectorAll("input[type='checkbox']")
       .forEach((checkbox) => {
         checkbox.disabled = false;
       });
 
-    // Enable checkboxes for incompatible models
     entryIncompatible
       .querySelectorAll("input[type='checkbox']")
       .forEach((checkbox) => {
         checkbox.disabled = false;
       });
 
-    // Transform tags into editable spans with remove buttons
-    const tagsText = entryTags.textContent.trim();
-    const tags = tagsText === "None" ? [] : tagsText.split(", ");
-    entryTags.innerHTML = "";
-    tags.forEach((tag) => {
-      const tagSpan = document.createElement("span");
-      tagSpan.classList.add("tag");
-      tagSpan.textContent = tag;
-      const removeBtn = document.createElement("button");
-      removeBtn.textContent = "x";
-      removeBtn.classList.add("remove-tag-btn");
-      removeBtn.addEventListener("click", () => tagSpan.remove());
-      tagSpan.appendChild(removeBtn);
-      entryTags.appendChild(tagSpan);
+    entryTags.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+      checkbox.disabled = false;
     });
 
-    // Populate existing tags dropdown
-    chrome.storage.local.get("tags", (tagData) => {
-      const storedTags = tagData.tags || [];
-      const dropdown = document.getElementById("existing-tags-dropdown");
-      dropdown.innerHTML =
-        '<option value="" data-i18n="select_tag">Select Tag</option>';
-      storedTags.forEach((tag) => {
-        const option = document.createElement("option");
-        option.value = tag;
-        option.textContent = tag;
-        dropdown.appendChild(option);
-      });
-      applyTranslations(currentLang);
-    });
-
-    // Show save/cancel buttons
     document.querySelector(".detail-actions").style.display = "block";
-
-    // Toggle edit button text
     this.textContent =
       translations[currentLang]?.finish_editing || "Bearbeitung beenden";
     this.dataset.editing = "true";
@@ -679,13 +685,13 @@ document.addEventListener("DOMContentLoaded", () => {
       .getElementById("entry-description")
       .value.trim();
     const content = document.getElementById("entry-content").value.trim();
+    const type = document.getElementById("entry-type").value;
     const isFavorite = document.getElementById("entry-favorite").checked;
     const folderId = document.getElementById("entry-title").dataset.folderId;
     const promptIndex = parseInt(
       document.getElementById("entry-title").dataset.promptIndex
     );
     const newFolderId = document.getElementById("entry-folder").value;
-    const newTag = document.getElementById("new-tag").value.trim();
     const compatibleModels = Array.from(
       document.querySelectorAll(
         "#entry-compatible input[type='checkbox']:checked"
@@ -698,8 +704,8 @@ document.addEventListener("DOMContentLoaded", () => {
     ).map((checkbox) => checkbox.value);
     const notes = document.getElementById("entry-notes").value.trim();
     const tags = Array.from(
-      document.getElementById("entry-tags").querySelectorAll(".tag")
-    ).map((tagSpan) => tagSpan.textContent.replace("x", "").trim());
+      document.querySelectorAll("#entry-tags input[type='checkbox']:checked")
+    ).map((checkbox) => checkbox.value);
 
     if (!title) {
       alert(
@@ -708,8 +714,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (!document.getElementById("entry-title").dataset.folderId) {
-      // New prompt case
+    if (!folderId) {
       const folderId = document.getElementById("entry-folder").value;
       if (!folderId) {
         alert(
@@ -723,13 +728,14 @@ document.addEventListener("DOMContentLoaded", () => {
         title,
         description,
         content,
-        tags: tags.length ? tags : newTag ? [newTag] : [],
+        type,
+        tags,
         isFavorite,
         compatibleModels,
         incompatibleModels,
         createdAt: Date.now(),
         lastUsed: Date.now(),
-        lastModified: Date.now(),
+        updatedAt: Date.now(),
         notes,
         folderId,
         folderName:
@@ -750,7 +756,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       });
     } else {
-      // Update existing prompt
       chrome.storage.local.get(folderId, function (data) {
         const topic = data[folderId];
         if (!topic || !topic.prompts || !topic.prompts[promptIndex]) {
@@ -763,16 +768,13 @@ document.addEventListener("DOMContentLoaded", () => {
           title,
           description,
           content,
+          type,
           isFavorite,
           compatibleModels,
           incompatibleModels,
-          tags: tags.length
-            ? tags
-            : newTag
-            ? [newTag]
-            : topic.prompts[promptIndex].tags || [],
+          tags,
           lastUsed: Date.now(),
-          lastModified: Date.now(),
+          updatedAt: Date.now(),
           notes,
         };
 
@@ -805,13 +807,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   cancelBtn.addEventListener("click", () => {
-    document.getElementById("entry-title").readOnly = true;
-    document.getElementById("entry-description").readOnly = true;
-    document.getElementById("entry-content").readOnly = true;
-    document.getElementById("entry-favorite").disabled = true;
-    document.getElementById("entry-folder").disabled = true;
-    document.querySelector(".detail-actions").style.display = "none";
-    // Reload the prompt details to revert changes
     const folderId = document.getElementById("entry-title").dataset.folderId;
     const promptIndex = parseInt(
       document.getElementById("entry-title").dataset.promptIndex
@@ -1224,13 +1219,20 @@ document.addEventListener("DOMContentLoaded", () => {
     entryTitle.value = "";
     entryDescription.value = "";
     entryContent.value = "";
-    entryType.value = "N/A";
+    entryType.value = "";
 
     chrome.storage.local.get("tags", (tagData) => {
       const storedTags = tagData.tags || [];
-      entryTags.textContent = storedTags.length
-        ? storedTags.join(", ")
-        : "None";
+      entryTags.innerHTML = storedTags
+        .map(
+          (tag) => `
+        <label>
+          <input type="checkbox" name="tags" value="${tag}">
+          ${tag}
+        </label>
+      `
+        )
+        .join("");
       tagInputGroup.style.display = "block";
       newTagInput.value = "";
       newTagInput.readOnly = false;
@@ -1243,7 +1245,6 @@ document.addEventListener("DOMContentLoaded", () => {
     entryFolder.innerHTML =
       '<option value="" data-i18n="folder_select"></option>';
 
-    // Clear and enable compatible models checkboxes
     entryCompatible
       .querySelectorAll("input[name='compatible']")
       .forEach((checkbox) => {
@@ -1251,7 +1252,6 @@ document.addEventListener("DOMContentLoaded", () => {
         checkbox.disabled = false;
       });
 
-    // Clear and enable incompatible models checkboxes
     entryIncompatible
       .querySelectorAll("input[name='incompatible']")
       .forEach((checkbox) => {
@@ -1259,7 +1259,6 @@ document.addEventListener("DOMContentLoaded", () => {
         checkbox.disabled = false;
       });
 
-    // Populate folder dropdown
     chrome.storage.local.get(null, function (data) {
       Object.entries(data).forEach(([id, topic]) => {
         if (
@@ -1277,17 +1276,15 @@ document.addEventListener("DOMContentLoaded", () => {
       applyTranslations(currentLang);
     });
 
-    // Enable fields
     entryTitle.readOnly = false;
     entryDescription.readOnly = false;
     entryContent.readOnly = false;
+    entryType.disabled = false;
     entryFavorite.disabled = false;
     entryFolder.disabled = false;
 
-    // Show save/cancel buttons
     document.querySelector(".detail-actions").style.display = "flex";
 
-    // Clear dataset attributes
     entryTitle.removeAttribute("data-folderId");
     entryTitle.removeAttribute("data-promptIndex");
     navigationState = { source: "main", folderId: null };
@@ -1304,6 +1301,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .getElementById("entry-description")
         .value.trim();
       const content = document.getElementById("entry-content").value.trim();
+      const type = document.getElementById("entry-type").value;
       const newTag = document.getElementById("new-tag").value.trim();
       const isFavorite = document.getElementById("entry-favorite").checked;
       const folderId = document.getElementById("entry-folder").value;
@@ -1316,6 +1314,9 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(
           "#entry-incompatible input[name='incompatible']:checked"
         )
+      ).map((checkbox) => checkbox.value);
+      const tags = Array.from(
+        document.querySelectorAll("#entry-tags input[name='tags']:checked")
       ).map((checkbox) => checkbox.value);
 
       if (!title) {
@@ -1337,12 +1338,14 @@ document.addEventListener("DOMContentLoaded", () => {
         title,
         description,
         content,
-        tags: newTag ? [newTag] : [],
+        type,
+        tags: newTag ? [...tags, newTag] : tags,
         isFavorite,
         compatibleModels,
         incompatibleModels,
         createdAt: Date.now(),
         lastUsed: Date.now(),
+        updatedAt: Date.now(),
         folderId,
         folderName:
           document.querySelector(`#entry-folder option[value="${folderId}"]`)
@@ -1368,22 +1371,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const newTagInput = document.getElementById("new-tag");
     const newTag = newTagInput.value.trim();
     const entryTags = document.getElementById("entry-tags");
-    const existingTags = Array.from(entryTags.querySelectorAll(".tag")).map(
-      (tagSpan) => tagSpan.textContent.replace("x", "").trim()
-    );
+    const existingTags = Array.from(
+      entryTags.querySelectorAll("input[type='checkbox']")
+    ).map((cb) => cb.value);
 
     if (newTag && !existingTags.includes(newTag)) {
-      const tagSpan = document.createElement("span");
-      tagSpan.classList.add("tag");
-      tagSpan.textContent = newTag;
-      const removeBtn = document.createElement("button");
-      removeBtn.textContent = "x";
-      removeBtn.classList.add("remove-tag-btn");
-      removeBtn.addEventListener("click", () => tagSpan.remove());
-      tagSpan.appendChild(removeBtn);
-      entryTags.appendChild(tagSpan);
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" name="tags" value="${newTag}" checked> ${newTag}`;
+      entryTags.appendChild(label);
 
-      // Save new tag to storage
       chrome.storage.local.get("tags", (tagData) => {
         const storedTags = tagData.tags || [];
         if (!storedTags.includes(newTag)) {
