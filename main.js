@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     chrome.storage.local.get(null, function (data) {
       if (!data || Object.keys(data).length === 0) {
-        folderList.innerHTML = "<li>Keine Ordner vorhanden</li>";
+        folderList.innerHTML = "<li>No folders available</li>";
         updateFolderSearchVisibility();
         return;
       }
@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       if (folders.length === 0) {
-        folderList.innerHTML = "<li>Keine sichtbaren Ordner</li>";
+        folderList.innerHTML = "<li>No visible folders</li>";
       } else {
         folders.forEach(([id, topic]) => {
           const li = document.createElement("li");
@@ -204,7 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const topic = data[folderId];
       if (!topic || !topic.prompts || !Array.isArray(topic.prompts)) {
         folderEntries.innerHTML =
-          '<tr><td colspan="2">Keine Prompts in diesem Ordner</td></tr>';
+          '<tr><td colspan="2">No prompts in this folder</td></tr>';
         promptSearchInput.style.display = "none";
         return;
       }
@@ -573,7 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .querySelector(".add-folder-header-btn")
     .addEventListener("click", () => {
-      const folderName = prompt("Neuer Ordnername:");
+      const folderName = prompt("New Foldername:");
       if (folderName) {
         const folderId = generateUUID();
         const newFolder = {
@@ -709,7 +709,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!title) {
       alert(
-        translations[currentLang]?.required_title || "Titel ist erforderlich!"
+        translations[currentLang]?.required_title || "Title is required!"
       );
       return;
     }
@@ -719,7 +719,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!folderId) {
         alert(
           translations[currentLang]?.select_folder ||
-            "Bitte einen Ordner auswählen!"
+            "Please select a folder!"
         );
         return;
       }
@@ -1009,7 +1009,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const prompt = data[folderId]?.prompts?.[promptIndex];
       if (prompt) {
         navigator.clipboard.writeText(prompt.content || prompt.title);
-        alert(translations[currentLang]?.copied || "Prompt-Inhalt kopiert!");
+        alert(translations[currentLang]?.copied || "Prompt-Content copied!");
       }
     });
     dropdown.style.display = "none";
@@ -1028,7 +1028,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const folderId = dropdown.dataset.folderId;
     const promptIndex = parseInt(dropdown.dataset.promptIndex);
     const newName = prompt(
-      translations[currentLang]?.rename_prompt || "Neuer Prompt-Titel:",
+      translations[currentLang]?.rename_prompt || "New prompt title:",
       dropdown.dataset.entry
     );
     if (newName) {
@@ -1321,7 +1321,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!title) {
         alert(
-          translations[currentLang]?.required_title || "Titel ist erforderlich!"
+          translations[currentLang]?.required_title || "Title is required!"
         );
         return;
       }
@@ -1329,7 +1329,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!folderId) {
         alert(
           translations[currentLang]?.select_folder ||
-            "Bitte einen Ordner auswählen!"
+            "Please select a folder!"
         );
         return;
       }
