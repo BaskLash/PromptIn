@@ -708,9 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ).map((checkbox) => checkbox.value);
 
     if (!title) {
-      alert(
-        translations[currentLang]?.required_title || "Title is required!"
-      );
+      alert(translations[currentLang]?.required_title || "Title is required!");
       return;
     }
 
@@ -718,8 +716,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const folderId = document.getElementById("entry-folder").value;
       if (!folderId) {
         alert(
-          translations[currentLang]?.select_folder ||
-            "Please select a folder!"
+          translations[currentLang]?.select_folder || "Please select a folder!"
         );
         return;
       }
@@ -1122,18 +1119,303 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Prompt Import/Export
   document.getElementById("import-prompt-btn").addEventListener("click", () => {
-    alert(
-      translations[currentLang]?.import_prompt ||
-        "Funktion zum Importieren von Prompts wird implementiert."
-    );
+    importInput.click();
   });
 
   document.getElementById("export-prompt-btn").addEventListener("click", () => {
-    alert(
-      translations[currentLang]?.export_prompt ||
-        "Funktion zum Exportieren von Prompts wird implementiert."
-    );
+    exportDataToJSON();
   });
+
+  // Verstecktes Input-Element für Datei-Auswahl erstellen
+  const importInput = document.createElement("input");
+  importInput.type = "file";
+  importInput.accept = ".json";
+  importInput.style.display = "none"; // Versteckt das Input-Element
+  importInput.addEventListener("change", importDataFromJSON);
+  document.body.appendChild(importInput);
+
+  /**
+   * Exports all prompts, workflows, folders, and custom tags to a JSON file.
+   */
+  function exportDataToJSON() {
+    chrome.storage.local.get(null, function (data) {
+      if (!data || Object.keys(data).length === 0) {
+        alert("No data to export!");
+        return;
+      }
+
+      const exportData = {
+        exportDate: Date.now(),
+        folders: [],
+        prompts: [],
+        workflows: [],
+        tags: data.tags || [],
+      };
+
+      // Process all storage entries
+      Object.entries(data).forEach(([key, topic]) => {
+        // Handle folders
+        if (key.startsWith("folder_") || key.startsWith("hidden_folder_")) {
+          exportData.folders.push({
+            folderId: key,
+            folderName: topic.name || "Unnamed Folder",
+            isHidden:
+              key.startsWith("hidden_folder_") || topic.isHidden || false,
+            isTrash: topic.isTrash || false,
+          });
+
+          // Handle prompts within folders
+          if (topic.prompts && Array.isArray(topic.prompts)) {
+            topic.prompts.forEach((prompt) => {
+              exportData.prompts.push({
+                folderId: key,
+                folderName: topic.name || "Unnamed Folder",
+                isHidden:
+                  key.startsWith("hidden_folder_") || topic.isHidden || false,
+                isTrash: topic.isTrash || false,
+                prompt: {
+                  ...prompt,
+                  id:
+                    prompt.id ||
+                    `prompt_${Date.now()}_${Math.random()
+                      .toString(36)
+                      .substr(2, 9)}`,
+                  tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+                },
+              });
+            });
+          }
+        }
+
+        // Handle single prompts
+        if (
+          key.startsWith("single_prompt_") &&
+          topic.prompts &&
+          Array.isArray(topic.prompts)
+        ) {
+          topic.prompts.forEach((prompt) => {
+            exportData.prompts.push({
+              folderId: key,
+              folderName: topic.name || "Single Prompt",
+              isHidden: topic.isHidden || false,
+              isTrash: topic.isTrash || false,
+              prompt: {
+                ...prompt,
+                id:
+                  prompt.id ||
+                  `prompt_${Date.now()}_${Math.random()
+                    .toString(36)
+                    .substr(2, 9)}`,
+                tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+              },
+            });
+          });
+        }
+
+        // Handle no-folder prompts
+        if (key === "noFolderPrompts" && Array.isArray(topic)) {
+          topic.forEach((prompt) => {
+            exportData.prompts.push({
+              folderId: "noFolderPrompts",
+              folderName: "No Folder",
+              isHidden: false,
+              isTrash: false,
+              prompt: {
+                ...prompt,
+                id:
+                  prompt.id ||
+                  `prompt_${Date.now()}_${Math.random()
+                    .toString(36)
+                    .substr(2, 9)}`,
+                tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+              },
+            });
+          });
+        }
+
+        // Handle workflows
+        if (
+          key.startsWith("workflow_") &&
+          topic.steps &&
+          Array.isArray(topic.steps)
+        ) {
+          exportData.workflows.push({
+            workflowId: key,
+            workflowName: topic.name || "Unnamed Workflow",
+            steps: topic.steps,
+            createdAt: topic.createdAt || Date.now(),
+            tags: Array.isArray(topic.tags) ? topic.tags : [],
+          });
+        }
+      });
+
+      if (
+        exportData.folders.length === 0 &&
+        exportData.prompts.length === 0 &&
+        exportData.workflows.length === 0 &&
+        exportData.tags.length === 0
+      ) {
+        alert("No data to export!");
+        return;
+      }
+
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `data_backup_${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      console.log("Data exported successfully");
+    });
+  }
+
+  /**
+   * Imports prompts, workflows, folders, and custom tags from a JSON file.
+   */
+  function importDataFromJSON(event) {
+    const file = event.target.files[0];
+    if (!file) {
+      alert("No file selected!");
+      return;
+    }
+
+    if (!file.name.endsWith(".json")) {
+      alert("Please select a valid JSON file!");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (
+          !importedData.prompts ||
+          !Array.isArray(importedData.prompts) ||
+          !importedData.folders ||
+          !Array.isArray(importedData.folders) ||
+          !importedData.workflows ||
+          !Array.isArray(importedData.workflows) ||
+          !importedData.tags ||
+          !Array.isArray(importedData.tags)
+        ) {
+          alert(
+            "Invalid JSON structure: Required properties missing or invalid!"
+          );
+          return;
+        }
+
+        chrome.storage.local.get(null, function (existingData) {
+          const updatedData = existingData || {};
+
+          // Import tags
+          const existingTags = updatedData.tags || [];
+          const newTags = [...new Set([...existingTags, ...importedData.tags])];
+          updatedData.tags = newTags;
+
+          // Import folders
+          importedData.folders.forEach((folder) => {
+            const { folderId, folderName, isHidden, isTrash } = folder;
+            if (!updatedData[folderId]) {
+              updatedData[folderId] = {
+                name: folderName || "Unnamed Folder",
+                prompts: [],
+                isHidden: isHidden || false,
+                isTrash: isTrash || false,
+              };
+            } else {
+              updatedData[folderId].name =
+                updatedData[folderId].name || folderName || "Unnamed Folder";
+              updatedData[folderId].isHidden =
+                updatedData[folderId].isHidden !== undefined
+                  ? updatedData[folderId].isHidden
+                  : isHidden || false;
+              updatedData[folderId].isTrash =
+                updatedData[folderId].isTrash !== undefined
+                  ? updatedData[folderId].isTrash
+                  : isTrash || false;
+              updatedData[folderId].prompts =
+                updatedData[folderId].prompts || [];
+            }
+          });
+
+          // Import prompts
+          importedData.prompts.forEach((item) => {
+            const { folderId, folderName, isHidden, isTrash, prompt } = item;
+            if (!updatedData[folderId]) {
+              updatedData[folderId] = {
+                name: folderName || "Unnamed Folder",
+                prompts: [],
+                isHidden: isHidden || false,
+                isTrash: isTrash || false,
+              };
+            }
+            // Ensure prompt has an ID
+            prompt.id =
+              prompt.id ||
+              `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            prompt.tags = Array.isArray(prompt.tags)
+              ? prompt.tags.filter((tag) => newTags.includes(tag))
+              : [];
+            updatedData[folderId].prompts.push(prompt);
+          });
+
+          // Import workflows
+          importedData.workflows.forEach((workflow) => {
+            const { workflowId, workflowName, steps, createdAt, tags } =
+              workflow;
+            updatedData[workflowId] = {
+              name: workflowName || "Unnamed Workflow",
+              steps: steps || [],
+              createdAt: createdAt || Date.now(),
+              tags: Array.isArray(tags)
+                ? tags.filter((tag) => newTags.includes(tag))
+                : [],
+            };
+          });
+
+          // Import noFolderPrompts
+          const noFolderPrompts = importedData.prompts
+            .filter((item) => item.folderId === "noFolderPrompts")
+            .map((item) => ({
+              ...item.prompt,
+              id:
+                item.prompt.id ||
+                `prompt_${Date.now()}_${Math.random()
+                  .toString(36)
+                  .substr(2, 9)}`,
+              tags: Array.isArray(item.prompt.tags)
+                ? item.prompt.tags.filter((tag) => newTags.includes(tag))
+                : [],
+            }));
+          updatedData.noFolderPrompts = updatedData.noFolderPrompts
+            ? [...updatedData.noFolderPrompts, ...noFolderPrompts]
+            : noFolderPrompts;
+
+          chrome.storage.local.set(updatedData, function () {
+            if (chrome.runtime.lastError) {
+              console.error("Error importing data:", chrome.runtime.lastError);
+              alert("Error importing data. Please try again.");
+            } else {
+              console.log("Data imported successfully");
+              loadPromptsTable("all");
+              loadFolders();
+              alert(
+                "Data imported successfully!"
+              );
+            }
+          });
+        });
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        alert("Error parsing JSON file. Please check the file and try again.");
+      }
+    };
+    reader.readAsText(file);
+  }
 
   /* Highlight Text Section */
   const toggle = document.getElementById("highlight-toggle");
@@ -1166,25 +1448,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Feedback, Feature Request, Review
   document.getElementById("feedback-btn").addEventListener("click", () => {
-    alert(
-      translations[currentLang]?.feedback_open ||
-        "Feedback-Formular wird geöffnet..."
-    );
+    window.open("https://forms.gle/9fN4XeUbhFL1xsyx8", "_blank");
   });
 
   document
     .getElementById("feature-request-btn")
     .addEventListener("click", () => {
-      alert(
-        translations[currentLang]?.feature_request_open ||
-          "Feature Request-Formular wird geöffnet..."
-      );
+      window.open("https://forms.gle/5EM4tPz9b7d1p6iB7", "_blank");
     });
 
   document.getElementById("review-btn").addEventListener("click", () => {
-    alert(
-      translations[currentLang]?.review_open ||
-        "Review-Formular wird geöffnet..."
+    window.open(
+      "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje/reviews",
+      "_blank"
     );
   });
 
@@ -1328,8 +1604,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!folderId) {
         alert(
-          translations[currentLang]?.select_folder ||
-            "Please select a folder!"
+          translations[currentLang]?.select_folder || "Please select a folder!"
         );
         return;
       }

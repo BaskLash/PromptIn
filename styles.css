@@ -57,7 +57,8 @@ body.dark-theme {
   display: flex;
   flex-direction: column;
   width: 365px;
-  height: 100%;
+  min-height: 585px; /* Add minimum height for consistent popup size */
+  height: auto; /* Change from height: 100% to allow natural expansion */
   position: relative;
   background-color: var(--light-popup-bg);
   box-shadow: 0 2px 8px var(--light-shadow);
