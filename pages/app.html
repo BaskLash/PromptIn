@@ -1,83 +1,401 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="app.css" />
-    <script src="app.js" defer></script>
-    <script src="data-aggregations.js" defer></script>
-    <script src="export.js" defer></script>
+    <script src="utils.js" defer></script>
+    <script src="styles.js" defer></script>
+    <script src="folderManagement.js" defer></script>
+    <script src="promptManagement.js" defer></script>
+    <script src="workflowManagement.js" defer></script>
+    <script src="ui.js" defer></script>
     <script src="versioning.js" defer></script>
-    <script src="displayData.js" defer></script>
-    <title>Prompt Overview</title>
+    <script src="export.js" defer></script>
+    <script src="chart.umd.min.js" defer></script>
+    <script src="statistics.js" defer></script>
+    <script src="storage.js" defer></script>
+    <script src="app.js" defer></script>
+    <title>Dashboard Layout</title>
   </head>
+
   <body>
-    <!-- Seiten-Navigation -->
-    <div class="sidenav">
-      <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Search..." />
-        <button id="clearSearch" title="Clear search">×</button>
+    <header>
+      <div class="header-left">⚙️</div>
+      <div class="header-center">
+        <input id="searchInput" type="text" placeholder="Suchen..." />
       </div>
-      <!-- Collapsible Kategorien -->
-      <div class="nav-section">
-        <button class="collapsible">Categories</button>
-        <div class="collapsible-content">
-          <a href="#favorites" id="favoritesLink">Favorites</a>
-          <a href="#home" id="allPromptsLink">All Prompts</a>
-          <a href="#prompts" id="singlePromptsLink">Single Prompts</a>
-          <a href="#folders" id="categorisedPromptsLink">Categorised Prompts</a>
-          <a href="#folders" id="unusedPromptsLink">Unused Prompts</a>
-          <a href="#workflows" id="workflowsLink">Workflows</a>
-          <a href="#trash" id="trashLink">Trash</a>
-        </div>
+      <div class="header-right">
+        <span
+          id="faq-btn"
+          title="Hilfe"
+          style="margin-left: 10px; cursor: pointer"
+          >❓</span
+        >
+        <span
+          title="Survey"
+          id="survey-btn"
+          style="margin-left: 10px; cursor: pointer"
+          >📋</span
+        >
+        👤
       </div>
-      <hr />
-      <!-- Collapsible Ordner -->
-      <div class="nav-section">
-        <button class="collapsible">
-          Folders
-          <span
-            id="createFolderIcon"
-            class="folder-icon"
-            title="Create new folder"
-            >+</span
-          >
-        </button>
-        <div class="collapsible-content" id="folderNavList"></div>
-      </div>
+    </header>
 
-      <div class="bottom-section">
-        <div class="container">
-          <h2>Storage Usage</h2>
-          <div class="storage-bar">
-            <div class="used-bar" id="usedBar"></div>
-            <span class="percentage-text" id="percentageText">0%</span>
-          </div>
-          <div class="details">
-            <p>Used: <span id="usedMB">0</span> MB</p>
-            <p>Available: <span id="remainingMB">0</span> MB</p>
-            <p>Total Capacity: <span id="totalMB">0</span> MB</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="container">
+      <aside>
+        <nav>
+          <section class="accordion">
+            <h4 class="accordion-header">Categories</h4>
+            <ul class="accordion-content">
+              <li data-folder="Favorites">Favorites</li>
+              <li data-folder="All Prompts">All Prompts</li>
+              <li data-folder="Single Prompts">Single Prompts</li>
+              <li data-folder="Categorised Prompts">Categorised Prompts</li>
+              <li data-folder="Dynamic Prompts">Dynamic Prompts</li>
+              <li data-folder="Static Prompts">Static Prompts</li>
+              <li data-folder="Unused Prompts">Unused Prompts</li>
+              <li data-folder="Workflows">Workflows</li>
+              <li data-folder="Trash">Trash</li>
+            </ul>
+          </section>
+          <section class="accordion folders-accordion">
+            <h4 class="accordion-header">
+              Folders
+              <button
+                id="addFolderBtn"
+                class="add-folder-header-btn"
+                title="Ordner hinzufügen"
+              >
+                +
+              </button>
+            </h4>
+            <div class="accordion-content folders-content">
+              <input
+                id="folder-search"
+                type="text"
+                class="folder-search"
+                placeholder="Search folder..."
+              />
+              <ul class="folder-list"></ul>
+            </div>
+          </section>
+          <section class="accordion">
+            <h4 class="accordion-header">Tools</h4>
+            <ul class="accordion-content">
+              <li data-view="tags">Tag Overview</li>
+              <li data-view="analytics">Prompt Analytics</li>
+              <li data-view="storage">Storage</li>
+            </ul>
+          </section>
+        </nav>
+      </aside>
+      <div id="sidebar-resizer"></div>
 
-    <div class="main-content">
-      <header class="sticky-header">
-        <h1 id="mainHeaderTitle">Prompt Overview</h1>
-        <button id="addPromptBtn" class="add-prompt-btn" title="Add new prompt">
-          Add Prompt
-        </button>
-      </header>
       <main>
-        <section id="promptList" class="prompt-list-section hidden">
-          <div id="promptsContainer" class="prompt-list"></div>
-        </section>
-        <section id="folderList" class="folder-list-section">
-          <div id="foldersContainer" class="folder-list"></div>
-        </section>
-        <div id="searchResults" class="search-results hidden"></div>
+        <div id="prompts-view" style="display: none">
+          <div class="main-header">
+            <h1 id="prompts-header" data-category="All Prompts">All Prompts</h1>
+            <button id="toggleFilterBtn" title="Filter ein-/ausblenden">
+              🔍 Filter
+            </button>
+            <button id="addItemBtn">+ Add Item</button>
+          </div>
+          <div class="filter-container" id="filter-container">
+            <div class="filter-group">
+              <h3>Compatible Models</h3>
+              <div id="compatible-models-filter" class="checkbox-group">
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Grok"
+                  />
+                  Grok</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Gemini"
+                  />
+                  Gemini</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="ChatGPT"
+                  />
+                  ChatGPT</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Claude"
+                  />
+                  Claude</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="BlackBox"
+                  />
+                  BlackBox</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="GitHub Copilot"
+                  />
+                  GitHub Copilot</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Microsoft Copilot"
+                  />
+                  Microsoft Copilot</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Mistral"
+                  />
+                  Mistral</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="DuckDuckGo"
+                  />
+                  DuckDuckGo</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Perplexity"
+                  />
+                  Perplexity</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="DeepSeek"
+                  />
+                  DeepSeek</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Deepai"
+                  />
+                  Deepai</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="compatible-filter"
+                    value="Qwen AI"
+                  />
+                  Qwen AI</label
+                >
+              </div>
+            </div>
+            <div class="filter-group">
+              <h3>Incompatible Models</h3>
+              <div id="incompatible-models-filter" class="checkbox-group">
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Grok"
+                  />
+                  Grok</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Gemini"
+                  />
+                  Gemini</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="ChatGPT"
+                  />
+                  ChatGPT</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Claude"
+                  />
+                  Claude</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="BlackBox"
+                  />
+                  BlackBox</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="GitHub Copilot"
+                  />
+                  GitHub Copilot</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Microsoft Copilot"
+                  />
+                  Microsoft Copilot</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Mistral"
+                  />
+                  Mistral</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="DuckDuckGo"
+                  />
+                  DuckDuckGo</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Perplexity"
+                  />
+                  Perplexity</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="DeepSeek"
+                  />
+                  DeepSeek</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Deepai"
+                  />
+                  Deepai</label
+                >
+                <label
+                  ><input
+                    type="checkbox"
+                    name="incompatible-filter"
+                    value="Qwen AI"
+                  />
+                  Qwen AI</label
+                >
+              </div>
+            </div>
+            <div class="filter-group">
+              <h3>Tags</h3>
+              <div id="tags-filter" class="checkbox-group"></div>
+            </div>
+            <div class="filter-group">
+              <h3>Category Filter</h3>
+              <select id="category-filter">
+                <option value="all">All</option>
+                <option value="recentlyUsed">Recently Used</option>
+                <option value="rarelyUsed">Rarely Used</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      id="select-all-checkbox"
+                      name="select-all"
+                    />
+                  </th>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>Compatible Models</th>
+                  <th>Incompatible Models</th>
+                  <th>Tags</th>
+                  <th>Category</th>
+                  <th>Last used</th>
+                  <th>Created on</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="tags-view" style="display: none">
+          <div class="main-header">
+            <h1>Tag Overview</h1>
+            <button id="addTagBtn">+ Add Tag</button>
+          </div>
+          <div class="tag-container" id="tag-container"></div>
+        </div>
+        <!-- Analitics Bereich -->
+        <div id="analytics-view" style="display: none">
+          <div class="main-header">
+            <h1>Prompt Analytics</h1>
+          </div>
+          <div id="analytics-container"></div>
+        </div>
+        <!-- Storage Bereich -->
+        <div id="storage-view" style="display: none">
+          <div class="main-header">
+            <h1>Storage</h1>
+          </div>
+          <div id="storage-container"></div>
+        </div>
+        <div id="promptModal" class="modal" style="display: none">
+          <div class="modal-content">
+            <span class="close-modal" title="Schließen">×</span>
+            <h2>Prompts for Tag: <span id="modalTagName"></span></h2>
+            <div id="modalPromptList"></div>
+          </div>
+        </div>
+        <!-- Weitere Ansichten können hier hinzugefügt werden -->
       </main>
+      <div class="details-sidebar" id="details-sidebar">
+        <div class="sidebar-header">
+          <h2>Details</h2>
+          <span class="close-sidebar" title="Schließen">×</span>
+        </div>
+        <div class="sidebar-content"></div>
+      </div>
     </div>
   </body>
 </html>

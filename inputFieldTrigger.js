@@ -241,6 +241,7 @@ function inputFieldTrigger() {
           }
 
           categories = {
+            "Last Used": [],
             Favorites: [],
             "All Prompts": [],
             "Single Prompts": [],
@@ -248,13 +249,14 @@ function inputFieldTrigger() {
           };
           promptSourceMap = new Map();
 
+          const allPrompts = [];
           Object.entries(data).forEach(([id, topic]) => {
             if (
               topic.prompts &&
               Array.isArray(topic.prompts) &&
               !topic.isTrash
             ) {
-              topic.prompts.forEach((prompt) => {
+              topic.prompts.forEach((prompt, index) => {
                 const title =
                   typeof prompt === "string"
                     ? prompt.slice(0, 50)
@@ -262,23 +264,36 @@ function inputFieldTrigger() {
                 const content =
                   typeof prompt === "string" ? prompt : prompt.content || "";
 
+                // Store for Last Used sorting, including prompts without lastUsed
+                allPrompts.push({
+                  title,
+                  prompt,
+                  folderId: id,
+                  promptIndex: index, // Speichere den Index für spätere Updates
+                  lastUsed: prompt.lastUsed || 0, // Fallback auf 0, wenn kein lastUsed existiert
+                  folder: topic.isHidden ? null : topic.name,
+                });
+
                 // Add to All Prompts
                 categories["All Prompts"].push(title);
-                promptSourceMap.set(title + "_" + id, {
+                promptSourceMap.set(title + "_" + id + "_" + index, {
+                  // Eindeutiger Schlüssel
                   category: "All Prompts",
                   folder: null,
                   prompt: prompt,
                   folderId: id,
+                  promptIndex: index,
                 });
 
                 // Add to Single Prompts if hidden
                 if (topic.isHidden) {
                   categories["Single Prompts"].push(title);
-                  promptSourceMap.set(title + "_" + id, {
+                  promptSourceMap.set(title + "_" + id + "_" + index, {
                     category: "Single Prompts",
                     folder: null,
                     prompt: prompt,
                     folderId: id,
+                    promptIndex: index,
                   });
                 }
 
@@ -291,30 +306,59 @@ function inputFieldTrigger() {
                   categories["Categorised Prompts"].all.push(
                     `${topic.name}: ${title}`
                   );
-                  promptSourceMap.set(title + "_" + id, {
+                  promptSourceMap.set(title + "_" + id + "_" + index, {
                     category: "Categorised Prompts",
                     folder: topic.name,
                     prompt: prompt,
                     folderId: id,
+                    promptIndex: index,
                   });
                 }
 
                 // Add to Favorites if isFavorite is true
                 if (prompt.isFavorite) {
                   categories["Favorites"].push(title);
-                  promptSourceMap.set(title + "_" + id, {
+                  promptSourceMap.set(title + "_" + id + "_" + index, {
                     category: "Favorites",
                     folder: topic.isHidden ? null : topic.name,
                     prompt: prompt,
                     folderId: id,
+                    promptIndex: index,
                   });
                 }
               });
             }
           });
 
+          // Sort and populate Last Used category (up to 10 prompts)
+          allPrompts.sort((a, b) => b.lastUsed - a.lastUsed); // Sort descending by lastUsed timestamp
+          categories["Last Used"] = [];
+          promptSourceMap.forEach((source, key) => {
+            if (source.category === "Last Used") {
+              promptSourceMap.delete(key); // Clear previous Last Used mappings
+            }
+          });
+          allPrompts
+            .slice(0, 10)
+            .forEach(({ title, prompt, folderId, promptIndex, folder }) => {
+              const key = title + "_" + folderId + "_" + promptIndex;
+              if (!promptSourceMap.has(key)) {
+                console.warn(`Duplicate or missing prompt key: ${key}`);
+                return;
+              }
+              categories["Last Used"].push(title);
+              promptSourceMap.set(key, {
+                category: "Last Used",
+                folder,
+                prompt,
+                folderId,
+                promptIndex,
+              });
+            });
+
+          // Sort other categories alphabetically
           Object.keys(categories).forEach((key) => {
-            if (Array.isArray(categories[key])) {
+            if (Array.isArray(categories[key]) && key !== "Last Used") {
               categories[key] = [...new Set(categories[key])].sort();
             } else if (key === "Categorised Prompts") {
               categories[key].all = [...new Set(categories[key].all)].sort();
@@ -396,6 +440,25 @@ function inputFieldTrigger() {
           message.style.color = "#888";
           contentPanel.appendChild(message);
         } else {
+          // Für Last Used: Sortiere explizit nach lastUsed
+          if (categoryOrFolder === "Last Used") {
+            const sortedItems = items
+              .map((itemText) => {
+                const key = Array.from(promptSourceMap.keys()).find((k) =>
+                  k.startsWith(itemText + "_")
+                );
+                const source = promptSourceMap.get(key);
+                return { itemText, source };
+              })
+              .sort((a, b) => {
+                const lastUsedA = a.source.prompt.lastUsed || 0;
+                const lastUsedB = b.source.prompt.lastUsed || 0;
+                return lastUsedB - lastUsedA; // Absteigend sortieren
+              })
+              .map(({ itemText }) => itemText);
+            items = sortedItems;
+          }
+
           items.forEach((itemText) => {
             const contentItem = document.createElement("div");
             const title = itemText.includes(": ")
@@ -469,12 +532,8 @@ function inputFieldTrigger() {
               clearFocus();
 
               // Aktualisiere lastUsed
-              const promptIndex = await findPromptIndex(
-                source.folderId,
-                source.prompt
-              );
-              if (promptIndex !== -1) {
-                updatePromptLastUsed(source.folderId, promptIndex);
+              if (source.promptIndex !== undefined) {
+                updatePromptLastUsed(source.folderId, source.promptIndex);
               } else {
                 console.error(
                   "Prompt index not found for folder:",
@@ -615,21 +674,50 @@ function inputFieldTrigger() {
         contentPanel.innerHTML = "";
         clearFocus();
 
+        const normalizedQuery = query.trim().toLowerCase();
+
         const allPrompts = [];
         promptSourceMap.forEach((source, key) => {
           const title = key.split("_")[0];
-          allPrompts.push({ title, source });
+          const content =
+            typeof source.prompt === "string"
+              ? source.prompt
+              : source.prompt.content || "";
+          allPrompts.push({ title, content, source });
         });
 
-        const scoredPrompts = allPrompts.map(({ title, source }) => {
-          const distance = levenshteinDistance(
-            title.toLowerCase(),
-            query.toLowerCase()
+        const scoredPrompts = allPrompts.map(({ title, content, source }) => {
+          const titleLower = title.toLowerCase();
+          const contentLower = content.toLowerCase();
+
+          const titleIncludes = titleLower.includes(normalizedQuery);
+          const contentIncludes = contentLower.includes(normalizedQuery);
+
+          const titleDistance = levenshteinDistance(
+            titleLower,
+            normalizedQuery
           );
-          return { title, source, distance };
+          const contentDistance = levenshteinDistance(
+            contentLower,
+            normalizedQuery
+          );
+
+          // Bessere Gewichtung: 1. direkte Matches, 2. Distanz-Mix
+          const score =
+            (titleIncludes ? -20 : 0) +
+            (contentIncludes ? -10 : 0) +
+            titleDistance * 1.5 +
+            contentDistance * 0.5;
+
+          return {
+            title,
+            source,
+            score,
+            folder: source.folder || source.category || "Uncategorized",
+          };
         });
 
-        scoredPrompts.sort((a, b) => a.distance - b.distance);
+        scoredPrompts.sort((a, b) => a.score - b.score);
 
         if (scoredPrompts.length === 0) {
           const noResults = document.createElement("div");
@@ -638,83 +726,101 @@ function inputFieldTrigger() {
           noResults.style.color = "#888";
           contentPanel.appendChild(noResults);
         } else {
-          scoredPrompts.forEach(({ title, source }) => {
-            const contentItem = document.createElement("div");
-            const displayText = source.folder
-              ? `${title} (in ${source.folder})`
-              : `${title} (${source.category})`;
-            contentItem.textContent = displayText;
-            contentItem.style.padding = "10px";
-            contentItem.style.cursor = "pointer";
-            contentItem.style.borderRadius = "4px";
-            contentItem.style.transition = "background-color 0.2s ease";
-            contentItem.className = "dropdown-item";
-            contentItem.tabIndex = 0;
+          // Optional: Gruppieren nach Folder/Kategorie
+          const grouped = new Map();
+          for (const prompt of scoredPrompts) {
+            if (!grouped.has(prompt.folder)) grouped.set(prompt.folder, []);
+            grouped.get(prompt.folder).push(prompt);
+          }
 
-            contentItem.addEventListener("mouseover", () => {
-              if (!currentFocusElement || currentFocusElement !== contentItem) {
-                contentItem.style.backgroundColor = "#f8f8f8";
-              }
-            });
+          for (const [folder, prompts] of grouped) {
+            const groupTitle = document.createElement("div");
+            groupTitle.textContent = folder;
+            groupTitle.style.padding = "6px 10px";
+            groupTitle.style.fontWeight = "bold";
+            groupTitle.style.background = "#f0f0f0";
+            contentPanel.appendChild(groupTitle);
 
-            contentItem.addEventListener("mouseout", () => {
-              if (!currentFocusElement || currentFocusElement !== contentItem) {
-                contentItem.style.backgroundColor = "white";
-              }
-            });
+            prompts.forEach(({ title, source }) => {
+              const contentItem = document.createElement("div");
+              contentItem.textContent = title;
+              contentItem.style.padding = "10px";
+              contentItem.style.cursor = "pointer";
+              contentItem.style.borderRadius = "4px";
+              contentItem.style.transition = "background-color 0.2s ease";
+              contentItem.className = "dropdown-item";
+              contentItem.tabIndex = 0;
 
-            contentItem.addEventListener("click", async () => {
-              const currentText = getInputText(inputField);
-              const slashIndex = currentText.indexOf("/");
-              let newText = "";
-              const selectedPrompt =
-                typeof source.prompt === "string"
-                  ? source.prompt
-                  : source.prompt.content || "";
-
-              if (slashIndex !== -1) {
-                const textBeforeSlash = currentText
-                  .substring(0, slashIndex)
-                  .trim();
-                if (textBeforeSlash === "") {
-                  newText = selectedPrompt;
-                } else {
-                  const hasSpace =
-                    currentText[slashIndex - 1] === " " ||
-                    currentText[slashIndex + 1] === " ";
-                  newText = hasSpace
-                    ? `${textBeforeSlash} ${selectedPrompt}`
-                    : `${textBeforeSlash}${selectedPrompt}`;
+              contentItem.addEventListener("mouseover", () => {
+                if (
+                  !currentFocusElement ||
+                  currentFocusElement !== contentItem
+                ) {
+                  contentItem.style.backgroundColor = "#f8f8f8";
                 }
-              } else {
-                newText = currentText
-                  ? `${currentText} ${selectedPrompt}`
-                  : selectedPrompt;
-              }
+              });
 
-              setInputText(inputField, newText);
-              inputField.focus();
-              setCursorToEnd(inputField);
-              dropdown.style.display = "none";
-              clearFocus();
+              contentItem.addEventListener("mouseout", () => {
+                if (
+                  !currentFocusElement ||
+                  currentFocusElement !== contentItem
+                ) {
+                  contentItem.style.backgroundColor = "white";
+                }
+              });
 
-              // Aktualisiere lastUsed
-              const promptIndex = await findPromptIndex(
-                source.folderId,
-                source.prompt
-              );
-              if (promptIndex !== -1) {
-                updatePromptLastUsed(source.folderId, promptIndex);
-              } else {
-                console.error(
-                  "Prompt index not found for folder:",
-                  source.folderId
+              contentItem.addEventListener("click", async () => {
+                const currentText = getInputText(inputField);
+                const slashIndex = currentText.indexOf("/");
+                let newText = "";
+                const selectedPrompt =
+                  typeof source.prompt === "string"
+                    ? source.prompt
+                    : source.prompt.content || "";
+
+                if (slashIndex !== -1) {
+                  const textBeforeSlash = currentText
+                    .substring(0, slashIndex)
+                    .trim();
+                  if (textBeforeSlash === "") {
+                    newText = selectedPrompt;
+                  } else {
+                    const hasSpace =
+                      currentText[slashIndex - 1] === " " ||
+                      currentText[slashIndex + 1] === " ";
+                    newText = hasSpace
+                      ? `${textBeforeSlash} ${selectedPrompt}`
+                      : `${textBeforeSlash}${selectedPrompt}`;
+                  }
+                } else {
+                  newText = currentText
+                    ? `${currentText} ${selectedPrompt}`
+                    : selectedPrompt;
+                }
+
+                setInputText(inputField, newText);
+                inputField.focus();
+                setCursorToEnd(inputField);
+                dropdown.style.display = "none";
+                clearFocus();
+
+                const promptIndex = await findPromptIndex(
+                  source.folderId,
+                  source.prompt
                 );
-              }
-            });
+                if (promptIndex !== -1) {
+                  updatePromptLastUsed(source.folderId, promptIndex);
+                } else {
+                  console.error(
+                    "Prompt index not found for folder:",
+                    source.folderId
+                  );
+                }
+              });
 
-            contentPanel.appendChild(contentItem);
-          });
+              contentPanel.appendChild(contentItem);
+            });
+          }
         }
 
         requestAnimationFrame(() => {
@@ -999,7 +1105,7 @@ function inputFieldTrigger() {
 
       // Listen for Chrome storage changes
       chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === "sync") {
+        if (area === "local") {
           console.log("Chrome storage changed, updating dropdown...");
           updateDropdownData(() => {
             if (dropdown.style.display === "flex") {
@@ -1587,7 +1693,12 @@ function updatePromptLastUsed(folderId, promptIndex) {
       return;
     }
     const topic = data[folderId];
-    if (!topic || !topic.prompts[promptIndex]) return;
+    if (!topic || !topic.prompts[promptIndex]) {
+      console.error(
+        `No prompt found at index ${promptIndex} in folder ${folderId}`
+      );
+      return;
+    }
 
     topic.prompts[promptIndex].lastUsed = Date.now();
     topic.prompts[promptIndex].usageCount =
@@ -1600,6 +1711,14 @@ function updatePromptLastUsed(folderId, promptIndex) {
         console.log(
           `lastUsed and usageCount updated for prompt in ${folderId}`
         );
+        updateDropdownData(() => {
+          if (dropdown.style.display === "flex") {
+            renderCategoryNavigation();
+            if (selectedCategoryOrFolder) {
+              renderContentPanel(selectedCategoryOrFolder);
+            }
+          }
+        });
       }
     });
   });
@@ -1627,6 +1746,9 @@ function findPromptIndex(folderId, prompt) {
             p.title === prompt.title &&
             p.content === prompt.content)
       );
+      if (index === -1) {
+        console.warn(`Prompt not found in folder ${folderId}:`, prompt);
+      }
       resolve(index);
     });
   });
