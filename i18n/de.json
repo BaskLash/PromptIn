@@ -77,5 +77,11 @@
   "data_deleted": "Daten wurden gelöscht.",
   "feedback_open": "Feedback-Formular wird geöffnet...",
   "feature_request_open": "Feature Request-Formular wird geöffnet...",
-  "review_open": "Review-Formular wird geöffnet..."
+  "review_open": "Review-Formular wird geöffnet...",
+  "sort_order": "Sortierreihenfolge",
+  "sort_ascending": "Aufsteigend",
+  "sort_descending": "Absteigend",
+  "sort_by": "Sortieren nach",
+  "sort_by_title": "Titel",
+  "sort_by_last_used": "Zuletzt verwendet"
 }

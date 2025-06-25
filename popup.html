@@ -34,6 +34,34 @@
       <div class="main-content">
         <label data-i18n="sort_by_label"></label>
         <button class="sort-btn" data-i18n="sort_button"></button>
+        <div class="sort-dropdown" id="sort-dropdown" style="display: none">
+          <div class="sort-section">
+            <div class="sort-header" data-i18n="sort_order"></div>
+            <button
+              class="sort-option"
+              data-sort-order="ascending"
+              data-i18n="sort_ascending"
+            ></button>
+            <button
+              class="sort-option"
+              data-sort-order="descending"
+              data-i18n="sort_descending"
+            ></button>
+          </div>
+          <div class="sort-section">
+            <div class="sort-header" data-i18n="sort_by"></div>
+            <button
+              class="sort-option"
+              data-sort-by="title"
+              data-i18n="sort_by_title"
+            ></button>
+            <button
+              class="sort-option"
+              data-sort-by="lastUsed"
+              data-i18n="sort_by_last_used"
+            ></button>
+          </div>
+        </div>
         <div class="table-container">
           <table class="entry-table">
             <tbody></tbody>
@@ -275,7 +303,7 @@
                   value="Qwen AI"
                   disabled
                 />
-                Q năng AI</label
+                Qwen AI</label
               >
             </div>
           </div>

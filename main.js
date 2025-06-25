@@ -1,5 +1,7 @@
 const overviewBtn = document.getElementById("overview-btn");
 const faqBtn = document.getElementById("faq-btn");
+const sortBtn = document.querySelector(".sort-btn");
+const sortDropdown = document.getElementById("sort-dropdown");
 
 document.addEventListener("DOMContentLoaded", () => {
   // Übersicht öffnen
@@ -15,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "en";
 
   let navigationState = { source: "main", folderId: null };
+  let sortState = { sortBy: "title", sortOrder: "ascending" }; // Initialize sorting state
+  let isSortDropdownOpen = false;
 
   async function loadTranslations(lang) {
     try {
@@ -105,6 +109,109 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     );
   }
+  function sortPrompts(prompts) {
+    return prompts.sort((a, b) => {
+      let aValue, bValue;
+      if (sortState.sortBy === "title") {
+        aValue = a.prompt.title.toLowerCase();
+        bValue = b.prompt.title.toLowerCase();
+      } else if (sortState.sortBy === "lastUsed") {
+        aValue = a.prompt.lastUsed || 0;
+        bValue = b.prompt.lastUsed || 0;
+      }
+      if (sortState.sortOrder === "ascending") {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+  }
+  // Initialize sorting state in button text
+  function updateSortButtonText() {
+    const sortByKey = `sort_by_${sortState.sortBy}`;
+    const sortOrderKey = `sort_${sortState.sortOrder}`;
+    sortBtn.textContent = `${
+      translations[currentLang]?.[sortByKey] || sortState.sortBy
+    } (${translations[currentLang]?.[sortOrderKey] || sortState.sortOrder})`;
+  }
+
+  // Update selected state in dropdown
+  function updateSortDropdownSelection() {
+    document.querySelectorAll(".sort-option").forEach((option) => {
+      option.classList.remove("selected");
+      if (
+        (option.dataset.sortOrder &&
+          option.dataset.sortOrder === sortState.sortOrder) ||
+        (option.dataset.sortBy && option.dataset.sortBy === sortState.sortBy)
+      ) {
+        option.classList.add("selected");
+      }
+    });
+    updateSortButtonText();
+  }
+
+  // Toggle sort dropdown
+  function toggleSortDropdown() {
+    if (isSortDropdownOpen) {
+      sortDropdown.style.display = "none";
+      isSortDropdownOpen = false;
+    } else {
+      const rect = sortBtn.getBoundingClientRect();
+      sortDropdown.style.display = "flex";
+      sortDropdown.style.top = `${rect.bottom + window.scrollY}px`;
+      sortDropdown.style.left = `${rect.left + window.scrollX}px`;
+      isSortDropdownOpen = true;
+      updateSortDropdownSelection();
+    }
+  }
+
+  // Handle sort option click
+  function handleSortOptionClick(option) {
+    if (option.dataset.sortOrder) {
+      sortState.sortOrder = option.dataset.sortOrder;
+    } else if (option.dataset.sortBy) {
+      sortState.sortBy = option.dataset.sortBy;
+    }
+    sortDropdown.style.display = "none";
+    isSortDropdownOpen = false;
+    updateSortButtonText();
+    // Refresh table based on context
+    if (navigationState.source === "folder" && navigationState.folderId) {
+      showFolder(navigationState.folderId);
+    } else if (
+      navigationState.source === "category" &&
+      navigationState.category
+    ) {
+      showCategory(navigationState.category);
+    } else {
+      loadPromptsTable();
+    }
+  }
+
+  // Sort button click handler
+  sortBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleSortDropdown();
+  });
+
+  // Sort option click handlers
+  document.querySelectorAll(".sort-option").forEach((option) => {
+    option.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleSortOptionClick(option);
+    });
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener("click", (e) => {
+    if (
+      !sortDropdown.contains(e.target) &&
+      !e.target.classList.contains("sort-btn")
+    ) {
+      sortDropdown.style.display = "none";
+      isSortDropdownOpen = false;
+    }
+  });
 
   // Load Folders
   function loadFolders() {
@@ -199,21 +306,20 @@ document.addEventListener("DOMContentLoaded", () => {
         tableBody.innerHTML =
           '<tr><td colspan="2">Keine Prompts vorhanden</td></tr>';
       } else {
-        allPrompts
-          .filter(({ isTrash }) => !isTrash)
-          .forEach(({ prompt, folderId, index }) => {
-            const tr = document.createElement("tr");
-            tr.dataset.entry = prompt.title;
-            tr.dataset.folderId = folderId;
-            tr.dataset.promptIndex = index;
-            tr.innerHTML = `
+        allPrompts = sortPrompts(allPrompts.filter(({ isTrash }) => !isTrash));
+        allPrompts.forEach(({ prompt, folderId, index }) => {
+          const tr = document.createElement("tr");
+          tr.dataset.entry = prompt.title;
+          tr.dataset.folderId = folderId;
+          tr.dataset.promptIndex = index;
+          tr.innerHTML = `
               <td>${prompt.title}</td>
               <td class="action-cell">
                 <button class="action-btn">⋮</button>
               </td>
             `;
-            tableBody.appendChild(tr);
-          });
+          tableBody.appendChild(tr);
+        });
       }
       attachMainTableEvents();
     });
@@ -260,7 +366,13 @@ document.addEventListener("DOMContentLoaded", () => {
         attachFolderTableEvents();
       }
 
-      renderPrompts(topic.prompts);
+      let promptsWithDetails = topic.prompts.map((prompt, index) => ({
+        prompt,
+        folderId,
+        index,
+      }));
+      promptsWithDetails = sortPrompts(promptsWithDetails);
+      renderPrompts(promptsWithDetails.map(({ prompt }) => prompt));
 
       promptSearchInput.value = "";
       promptSearchInput.addEventListener("input", function () {
@@ -458,6 +570,7 @@ document.addEventListener("DOMContentLoaded", () => {
         attachFolderTableEvents();
       }
 
+      filteredPrompts = sortPrompts(filteredPrompts);
       renderPrompts(filteredPrompts);
 
       promptSearchInput.value = "";

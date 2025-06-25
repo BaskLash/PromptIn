@@ -1019,7 +1019,61 @@ body.dark-theme .checkbox-group.scrollable {
 .tag-input-group input {
   flex-grow: 1;
 }
+/* New styles for sort dropdown */
+.sort-dropdown {
+  position: absolute;
+  display: none;
+  flex-direction: column;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  min-width: 200px;
+}
 
+.sort-section {
+  border-bottom: 1px solid #eee;
+  padding: 8px 0;
+}
+
+.sort-section:last-child {
+  border-bottom: none;
+}
+
+.sort-header {
+  padding: 8px 16px;
+  font-weight: bold;
+  color: #333;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.sort-option {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sort-option:hover {
+  background: #f0f0f0;
+}
+
+.sort-option.selected {
+  background: #e0e0e0;
+  font-weight: bold;
+}
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
 /* Responsive Adjustments */
 @media (max-width: 600px) {
   .folder-content {
