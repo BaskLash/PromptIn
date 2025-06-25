@@ -138,7 +138,32 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       updateFolderSearchVisibility();
       attachFolderClickEvents();
+      attachCategoryClickEvents();
     });
+  }
+
+  // Folder Click Handling
+  function attachFolderClickEvents() {
+    document.querySelectorAll(".folder-list li").forEach((folder) => {
+      folder.addEventListener("click", () => {
+        const folderId = folder.dataset.folderId;
+        if (folderId) showFolder(folderId);
+      });
+    });
+  }
+
+  // Category Click Handling
+  function attachCategoryClickEvents() {
+    document
+      .querySelectorAll(".accordion-content ul li")
+      .forEach((category) => {
+        const categoryKey = category.getAttribute("data-i18n");
+        if (categoryKey) {
+          category.addEventListener("click", () => {
+            showCategory(categoryKey);
+          });
+        }
+      });
   }
 
   // Load All Prompts
@@ -304,6 +329,189 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("side-nav").classList.remove("open");
       document.getElementById("plus-btn").style.display = "none";
       navigationState = { source: "folder", folderId: folderId };
+    });
+  }
+
+  // Show Category Contents
+  function showCategory(category) {
+    const folderEntries = document.getElementById("folder-entries");
+    const promptSearchInput = document.getElementById("prompt-search");
+    folderEntries.innerHTML = "";
+
+    chrome.storage.local.get(null, function (data) {
+      let allPrompts = [];
+      Object.entries(data).forEach(([id, topic]) => {
+        if (topic.prompts && Array.isArray(topic.prompts)) {
+          allPrompts = allPrompts.concat(
+            topic.prompts.map((prompt, index) => ({
+              prompt,
+              folderId: id,
+              index,
+              isHidden: topic.isHidden || false,
+              isTrash: topic.isTrash || false,
+            }))
+          );
+        }
+      });
+
+      // Map category to filter criteria
+      let filteredPrompts = [];
+      let displayName = category;
+      switch (category) {
+        case "category_favorites":
+          filteredPrompts = allPrompts.filter(
+            ({ prompt }) => prompt.isFavorite
+          );
+          displayName =
+            translations[currentLang]?.category_favorites || "Favorites";
+          break;
+        case "category_all_prompts":
+          filteredPrompts = allPrompts.filter(({ isTrash }) => !isTrash);
+          displayName =
+            translations[currentLang]?.category_all_prompts || "All Prompts";
+          break;
+        case "category_single_prompts":
+          filteredPrompts = allPrompts.filter(({ folderId }) =>
+            folderId.startsWith("single_prompt_")
+          );
+          displayName =
+            translations[currentLang]?.category_single_prompts ||
+            "Single Prompts";
+          break;
+        case "category_categorised_prompts":
+          filteredPrompts = allPrompts.filter(
+            ({ folderId }) =>
+              !folderId.startsWith("single_prompt_") &&
+              !folderId.startsWith("workflow_")
+          );
+          displayName =
+            translations[currentLang]?.category_categorised_prompts ||
+            "Categorised Prompts";
+          break;
+        case "category_dynamic_prompts":
+          filteredPrompts = allPrompts.filter(
+            ({ prompt }) =>
+              prompt.type === "prompt-engineering" ||
+              prompt.type === "meta-prompt"
+          );
+          displayName =
+            translations[currentLang]?.category_dynamic_prompts ||
+            "Dynamic Prompts";
+          break;
+        case "category_static_prompts":
+          filteredPrompts = allPrompts.filter(
+            ({ prompt }) =>
+              prompt.type &&
+              !["prompt-engineering", "meta-prompt"].includes(prompt.type)
+          );
+          displayName =
+            translations[currentLang]?.category_static_prompts ||
+            "Static Prompts";
+          break;
+        case "category_unused_prompts":
+          filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.lastUsed);
+          displayName =
+            translations[currentLang]?.category_unused_prompts ||
+            "Unused Prompts";
+          break;
+        case "category_workflows":
+          filteredPrompts = allPrompts.filter(({ folderId }) =>
+            folderId.startsWith("workflow_")
+          );
+          displayName =
+            translations[currentLang]?.category_workflows || "Workflows";
+          break;
+        case "category_trash":
+          filteredPrompts = allPrompts.filter(({ isTrash }) => isTrash);
+          displayName = translations[currentLang]?.category_trash || "Trash";
+          break;
+        default:
+          filteredPrompts = [];
+      }
+
+      document.getElementById("folder-title").textContent = displayName;
+      promptSearchInput.style.display =
+        filteredPrompts.length > 0 ? "block" : "none";
+
+      function renderPrompts(prompts) {
+        folderEntries.innerHTML = "";
+        if (prompts.length === 0) {
+          folderEntries.innerHTML = `<tr><td colspan="2">${
+            translations[currentLang]?.no_prompts_found ||
+            "Keine Prompts gefunden"
+          }</td></tr>`;
+          return;
+        }
+        prompts.forEach(({ prompt, folderId, index }) => {
+          const tr = document.createElement("tr");
+          tr.dataset.entry = prompt.title;
+          tr.dataset.folderId = folderId;
+          tr.dataset.promptIndex = index;
+          tr.innerHTML = `
+          <td>${prompt.title}</td>
+          <td class="action-cell">
+            <button class="action-btn">⋮</button>
+          </td>
+        `;
+          folderEntries.appendChild(tr);
+        });
+        attachFolderTableEvents();
+      }
+
+      renderPrompts(filteredPrompts);
+
+      promptSearchInput.value = "";
+      promptSearchInput.addEventListener("input", function () {
+        const searchTerm = this.value.trim().toLowerCase();
+
+        if (!searchTerm) {
+          renderPrompts(filteredPrompts);
+          return;
+        }
+
+        const scoredPrompts = filteredPrompts.map(
+          ({ prompt, folderId, index }) => {
+            const titleDistance = levenshteinDistance(
+              prompt.title.toLowerCase(),
+              searchTerm
+            );
+            const descriptionDistance = prompt.description
+              ? levenshteinDistance(
+                  prompt.description.toLowerCase(),
+                  searchTerm
+                )
+              : Infinity;
+            const contentDistance = levenshteinDistance(
+              prompt.content.toLowerCase(),
+              searchTerm
+            );
+
+            const minDistance = Math.min(
+              titleDistance,
+              descriptionDistance,
+              contentDistance
+            );
+
+            return { prompt, folderId, index, distance: minDistance };
+          }
+        );
+
+        scoredPrompts.sort((a, b) => a.distance - b.distance);
+
+        const searchedPrompts = scoredPrompts.map(
+          ({ prompt, folderId, index }) => ({
+            prompt,
+            folderId,
+            index,
+          })
+        );
+        renderPrompts(searchedPrompts);
+      });
+
+      document.getElementById("folder-overlay").classList.add("open");
+      document.getElementById("side-nav").classList.remove("open");
+      document.getElementById("plus-btn").style.display = "none";
+      navigationState = { source: "category", folderId: null, category };
     });
   }
 
@@ -554,7 +762,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("close-nav").addEventListener("click", () => {
     document.getElementById("side-nav").classList.remove("open");
-    document.getElementById("plus-btn").style.display = "block";
+    document.getElementById("plus-btn").style.display = "flex";
   });
 
   // Accordion Mechanik
@@ -625,7 +833,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   backBtn.addEventListener("click", () => {
     document.getElementById("detail-overlay").classList.remove("open");
-    document.getElementById("plus-btn").style.display = "block";
+    document.getElementById("plus-btn").style.display = "flex";
     if (navigationState.source === "folder" && navigationState.folderId) {
       showFolder(navigationState.folderId);
     }
@@ -747,7 +955,7 @@ document.addEventListener("DOMContentLoaded", () => {
         topic.prompts.push(promptObj);
         chrome.storage.local.set({ [folderId]: topic }, () => {
           document.getElementById("detail-overlay").classList.remove("open");
-          document.getElementById("plus-btn").style.display = "block";
+          document.getElementById("plus-btn").style.display = "flex";
           loadFolders();
           loadPromptsTable();
         });
@@ -796,7 +1004,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       function finalizeSave() {
         document.getElementById("detail-overlay").classList.remove("open");
-        document.getElementById("plus-btn").style.display = "block";
+        document.getElementById("plus-btn").style.display = "flex";
         loadFolders();
         loadPromptsTable();
       }
@@ -1099,7 +1307,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   toolsBackBtn.addEventListener("click", () => {
     toolsOverlay.classList.remove("open");
-    document.getElementById("plus-btn").style.display = "block";
+    document.getElementById("plus-btn").style.display = "flex";
   });
 
   // Settings Overlay
@@ -1114,7 +1322,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   settingsBackBtn.addEventListener("click", () => {
     settingsOverlay.classList.remove("open");
-    document.getElementById("plus-btn").style.display = "block";
+    document.getElementById("plus-btn").style.display = "flex";
   });
 
   // Prompt Import/Export
@@ -1403,9 +1611,7 @@ document.addEventListener("DOMContentLoaded", () => {
               console.log("Data imported successfully");
               loadPromptsTable("all");
               loadFolders();
-              alert(
-                "Data imported successfully!"
-              );
+              alert("Data imported successfully!");
             }
           });
         });
@@ -1469,6 +1675,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("folder-overlay").classList.remove("open");
     document.getElementById("side-nav").classList.add("open");
     document.getElementById("plus-btn").style.display = "none";
+    navigationState = { source: "main", folderId: null, category: null };
   });
 
   // Plus Button (Create New Prompt)
@@ -1634,7 +1841,7 @@ document.addEventListener("DOMContentLoaded", () => {
         topic.prompts.push(promptObj);
         chrome.storage.local.set({ [folderId]: topic }, () => {
           document.getElementById("detail-overlay").classList.remove("open");
-          document.getElementById("plus-btn").style.display = "block";
+          document.getElementById("plus-btn").style.display = "flex";
           loadFolders();
           loadPromptsTable();
         });
