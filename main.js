@@ -17,6 +17,161 @@ let isDropdownOpen = false;
 let isMouseOverDropdown = false;
 let hoveredRow = null;
 
+function levenshteinDistance(a, b) {
+  // Erstelle eine Matrix mit den Dimensionen (m+1) x (n+1)
+  const m = a.length;
+  const n = b.length;
+  const matrix = Array(m + 1)
+    .fill()
+    .map(() => Array(n + 1).fill(0));
+
+  // Initialisiere die erste Zeile und Spalte
+  for (let i = 0; i <= m; i++) {
+    matrix[i][0] = i; // Kosten für das Löschen
+  }
+  for (let j = 0; j <= n; j++) {
+    matrix[0][j] = j; // Kosten für das Einfügen
+  }
+
+  // Fülle die Matrix
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1; // Kosten für Ersetzen
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1, // Löschen
+        matrix[i][j - 1] + 1, // Einfügen
+        matrix[i - 1][j - 1] + cost // Ersetzen
+      );
+    }
+  }
+
+  // Rückgabe der Levenshtein-Distanz
+  return matrix[m][n];
+}
+
+// Action Dropdown
+const dropdown = document.createElement("div");
+dropdown.classList.add("action-dropdown");
+dropdown.innerHTML = `
+    <button class="copy-btn">Copy</button>
+    <button class="rename-btn">Rename</button>
+    <button class="delete-btn">Delete</button>
+  `;
+document.body.appendChild(dropdown);
+
+dropdown.querySelector(".copy-btn").addEventListener("click", () => {
+  const folderId = dropdown.dataset.folderId;
+  const promptIndex = parseInt(dropdown.dataset.promptIndex);
+  chrome.storage.local.get(folderId, function (data) {
+    const prompt = data[folderId]?.prompts?.[promptIndex];
+    if (prompt) {
+      navigator.clipboard.writeText(prompt.content || prompt.title);
+      alert(translations[currentLang]?.copied || "Prompt-Content copied!");
+    }
+  });
+  dropdown.style.display = "none";
+  isDropdownOpen = false;
+  if (currentButton) {
+    if (currentButton.closest("tr") === hoveredRow) {
+      keepActionButtonVisible(currentButton);
+    } else {
+      hideActionButton(currentButton);
+    }
+  }
+  currentButton = null;
+});
+
+dropdown.querySelector(".rename-btn").addEventListener("click", () => {
+  const folderId = dropdown.dataset.folderId;
+  const promptIndex = parseInt(dropdown.dataset.promptIndex);
+  const newName = prompt(
+    translations[currentLang]?.rename_prompt || "New prompt title:",
+    dropdown.dataset.entry
+  );
+  if (newName) {
+    chrome.storage.local.get(folderId, function (data) {
+      const topic = data[folderId];
+      if (topic && topic.prompts && topic.prompts[promptIndex]) {
+        topic.prompts[promptIndex].title = newName;
+        chrome.storage.local.set({ [folderId]: topic }, () => {
+          loadPromptsTable();
+          if (dropdown.dataset.table === "folder") showFolder(folderId);
+        });
+      }
+    });
+  }
+  dropdown.style.display = "none";
+  isDropdownOpen = false;
+  if (currentButton) {
+    if (currentButton.closest("tr") === hoveredRow) {
+      keepActionButtonVisible(currentButton);
+    } else {
+      hideActionButton(currentButton);
+    }
+  }
+  currentButton = null;
+});
+
+dropdown.querySelector(".delete-btn").addEventListener("click", () => {
+  if (
+    confirm(
+      translations[currentLang]?.confirm_delete || "Prompt wirklich löschen?"
+    )
+  ) {
+    const folderId = dropdown.dataset.folderId;
+    const promptIndex = parseInt(dropdown.dataset.promptIndex);
+    chrome.storage.local.get(folderId, function (data) {
+      const topic = data[folderId];
+      if (topic && topic.prompts && topic.prompts[promptIndex]) {
+        topic.prompts.splice(promptIndex, 1);
+        chrome.storage.local.set({ [folderId]: topic }, () => {
+          loadPromptsTable();
+          if (dropdown.dataset.table === "folder") showFolder(folderId);
+          else
+            document.getElementById("folder-overlay").classList.remove("open");
+        });
+      }
+    });
+  }
+  dropdown.style.display = "none";
+  isDropdownOpen = false;
+  if (currentButton) {
+    if (currentButton.closest("tr") === hoveredRow) {
+      keepActionButtonVisible(currentButton);
+    } else {
+      hideActionButton(currentButton);
+    }
+  }
+  currentButton = null;
+});
+
+function handleActionButtonClick(event) {
+  event.stopPropagation();
+  const folder = event.currentTarget.closest("li.folder-item").dataset.folder;
+  dropdown(event, folder);
+}
+
+// Beispiel für renameFolder und deleteFolder (passe sie an deine Logik an)
+function renameFolder(oldName, newName) {
+  chrome.storage.local.get(null, (data) => {
+    const folderKey = `folder_${oldName}`;
+    if (data[folderKey]) {
+      const folderData = data[folderKey];
+      chrome.storage.local.set({ [`folder_${newName}`]: folderData }, () => {
+        chrome.storage.local.remove(folderKey, () => {
+          loadFolders(); // Ordnerliste aktualisieren
+        });
+      });
+    }
+  });
+}
+
+function deleteFolder(folder) {
+  chrome.storage.local.remove(`folder_${folder}`, () => {
+    loadFolders(); // Ordnerliste aktualisieren
+  });
+}
+
 // Global Functions
 function updateSortButtonText() {
   const sortByKey = `sort_by_${sortState.sortBy}`;

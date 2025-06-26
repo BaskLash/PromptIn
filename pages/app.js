@@ -158,6 +158,67 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
   });
 
+  // Details Sidebar Resizer
+  const detailsResizer = document.getElementById("details-sidebar-resizer");
+  const detailsSidebar = document.querySelector(".details-sidebar");
+  let isDetailsResizing = false;
+  let detailsAnimationFrameId = null;
+  let detailsCurrentX = 0;
+
+  const detailsMinWidth = 200;
+  const detailsMaxWidth = 600;
+
+  // Restore saved width from localStorage
+  const savedDetailsWidth = localStorage.getItem("detailsSidebarWidth");
+  if (savedDetailsWidth) {
+    detailsSidebar.style.width = `${savedDetailsWidth}px`;
+    document.documentElement.style.setProperty(
+      "--details-sidebar-width",
+      `${savedDetailsWidth}px`
+    );
+  }
+
+  const resizeDetailsSidebar = () => {
+    const newWidth = Math.min(
+      Math.max(window.innerWidth - detailsCurrentX, detailsMinWidth),
+      detailsMaxWidth
+    );
+    detailsSidebar.style.width = `${newWidth}px`;
+    document.documentElement.style.setProperty(
+      "--details-sidebar-width",
+      `${newWidth}px`
+    );
+    detailsAnimationFrameId = null;
+  };
+
+  const onDetailsPointerMove = (e) => {
+    if (!isDetailsResizing) return;
+    detailsCurrentX = e.clientX;
+    if (!detailsAnimationFrameId) {
+      detailsAnimationFrameId = requestAnimationFrame(resizeDetailsSidebar);
+    }
+  };
+
+  const onDetailsPointerUp = () => {
+    if (!isDetailsResizing) return;
+    isDetailsResizing = false;
+    document.body.style.cursor = "default";
+    document.removeEventListener("pointermove", onDetailsPointerMove);
+    document.removeEventListener("pointerup", onDetailsPointerUp);
+
+    const finalWidth = detailsSidebar.offsetWidth;
+    localStorage.setItem("detailsSidebarWidth", finalWidth.toString());
+  };
+
+  detailsResizer.addEventListener("pointerdown", (e) => {
+    isDetailsResizing = true;
+    detailsCurrentX = e.clientX;
+    document.body.style.cursor = "col-resize";
+    document.addEventListener("pointermove", onDetailsPointerMove);
+    document.addEventListener("pointerup", onDetailsPointerUp);
+    e.preventDefault();
+  });
+
   // Call injectStyles
   injectStyles();
 
