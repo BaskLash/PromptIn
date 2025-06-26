@@ -1457,6 +1457,26 @@ document.addEventListener("DOMContentLoaded", () => {
     editBtn.dataset.editing = "true";
   });
 
+  // Add Overlay Buttons
+  const backBtnAdd = document.getElementById("back-btn-add");
+  const cancelBtnAdd = document.querySelector(".cancel-btn-add");
+
+  backBtnAdd.addEventListener("click", () => {
+    document.getElementById("add-overlay").classList.remove("open");
+    document.getElementById("plus-btn").style.display = "flex";
+    if (navigationState.source === "folder" && navigationState.folderId) {
+      showFolder(navigationState.folderId);
+    }
+  });
+
+  cancelBtnAdd.addEventListener("click", () => {
+    document.getElementById("add-overlay").classList.remove("open");
+    document.getElementById("plus-btn").style.display = "flex";
+    if (navigationState.source === "folder" && navigationState.folderId) {
+      showFolder(navigationState.folderId);
+    }
+  });
+
   saveBtn.addEventListener("click", () => {
     const title = document.getElementById("entry-title").value.trim();
     const description = document
