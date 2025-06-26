@@ -481,6 +481,246 @@
         </div>
       </div>
 
+      <div class="detail-overlay" id="add-overlay">
+        <div class="detail-header">
+          <button id="back-btn">←</button>
+          <h2 id="detail-title-add" data-i18n="entry_details"></h2>
+        </div>
+        <div class="detail-content">
+          <div class="detail-field">
+            <label data-i18n="title_label"></label>
+            <input
+              type="text"
+              id="entry-title-add"
+              data-i18n-placeholder="title_placeholder"
+            />
+          </div>
+          <div class="detail-field">
+            <label data-i18n="description_label"></label>
+            <textarea
+              id="entry-description-add"
+              data-i18n-placeholder="description_placeholder"
+            ></textarea>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="content_label"></label>
+            <textarea
+              id="entry-content-add"
+              data-i18n-placeholder="content_placeholder"
+            ></textarea>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="notes_label">Notes</label>
+            <textarea
+              id="entry-notes-add"
+              data-i18n-placeholder="notes_placeholder"
+            ></textarea>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="type_label"></label>
+            <select id="entry-type-add">
+              <option value="" selected>Wähle Typ</option>
+              <option value="textgen">Textgeneration</option>
+              <option value="rewrite">Umschreiben</option>
+              <option value="summarize">Zusammenfassen</option>
+              <option value="translate">Übersetzen</option>
+              <option value="ideation">Ideenfindung</option>
+              <option value="adcopy">Werbetexten</option>
+              <option value="storytelling">Storytelling</option>
+              <option value="analyze">Analyse</option>
+              <option value="classify">Klassifikation</option>
+              <option value="extract">Informationsextraktion</option>
+              <option value="compare">Vergleichen / Bewerten</option>
+              <option value="codegen">Codegenerierung</option>
+              <option value="debug">Fehleranalyse</option>
+              <option value="refactor">Code-Umschreiben</option>
+              <option value="explain-code">Code erklären</option>
+              <option value="prompt-engineering">Prompt Engineering</option>
+              <option value="meta-prompt">Meta-Prompt</option>
+              <option value="assistant">Assistant</option>
+            </select>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="compatible_models_label">Compatible Models</label>
+            <div class="checkbox-group scrollable" id="entry-compatible-add">
+              <label
+                ><input type="checkbox" name="compatible" value="Grok" />
+                Grok</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="Gemini" />
+                Gemini</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="ChatGPT" />
+                ChatGPT</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="Claude" />
+                Claude</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="BlackBox" />
+                BlackBox</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="compatible"
+                  value="GitHub Copilot"
+                />
+                GitHub Copilot</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="compatible"
+                  value="Microsoft Copilot"
+                />
+                Microsoft Copilot</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="Mistral" />
+                Mistral</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="DuckDuckGo" />
+                DuckDuckGo</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="Perplexity" />
+                Perplexity</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="DeepSeek" />
+                DeepSeek</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="Deepai" />
+                Deepai</label
+              >
+              <label
+                ><input type="checkbox" name="compatible" value="Qwen AI" />
+                Qwen AI</label
+              >
+            </div>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="incompatible_models_label"
+              >Incompatible Models</label
+            >
+            <div class="checkbox-group scrollable" id="entry-incompatible-add">
+              <label
+                ><input type="checkbox" name="incompatible" value="Grok" />
+                Grok</label
+              >
+              <label
+                ><input type="checkbox" name="incompatible" value="Gemini" />
+                Gemini</label
+              >
+              <label
+                ><input type="checkbox" name="incompatible" value="ChatGPT" />
+                ChatGPT</label
+              >
+              <label
+                ><input type="checkbox" name="incompatible" value="Claude" />
+                Claude</label
+              >
+              <label
+                ><input type="checkbox" name="incompatible" value="BlackBox" />
+                BlackBox</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="incompatible"
+                  value="GitHub Copilot"
+                />
+                GitHub Copilot</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="incompatible"
+                  value="Microsoft Copilot"
+                />
+                Microsoft Copilot</label
+              >
+              <label
+                ><input type="checkbox" name="incompatible" value="Mistral" />
+                Mistral</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="incompatible"
+                  value="DuckDuckGo"
+                />
+                DuckDuckGo</label
+              >
+              <label
+                ><input
+                  type="checkbox"
+                  name="incompatible"
+                  value="Perplexity"
+                />
+                Perplexity</label
+              >
+              <label
+                ><input type="checkbox" name="incompatible" value="DeepSeek" />
+                DeepSeek</label
+              >
+              <label
+                ><input type="checkbox" name="incompatible" value="Deepai" />
+                Deepai</label
+              >
+              <label
+                ><input type="checkbox" name="incompatible" value="Qwen AI" />
+                Qwen AI</label
+              >
+            </div>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="tags_label"></label>
+            <div class="checkbox-group scrollable" id="entry-tags-add">
+              <!-- Checkboxes will be dynamically populated -->
+            </div>
+            <div
+              class="tag-input-group"
+              id="tag-input-group"
+            >
+              <input
+                type="text"
+                id="new-tag_add"
+                data-i18n-placeholder="new_tag_placeholder"
+              />
+              <button
+                type="button"
+                class="action-btn"
+                id="add-tag-btn_add"
+                data-i18n="add_tag_button"
+              >
+                Add New Tag
+              </button>
+            </div>
+          </div>
+          <div class="detail-field">
+            <label data-i18n="favorite_label"></label>
+            <input type="checkbox" id="entry-favorite-add" />
+          </div>
+          <div class="detail-field">
+            <label data-i18n="folder_label"></label>
+            <select id="entry-folder-add">
+              <option value="" data-i18n="folder_select"></option>
+            </select>
+          </div>
+          <div class="detail-actions">
+            <button class="save-btn-add" data-i18n="save_button"></button>
+            <button class="cancel-btn-add" data-i18n="cancel_button"></button>
+          </div>
+        </div>
+      </div>
+
       <!-- Toolsansicht -->
       <div class="detail-overlay" id="tools-overlay">
         <div class="detail-header">

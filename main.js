@@ -1872,54 +1872,60 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Plus Button (Create New Prompt)
   document.getElementById("plus-btn").addEventListener("click", () => {
-    const detailOverlay = document.getElementById("detail-overlay");
-    const detailTitle = document.getElementById("detail-title");
-    const entryTitle = document.getElementById("entry-title");
-    const entryDescription = document.getElementById("entry-description");
-    const entryContent = document.getElementById("entry-content");
-    const entryType = document.getElementById("entry-type");
-    const entryCompatible = document.getElementById("entry-compatible");
-    const entryIncompatible = document.getElementById("entry-incompatible");
-    const entryTags = document.getElementById("entry-tags");
+    const detailOverlay = document.getElementById("add-overlay");
+    const detailTitle = document.getElementById("detail-title-add");
+    const entryTitle = document.getElementById("entry-title-add");
+    const entryDescription = document.getElementById("entry-description-add");
+    const entryContent = document.getElementById("entry-content-add");
+    const entryNotes = document.getElementById("entry-notes-add");
+    const entryType = document.getElementById("entry-type-add");
+    const entryCompatible = document.getElementById("entry-compatible-add");
+    const entryIncompatible = document.getElementById("entry-incompatible-add");
+    const entryTags = document.getElementById("entry-tags-add");
     const tagInputGroup = document.getElementById("tag-input-group");
-    const newTagInput = document.getElementById("new-tag");
-    const addTagBtn = document.getElementById("add-tag-btn");
+    const newTagInput = document.getElementById("new-tag_add");
+    const addTagBtn = document.getElementById("add-tag-btn-add");
     const entryFavorite = document.getElementById("entry-favorite");
-    const entryCreatedAt = document.getElementById("entry-created-at");
-    const entryLastUsed = document.getElementById("entry-last-used");
-    const entryFolder = document.getElementById("entry-folder");
+    const entryFolder = document.getElementById("entry-folder-add");
 
     detailTitle.textContent =
       translations[currentLang]?.new_prompt || "Neuer Prompt";
     entryTitle.value = "";
     entryDescription.value = "";
     entryContent.value = "";
+    entryNotes.value = "";
     entryType.value = "";
+    entryCompatible
+      .querySelectorAll("input")
+      .forEach((input) => (input.checked = false));
+    entryIncompatible
+      .querySelectorAll("input")
+      .forEach((input) => (input.checked = false));
+    entryFavorite.checked = false;
+    entryFolder.innerHTML = '<option value="">Ordner auswählen</option>';
 
+    // Populate tags
     chrome.storage.local.get("tags", (tagData) => {
-      const storedTags = tagData.tags || [];
-      entryTags.innerHTML = storedTags
-        .map(
-          (tag) => `
-        <label>
-          <input type="checkbox" name="tags" value="${tag}">
-          ${tag}
-        </label>
-      `
-        )
-        .join("");
-      tagInputGroup.style.display = "block";
-      newTagInput.value = "";
-      newTagInput.readOnly = false;
-      addTagBtn.disabled = false;
+      console.log("Geladene Tags:", tagData.tags); // Debugging
+      const storedTags = Array.isArray(tagData.tags) ? tagData.tags : [];
+      if (storedTags.length === 0) {
+        entryTags.innerHTML = '<p data-i18n="no_tags">Keine Tags vorhanden</p>';
+      } else {
+        entryTags.innerHTML = storedTags
+          .map(
+            (tag) => `
+          <label>
+            <input type="checkbox" name="tags" value="${tag}">
+            ${tag}
+          </label>
+        `
+          )
+          .join("");
+      }
+      applyTranslations(currentLang); // Übersetzungen nach dem Rendern anwenden
     });
 
-    entryFavorite.checked = false;
-    entryCreatedAt.value = "";
-    entryLastUsed.value = "";
-    entryFolder.innerHTML =
-      '<option value="" data-i18n="folder_select"></option>';
-
+    // Populate folders
     chrome.storage.local.get(null, function (data) {
       Object.entries(data).forEach(([id, topic]) => {
         if (
@@ -1937,21 +1943,199 @@ document.addEventListener("DOMContentLoaded", () => {
       applyTranslations(currentLang);
     });
 
+    // Enable all inputs
     entryTitle.readOnly = false;
     entryDescription.readOnly = false;
     entryContent.readOnly = false;
+    entryNotes.readOnly = false;
     entryType.disabled = false;
     entryFavorite.disabled = false;
     entryFolder.disabled = false;
-
     document.querySelector(".detail-actions").style.display = "flex";
-
     entryTitle.removeAttribute("data-folderId");
     entryTitle.removeAttribute("data-promptIndex");
     navigationState = { source: "main", folderId: null };
-
     detailOverlay.classList.add("open");
     document.getElementById("plus-btn").style.display = "none";
+  });
+
+  // Populate folders for entry-folder-add
+  chrome.storage.local.get(null, function (data) {
+    const entryFolderAdd = document.getElementById("entry-folder-add");
+    // Reset options, preserve the placeholder
+    entryFolderAdd.innerHTML =
+      '<option value="" data-i18n="folder_select">Ordner auswählen</option>';
+    Object.entries(data).forEach(([id, topic]) => {
+      if (
+        topic.prompts &&
+        Array.isArray(topic.prompts) &&
+        !topic.isHidden &&
+        !topic.isTrash
+      ) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = topic.name;
+        entryFolderAdd.appendChild(option);
+      }
+    });
+  });
+
+  document.getElementById("add-tag-btn_add").addEventListener("click", () => {
+    const newTagInput = document.getElementById("new-tag_add");
+    const newTag = newTagInput.value.trim();
+    const entryTags = document.getElementById("entry-tags-add"); // angepasst: Zielcontainer für die Checkboxen
+    const existingTags = Array.from(
+      entryTags.querySelectorAll("input[type='checkbox']")
+    ).map((cb) => cb.value);
+
+    if (newTag && !existingTags.includes(newTag)) {
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" name="tags" value="${newTag}" checked> ${newTag}`;
+      entryTags.appendChild(label);
+
+      chrome.storage.local.get("tags", (tagData) => {
+        const storedTags = tagData.tags || [];
+        if (!storedTags.includes(newTag)) {
+          storedTags.push(newTag);
+          chrome.storage.local.set({ tags: storedTags }, () => {
+            console.log(`Tag "${newTag}" saved to chrome.storage.local`);
+          });
+        }
+      });
+
+      newTagInput.value = "";
+    } else if (!newTag) {
+      alert(
+        translations?.[currentLang]?.tag_empty || "Tag darf nicht leer sein!"
+      );
+    }
+  });
+
+  document.querySelector(".save-btn-add").addEventListener("click", () => {
+    // Eingabefelder auslesen
+    const title = document.getElementById("entry-title-add").value.trim();
+    const description = document
+      .getElementById("entry-description-add")
+      .value.trim();
+    const content = document.getElementById("entry-content-add").value.trim();
+    const notes = document.getElementById("entry-notes-add").value.trim();
+    const type = document.getElementById("entry-type-add").value;
+    const compatibleModels = Array.from(
+      document
+        .getElementById("entry-compatible-add")
+        .querySelectorAll("input:checked")
+    ).map((input) => input.value);
+    const incompatibleModels = Array.from(
+      document
+        .getElementById("entry-incompatible-add")
+        .querySelectorAll("input:checked")
+    ).map((input) => input.value);
+    const tags = Array.from(
+      document
+        .getElementById("entry-tags-add")
+        .querySelectorAll("input:checked")
+    ).map((input) => input.value);
+    const isFavorite = document.getElementById("entry-favorite-add").checked;
+    const folderId = document.getElementById("entry-folder-add").value;
+    const folderName = folderId
+      ? document.getElementById("entry-folder-add").selectedOptions[0]
+          ?.textContent
+      : null;
+
+    // Validierung: Titel und Ordner sind Pflichtfelder
+    if (!title) {
+      alert(
+        translations[currentLang]?.title_required || "Titel ist erforderlich!"
+      );
+      return;
+    }
+    if (!folderId) {
+      alert(
+        translations[currentLang]?.folder_required ||
+          "Bitte wählen Sie einen Ordner aus!"
+      );
+      return;
+    }
+
+    // Neues Prompt-Objekt mit der neuen Datenstruktur erstellen
+    const newPrompt = {
+      title,
+      description,
+      content,
+      type,
+      compatibleModels,
+      incompatibleModels,
+      tags,
+      isFavorite,
+      folderId: folderId || null,
+      folderName,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      usageCount: 0,
+      lastUsed: null,
+      notes,
+      versions: [
+        {
+          versionId: generateUUID(),
+          title,
+          description,
+          content,
+          timestamp: Date.now(),
+        },
+      ],
+      metaChangeLog: [
+        {
+          timestamp: Date.now(),
+          changes: {
+            title: { from: null, to: title },
+            description: { from: null, to: description },
+            content: { from: null, to: content },
+            type: { from: null, to: type },
+            compatibleModels: { from: [], to: compatibleModels },
+            incompatibleModels: { from: [], to: incompatibleModels },
+            tags: { from: [], to: tags },
+            isFavorite: { from: false, to: isFavorite },
+            folderId: { from: null, to: folderId || null },
+            folderName: { from: null, to: folderName },
+            notes: { from: null, to: notes },
+          },
+        },
+      ],
+      performanceHistory: [],
+    };
+
+    // Prompt in den ausgewählten Ordner speichern
+    chrome.storage.local.get(folderId, (data) => {
+      const folder = data[folderId] || {
+        name: folderName || "",
+        prompts: [],
+        isHidden: false,
+        isTrash: false,
+      };
+      folder.prompts = Array.isArray(folder.prompts) ? folder.prompts : [];
+      folder.prompts.push(newPrompt);
+
+      // Speichern in chrome.storage.local
+      chrome.storage.local.set({ [folderId]: folder }, () => {
+        console.log(`Prompt "${title}" in Ordner "${folderId}" gespeichert`);
+
+        // Overlay schließen und UI zurücksetzen
+        document.getElementById("add-overlay").classList.remove("open");
+        document.getElementById("plus-btn").style.display = "flex";
+
+        // Ordneransicht aktualisieren, falls der Ordner geöffnet ist
+        if (
+          navigationState.source === "folder" &&
+          navigationState.folderId === folderId
+        ) {
+          showFolder(folderId);
+        }
+
+        // Folders und Prompts-Tabelle aktualisieren
+        loadFolders();
+        loadPromptsTable();
+      });
+    });
   });
 
   // Save New Prompt
