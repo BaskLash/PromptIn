@@ -487,22 +487,51 @@ function showDetailsSidebar(item, folderId) {
       }
 
       const stepDetails = workflow.steps.map((step, index) => {
-        if (!step.promptId) {
+        // Fall 1: Kein Prompt-ID vorhanden (z. B. benutzerdefinierter Prompt ohne gespeicherte ID)
+        if (!step.promptId && !step.useCustomPrompt) {
           return `
             <li class="step-item">
               <strong>Step ${index + 1}: ${
             step.title || "Untitled Step"
           }</strong><br>
-              Prompt: N/A<br>
-              Parameters: <pre>${JSON.stringify(
-                step.parameters || {},
-                null,
-                2
-              )}</pre>
+              AI Model: ${step.aiModel || "N/A"}<br>
+              Prompt Title: N/A<br>
+              Prompt Content: N/A<br>
+              Parameters: ${
+                step.parameters && Object.keys(step.parameters).length > 0
+                  ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
+                  : "None"
+              }
             </li>
           `;
         }
 
+        // Fall 2: Benutzerdefinierter Prompt
+        if (step.useCustomPrompt && step.customPrompt) {
+          const promptTitle =
+            step.customPrompt.length > 5
+              ? step.customPrompt.substring(0, 5)
+              : step.customPrompt;
+          return `
+            <li class="step-item">
+              <strong>Step ${index + 1}: ${
+            step.title || "Untitled Step"
+          }</strong><br>
+              AI Model: ${step.aiModel || "N/A"}<br>
+              Prompt Title: ${promptTitle || "N/A"}<br>
+              Prompt Content: <pre style="background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-top: 5px; white-space: pre-wrap;">${
+                step.customPrompt || "N/A"
+              }</pre>
+              Parameters: ${
+                step.parameters && Object.keys(step.parameters).length > 0
+                  ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
+                  : "None"
+              }
+            </li>
+          `;
+        }
+
+        // Fall 3: Gespeicherter Prompt mit Prompt-ID
         const parsedId = parsePromptId(step.promptId);
         if (!parsedId) {
           return `
@@ -510,15 +539,18 @@ function showDetailsSidebar(item, folderId) {
               <strong>Step ${index + 1}: ${
             step.title || "Untitled Step"
           }</strong><br>
-              Prompt: Ungültige Prompt-ID (${step.promptId})<br>
-              Parameters: <pre>${JSON.stringify(
-                step.parameters || {},
-                null,
-                2
-              )}</pre>
+              AI Model: ${step.aiModel || "N/A"}<br>
+              Prompt Title: Ungültige Prompt-ID (${step.promptId})<br>
+              Prompt Content: N/A<br>
+              Parameters: ${
+                step.parameters && Object.keys(step.parameters).length > 0
+                  ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
+                  : "None"
+              }
             </li>
           `;
         }
+
         const { folderId: promptFolderId, promptIndex } = parsedId;
         const topic = data[promptFolderId];
 
@@ -533,12 +565,14 @@ function showDetailsSidebar(item, folderId) {
               <strong>Step ${index + 1}: ${
             step.title || "Untitled Step"
           }</strong><br>
-              Prompt: Nicht gefunden (ID: ${step.promptId})<br>
-              Parameters: <pre>${JSON.stringify(
-                step.parameters || {},
-                null,
-                2
-              )}</pre>
+              AI Model: ${step.aiModel || "N/A"}<br>
+              Prompt Title: Nicht gefunden (ID: ${step.promptId})<br>
+              Prompt Content: N/A<br>
+              Parameters: ${
+                step.parameters && Object.keys(step.parameters).length > 0
+                  ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
+                  : "None"
+              }
             </li>
           `;
         }
@@ -549,12 +583,16 @@ function showDetailsSidebar(item, folderId) {
             <strong>Step ${index + 1}: ${
           step.title || "Untitled Step"
         }</strong><br>
-            Prompt: ${prompt.title || "N/A"}<br>
-            Parameters: <pre>${JSON.stringify(
-              step.parameters || {},
-              null,
-              2
-            )}</pre>
+            AI Model: ${step.aiModel || "N/A"}<br>
+            Prompt Title: ${prompt.title || "N/A"}<br>
+            Prompt Content: <pre style="background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-top: 5px; white-space: pre-wrap;">${
+              prompt.content || "N/A"
+            }</pre>
+            Parameters: ${
+              step.parameters && Object.keys(step.parameters).length > 0
+                ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
+                : "None"
+            }
           </li>
         `;
       });
@@ -563,7 +601,6 @@ function showDetailsSidebar(item, folderId) {
         <label>Name</label>
         <input type="text" value="${workflow.name || "N/A"}" readonly>
         <label>AI Model</label>
-        <input type="text" value="${workflow.aiModel || "N/A"}" readonly>
         <label>Steps</label>
         <ul class="step-list">${stepDetails.join("")}</ul>
         <label>Created At</label>
@@ -640,17 +677,12 @@ function showDetailsSidebar(item, folderId) {
       sidebarContent.innerHTML = `
         <label>Title</label>
         <input type="text" value="${prompt.title || "N/A"}" readonly>
-
         <label>Description</label>
         <textarea readonly>${prompt.description || "N/A"}</textarea>
-
         <label>Content</label>
         <textarea readonly>${prompt.content || "N/A"}</textarea>
-
-        <!-- ▸▸ NEU: Notizfeld anzeigen (read-only) ◂◂ -->
         <label>Notes</label>
         <textarea readonly>${prompt.notes || "N/A"}</textarea>
-
         <label>Type</label>
         <input type="text" value="${prompt.type || "N/A"}" readonly>
         <label>Compatible Models</label>
@@ -693,12 +725,10 @@ function showDetailsSidebar(item, folderId) {
             ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
             : "N/A"
         }" readonly>
-
         <label>Metadata Change Log</label>
         <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
           ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
         </div>
-
         <button class="edit-btn">Edit Prompt</button>
       `;
 

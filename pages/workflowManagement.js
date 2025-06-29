@@ -97,7 +97,16 @@ function showCreateWorkflowModal() {
     const customPrompt = useCustomPrompt
       ? stepData.customPrompt ?? ""
       : lastStepConfig.customPrompt;
-    const parameters = stepData.parameters ?? lastStepConfig.parameters;
+    let parameters = stepData.parameters ?? lastStepConfig.parameters;
+
+    // Initialize parameters for custom prompts with variables
+    if (useCustomPrompt && customPrompt && /\{[^}]+\}/.test(customPrompt)) {
+      const placeholders = [...customPrompt.matchAll(/\{\{([^}]+)\}\}/g)].map(
+        (m) => m[1]
+      );
+      parameters = {};
+      placeholders.forEach((key) => (parameters[key] = ""));
+    }
 
     stepDiv.innerHTML = `
       <style>
@@ -277,14 +286,18 @@ function showCreateWorkflowModal() {
             dynamic && !isCustom ? "block" : "none";
           if (!dynamic && !isCustom) {
             paramsTextarea.value = JSON.stringify({}, null, 2);
+            steps[index].parameters = {};
           }
           if (!isCustom) {
             loadPrompts(selectedType);
           }
           lastStepConfig.isDynamic = dynamic;
           lastStepConfig.useCustomPrompt = isCustom;
+          steps[index].isDynamic = dynamic;
+          steps[index].useCustomPrompt = isCustom;
           if (isCustom) {
             paramsTextarea.value = JSON.stringify({}, null, 2);
+            steps[index].parameters = {};
           }
         });
       });
@@ -298,6 +311,7 @@ function showCreateWorkflowModal() {
         paramsTextarea.value = JSON.stringify({}, null, 2);
         lastStepConfig.parameters = {};
         steps[index].parameters = {};
+        steps[index].promptId = selectedPromptId;
         return;
       }
 
@@ -328,23 +342,36 @@ function showCreateWorkflowModal() {
           lastStepConfig.parameters = {};
           steps[index].parameters = {};
         }
+        steps[index].promptId = selectedPromptId;
       });
     });
 
     aiModelSelect.addEventListener("change", () => {
-      if (steps.length > 0) {
-        lastStepConfig.aiModel = aiModelSelect.value;
-      }
+      lastStepConfig.aiModel = aiModelSelect.value;
+      steps[index].aiModel = aiModelSelect.value;
     });
 
     newTabCheckbox.addEventListener("change", () => {
-      if (steps.length > 0) {
-        lastStepConfig.openInNewTab = newTabCheckbox.checked;
-      }
+      lastStepConfig.openInNewTab = newTabCheckbox.checked;
+      steps[index].openInNewTab = newTabCheckbox.checked;
     });
 
     customPromptTextarea.addEventListener("input", () => {
       lastStepConfig.customPrompt = customPromptTextarea.value;
+      steps[index].customPrompt = customPromptTextarea.value;
+      if (
+        steps[index].useCustomPrompt &&
+        /\{[^}]+\}/.test(customPromptTextarea.value)
+      ) {
+        const placeholders = [
+          ...customPromptTextarea.value.matchAll(/\{\{([^}]+)\}\}/g),
+        ].map((m) => m[1]);
+        const params = {};
+        placeholders.forEach((key) => (params[key] = ""));
+        steps[index].parameters = params;
+      } else {
+        steps[index].parameters = {};
+      }
     });
 
     stepDiv.querySelector(".remove-step").addEventListener("click", () => {
@@ -372,6 +399,7 @@ function showCreateWorkflowModal() {
       parameters,
       aiModel: aiModelSelect.value,
       openInNewTab: newTabCheckbox.checked,
+      promptId: promptSelect.value,
     };
     updateRemoveButtons();
   };
@@ -399,9 +427,24 @@ function showCreateWorkflowModal() {
       lastStepConfig.customPrompt = lastStepConfig.useCustomPrompt
         ? lastStepDiv.querySelector(".step-custom-prompt-text").value
         : "";
-      lastStepConfig.parameters = JSON.parse(
-        lastStepDiv.querySelector(".step-params").value.trim() || "{}"
-      );
+      const customPromptText = lastStepDiv.querySelector(
+        ".step-custom-prompt-text"
+      ).value;
+      if (
+        lastStepConfig.useCustomPrompt &&
+        /\{[^}]+\}/.test(customPromptText)
+      ) {
+        const placeholders = [
+          ...customPromptText.matchAll(/\{\{([^}]+)\}\}/g),
+        ].map((m) => m[1]);
+        const params = {};
+        placeholders.forEach((key) => (params[key] = ""));
+        lastStepConfig.parameters = params;
+        steps[lastStepIndex].parameters = params;
+      } else {
+        lastStepConfig.parameters = {};
+        steps[lastStepIndex].parameters = {};
+      }
     }
     addStep({}, steps.length);
     const newStepLabel = stepsContainer.querySelector(
@@ -548,7 +591,6 @@ function showCreateWorkflowModal() {
               });
             });
 
-            // Verwende folderId-basiertes promptId-Format
             step.promptId = `${targetFolderId}_0`;
             step.customPrompt = customPrompt;
             step.isHidden = true;

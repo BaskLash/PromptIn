@@ -1921,83 +1921,6 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 5px;
       margin-bottom: 15px;
     `;
-    stepsContainer.innerHTML = `
-      <style>
-        #workflow-steps::-webkit-scrollbar {
-          height: 10px;
-        }
-        #workflow-steps::-webkit-scrollbar-thumb {
-          background: #888;
-          border-radius: 5px;
-        }
-        .repetition {
-          background-color: white;
-          padding: 15px;
-          border-radius: 5px;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-          width: 400px;
-          margin-right: 10px;
-          flex-shrink: 0;
-          position: relative;
-        }
-        .repetition h3 {
-          margin: 0 0 10px;
-          font-size: 16px;
-        }
-        .step-group {
-          margin-bottom: 15px;
-          padding-bottom: 10px;
-          border-bottom: 1px solid #eee;
-        }
-        .step-group h4 {
-          margin: 0 0 5px;
-          font-size: 14px;
-        }
-        .step-group p {
-          font-size: 12px;
-          color: #666;
-          margin: 5px 0;
-        }
-        .step-group input {
-          display: block;
-          width: 90%;
-          margin: 5px 0;
-          padding: 5px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-        }
-        .preview {
-          margin-top: 10px;
-          padding: 10px;
-          background-color: #f8f8f8;
-          border-radius: 4px;
-          font-size: 12px;
-          overflow-y: auto;
-          max-height: 150px;
-        }
-        .repetition-close-btn {
-          position: absolute;
-          top: 5px;
-          right: 5px;
-          background-color: #dc3545;
-          color: white;
-          border: none;
-          border-radius: 50%;
-          width: 20px;
-          height: 20px;
-          font-size: 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 10;
-          transition: background-color 0.2s;
-        }
-        .repetition-close-btn:hover {
-          background-color: #c82333;
-        }
-      </style>
-    `;
 
     const buttonsDiv = document.createElement("div");
     buttonsDiv.style.cssText =
@@ -2121,9 +2044,9 @@ function showDynamicVariablesModal(workflowId) {
     buttonsDiv.appendChild(sendBtn);
 
     modalBody.appendChild(stepsContainer);
-    modalBody.appendChild(buttonsDiv);
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
+    modalContent.appendChild(buttonsDiv);
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
     document.body.appendChild(scrollLeftBtn);
@@ -2138,21 +2061,18 @@ function showDynamicVariablesModal(workflowId) {
     function extractVariables(prompt) {
       if (typeof prompt !== "string") return [];
       const matches = prompt.match(/\{\{([^}]+)\}\}/g);
-      return matches ? matches.map((m) => m.slice(1, -1)) : [];
+      return matches ? matches.map((m) => m.slice(2, -2)) : [];
     }
 
     function initRepetition() {
-      const repData = workflow.steps.map((step) => {
+      return workflow.steps.map((step) => {
+        const stepData = {};
         if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
           const vars = extractVariables(step.customPrompt);
-          const varObj = {};
-          vars.forEach((v) => (varObj[v] = ""));
-          return varObj;
-        } else {
-          return null;
+          vars.forEach((v) => (stepData[v] = ""));
         }
+        return stepData;
       });
-      return repData;
     }
 
     if (repetitions.length === 0) repetitions.push(initRepetition());
@@ -2211,14 +2131,18 @@ function showDynamicVariablesModal(workflowId) {
             border-radius: 4px;
           }
           .preview {
-          margin-top: 10px;
-          padding: 10px;
-          background-color: #f8f8f8;
-          border-radius: 4px;
-          font-size: 12px;
-          overflow-y: auto;
-          max-height: 150px;
-        }
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 4px;
+            font-size: 12px;
+            overflow-y: auto;
+            max-height: 150px;
+          }
+          .preview.constant {
+            font-style: italic;
+            color: #555;
+          }
           .repetition-close-btn {
             position: absolute;
             top: 5px;
@@ -2251,20 +2175,17 @@ function showDynamicVariablesModal(workflowId) {
         closeBtn.className = "repetition-close-btn";
         closeBtn.innerText = "X";
         closeBtn.dataset.repIndex = repIndex;
-        closeBtn.onclick = ((index) => {
-          return (e) => {
-            console.log("I am deleting, index:", index);
-            repetitions.splice(index, 1);
-            console.log("Repetitions after deletion:", repetitions);
-            renderSteps();
-            if (repetitions.length === 0) {
-              console.log("No repetitions left, closing modal.");
-              modal.remove();
-              scrollLeftBtn.remove();
-              scrollRightBtn.remove();
-            }
-          };
-        })(repIndex);
+        closeBtn.onclick = () => {
+          console.log("Deleting repetition, index:", repIndex);
+          repetitions.splice(repIndex, 1);
+          renderSteps();
+          if (repetitions.length === 0) {
+            console.log("No repetitions left, closing modal.");
+            modal.remove();
+            scrollLeftBtn.remove();
+            scrollRightBtn.remove();
+          }
+        };
         repDiv.appendChild(closeBtn);
 
         const executionHeader = document.createElement("h3");
@@ -2272,33 +2193,30 @@ function showDynamicVariablesModal(workflowId) {
         repDiv.appendChild(executionHeader);
 
         workflow.steps.forEach((step, stepIndex) => {
+          const stepDiv = document.createElement("div");
+          stepDiv.className = "step-group";
+          stepDiv.innerHTML = `<h4>${
+            step.title || "Step " + (stepIndex + 1)
+          }</h4><p style="font-size: 12px; color: #666; margin: 5px 0;">${
+            step.customPrompt || "No prompt defined"
+          }</p>`;
+
           if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
             const variables = extractVariables(step.customPrompt);
-            const stepDiv = document.createElement("div");
-            stepDiv.className = "step-group";
-
-            stepDiv.innerHTML = `<h4>${
-              step.title || "Step " + (stepIndex + 1)
-            }</h4><p style="font-size: 12px; color: #666; margin: 5px 0;">${
-              step.customPrompt
-            }</p>`;
-
             variables.forEach((variable) => {
               const input = document.createElement("input");
               input.type = "text";
-              input.placeholder = variable;
+              input.placeholder = `Enter ${variable}`;
               input.dataset.variable = variable;
               input.dataset.stepIndex = stepIndex;
               input.dataset.repIndex = repIndex;
-
-              input.value = repData[stepIndex]?.[variable] || "";
-
+              input.value =
+                (repData[stepIndex] && repData[stepIndex][variable]) || "";
               input.addEventListener("input", (e) => {
-                const val = e.target.value;
-                repetitions[repIndex][stepIndex][variable] = val;
+                if (!repData[stepIndex]) repData[stepIndex] = {};
+                repData[stepIndex][variable] = e.target.value;
                 updatePreview(stepIndex, repIndex);
               });
-
               stepDiv.appendChild(input);
             });
 
@@ -2306,20 +2224,22 @@ function showDynamicVariablesModal(workflowId) {
             preview.className = "preview";
             preview.dataset.stepIndex = stepIndex;
             preview.dataset.repIndex = repIndex;
-
             stepDiv.appendChild(preview);
-            repDiv.appendChild(stepDiv);
+          } else {
+            const preview = document.createElement("div");
+            preview.className = "preview constant";
+            preview.textContent = step.customPrompt || "No prompt defined";
+            stepDiv.appendChild(preview);
           }
+
+          repDiv.appendChild(stepDiv);
         });
 
-        if (repDiv.children.length > 1) {
-          stepsContainer.appendChild(repDiv);
-        }
+        stepsContainer.appendChild(repDiv);
       });
 
       if (stepsContainer.children.length === 0) {
-        stepsContainer.innerHTML +=
-          "<p>No dynamic variables found in this workflow.</p>";
+        stepsContainer.innerHTML += "<p>No steps found in this workflow.</p>";
       } else {
         updateAllPreviews();
         stepsContainer.scrollLeft = stepsContainer.scrollWidth;
@@ -2329,14 +2249,20 @@ function showDynamicVariablesModal(workflowId) {
 
     function updatePreview(stepIndex, repIndex) {
       const step = workflow.steps[stepIndex];
-      if (!step || !step.customPrompt) return;
+      if (
+        !step ||
+        !step.customPrompt ||
+        !hasDynamicVariables(step.customPrompt)
+      )
+        return;
       let previewText = step.customPrompt;
-
       const vars = extractVariables(step.customPrompt);
       vars.forEach((variable) => {
         const val =
-          repetitions[repIndex][stepIndex]?.[variable] || `{${variable}}`;
-        previewText = previewText.replace(`{${variable}}`, val);
+          (repetitions[repIndex][stepIndex] &&
+            repetitions[repIndex][stepIndex][variable]) ||
+          `{${variable}}`;
+        previewText = previewText.replace(`{{${variable}}}`, val);
       });
 
       const previewElement = stepsContainer.querySelector(
@@ -2363,22 +2289,24 @@ function showDynamicVariablesModal(workflowId) {
     });
 
     sendBtn.addEventListener("click", async () => {
-      const executions = repetitions.map((repData, repIndex) => {
-        return workflow.steps.map((step, stepIndex) => {
-          if (!step.customPrompt || !hasDynamicVariables(step.customPrompt)) {
+      const executions = repetitions.map((repData) =>
+        workflow.steps.map((step, stepIndex) => {
+          if (!step.customPrompt) return "";
+          if (!hasDynamicVariables(step.customPrompt))
             return step.customPrompt || "";
-          }
           let promptText = step.customPrompt;
           const vars = extractVariables(step.customPrompt);
           vars.forEach((variable) => {
-            const val = repData[stepIndex]?.[variable] || `{${variable}}`;
-            promptText = promptText.replace(`{${variable}}`, val);
+            const val =
+              (repData[stepIndex] && repData[stepIndex][variable]) ||
+              `{${variable}}`;
+            promptText = promptText.replace(`{{${variable}}}`, val);
           });
           return promptText;
-        });
-      });
+        })
+      );
 
-      const allPrompts = executions.flat();
+      const allPrompts = executions.flat().filter((prompt) => prompt);
 
       modal.remove();
       scrollLeftBtn.remove();
@@ -2413,7 +2341,6 @@ function showDynamicVariablesModal(workflowId) {
 
     async function waitForProcessing() {
       const stopButtonSelector = "[data-testid='stop-button']";
-
       while (!document.querySelector(stopButtonSelector)) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
