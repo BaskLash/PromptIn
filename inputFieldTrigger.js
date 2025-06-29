@@ -1872,7 +1872,7 @@ function showDynamicVariablesModal(workflowId) {
     const modal = document.createElement("div");
     modal.className = "modal";
     Object.assign(modal.style, {
-      display: "block",
+      display: "flex",
       position: "fixed",
       zIndex: "10001",
       left: "0",
@@ -1880,68 +1880,257 @@ function showDynamicVariablesModal(workflowId) {
       width: "100%",
       height: "100%",
       backgroundColor: "rgba(0,0,0,0.4)",
+      alignItems: "center",
+      justifyContent: "center",
     });
 
     const modalContent = document.createElement("div");
     modalContent.className = "modal-content";
     Object.assign(modalContent.style, {
       backgroundColor: "#fefefe",
-      margin: "15% auto",
       padding: "20px",
       color: "black",
       border: "1px solid #888",
       width: "80%",
-      maxWidth: "600px",
+      maxWidth: "80vw",
       borderRadius: "8px",
       boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
     });
 
     const modalHeader = document.createElement("div");
     modalHeader.className = "modal-header";
     modalHeader.style.cssText =
-      "display: flex; justify-content: space-between; align-items: center;";
+      "display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;";
     modalHeader.innerHTML = `<span class="close" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">×</span><h2>Configure Workflow: ${workflow.name}</h2>`;
 
     const modalBody = document.createElement("div");
     modalBody.className = "modal-body";
-    modalBody.style.cssText = "max-height: 400px; overflow-y: auto;";
+    modalBody.style.cssText = "flex: 1; overflow: hidden;";
 
-    // Kein form, sondern einfacher div container
     const stepsContainer = document.createElement("div");
     stepsContainer.id = "workflow-steps";
+    stepsContainer.style.cssText = `
+      display: flex;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      padding: 10px;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    `;
+    stepsContainer.innerHTML = `
+      <style>
+        #workflow-steps::-webkit-scrollbar {
+          height: 10px;
+        }
+        #workflow-steps::-webkit-scrollbar-thumb {
+          background: #888;
+          border-radius: 5px;
+        }
+        .repetition {
+          background-color: white;
+          padding: 15px;
+          border-radius: 5px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+          width: 400px;
+          margin-right: 10px;
+          flex-shrink: 0;
+          position: relative;
+        }
+        .repetition h3 {
+          margin: 0 0 10px;
+          font-size: 16px;
+        }
+        .step-group {
+          margin-bottom: 15px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid #eee;
+        }
+        .step-group h4 {
+          margin: 0 0 5px;
+          font-size: 14px;
+        }
+        .step-group p {
+          font-size: 12px;
+          color: #666;
+          margin: 5px 0;
+        }
+        .step-group input {
+          display: block;
+          width: 90%;
+          margin: 5px 0;
+          padding: 5px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        }
+        .preview {
+          margin-top: 10px;
+          padding: 10px;
+          background-color: #f8f8f8;
+          border-radius: 4px;
+          font-size: 12px;
+          overflow-y: auto;
+          max-height: 150px;
+        }
+        .repetition-close-btn {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          background-color: #dc3545;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 20px;
+          height: 20px;
+          font-size: 12px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10;
+          transition: background-color 0.2s;
+        }
+        .repetition-close-btn:hover {
+          background-color: #c82333;
+        }
+      </style>
+    `;
 
-    // Buttons Container
     const buttonsDiv = document.createElement("div");
-    buttonsDiv.style.marginTop = "15px";
-    buttonsDiv.style.display = "flex";
-    buttonsDiv.style.gap = "10px";
+    buttonsDiv.style.cssText =
+      "display: flex; gap: 10px; justify-content: flex-end;";
+
+    const scrollLeftBtn = document.createElement("button");
+    scrollLeftBtn.className = "scroll-btn scroll-btn-left";
+    scrollLeftBtn.textContent = "←";
+    scrollLeftBtn.style.cssText = `
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+      cursor: pointer;
+      display: none;
+      position: fixed;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10002;
+    `;
+    scrollLeftBtn.onclick = () => {
+      stepsContainer.scrollBy({ left: -220, behavior: "smooth" });
+      updateScrollButtons();
+    };
+
+    const scrollRightBtn = document.createElement("button");
+    scrollRightBtn.className = "scroll-btn scroll-btn-right";
+    scrollRightBtn.textContent = "→";
+    scrollRightBtn.style.cssText = `
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+      cursor: pointer;
+      display: none;
+      position: fixed;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10002;
+    `;
+    scrollRightBtn.onclick = () => {
+      stepsContainer.scrollBy({ left: 220, behavior: "smooth" });
+      updateScrollButtons();
+    };
+
+    const importCycleBtn = document.createElement("button");
+    importCycleBtn.type = "button";
+    importCycleBtn.className = "action-btn import-btn";
+    importCycleBtn.textContent = "Import Cycle";
+    importCycleBtn.style.cssText = `
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    `;
+    importCycleBtn.onclick = () => {
+      console.log("Import Cycle clicked");
+      // Placeholder for import functionality
+    };
+
+    const exportCycleBtn = document.createElement("button");
+    exportCycleBtn.type = "button";
+    exportCycleBtn.className = "action-btn export-btn";
+    exportCycleBtn.textContent = "Export Cycle";
+    exportCycleBtn.style.cssText = `
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    `;
+    exportCycleBtn.onclick = () => {
+      console.log("Export Cycle clicked");
+      // Placeholder for export functionality
+    };
 
     const addRepetitionBtn = document.createElement("button");
     addRepetitionBtn.type = "button";
     addRepetitionBtn.className = "action-btn";
     addRepetitionBtn.textContent = "Add Repetition +";
+    addRepetitionBtn.style.cssText = `
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    `;
 
     const sendBtn = document.createElement("button");
     sendBtn.type = "button";
     sendBtn.className = "action-btn";
     sendBtn.textContent = "Send";
+    sendBtn.style.cssText = `
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    `;
 
+    buttonsDiv.appendChild(importCycleBtn);
+    buttonsDiv.appendChild(exportCycleBtn);
     buttonsDiv.appendChild(addRepetitionBtn);
     buttonsDiv.appendChild(sendBtn);
 
     modalBody.appendChild(stepsContainer);
     modalBody.appendChild(buttonsDiv);
-
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
+    document.body.appendChild(scrollLeftBtn);
+    document.body.appendChild(scrollRightBtn);
 
-    // ** Hier speichern wir die Eingabewerte für jede Repetition + Step **
-    // Format: repetitions[repIndex][stepIndex][variableName] = value
     const repetitions = [];
 
-    // Hilfsfunktionen: dynamic vars prüfen und extrahieren
     function hasDynamicVariables(prompt) {
       return typeof prompt === "string" && /\{[^}]+\}/.test(prompt);
     }
@@ -1952,7 +2141,6 @@ function showDynamicVariablesModal(workflowId) {
       return matches ? matches.map((m) => m.slice(1, -1)) : [];
     }
 
-    // Neue Repetition initialisieren
     function initRepetition() {
       const repData = workflow.steps.map((step) => {
         if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
@@ -1967,28 +2155,127 @@ function showDynamicVariablesModal(workflowId) {
       return repData;
     }
 
-    // Beim Start eine Repetition anlegen
     if (repetitions.length === 0) repetitions.push(initRepetition());
 
-    // Rendern der Schritte und Inputs
+    function updateScrollButtons() {
+      const isOverflowing =
+        stepsContainer.scrollWidth > stepsContainer.clientWidth;
+      scrollLeftBtn.style.display = isOverflowing ? "block" : "none";
+      scrollRightBtn.style.display = isOverflowing ? "block" : "none";
+    }
+
     function renderSteps() {
-      stepsContainer.innerHTML = "";
+      stepsContainer.innerHTML = `
+        <style>
+          #workflow-steps::-webkit-scrollbar {
+            height: 10px;
+          }
+          #workflow-steps::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+          }
+          .repetition {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            margin-right: 10px;
+            flex-shrink: 0;
+            position: relative;
+          }
+          .repetition h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+          }
+          .step-group {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+          }
+          .step-group h4 {
+            margin: 0 0 5px;
+            font-size: 14px;
+          }
+          .step-group p {
+            font-size: 12px;
+            color: #666;
+            margin: 5px 0;
+          }
+          .step-group input {
+            display: block;
+            width: 90%;
+            margin: 5px 0;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+          }
+          .preview {
+          margin-top: 10px;
+          padding: 10px;
+          background-color: #f8f8f8;
+          border-radius: 4px;
+          font-size: 12px;
+          overflow-y: auto;
+          max-height: 150px;
+        }
+          .repetition-close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background-color 0.2s;
+          }
+          .repetition-close-btn:hover {
+            background-color: #c82333;
+          }
+        </style>
+      `;
 
       repetitions.forEach((repData, repIndex) => {
         const repDiv = document.createElement("div");
         repDiv.className = "repetition";
-        repDiv.style.cssText =
-          "margin-left: 20px; padding: 10px; border-left: 2px solid #ddd;";
 
-        repDiv.innerHTML = `<h3>Execution ${repIndex + 1}</h3>`;
+        const closeBtn = document.createElement("button");
+        closeBtn.className = "repetition-close-btn";
+        closeBtn.innerText = "X";
+        closeBtn.dataset.repIndex = repIndex;
+        closeBtn.onclick = ((index) => {
+          return (e) => {
+            console.log("I am deleting, index:", index);
+            repetitions.splice(index, 1);
+            console.log("Repetitions after deletion:", repetitions);
+            renderSteps();
+            if (repetitions.length === 0) {
+              console.log("No repetitions left, closing modal.");
+              modal.remove();
+              scrollLeftBtn.remove();
+              scrollRightBtn.remove();
+            }
+          };
+        })(repIndex);
+        repDiv.appendChild(closeBtn);
+
+        const executionHeader = document.createElement("h3");
+        executionHeader.textContent = `Execution ${repIndex + 1}`;
+        repDiv.appendChild(executionHeader);
 
         workflow.steps.forEach((step, stepIndex) => {
           if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
             const variables = extractVariables(step.customPrompt);
             const stepDiv = document.createElement("div");
             stepDiv.className = "step-group";
-            stepDiv.style.cssText =
-              "margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;";
 
             stepDiv.innerHTML = `<h4>${
               step.title || "Step " + (stepIndex + 1)
@@ -2004,7 +2291,6 @@ function showDynamicVariablesModal(workflowId) {
               input.dataset.stepIndex = stepIndex;
               input.dataset.repIndex = repIndex;
 
-              // Wert aus repetitions-Array setzen, falls vorhanden
               input.value = repData[stepIndex]?.[variable] || "";
 
               input.addEventListener("input", (e) => {
@@ -2020,8 +2306,6 @@ function showDynamicVariablesModal(workflowId) {
             preview.className = "preview";
             preview.dataset.stepIndex = stepIndex;
             preview.dataset.repIndex = repIndex;
-            preview.style.cssText =
-              "margin-top: 10px; padding: 10px; background-color: #f8f8f8; border-radius: 4px;";
 
             stepDiv.appendChild(preview);
             repDiv.appendChild(stepDiv);
@@ -2034,14 +2318,15 @@ function showDynamicVariablesModal(workflowId) {
       });
 
       if (stepsContainer.children.length === 0) {
-        stepsContainer.innerHTML =
+        stepsContainer.innerHTML +=
           "<p>No dynamic variables found in this workflow.</p>";
       } else {
         updateAllPreviews();
+        stepsContainer.scrollLeft = stepsContainer.scrollWidth;
       }
+      updateScrollButtons();
     }
 
-    // Vorschau updaten
     function updatePreview(stepIndex, repIndex) {
       const step = workflow.steps[stepIndex];
       if (!step || !step.customPrompt) return;
@@ -2062,7 +2347,6 @@ function showDynamicVariablesModal(workflowId) {
       }
     }
 
-    // Alle Vorschauen updaten
     function updateAllPreviews() {
       workflow.steps.forEach((step, stepIndex) => {
         if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
@@ -2073,15 +2357,12 @@ function showDynamicVariablesModal(workflowId) {
       });
     }
 
-    // Button-Handler: Neue Repetition hinzufügen
     addRepetitionBtn.addEventListener("click", () => {
       repetitions.push(initRepetition());
       renderSteps();
     });
 
-    // Button-Handler: Send
     sendBtn.addEventListener("click", async () => {
-      // Alle Prompts sammeln aus repetitions + workflow
       const executions = repetitions.map((repData, repIndex) => {
         return workflow.steps.map((step, stepIndex) => {
           if (!step.customPrompt || !hasDynamicVariables(step.customPrompt)) {
@@ -2099,7 +2380,9 @@ function showDynamicVariablesModal(workflowId) {
 
       const allPrompts = executions.flat();
 
-      modal.remove(); // Modal schließen
+      modal.remove();
+      scrollLeftBtn.remove();
+      scrollRightBtn.remove();
 
       for (const prompt of allPrompts) {
         await sendPrompt(prompt);
@@ -2107,7 +2390,6 @@ function showDynamicVariablesModal(workflowId) {
       console.log("Workflow execution completed.");
     });
 
-    // Hilfsfunktion zum Eingeben und Senden des Prompts
     async function sendPrompt(prompt) {
       const inputField = document.getElementById("prompt-textarea");
       if (!inputField) {
@@ -2115,7 +2397,6 @@ function showDynamicVariablesModal(workflowId) {
         return;
       }
 
-      // Warten bis der Text wirklich gesetzt wurde
       await setInputText(inputField, prompt);
 
       const sendButton = document.querySelector("[data-testid='send-button']");
@@ -2141,13 +2422,12 @@ function showDynamicVariablesModal(workflowId) {
       }
     }
 
-    // Modal schließen
-    modalHeader.querySelector(".close").onclick = () => modal.remove();
-    window.onclick = (e) => {
-      if (e.target === modal) modal.remove();
+    modalHeader.querySelector(".close").onclick = () => {
+      modal.remove();
+      scrollLeftBtn.remove();
+      scrollRightBtn.remove();
     };
 
-    // Initial render
     renderSteps();
   });
 }
