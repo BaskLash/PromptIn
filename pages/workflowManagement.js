@@ -292,10 +292,14 @@ function showCreateWorkflowModal() {
 
     promptSelect.addEventListener("change", () => {
       const selectedPromptId = promptSelect.value;
-      if (!selectedPromptId || radioButtons[2].checked) return;
       const dynamicChecked = radioButtons[1].checked;
 
-      if (!dynamicChecked) return;
+      if (!selectedPromptId || radioButtons[2].checked) {
+        paramsTextarea.value = JSON.stringify({}, null, 2);
+        lastStepConfig.parameters = {};
+        steps[index].parameters = {};
+        return;
+      }
 
       chrome.storage.local.get(null, (data) => {
         let selectedPromptContent = null;
@@ -310,17 +314,19 @@ function showCreateWorkflowModal() {
           }
         });
 
-        if (selectedPromptContent) {
+        if (selectedPromptContent && dynamicChecked) {
           const placeholders = [
-            ...selectedPromptContent.matchAll(/\{[^}]+\}/g),
+            ...selectedPromptContent.matchAll(/\{([^}]+)\}/g),
           ].map((m) => m[1]);
           const params = {};
           placeholders.forEach((key) => (params[key] = ""));
           paramsTextarea.value = JSON.stringify(params, null, 2);
           lastStepConfig.parameters = params;
+          steps[index].parameters = params;
         } else {
           paramsTextarea.value = JSON.stringify({}, null, 2);
           lastStepConfig.parameters = {};
+          steps[index].parameters = {};
         }
       });
     });
@@ -439,9 +445,9 @@ function showCreateWorkflowModal() {
               throw new Error(`Step ${index + 1}: Invalid JSON parameters`);
             }
           } else if (useCustomPrompt && isDynamic) {
-            const placeholders = [...customPrompt.matchAll(/\{[^}]+\}/g)].map(
-              (m) => m[1]
-            );
+            const placeholders = [
+              ...customPrompt.matchAll(/\{\{([^}]+)\}\}/g),
+            ].map((m) => m[1]);
             placeholders.forEach((key) => (parameters[key] = ""));
           }
           const stepAIModel = stepDiv.querySelector(".step-ai-model").value;
@@ -467,12 +473,10 @@ function showCreateWorkflowModal() {
           };
 
           if (useCustomPrompt) {
-            // Derive title from first 5 characters of customPrompt
             const promptTitle =
               customPrompt.length > 5
                 ? customPrompt.substring(0, 5)
                 : customPrompt;
-            // Create newPrompt object following the specified data structure
             const newPrompt = {
               id: generateUUID(),
               title: promptTitle,
@@ -520,7 +524,6 @@ function showCreateWorkflowModal() {
               performanceHistory: [],
             };
 
-            // Save the custom prompt as a single prompt
             const targetFolderId = `single_prompt_${Date.now()}_${index}`;
             const newTopic = {
               name: "Single Prompt",
@@ -529,7 +532,6 @@ function showCreateWorkflowModal() {
               isTrash: false,
             };
 
-            // Use a promise to ensure the storage operation completes
             await new Promise((resolve, reject) => {
               chrome.storage.local.set({ [targetFolderId]: newTopic }, () => {
                 if (chrome.runtime.lastError) {
@@ -546,7 +548,8 @@ function showCreateWorkflowModal() {
               });
             });
 
-            step.promptId = newPrompt.id;
+            // Verwende folderId-basiertes promptId-Format
+            step.promptId = `${targetFolderId}_0`;
             step.customPrompt = customPrompt;
             step.isHidden = true;
           } else {
@@ -860,19 +863,6 @@ function executeWorkflow(workflowId) {
   });
 }
 function editWorkflowDetails(workflowId, workflow, sidebarContent) {
-  /*
-   * This version mirrors the behaviour of `showCreateWorkflowModal`.
-   * 1. The user’s latest selections (prompt‑type, AI‑model, etc.) are stored
-   *    in the `lastStepDefaults` object while the modal is open.
-   * 2. When the user adds a new step these defaults are applied, so the new
-   *    step starts with the same configuration the user most recently chose.
-   * 3. All change handlers update `lastStepDefaults` in the background so the
-   *    state always stays in sync.
-   */
-
-  // ---------------------------------------------------------------------------
-  //  Shared helpers
-  // ---------------------------------------------------------------------------
   const aiOptions = {
     grok: "Grok",
     gemini: "Gemini",
@@ -893,26 +883,14 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     .map(([key, name]) => `<option value="${key}">${name}</option>`)
     .join("");
 
-  /**
-   * The last settings chosen by the user while the modal is open. They are
-   * updated live by the various change handlers and applied automatically
-   * whenever the user adds a new step.
-   */
   const lastStepDefaults = {
-    // If the workflow has a global AI‑model start with that, otherwise empty.
     aiModel: workflow.aiModel || "",
-    // Prompt type → one of: "static" | "dynamic" | "custom"  (matches radio value)
     promptType: "static",
-    // Convenience flags derived from promptType so we don’t need to recompute.
     isDynamic: false,
     useCustomPrompt: false,
-    // Other frequently reused settings
     openInNewTab: false,
   };
 
-  // ---------------------------------------------------------------------------
-  //  Build the sidebar skeleton (same outer HTML as before)
-  // ---------------------------------------------------------------------------
   sidebarContent.innerHTML = `
     <style>
       .prompt-type-container {
@@ -965,9 +943,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     <button class="cancel-btn">Cancel</button>
   `;
 
-  //--------------------------------------------------------------------------
-  // Utility: keep scroll when UI re‑flows
-  //--------------------------------------------------------------------------
   const sidebar = sidebarContent.closest(".sidebar");
   const maintainScrollPosition = (cb) => {
     const pos = sidebar.scrollTop;
@@ -975,9 +950,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     sidebar.scrollTop = pos;
   };
 
-  //--------------------------------------------------------------------------
-  // Building individual editable step blocks
-  //--------------------------------------------------------------------------
   const stepsContainer = sidebarContent.querySelector("#edit-steps");
   let steps = workflow.steps.map((s) => ({ ...s }));
 
@@ -990,11 +962,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     });
   };
 
-  /**
-   * Creates an editable UI block for a single step and wires up all listeners.
-   * If `rawStepData` is empty we start with `lastStepDefaults` so the user gets
-   * the same experience as in the create‑workflow modal.
-   */
   const addStepToEdit = (rawStepData, index, container, stepsArray) => {
     const stepData = {
       title: "",
@@ -1002,23 +969,18 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       customPrompt: "",
       parameters: {},
       ...lastStepDefaults,
-      ...rawStepData, // explicit data (from existing workflow) overrides defaults
+      ...rawStepData,
     };
 
     const stepDiv = document.createElement("div");
     stepDiv.className = "step-item";
     stepDiv.dataset.stepIndex = index;
 
-    // Determine flags for convenience
     const isDynamic =
       stepData.promptType === "dynamic" || stepData.isDynamic === true;
     const useCustomPrompt =
       stepData.promptType === "custom" || stepData.useCustomPrompt === true;
 
-    // ────────────────────────────────────────────────────────────────────────
-    //  Build the inner HTML for the step (mostly unchanged, but initial state
-    //  now comes from stepData which already includes lastStepDefaults).
-    // ────────────────────────────────────────────────────────────────────────
     container.appendChild(document.createElement("h2")).textContent = `Step ${
       index + 1
     }:`;
@@ -1028,7 +990,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       <input type="text" class="step-title" value="${
         stepData.title || ""
       }" placeholder="Enter step title" />
-
       <label>AI Model</label>
       <select class="step-ai-model" required>
         <option value="" disabled ${
@@ -1036,7 +997,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
         }>Choose a model</option>
         ${aiModelOptions}
       </select>
-
       <label for="new-tab-${index}">Open in New Tab</label>
       <div class="checkbox-group">
         <input type="checkbox" id="new-tab-${index}" class="step-new-tab" ${
@@ -1044,7 +1004,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     } />
         <label for="new-tab-${index}">Open AI in new tab</label>
       </div>
-
       <div class="prompt-type-container">
         <div>
           <label>Prompt Type</label>
@@ -1070,21 +1029,18 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
           </div>
         </div>
       </div>
-
       <label class="prompt-label" style="display: ${
         useCustomPrompt ? "none" : "block"
       }">Select Prompt</label>
       <select class="step-prompt" style="display: ${
         useCustomPrompt ? "none" : "block"
       }"></select>
-
       <label class="prompt-content-label" style="display: ${
         useCustomPrompt ? "none" : "block"
       }">Prompt Content</label>
       <textarea class="step-prompt-content" readonly style="display: ${
         useCustomPrompt ? "none" : "block"
       }" placeholder="Prompt content will appear here"></textarea>
-
       <label class="custom-prompt-text-label" style="display: ${
         useCustomPrompt ? "block" : "none"
       }">Custom Prompt</label>
@@ -1093,7 +1049,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       }" placeholder="Enter custom prompt">${
       stepData.customPrompt || ""
     }</textarea>
-
       <label class="params-label" style="display: ${
         isDynamic && !useCustomPrompt ? "block" : "none"
       }">Parameters (JSON)</label>
@@ -1104,15 +1059,11 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       null,
       2
     )}</textarea>
-
       <button class="action-btn remove-step">Remove Step</button>
     `;
 
     container.appendChild(stepDiv);
 
-    // -----------------------------------------------------------------------
-    //  Element handles & initial state
-    // -----------------------------------------------------------------------
     const aiModelSelect = stepDiv.querySelector(".step-ai-model");
     const newTabCheckbox = stepDiv.querySelector(".step-new-tab");
     const radioButtons = stepDiv.querySelectorAll(
@@ -1131,14 +1082,10 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     const promptLabel = stepDiv.querySelector(".prompt-label");
     const promptContentLabel = stepDiv.querySelector(".prompt-content-label");
 
-    // Set AI‑model (existing → default → none)
     if (stepData.aiModel) {
       aiModelSelect.value = stepData.aiModel;
     }
 
-    //-----------------------------------------------------------------------
-    //  Prompt list loader
-    //-----------------------------------------------------------------------
     const loadPrompts = (type) => {
       chrome.storage.local.get(null, (data) => {
         promptSelect.innerHTML = "";
@@ -1169,7 +1116,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
           }
         });
 
-        // Trigger change so the content/params update visually
         if (stepData.promptId) {
           promptSelect.value = stepData.promptId;
           promptSelect.dispatchEvent(new Event("change"));
@@ -1179,19 +1125,13 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
 
     loadPrompts(isDynamic && !useCustomPrompt ? "dynamic" : "static");
 
-    //-----------------------------------------------------------------------
-    //  Live update of UI + lastStepDefaults when the user interacts
-    //-----------------------------------------------------------------------
-
-    // Prompt‑type radios
     radioButtons.forEach((radio) => {
       radio.addEventListener("change", () => {
         maintainScrollPosition(() => {
-          const pt = radio.value; // static | dynamic | custom
+          const pt = radio.value;
           const custom = pt === "custom";
           const dynamic = pt === "dynamic";
 
-          // Toggle UI elements
           promptSelect.style.display = custom ? "none" : "block";
           promptLabel.style.display = custom ? "none" : "block";
           promptContentTextarea.style.display = custom ? "none" : "block";
@@ -1204,14 +1144,12 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
             paramsTextarea.value = JSON.stringify({}, null, 2);
           }
 
-          // Reload prompt list when switching static⇄dynamic, ignore for custom
           if (!custom) loadPrompts(pt);
           if (custom) {
             promptContentTextarea.value = "";
             paramsTextarea.value = JSON.stringify({}, null, 2);
           }
 
-          // ─ Update last‑defaults so newly added steps inherit this choice ─
           lastStepDefaults.promptType = pt;
           lastStepDefaults.isDynamic = dynamic;
           lastStepDefaults.useCustomPrompt = custom;
@@ -1219,24 +1157,18 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       });
     });
 
-    // AI‑model select
     aiModelSelect.addEventListener("change", (e) => {
       lastStepDefaults.aiModel = e.target.value;
     });
 
-    // Open‑in‑new‑tab checkbox
     newTabCheckbox.addEventListener("change", (e) => {
       lastStepDefaults.openInNewTab = e.target.checked;
     });
 
-    // Custom prompt textarea
     customPromptTextarea.addEventListener("input", () => {
       lastStepDefaults.customPrompt = customPromptTextarea.value;
     });
 
-    //-----------------------------------------------------------------------
-    //  Prompt selection → preview + (if dynamic) update parameter template
-    //-----------------------------------------------------------------------
     promptSelect.addEventListener("change", () => {
       const selId = promptSelect.value;
       if (!selId || radioButtons[2].checked) {
@@ -1258,7 +1190,7 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
         if (content) {
           promptContentTextarea.value = content;
           if (dynamicChecked) {
-            const placeholders = [...content.matchAll(/\{([^}]+)\}/g)].map(
+            const placeholders = [...content.matchAll(/\{\{([^}]+)\}\}/g)].map(
               (m) => m[1]
             );
             const params = stepData.parameters || {};
@@ -1276,17 +1208,12 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       });
     });
 
-    //-----------------------------------------------------------------------
-    //  Remove step
-    //-----------------------------------------------------------------------
     stepDiv.querySelector(".remove-step").addEventListener("click", () => {
       if (stepsArray.length <= 1) return;
-      // Remove label (the <h2>) and div in tandem → they always come in pairs
       const labelNode = container.querySelector(`h2:nth-of-type(${index + 1})`);
       if (labelNode) container.removeChild(labelNode);
       container.removeChild(stepDiv);
       stepsArray.splice(index, 1);
-      // Re‑index remaining blocks & labels
       [...container.children].forEach((child, idx) => {
         if (child.tagName === "H2") {
           child.textContent = `Step ${Math.floor(idx / 2) + 1}:`;
@@ -1297,44 +1224,26 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       updateRemoveButtons();
     });
 
-    //-----------------------------------------------------------------------
-    //  Persist internal reference for later SAVE click
-    //-----------------------------------------------------------------------
-    stepsArray[index] = {
-      ...stepData,
-      stepDiv,
-    };
-
+    stepsArray[index] = { ...stepData, stepDiv };
     updateRemoveButtons();
   };
 
-  //--------------------------------------------------------------------------
-  //  Initially render existing steps
-  //--------------------------------------------------------------------------
   steps.forEach((step, idx) => addStepToEdit(step, idx, stepsContainer, steps));
 
-  //--------------------------------------------------------------------------
-  //  Add‑step button (inherits lastStepDefaults)
-  //--------------------------------------------------------------------------
   const addStepBtn = sidebarContent.querySelector("#add-step");
   addStepBtn.addEventListener("click", () => {
     addStepToEdit({}, steps.length, stepsContainer, steps);
-    // Smooth scroll to the new step’s label (every step adds 2 children: <h2> + .step-item)
     const newStepLabel = stepsContainer.querySelector(
       `h2:nth-of-type(${steps.length})`
     );
     if (newStepLabel) newStepLabel.scrollIntoView({ behavior: "smooth" });
   });
 
-  //--------------------------------------------------------------------------
-  //  SAVE and CANCEL buttons
-  //--------------------------------------------------------------------------
   const saveBtn = sidebarContent.querySelector(".save-btn");
   const cancelBtn = sidebarContent.querySelector(".cancel-btn");
 
   saveBtn.addEventListener("click", async () => {
     try {
-      // Fetch all storage data once to validate prompt IDs
       const data = await new Promise((resolve) => {
         chrome.storage.local.get(null, (result) => resolve(result));
       });
@@ -1345,7 +1254,7 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
         steps: await Promise.all(
           steps.map(async (_, index) => {
             const idx = _.stepDiv.dataset.stepIndex;
-            const sd = _.stepDiv; // shorthand
+            const sd = _.stepDiv;
             const title = sd.querySelector(".step-title").value.trim();
             const promptId = sd.querySelector(".step-prompt").value;
             const customPrompt = sd
@@ -1368,9 +1277,9 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
                 throw new Error(`Step ${+idx + 1}: Invalid JSON parameters`);
               }
             } else if (useCust && isDyn) {
-              const placeholders = [...customPrompt.matchAll(/\{[^}]+\}/g)].map(
-                (m) => m[1]
-              );
+              const placeholders = [
+                ...customPrompt.matchAll(/\{\{([^}]+)\}\}/g),
+              ].map((m) => m[1]);
               placeholders.forEach((key) => (parameters[key] = ""));
             }
             const aiModel = sd.querySelector(".step-ai-model").value;
@@ -1392,12 +1301,10 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
             };
 
             if (useCust) {
-              // Derive title from first 5 characters of customPrompt
               const promptTitle =
                 customPrompt.length > 5
                   ? customPrompt.substring(0, 5)
                   : customPrompt;
-              // Create newPrompt object following the specified data structure
               const newPrompt = {
                 id: generateUUID(),
                 title: promptTitle,
@@ -1445,7 +1352,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
                 performanceHistory: [],
               };
 
-              // Save the custom prompt as a single prompt
               const targetFolderId = `single_prompt_${Date.now()}_${index}`;
               const newTopic = {
                 name: "Single Prompt",
@@ -1454,7 +1360,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
                 isTrash: false,
               };
 
-              // Use a promise to ensure the storage operation completes
               await new Promise((resolve, reject) => {
                 chrome.storage.local.set({ [targetFolderId]: newTopic }, () => {
                   if (chrome.runtime.lastError) {
@@ -1471,11 +1376,10 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
                 });
               });
 
-              step.promptId = newPrompt.id;
+              step.promptId = `${targetFolderId}_0`;
               step.customPrompt = customPrompt;
               step.isHidden = true;
             } else {
-              // Validate promptId exists in storage
               let promptExists = false;
               Object.entries(data).forEach(([id, topic]) => {
                 if (Array.isArray(topic.prompts)) {
@@ -1659,7 +1563,7 @@ function addStepToEdit(stepData, index, stepsContainer, steps) {
         if (selectedPrompt && selectedPrompt.content) {
           // Extrahiere Platzhalter
           const placeholders = [
-            ...selectedPrompt.content.matchAll(/\{([^}]+)\}/g),
+            ...selectedPrompt.content.matchAll(/\{\{([^}]+)\}\}/g),
           ].map((match) => match[1]);
           // Erstelle JSON-Objekt
           const params = placeholders.reduce((obj, key) => {
