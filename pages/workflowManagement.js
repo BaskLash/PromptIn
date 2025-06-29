@@ -76,7 +76,6 @@ function showCreateWorkflowModal() {
     });
   };
 
-  // Function to maintain scroll position
   const maintainScrollPosition = (callback) => {
     const scrollPosition = modalBody.scrollTop;
     callback();
@@ -95,7 +94,6 @@ function showCreateWorkflowModal() {
     const isDynamic = stepData.isDynamic ?? lastStepConfig.isDynamic;
     const useCustomPrompt =
       stepData.useCustomPrompt ?? lastStepConfig.useCustomPrompt;
-    // Do not inherit customPrompt for new steps, use empty string if useCustomPrompt is true
     const customPrompt = useCustomPrompt
       ? stepData.customPrompt ?? ""
       : lastStepConfig.customPrompt;
@@ -195,7 +193,7 @@ function showCreateWorkflowModal() {
       <label class="params-label" style="display: ${
         isDynamic && !useCustomPrompt ? "block" : "none"
       }">Parameters (JSON)</label>
-      <textarea class="step-params" style="display: ${
+      <textarea class="step-params" readonly style="display: ${
         isDynamic && !useCustomPrompt ? "block" : "none"
       }" placeholder='{"key": "value"}'>${JSON.stringify(
       parameters,
@@ -221,7 +219,6 @@ function showCreateWorkflowModal() {
     const aiModelSelect = stepDiv.querySelector(".step-ai-model");
     const newTabCheckbox = stepDiv.querySelector(".step-new-tab");
 
-    // Set AI model for the step
     if (stepData.aiModel) {
       aiModelSelect.value = stepData.aiModel;
     } else if (lastStepConfig.aiModel && aiOptions[lastStepConfig.aiModel]) {
@@ -256,7 +253,6 @@ function showCreateWorkflowModal() {
           }
         });
 
-        // Trigger prompt selection to initialize parameters
         if (stepData.promptId && type === "dynamic" && !useCustomPrompt) {
           promptSelect.value = stepData.promptId;
           promptSelect.dispatchEvent(new Event("change"));
@@ -316,7 +312,7 @@ function showCreateWorkflowModal() {
 
         if (selectedPromptContent) {
           const placeholders = [
-            ...selectedPromptContent.matchAll(/\{([^}]+)\}/g),
+            ...selectedPromptContent.matchAll(/\{[^}]+\}/g),
           ].map((m) => m[1]);
           const params = {};
           placeholders.forEach((key) => (params[key] = ""));
@@ -346,7 +342,7 @@ function showCreateWorkflowModal() {
     });
 
     stepDiv.querySelector(".remove-step").addEventListener("click", () => {
-      if (steps.length <= 1) return; // Prevent removal if only one step
+      if (steps.length <= 1) return;
       stepsContainer.removeChild(stepLabel);
       stepsContainer.removeChild(stepDiv);
       steps.splice(index, 1);
@@ -394,16 +390,14 @@ function showCreateWorkflowModal() {
         lastStepDiv.querySelector(
           `input[name="prompt-type-${lastStepIndex}"]:checked`
         )?.value === "custom";
-      // Clear customPrompt in lastStepConfig for new steps if useCustomPrompt is true
       lastStepConfig.customPrompt = lastStepConfig.useCustomPrompt
-        ? ""
-        : lastStepDiv.querySelector(".step-custom-prompt-text").value;
+        ? lastStepDiv.querySelector(".step-custom-prompt-text").value
+        : "";
       lastStepConfig.parameters = JSON.parse(
         lastStepDiv.querySelector(".step-params").value.trim() || "{}"
       );
     }
     addStep({}, steps.length);
-    // Scroll to the new step
     const newStepLabel = stepsContainer.querySelector(
       `h2:nth-child(${steps.length * 2 - 1})`
     );
@@ -412,54 +406,157 @@ function showCreateWorkflowModal() {
     }
   });
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const name = form.querySelector("#workflow-name").value.trim();
 
     try {
-      const workflowSteps = steps.map((_, index) => {
-        const stepDiv = stepsContainer.querySelector(
-          `[data-step-index="${index}"]`
-        );
-        const title = stepDiv.querySelector(".step-title").value.trim();
-        const promptId = stepDiv.querySelector(".step-prompt").value;
-        const customPrompt = stepDiv
-          .querySelector(".step-custom-prompt-text")
-          .value.trim();
-        const isDynamic =
-          stepDiv.querySelector(`input[name="prompt-type-${index}"]:checked`)
-            ?.value === "dynamic" || customPrompt;
-        const useCustomPrompt =
-          stepDiv.querySelector(`input[name="prompt-type-${index}"]:checked`)
-            ?.value === "custom";
-        const params = isDynamic
-          ? JSON.parse(
-              stepDiv.querySelector(".step-params").value.trim() || "{}"
-            )
-          : {};
-        const stepAIModel = stepDiv.querySelector(".step-ai-model").value;
-        const openInNewTab = stepDiv.querySelector(".step-new-tab").checked;
-
-        if (!promptId && !useCustomPrompt) {
-          throw new Error(
-            `Step ${index + 1}: No prompt selected or custom prompt provided`
+      const workflowSteps = await Promise.all(
+        steps.map(async (_, index) => {
+          const stepDiv = stepsContainer.querySelector(
+            `[data-step-index="${index}"]`
           );
-        }
-        if (!stepAIModel) {
-          throw new Error(`Step ${index + 1}: No AI model selected`);
-        }
+          const title = stepDiv.querySelector(".step-title").value.trim();
+          const promptId = stepDiv.querySelector(".step-prompt").value;
+          const customPrompt = stepDiv
+            .querySelector(".step-custom-prompt-text")
+            .value.trim();
+          const promptType = stepDiv.querySelector(
+            `input[name="prompt-type-${index}"]:checked`
+          )?.value;
+          const isDynamic =
+            promptType === "dynamic" ||
+            (promptType === "custom" && /\{[^}]+\}/.test(customPrompt));
+          const useCustomPrompt = promptType === "custom";
+          let parameters = {};
+          if (isDynamic && !useCustomPrompt) {
+            try {
+              parameters = JSON.parse(
+                stepDiv.querySelector(".step-params").value.trim() || "{}"
+              );
+            } catch (err) {
+              throw new Error(`Step ${index + 1}: Invalid JSON parameters`);
+            }
+          } else if (useCustomPrompt && isDynamic) {
+            const placeholders = [...customPrompt.matchAll(/\{[^}]+\}/g)].map(
+              (m) => m[1]
+            );
+            placeholders.forEach((key) => (parameters[key] = ""));
+          }
+          const stepAIModel = stepDiv.querySelector(".step-ai-model").value;
+          const openInNewTab = stepDiv.querySelector(".step-new-tab").checked;
 
-        return {
-          title: title || `Step ${index + 1}`,
-          promptId: useCustomPrompt ? null : promptId,
-          customPrompt: useCustomPrompt ? customPrompt : null,
-          parameters: params,
-          isDynamic,
-          aiModel: stepAIModel,
-          openInNewTab,
-        };
-      });
+          if (!stepAIModel) {
+            throw new Error(`Step ${index + 1}: No AI model selected`);
+          }
+
+          if (!promptId && !useCustomPrompt) {
+            throw new Error(
+              `Step ${index + 1}: No prompt selected or custom prompt provided`
+            );
+          }
+
+          const step = {
+            title: title || `Step ${index + 1}`,
+            aiModel: stepAIModel,
+            openInNewTab,
+            isDynamic,
+            useCustomPrompt,
+            parameters,
+          };
+
+          if (useCustomPrompt) {
+            // Derive title from first 5 characters of customPrompt
+            const promptTitle =
+              customPrompt.length > 5
+                ? customPrompt.substring(0, 5)
+                : customPrompt;
+            // Create newPrompt object following the specified data structure
+            const newPrompt = {
+              id: generateUUID(),
+              title: promptTitle,
+              description: "",
+              content: customPrompt,
+              type: "",
+              compatibleModels: [],
+              incompatibleModels: [],
+              tags: [],
+              isFavorite: false,
+              folderId: null,
+              folderName: "Single Prompt",
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              usageCount: 0,
+              lastUsed: null,
+              notes: "",
+              versions: [
+                {
+                  versionId: generateUUID(),
+                  title: promptTitle,
+                  description: "",
+                  content: customPrompt,
+                  timestamp: Date.now(),
+                },
+              ],
+              metaChangeLog: [
+                {
+                  timestamp: Date.now(),
+                  changes: {
+                    title: { from: null, to: promptTitle },
+                    description: { from: null, to: "" },
+                    content: { from: null, to: customPrompt },
+                    type: { from: null, to: "" },
+                    compatibleModels: { from: [], to: [] },
+                    incompatibleModels: { from: [], to: [] },
+                    tags: { from: [], to: [] },
+                    isFavorite: { from: false, to: false },
+                    folderId: { from: null, to: null },
+                    folderName: { from: null, to: "Single Prompt" },
+                    notes: { from: null, to: "" },
+                  },
+                },
+              ],
+              performanceHistory: [],
+            };
+
+            // Save the custom prompt as a single prompt
+            const targetFolderId = `single_prompt_${Date.now()}_${index}`;
+            const newTopic = {
+              name: "Single Prompt",
+              prompts: [newPrompt],
+              isHidden: true,
+              isTrash: false,
+            };
+
+            // Use a promise to ensure the storage operation completes
+            await new Promise((resolve, reject) => {
+              chrome.storage.local.set({ [targetFolderId]: newTopic }, () => {
+                if (chrome.runtime.lastError) {
+                  console.error(
+                    `Error saving custom prompt for Step ${index + 1}:`,
+                    chrome.runtime.lastError
+                  );
+                  reject(
+                    new Error(`Step ${index + 1}: Error saving custom prompt`)
+                  );
+                } else {
+                  resolve();
+                }
+              });
+            });
+
+            step.promptId = newPrompt.id;
+            step.customPrompt = customPrompt;
+            step.isHidden = true;
+          } else {
+            step.promptId = promptId;
+            step.isHidden = false;
+          }
+
+          return step;
+        })
+      );
 
       const workflowId = `workflow_${Date.now()}`;
       const newWorkflow = {
@@ -469,15 +566,22 @@ function showCreateWorkflowModal() {
         lastUsed: null,
       };
 
-      chrome.storage.local.set({ [workflowId]: newWorkflow }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("Error saving workflow:", chrome.runtime.lastError);
-          alert("Fehler beim Speichern.");
-        } else {
-          modal.remove();
-          handleCategoryClick("Workflows");
-        }
+      await new Promise((resolve, reject) => {
+        chrome.storage.local.set({ [workflowId]: newWorkflow }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error saving workflow:", chrome.runtime.lastError);
+            reject(new Error("Fehler beim Speichern."));
+          } else {
+            chrome.storage.local.get(workflowId, (result) => {
+              console.log("Saved Workflow in chrome.storage.local:", result);
+            });
+            resolve();
+          }
+        });
       });
+
+      modal.remove();
+      handleCategoryClick("Workflows");
     } catch (err) {
       alert(`Fehler: ${err.message}`);
     }
@@ -502,6 +606,7 @@ function showCreateWorkflowModal() {
   window.onclick = (e) => {
     if (e.target === modal) {
       resetConfig();
+      modal.remove();
     }
   };
 }
@@ -992,7 +1097,7 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       <label class="params-label" style="display: ${
         isDynamic && !useCustomPrompt ? "block" : "none"
       }">Parameters (JSON)</label>
-      <textarea class="step-params" style="display: ${
+      <textarea class="step-params" readonly style="display: ${
         isDynamic && !useCustomPrompt ? "block" : "none"
       }" placeholder='{"key": "value"}'>${JSON.stringify(
       stepData.parameters || {},
@@ -1032,7 +1137,7 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     }
 
     //-----------------------------------------------------------------------
-    //  Prompt list loader (unchanged except „type" derives from radio value)
+    //  Prompt list loader
     //-----------------------------------------------------------------------
     const loadPrompts = (type) => {
       chrome.storage.local.get(null, (data) => {
@@ -1122,6 +1227,11 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     // Open‑in‑new‑tab checkbox
     newTabCheckbox.addEventListener("change", (e) => {
       lastStepDefaults.openInNewTab = e.target.checked;
+    });
+
+    // Custom prompt textarea
+    customPromptTextarea.addEventListener("input", () => {
+      lastStepDefaults.customPrompt = customPromptTextarea.value;
     });
 
     //-----------------------------------------------------------------------
@@ -1217,65 +1327,198 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
   });
 
   //--------------------------------------------------------------------------
-  //  SAVE and CANCEL buttons (mostly unchanged)
+  //  SAVE and CANCEL buttons
   //--------------------------------------------------------------------------
   const saveBtn = sidebarContent.querySelector(".save-btn");
   const cancelBtn = sidebarContent.querySelector(".cancel-btn");
 
-  saveBtn.addEventListener("click", () => {
+  saveBtn.addEventListener("click", async () => {
     try {
+      // Fetch all storage data once to validate prompt IDs
+      const data = await new Promise((resolve) => {
+        chrome.storage.local.get(null, (result) => resolve(result));
+      });
+
       const updatedWorkflow = {
         ...workflow,
         name: sidebarContent.querySelector("#edit-name").value.trim(),
-        steps: steps.map((_) => {
-          const idx = _.stepDiv.dataset.stepIndex;
-          const sd = _.stepDiv; // shorthand
-          const title = sd.querySelector(".step-title").value.trim();
-          const promptId = sd.querySelector(".step-prompt").value;
-          const customPrompt = sd
-            .querySelector(".step-custom-prompt-text")
-            .value.trim();
-          const pType = sd.querySelector(
-            `input[name="prompt-type-${idx}"]:checked`
-          )?.value;
-          const isDyn = pType === "dynamic";
-          const useCust = pType === "custom";
-          const params = isDyn
-            ? JSON.parse(sd.querySelector(".step-params").value.trim() || "{}")
-            : {};
-          const aiModel = sd.querySelector(".step-ai-model").value;
-          const openInNewTab = sd.querySelector(".step-new-tab").checked;
+        steps: await Promise.all(
+          steps.map(async (_, index) => {
+            const idx = _.stepDiv.dataset.stepIndex;
+            const sd = _.stepDiv; // shorthand
+            const title = sd.querySelector(".step-title").value.trim();
+            const promptId = sd.querySelector(".step-prompt").value;
+            const customPrompt = sd
+              .querySelector(".step-custom-prompt-text")
+              .value.trim();
+            const pType = sd.querySelector(
+              `input[name="prompt-type-${idx}"]:checked`
+            )?.value;
+            const isDyn =
+              pType === "dynamic" ||
+              (pType === "custom" && /\{[^}]+\}/.test(customPrompt));
+            const useCust = pType === "custom";
+            let parameters = {};
+            if (isDyn && !useCust) {
+              try {
+                parameters = JSON.parse(
+                  sd.querySelector(".step-params").value.trim() || "{}"
+                );
+              } catch (err) {
+                throw new Error(`Step ${+idx + 1}: Invalid JSON parameters`);
+              }
+            } else if (useCust && isDyn) {
+              const placeholders = [...customPrompt.matchAll(/\{[^}]+\}/g)].map(
+                (m) => m[1]
+              );
+              placeholders.forEach((key) => (parameters[key] = ""));
+            }
+            const aiModel = sd.querySelector(".step-ai-model").value;
+            const openInNewTab = sd.querySelector(".step-new-tab").checked;
 
-          if (!aiModel) throw new Error(`Step ${+idx + 1}: no AI‑model chosen`);
-          if (!promptId && !useCust)
-            throw new Error(`Step ${+idx + 1}: no prompt selected/provided`);
+            if (!aiModel)
+              throw new Error(`Step ${+idx + 1}: No AI model chosen`);
+            if (!promptId && !useCust)
+              throw new Error(`Step ${+idx + 1}: No prompt selected/provided`);
 
-          return {
-            title: title || `Step ${+idx + 1}`,
-            promptId: useCust ? null : promptId,
-            customPrompt: useCust ? customPrompt : null,
-            parameters: params,
-            isDynamic: isDyn,
-            useCustomPrompt: useCust,
-            aiModel,
-            openInNewTab,
-            promptType: pType,
-          };
-        }),
+            const step = {
+              title: title || `Step ${+idx + 1}`,
+              aiModel,
+              openInNewTab,
+              isDynamic: isDyn,
+              useCustomPrompt: useCust,
+              parameters,
+              promptType: pType,
+            };
+
+            if (useCust) {
+              // Derive title from first 5 characters of customPrompt
+              const promptTitle =
+                customPrompt.length > 5
+                  ? customPrompt.substring(0, 5)
+                  : customPrompt;
+              // Create newPrompt object following the specified data structure
+              const newPrompt = {
+                id: generateUUID(),
+                title: promptTitle,
+                description: "",
+                content: customPrompt,
+                type: "",
+                compatibleModels: [],
+                incompatibleModels: [],
+                tags: [],
+                isFavorite: false,
+                folderId: null,
+                folderName: "Single Prompt",
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                usageCount: 0,
+                lastUsed: null,
+                notes: "",
+                versions: [
+                  {
+                    versionId: generateUUID(),
+                    title: promptTitle,
+                    description: "",
+                    content: customPrompt,
+                    timestamp: Date.now(),
+                  },
+                ],
+                metaChangeLog: [
+                  {
+                    timestamp: Date.now(),
+                    changes: {
+                      title: { from: null, to: promptTitle },
+                      description: { from: null, to: "" },
+                      content: { from: null, to: customPrompt },
+                      type: { from: null, to: "" },
+                      compatibleModels: { from: [], to: [] },
+                      incompatibleModels: { from: [], to: [] },
+                      tags: { from: [], to: [] },
+                      isFavorite: { from: false, to: false },
+                      folderId: { from: null, to: null },
+                      folderName: { from: null, to: "Single Prompt" },
+                      notes: { from: null, to: "" },
+                    },
+                  },
+                ],
+                performanceHistory: [],
+              };
+
+              // Save the custom prompt as a single prompt
+              const targetFolderId = `single_prompt_${Date.now()}_${index}`;
+              const newTopic = {
+                name: "Single Prompt",
+                prompts: [newPrompt],
+                isHidden: true,
+                isTrash: false,
+              };
+
+              // Use a promise to ensure the storage operation completes
+              await new Promise((resolve, reject) => {
+                chrome.storage.local.set({ [targetFolderId]: newTopic }, () => {
+                  if (chrome.runtime.lastError) {
+                    console.error(
+                      `Error saving custom prompt for Step ${+idx + 1}:`,
+                      chrome.runtime.lastError
+                    );
+                    reject(
+                      new Error(`Step ${+idx + 1}: Error saving custom prompt`)
+                    );
+                  } else {
+                    resolve();
+                  }
+                });
+              });
+
+              step.promptId = newPrompt.id;
+              step.customPrompt = customPrompt;
+              step.isHidden = true;
+            } else {
+              // Validate promptId exists in storage
+              let promptExists = false;
+              Object.entries(data).forEach(([id, topic]) => {
+                if (Array.isArray(topic.prompts)) {
+                  topic.prompts.forEach((prompt, idx) => {
+                    if (generatePromptId(id, idx) === promptId) {
+                      promptExists = true;
+                    }
+                  });
+                }
+              });
+
+              if (!promptExists) {
+                throw new Error(
+                  `Step ${+idx + 1}: Invalid prompt ID (${promptId})`
+                );
+              }
+
+              step.promptId = promptId;
+              step.customPrompt = null;
+              step.isHidden = false;
+            }
+
+            return step;
+          })
+        ),
       };
 
-      chrome.storage.local.set({ [workflowId]: updatedWorkflow }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("Error saving workflow:", chrome.runtime.lastError);
-          alert("Error saving workflow.");
-        } else {
-          showDetailsSidebar(
-            { type: "Workflow", folderId: workflowId },
-            workflowId
-          );
-          handleCategoryClick("Workflows");
-        }
+      await new Promise((resolve, reject) => {
+        chrome.storage.local.set({ [workflowId]: updatedWorkflow }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error saving workflow:", chrome.runtime.lastError);
+            reject(new Error("Error saving workflow."));
+          } else {
+            resolve();
+          }
+        });
       });
+
+      showDetailsSidebar(
+        { type: "Workflow", folderId: workflowId },
+        workflowId
+      );
+      handleCategoryClick("Workflows");
     } catch (err) {
       alert(`Error: ${err.message}`);
     }
@@ -1313,7 +1556,7 @@ function addStepToEdit(stepData, index, stepsContainer, steps) {
     <label class="params-label" style="display: ${
       isDynamic ? "block" : "none"
     }">Parameters (JSON)</label>
-    <textarea class="step-params" style="display: ${
+    <textarea class="step-params" readonly style="display: ${
       isDynamic ? "block" : "none"
     }" placeholder='{"key": "value"}'>${JSON.stringify(
     stepData.parameters || {},

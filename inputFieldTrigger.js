@@ -215,6 +215,7 @@ function inputFieldTrigger() {
       // Initialize categories and promptSourceMap
       let categories = {
         Favorites: [],
+        Workflows: [], // Added Workflows category
         "All Prompts": [],
         "Single Prompts": [],
         "Categorised Prompts": { all: [] },
@@ -243,6 +244,7 @@ function inputFieldTrigger() {
           categories = {
             "Last Used": [],
             Favorites: [],
+            Workflows: [],
             "All Prompts": [],
             "Single Prompts": [],
             "Categorised Prompts": { all: [] },
@@ -250,6 +252,19 @@ function inputFieldTrigger() {
           promptSourceMap = new Map();
 
           const allPrompts = [];
+          // Handle workflows
+          // *** Code below is responsible for populating the Workflows category ***
+          Object.entries(data).forEach(([key, value]) => {
+            if (key.startsWith("workflow_") && !value.isTrash) {
+              categories.Workflows.push(value.name);
+              promptSourceMap.set(value.name + "_" + key, {
+                category: "Workflows",
+                workflow: value,
+                workflowId: key,
+              });
+            }
+          });
+          // *** End of workflow population code ***
           Object.entries(data).forEach(([id, topic]) => {
             if (
               topic.prompts &&
@@ -440,6 +455,57 @@ function inputFieldTrigger() {
           message.style.color = "#888";
           contentPanel.appendChild(message);
         } else {
+          // *** Code below is responsible for rendering workflows in the content panel ***
+          if (categoryOrFolder === "Workflows") {
+            items.forEach((workflowName) => {
+              const contentItem = document.createElement("div");
+              contentItem.textContent = workflowName;
+              contentItem.style.padding = "10px";
+              contentItem.style.cursor = "pointer";
+              contentItem.style.borderRadius = "4px";
+              contentItem.style.transition = "background-color 0.2s ease";
+              contentItem.className = "dropdown-item";
+              contentItem.tabIndex = 0;
+
+              contentItem.addEventListener("mouseover", () => {
+                if (
+                  !currentFocusElement ||
+                  currentFocusElement !== contentItem
+                ) {
+                  contentItem.style.backgroundColor = "#f8f8f8";
+                }
+              });
+
+              contentItem.addEventListener("mouseout", () => {
+                if (
+                  !currentFocusElement ||
+                  currentFocusElement !== contentItem
+                ) {
+                  contentItem.style.backgroundColor = "white";
+                }
+              });
+
+              contentItem.addEventListener("click", () => {
+                const key = Array.from(promptSourceMap.keys()).find((k) =>
+                  k.startsWith(workflowName + "_")
+                );
+                const source = promptSourceMap.get(key);
+                if (source && source.workflow) {
+                  console.log("Workflow selected:", source.workflow.name);
+                  showDynamicVariablesModal(source.workflow);
+                }
+              });
+
+              contentItem.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  contentItem.click();
+                }
+              });
+
+              contentPanel.appendChild(contentItem);
+            });
+          }
           // Für Last Used: Sortiere explizit nach lastUsed
           if (categoryOrFolder === "Last Used") {
             const sortedItems = items
@@ -1751,5 +1817,228 @@ function findPromptIndex(folderId, prompt) {
       }
       resolve(index);
     });
+  });
+}
+
+// Function to show modal for dynamic variables in a workflow
+function showDynamicVariablesModal(workflowId) {
+  console.log("Fetching workflow with ID:", workflowId);
+  chrome.storage.local.get(workflowId, function (data) {
+    if (chrome.runtime.lastError) {
+      console.error(
+        "Error fetching workflow from Chrome storage:",
+        chrome.runtime.lastError
+      );
+      alert("Failed to load workflow. Please try again.");
+      return;
+    }
+
+    const workflow = data[workflowId];
+    if (!workflow || !workflow.name || !Array.isArray(workflow.steps)) {
+      console.error(
+        "Invalid or missing workflow data for ID:",
+        workflowId,
+        workflow
+      );
+      alert("Invalid workflow data. Please check the workflow configuration.");
+      return;
+    }
+
+    console.log("Creating modal for workflow:", workflow.name);
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    Object.assign(modal.style, {
+      display: "block",
+      position: "fixed",
+      zIndex: "10001",
+      left: "0",
+      top: "0",
+      width: "100%",
+      height: "100%",
+      backgroundColor: "rgba(0,0,0,0.4)",
+    });
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+    Object.assign(modalContent.style, {
+      backgroundColor: "#fefefe",
+      margin: "15% auto",
+      padding: "20px",
+      border: "1px solid #888",
+      width: "80%",
+      maxWidth: "600px",
+      borderRadius: "8px",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+    });
+
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "modal-header";
+    modalHeader.style.cssText =
+      "display: flex; justify-content: space-between; align-items: center;";
+    modalHeader.innerHTML = `<span class="close" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">×</span><h2>Configure Workflow: ${workflow.name}</h2>`;
+
+    const modalBody = document.createElement("div");
+    modalBody.className = "modal-body";
+    modalBody.style.cssText = "max-height: 400px; overflow-y: auto;";
+
+    const form = document.createElement("form");
+    form.innerHTML = `<div id="workflow-steps"></div><button type="button" class="action-btn" id="add-repetition">Add Repetition +</button><button type="submit" class="action-btn">Execute Workflow</button>`;
+    modalBody.appendChild(form);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    const stepsContainer = form.querySelector("#workflow-steps");
+    const repetitions = [{}];
+
+    // Helper function to check for dynamic variables
+    function hasDynamicVariables(prompt) {
+      return typeof prompt === "string" && /\{[^}]+\}/.test(prompt);
+    }
+
+    // Helper function to extract dynamic variables
+    function extractVariables(prompt) {
+      if (typeof prompt !== "string") return [];
+      const matches = prompt.match(/\{[^}]+\}/g);
+      return matches ? matches.map((match) => match.slice(1, -1)) : [];
+    }
+
+    // Render steps for all repetitions
+    const renderSteps = () => {
+      stepsContainer.innerHTML = "";
+      repetitions.forEach((_, repIndex) => {
+        const repDiv = document.createElement("div");
+        repDiv.className = "repetition";
+        repDiv.style.cssText =
+          "margin-left: 20px; padding: 10px; border-left: 2px solid #ddd;";
+        repDiv.innerHTML = `<h3>Execution ${repIndex + 1}</h3>`;
+        workflow.steps.forEach((step, stepIndex) => {
+          if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
+            const variables = extractVariables(step.customPrompt);
+            const stepDiv = document.createElement("div");
+            stepDiv.className = "step-group";
+            stepDiv.style.cssText =
+              "margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;";
+            stepDiv.innerHTML = `<h4>${
+              step.title || "Step " + (stepIndex + 1)
+            }</h4><p style="font-size: 12px; color: #666; margin: 5px 0;">${
+              step.customPrompt
+            }</p>`;
+            variables.forEach((variable) => {
+              const input = document.createElement("input");
+              Object.assign(input, {
+                type: "text",
+                placeholder: variable,
+                dataset: { variable, stepIndex, repIndex },
+              });
+              input.addEventListener("input", () =>
+                updatePreview(stepIndex, repIndex)
+              );
+              stepDiv.appendChild(input);
+            });
+            const preview = document.createElement("div");
+            preview.className = "preview";
+            Object.assign(preview.dataset, { stepIndex, repIndex });
+            preview.style.cssText =
+              "margin-top: 10px; padding: 10px; background-color: #f8f8f8; border-radius: 4px;";
+            stepDiv.appendChild(preview);
+            repDiv.appendChild(stepDiv);
+          }
+        });
+        if (repDiv.children.length > 1) {
+          // Only append if there are steps with dynamic variables
+          stepsContainer.appendChild(repDiv);
+        }
+      });
+      if (stepsContainer.children.length === 0) {
+        stepsContainer.innerHTML =
+          "<p>No dynamic variables found in this workflow.</p>";
+      } else {
+        updateAllPreviews();
+      }
+    };
+
+    // Update preview for a specific step and repetition
+    const updatePreview = (stepIndex, repIndex) => {
+      const step = workflow.steps[stepIndex];
+      if (!step || !step.customPrompt) return;
+      const inputs = stepsContainer.querySelectorAll(
+        `.step-group input[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
+      );
+      let previewText = step.customPrompt;
+      inputs.forEach((input) => {
+        const variable = input.dataset.variable;
+        previewText = previewText.replace(
+          `{${variable}}`,
+          input.value || `{${variable}}`
+        );
+      });
+      const previewElement = stepsContainer.querySelector(
+        `.preview[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
+      );
+      if (previewElement) {
+        previewElement.textContent = previewText;
+      }
+    };
+
+    // Update all previews
+    const updateAllPreviews = () => {
+      workflow.steps.forEach((step, stepIndex) => {
+        if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
+          repetitions.forEach((_, repIndex) => {
+            updatePreview(stepIndex, repIndex);
+          });
+        }
+      });
+    };
+
+    // Initial render
+    renderSteps();
+
+    // Add repetition button handler
+    form.querySelector("#add-repetition").addEventListener("click", () => {
+      repetitions.push({});
+      renderSteps();
+    });
+
+    // Form submission handler
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const executions = repetitions.map((_, repIndex) => {
+        return workflow.steps.map((step, stepIndex) => {
+          if (!step.customPrompt || !hasDynamicVariables(step.customPrompt)) {
+            return step.customPrompt || "";
+          }
+          let promptText = step.customPrompt;
+          const inputs = stepsContainer.querySelectorAll(
+            `.step-group input[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
+          );
+          inputs.forEach((input) => {
+            promptText = promptText.replace(
+              `{${input.dataset.variable}}`,
+              input.value || `{${input.dataset.variable}}`
+            );
+          });
+          return promptText;
+        });
+      });
+
+      // Set first prompt of first execution to input field
+      if (executions[0] && executions[0][0]) {
+        setInputText(inputField, executions[0][0]);
+        inputField.focus();
+        setCursorToEnd(inputField);
+      }
+      dropdown.style.display = "none";
+      clearFocus();
+      modal.remove();
+    });
+
+    // Close modal handlers
+    modalHeader.querySelector(".close").onclick = () => modal.remove();
+    window.onclick = (e) => {
+      if (e.target === modal) modal.remove();
+    };
   });
 }
