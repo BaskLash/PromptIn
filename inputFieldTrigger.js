@@ -455,7 +455,6 @@ function inputFieldTrigger() {
           message.style.color = "#888";
           contentPanel.appendChild(message);
         } else {
-          // *** Code below is responsible for rendering workflows in the content panel ***
           if (categoryOrFolder === "Workflows") {
             items.forEach((workflowName) => {
               const contentItem = document.createElement("div");
@@ -490,9 +489,11 @@ function inputFieldTrigger() {
                   k.startsWith(workflowName + "_")
                 );
                 const source = promptSourceMap.get(key);
-                if (source && source.workflow) {
+                if (source && source.workflowId) {
                   console.log("Workflow selected:", source.workflow.name);
-                  showDynamicVariablesModal(source.workflow);
+                  showDynamicVariablesModal(source.workflowId);
+                  dropdown.style.display = "none"; // Dropdown nach Auswahl schließen
+                  clearFocus();
                 }
               });
 
@@ -505,111 +506,116 @@ function inputFieldTrigger() {
 
               contentPanel.appendChild(contentItem);
             });
-          }
-          // Für Last Used: Sortiere explizit nach lastUsed
-          if (categoryOrFolder === "Last Used") {
-            const sortedItems = items
-              .map((itemText) => {
-                const key = Array.from(promptSourceMap.keys()).find((k) =>
-                  k.startsWith(itemText + "_")
-                );
-                const source = promptSourceMap.get(key);
-                return { itemText, source };
-              })
-              .sort((a, b) => {
-                const lastUsedA = a.source.prompt.lastUsed || 0;
-                const lastUsedB = b.source.prompt.lastUsed || 0;
-                return lastUsedB - lastUsedA; // Absteigend sortieren
-              })
-              .map(({ itemText }) => itemText);
-            items = sortedItems;
-          }
+          } else {
+            // Für Last Used: Sortiere explizit nach lastUsed
+            if (categoryOrFolder === "Last Used") {
+              const sortedItems = items
+                .map((itemText) => {
+                  const key = Array.from(promptSourceMap.keys()).find((k) =>
+                    k.startsWith(itemText + "_")
+                  );
+                  const source = promptSourceMap.get(key);
+                  return { itemText, source };
+                })
+                .sort((a, b) => {
+                  const lastUsedA = a.source.prompt.lastUsed || 0;
+                  const lastUsedB = b.source.prompt.lastUsed || 0;
+                  return lastUsedB - lastUsedA;
+                })
+                .map(({ itemText }) => itemText);
+              items = sortedItems;
+            }
 
-          items.forEach((itemText) => {
-            const contentItem = document.createElement("div");
-            const title = itemText.includes(": ")
-              ? itemText.split(": ")[1]
-              : itemText;
-            const key = Array.from(promptSourceMap.keys()).find((k) =>
-              k.startsWith(title + "_")
-            );
-            const source = promptSourceMap.get(key);
-            const displayText =
-              source && source.category === "Favorites" && source.folder
-                ? `${title} (in ${source.folder})`
-                : source && source.category === "Categorised Prompts"
-                ? `${title} (${source.folder})`
-                : title;
-            contentItem.textContent = displayText;
-            contentItem.style.padding = "10px";
-            contentItem.style.cursor = "pointer";
-            contentItem.style.borderRadius = "4px";
-            contentItem.style.transition = "background-color 0.2s ease";
-            contentItem.className = "dropdown-item";
-            contentItem.tabIndex = 0;
+            items.forEach((itemText) => {
+              const contentItem = document.createElement("div");
+              const title = itemText.includes(": ")
+                ? itemText.split(": ")[1]
+                : itemText;
+              const key = Array.from(promptSourceMap.keys()).find((k) =>
+                k.startsWith(title + "_")
+              );
+              const source = promptSourceMap.get(key);
+              const displayText =
+                source && source.category === "Favorites" && source.folder
+                  ? `${title} (in ${source.folder})`
+                  : source && source.category === "Categorised Prompts"
+                  ? `${title} (${source.folder})`
+                  : title;
+              contentItem.textContent = displayText;
+              contentItem.style.padding = "10px";
+              contentItem.style.cursor = "pointer";
+              contentItem.style.borderRadius = "4px";
+              contentItem.style.transition = "background-color 0.2s ease";
+              contentItem.className = "dropdown-item";
+              contentItem.tabIndex = 0;
 
-            contentItem.addEventListener("mouseover", () => {
-              if (!currentFocusElement || currentFocusElement !== contentItem) {
-                contentItem.style.backgroundColor = "#f8f8f8";
-              }
-            });
-
-            contentItem.addEventListener("mouseout", () => {
-              if (!currentFocusElement || currentFocusElement !== contentItem) {
-                contentItem.style.backgroundColor = "white";
-              }
-            });
-
-            contentItem.addEventListener("click", async () => {
-              const currentText = getInputText(inputField);
-              const slashIndex = currentText.indexOf("/");
-              let newText = "";
-              const selectedPrompt =
-                source && source.prompt
-                  ? typeof source.prompt === "string"
-                    ? source.prompt
-                    : source.prompt.content || ""
-                  : "";
-
-              if (slashIndex !== -1) {
-                const textBeforeSlash = currentText
-                  .substring(0, slashIndex)
-                  .trim();
-                if (textBeforeSlash === "") {
-                  newText = selectedPrompt;
-                } else {
-                  const hasSpace =
-                    currentText[slashIndex - 1] === " " ||
-                    currentText[slashIndex + 1] === " ";
-                  newText = hasSpace
-                    ? `${textBeforeSlash} ${selectedPrompt}`
-                    : `${textBeforeSlash}${selectedPrompt}`;
+              contentItem.addEventListener("mouseover", () => {
+                if (
+                  !currentFocusElement ||
+                  currentFocusElement !== contentItem
+                ) {
+                  contentItem.style.backgroundColor = "#f8f8f8";
                 }
-              } else {
-                newText = currentText
-                  ? `${currentText} ${selectedPrompt}`
-                  : selectedPrompt;
-              }
+              });
 
-              setInputText(inputField, newText);
-              inputField.focus();
-              setCursorToEnd(inputField);
-              dropdown.style.display = "none";
-              clearFocus();
+              contentItem.addEventListener("mouseout", () => {
+                if (
+                  !currentFocusElement ||
+                  currentFocusElement !== contentItem
+                ) {
+                  contentItem.style.backgroundColor = "white";
+                }
+              });
 
-              // Aktualisiere lastUsed
-              if (source.promptIndex !== undefined) {
-                updatePromptLastUsed(source.folderId, source.promptIndex);
-              } else {
-                console.error(
-                  "Prompt index not found for folder:",
-                  source.folderId
-                );
-              }
+              contentItem.addEventListener("click", async () => {
+                const currentText = getInputText(inputField);
+                const slashIndex = currentText.indexOf("/");
+                let newText = "";
+                const selectedPrompt =
+                  source && source.prompt
+                    ? typeof source.prompt === "string"
+                      ? source.prompt
+                      : source.prompt.content || ""
+                    : "";
+
+                if (slashIndex !== -1) {
+                  const textBeforeSlash = currentText
+                    .substring(0, slashIndex)
+                    .trim();
+                  if (textBeforeSlash === "") {
+                    newText = selectedPrompt;
+                  } else {
+                    const hasSpace =
+                      currentText[slashIndex - 1] === " " ||
+                      currentText[slashIndex + 1] === " ";
+                    newText = hasSpace
+                      ? `${textBeforeSlash} ${selectedPrompt}`
+                      : `${textBeforeSlash}${selectedPrompt}`;
+                  }
+                } else {
+                  newText = currentText
+                    ? `${currentText} ${selectedPrompt}`
+                    : selectedPrompt;
+                }
+
+                setInputText(inputField, newText);
+                inputField.focus();
+                setCursorToEnd(inputField);
+                dropdown.style.display = "none";
+                clearFocus();
+
+                // Nur für reguläre Prompts lastUsed aktualisieren
+                if (
+                  source.category !== "Workflows" &&
+                  source.promptIndex !== undefined
+                ) {
+                  updatePromptLastUsed(source.folderId, source.promptIndex);
+                }
+              });
+
+              contentPanel.appendChild(contentItem);
             });
-
-            contentPanel.appendChild(contentItem);
-          });
+          }
         }
       }
 
@@ -1820,6 +1826,12 @@ function findPromptIndex(folderId, prompt) {
   });
 }
 
+function setInputText(element, text) {
+  element.innerHTML = "";
+  element.innerHTML = text;
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 // Function to show modal for dynamic variables in a workflow
 function showDynamicVariablesModal(workflowId) {
   console.log("Fetching workflow with ID:", workflowId);
@@ -1864,6 +1876,7 @@ function showDynamicVariablesModal(workflowId) {
       backgroundColor: "#fefefe",
       margin: "15% auto",
       padding: "20px",
+      color: "black",
       border: "1px solid #888",
       width: "80%",
       maxWidth: "600px",
@@ -1881,38 +1894,82 @@ function showDynamicVariablesModal(workflowId) {
     modalBody.className = "modal-body";
     modalBody.style.cssText = "max-height: 400px; overflow-y: auto;";
 
-    const form = document.createElement("form");
-    form.innerHTML = `<div id="workflow-steps"></div><button type="button" class="action-btn" id="add-repetition">Add Repetition +</button><button type="submit" class="action-btn">Execute Workflow</button>`;
-    modalBody.appendChild(form);
+    // Kein form, sondern einfacher div container
+    const stepsContainer = document.createElement("div");
+    stepsContainer.id = "workflow-steps";
+
+    // Buttons Container
+    const buttonsDiv = document.createElement("div");
+    buttonsDiv.style.marginTop = "15px";
+    buttonsDiv.style.display = "flex";
+    buttonsDiv.style.gap = "10px";
+
+    const addRepetitionBtn = document.createElement("button");
+    addRepetitionBtn.type = "button";
+    addRepetitionBtn.className = "action-btn";
+    addRepetitionBtn.textContent = "Add Repetition +";
+
+    const sendBtn = document.createElement("button");
+    sendBtn.type = "button";
+    sendBtn.className = "action-btn";
+    sendBtn.textContent = "Send";
+
+    buttonsDiv.appendChild(addRepetitionBtn);
+    buttonsDiv.appendChild(sendBtn);
+
+    modalBody.appendChild(stepsContainer);
+    modalBody.appendChild(buttonsDiv);
+
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
 
-    const stepsContainer = form.querySelector("#workflow-steps");
-    const repetitions = [{}];
+    // ** Hier speichern wir die Eingabewerte für jede Repetition + Step **
+    // Format: repetitions[repIndex][stepIndex][variableName] = value
+    const repetitions = [];
 
-    // Helper function to check for dynamic variables
+    // Hilfsfunktionen: dynamic vars prüfen und extrahieren
     function hasDynamicVariables(prompt) {
       return typeof prompt === "string" && /\{[^}]+\}/.test(prompt);
     }
 
-    // Helper function to extract dynamic variables
     function extractVariables(prompt) {
       if (typeof prompt !== "string") return [];
-      const matches = prompt.match(/\{[^}]+\}/g);
-      return matches ? matches.map((match) => match.slice(1, -1)) : [];
+      const matches = prompt.match(/\{\{([^}]+)\}\}/g);
+      return matches ? matches.map((m) => m.slice(1, -1)) : [];
     }
 
-    // Render steps for all repetitions
-    const renderSteps = () => {
+    // Neue Repetition initialisieren
+    function initRepetition() {
+      const repData = workflow.steps.map((step) => {
+        if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
+          const vars = extractVariables(step.customPrompt);
+          const varObj = {};
+          vars.forEach((v) => (varObj[v] = ""));
+          return varObj;
+        } else {
+          return null;
+        }
+      });
+      return repData;
+    }
+
+    // Beim Start eine Repetition anlegen
+    if (repetitions.length === 0) repetitions.push(initRepetition());
+
+    // Rendern der Schritte und Inputs
+    function renderSteps() {
       stepsContainer.innerHTML = "";
-      repetitions.forEach((_, repIndex) => {
+
+      repetitions.forEach((repData, repIndex) => {
         const repDiv = document.createElement("div");
         repDiv.className = "repetition";
         repDiv.style.cssText =
           "margin-left: 20px; padding: 10px; border-left: 2px solid #ddd;";
+
         repDiv.innerHTML = `<h3>Execution ${repIndex + 1}</h3>`;
+
         workflow.steps.forEach((step, stepIndex) => {
           if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
             const variables = extractVariables(step.customPrompt);
@@ -1920,70 +1977,81 @@ function showDynamicVariablesModal(workflowId) {
             stepDiv.className = "step-group";
             stepDiv.style.cssText =
               "margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;";
+
             stepDiv.innerHTML = `<h4>${
               step.title || "Step " + (stepIndex + 1)
             }</h4><p style="font-size: 12px; color: #666; margin: 5px 0;">${
               step.customPrompt
             }</p>`;
+
             variables.forEach((variable) => {
               const input = document.createElement("input");
-              Object.assign(input, {
-                type: "text",
-                placeholder: variable,
-                dataset: { variable, stepIndex, repIndex },
+              input.type = "text";
+              input.placeholder = variable;
+              input.dataset.variable = variable;
+              input.dataset.stepIndex = stepIndex;
+              input.dataset.repIndex = repIndex;
+
+              // Wert aus repetitions-Array setzen, falls vorhanden
+              input.value = repData[stepIndex]?.[variable] || "";
+
+              input.addEventListener("input", (e) => {
+                const val = e.target.value;
+                repetitions[repIndex][stepIndex][variable] = val;
+                updatePreview(stepIndex, repIndex);
               });
-              input.addEventListener("input", () =>
-                updatePreview(stepIndex, repIndex)
-              );
+
               stepDiv.appendChild(input);
             });
+
             const preview = document.createElement("div");
             preview.className = "preview";
-            Object.assign(preview.dataset, { stepIndex, repIndex });
+            preview.dataset.stepIndex = stepIndex;
+            preview.dataset.repIndex = repIndex;
             preview.style.cssText =
               "margin-top: 10px; padding: 10px; background-color: #f8f8f8; border-radius: 4px;";
+
             stepDiv.appendChild(preview);
             repDiv.appendChild(stepDiv);
           }
         });
+
         if (repDiv.children.length > 1) {
-          // Only append if there are steps with dynamic variables
           stepsContainer.appendChild(repDiv);
         }
       });
+
       if (stepsContainer.children.length === 0) {
         stepsContainer.innerHTML =
           "<p>No dynamic variables found in this workflow.</p>";
       } else {
         updateAllPreviews();
       }
-    };
+    }
 
-    // Update preview for a specific step and repetition
-    const updatePreview = (stepIndex, repIndex) => {
+    // Vorschau updaten
+    function updatePreview(stepIndex, repIndex) {
       const step = workflow.steps[stepIndex];
       if (!step || !step.customPrompt) return;
-      const inputs = stepsContainer.querySelectorAll(
-        `.step-group input[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
-      );
       let previewText = step.customPrompt;
-      inputs.forEach((input) => {
-        const variable = input.dataset.variable;
-        previewText = previewText.replace(
-          `{${variable}}`,
-          input.value || `{${variable}}`
-        );
+
+      const vars = extractVariables(step.customPrompt);
+      vars.forEach((variable) => {
+        const val =
+          repetitions[repIndex][stepIndex]?.[variable] || `{${variable}}`;
+        previewText = previewText.replace(`{${variable}}`, val);
       });
+
       const previewElement = stepsContainer.querySelector(
         `.preview[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
       );
       if (previewElement) {
         previewElement.textContent = previewText;
       }
-    };
+    }
 
-    // Update all previews
-    const updateAllPreviews = () => {
+    // Alle Vorschauen updaten
+    function updateAllPreviews() {
       workflow.steps.forEach((step, stepIndex) => {
         if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
           repetitions.forEach((_, repIndex) => {
@@ -1991,54 +2059,81 @@ function showDynamicVariablesModal(workflowId) {
           });
         }
       });
-    };
+    }
 
-    // Initial render
-    renderSteps();
-
-    // Add repetition button handler
-    form.querySelector("#add-repetition").addEventListener("click", () => {
-      repetitions.push({});
+    // Button-Handler: Neue Repetition hinzufügen
+    addRepetitionBtn.addEventListener("click", () => {
+      repetitions.push(initRepetition());
       renderSteps();
     });
 
-    // Form submission handler
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const executions = repetitions.map((_, repIndex) => {
+    // Button-Handler: Send
+    sendBtn.addEventListener("click", async () => {
+      // Alle Prompts sammeln aus repetitions + workflow
+      const executions = repetitions.map((repData, repIndex) => {
         return workflow.steps.map((step, stepIndex) => {
           if (!step.customPrompt || !hasDynamicVariables(step.customPrompt)) {
             return step.customPrompt || "";
           }
           let promptText = step.customPrompt;
-          const inputs = stepsContainer.querySelectorAll(
-            `.step-group input[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
-          );
-          inputs.forEach((input) => {
-            promptText = promptText.replace(
-              `{${input.dataset.variable}}`,
-              input.value || `{${input.dataset.variable}}`
-            );
+          const vars = extractVariables(step.customPrompt);
+          vars.forEach((variable) => {
+            const val = repData[stepIndex]?.[variable] || `{${variable}}`;
+            promptText = promptText.replace(`{${variable}}`, val);
           });
           return promptText;
         });
       });
 
-      // Set first prompt of first execution to input field
-      if (executions[0] && executions[0][0]) {
-        setInputText(inputField, executions[0][0]);
-        inputField.focus();
-        setCursorToEnd(inputField);
+      const allPrompts = executions.flat();
+
+      modal.remove(); // Modal schließen
+
+      for (const prompt of allPrompts) {
+        await sendPrompt(prompt);
       }
-      dropdown.style.display = "none";
-      clearFocus();
-      modal.remove();
+      console.log("Workflow execution completed.");
     });
 
-    // Close modal handlers
+    // Hilfsfunktion zum Eingeben und Senden des Prompts
+    async function sendPrompt(prompt) {
+      const inputField = document.getElementById("prompt-textarea");
+      if (!inputField) {
+        console.error("Input field not found.");
+        return;
+      }
+      setInputText(inputField, prompt);
+
+      const sendButton = document.querySelector("[data-testid='send-button']");
+      if (sendButton) {
+        sendButton.click();
+      } else {
+        inputField.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+        );
+      }
+
+      await waitForProcessing();
+    }
+
+    async function waitForProcessing() {
+      const stopButtonSelector = "[data-testid='stop-button']";
+
+      while (!document.querySelector(stopButtonSelector)) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      while (document.querySelector(stopButtonSelector)) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    // Modal schließen
     modalHeader.querySelector(".close").onclick = () => modal.remove();
     window.onclick = (e) => {
       if (e.target === modal) modal.remove();
     };
+
+    // Initial render
+    renderSteps();
   });
 }

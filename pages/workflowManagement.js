@@ -316,7 +316,7 @@ function showCreateWorkflowModal() {
 
         if (selectedPromptContent && dynamicChecked) {
           const placeholders = [
-            ...selectedPromptContent.matchAll(/\{([^}]+)\}/g),
+            ...selectedPromptContent.matchAll(/\{\{([^}]+)\}\}/g),
           ].map((m) => m[1]);
           const params = {};
           placeholders.forEach((key) => (params[key] = ""));
