@@ -1827,13 +1827,25 @@ function findPromptIndex(folderId, prompt) {
 }
 
 function setInputText(element, text) {
-  element.innerHTML = "";
-  element.innerHTML = text;
-  element.dispatchEvent(new Event("input", { bubbles: true }));
+  return new Promise((resolve) => {
+    element.innerText = "";
+    element.innerText = text;
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // Warten bis zur nächsten Event-Loop-Tick, damit DOM aktualisiert wird
+    requestAnimationFrame(() => {
+      setTimeout(resolve, 50); // kleiner Puffer für Sicherheit
+    });
+  });
 }
 
 // Function to show modal for dynamic variables in a workflow
 function showDynamicVariablesModal(workflowId) {
+  const inputField = document.getElementById("prompt-textarea");
+  if (inputField) {
+    inputField.innerText = "";
+  }
+
   console.log("Fetching workflow with ID:", workflowId);
   chrome.storage.local.get(workflowId, function (data) {
     if (chrome.runtime.lastError) {
@@ -2102,7 +2114,9 @@ function showDynamicVariablesModal(workflowId) {
         console.error("Input field not found.");
         return;
       }
-      setInputText(inputField, prompt);
+
+      // Warten bis der Text wirklich gesetzt wurde
+      await setInputText(inputField, prompt);
 
       const sendButton = document.querySelector("[data-testid='send-button']");
       if (sendButton) {
