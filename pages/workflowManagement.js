@@ -932,6 +932,151 @@ function executeWorkflow(workflowId) {
     };
   });
 }
+
+// Funktionen für Workflow-Aktionen
+async function copyWorkflow(workflow, folderId) {
+  try {
+    const data = await new Promise((resolve) => {
+      chrome.storage.local.get(folderId, (data) => resolve(data));
+    });
+    const originalWorkflow = data[folderId];
+    if (!originalWorkflow) throw new Error("Workflow not found");
+
+    const newWorkflow = {
+      ...originalWorkflow,
+      name: `${originalWorkflow.name} (Copy)`,
+      createdAt: Date.now(),
+      lastUsed: null,
+      folderId: `workflow_${Date.now()}`,
+    };
+
+    await new Promise((resolve) => {
+      chrome.storage.local.set(
+        { [newWorkflow.folderId]: newWorkflow },
+        resolve
+      );
+    });
+
+    // Fetch all prompts to include the new workflow
+    const allData = await new Promise((resolve) => {
+      chrome.storage.local.get(null, (data) => resolve(data));
+    });
+    const updatedPrompts = Object.entries(allData)
+      .filter(([id, item]) => id.startsWith("workflow_"))
+      .map(([id, item]) => ({
+        id: id,
+        title: item.name,
+        type: "Workflow",
+        folderId: id,
+        createdAt: item.createdAt,
+        lastUsed: item.lastUsed,
+        compatibleModels: [],
+        incompatibleModels: [],
+        tags: [],
+        folderName: "Workflows",
+      }));
+
+    renderPrompts(updatedPrompts);
+  } catch (error) {
+    console.error("Error copying workflow:", error);
+    alert("Fehler beim Kopieren des Workflows.");
+  }
+}
+
+async function exportWorkflow(workflow, folderId) {
+  try {
+    const data = await new Promise((resolve) => {
+      chrome.storage.local.get(folderId, (data) => resolve(data));
+    });
+    const workflowData = data[folderId];
+    if (!workflowData) throw new Error("Workflow not found");
+
+    const exportData = {
+      ...workflowData,
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${workflowData.name || "workflow"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error exporting workflow:", error);
+    alert("Fehler beim Exportieren des Workflows.");
+  }
+}
+
+async function deleteWorkflow(workflow, folderId, row, prompts) {
+  try {
+    const confirmDelete = confirm(
+      `Are you sure you want to delete "${workflow.title}"?`
+    );
+    if (!confirmDelete) return;
+
+    // Remove from storage
+    await new Promise((resolve) => {
+      chrome.storage.local.remove(folderId, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error deleting workflow:", chrome.runtime.lastError);
+          alert("Fehler beim Löschen des Workflows.");
+          return;
+        }
+        resolve();
+      });
+    });
+
+    // Sofortige DOM-Aktualisierung
+    row.remove();
+
+    // Prompts-Array aktualisieren und neu rendern
+    const updatedPrompts = prompts.filter((p) => p.folderId !== folderId);
+    renderPrompts(updatedPrompts);
+  } catch (error) {
+    console.error("Error deleting workflow:", error);
+    alert("Fehler beim Löschen des Workflows.");
+  }
+}
+
+async function renameWorkflow(workflow, folderId, row) {
+  try {
+    const newName = prompt(
+      `Enter new name for "${workflow.title}"`,
+      workflow.title
+    );
+    if (!newName || newName.trim() === workflow.title) return;
+
+    const data = await new Promise((resolve) => {
+      chrome.storage.local.get(folderId, (data) => resolve(data));
+    });
+    const workflowData = data[folderId];
+    if (!workflowData) throw new Error("Workflow not found");
+
+    workflowData.name = newName.trim();
+    workflowData.updatedAt = Date.now();
+    await new Promise((resolve) => {
+      chrome.storage.local.set({ [folderId]: workflowData }, resolve);
+    });
+
+    // Update DOM
+    row.cells[1].textContent = newName.trim();
+  } catch (error) {
+    console.error("Error renaming workflow:", error);
+    alert("Fehler beim Umbenennen des Workflows.");
+  }
+}
+
+// Hilfsfunktion zum Generieren von UUIDs
+function generateUUID() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0,
+      v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 function editWorkflowDetails(workflowId, workflow, sidebarContent) {
   const aiOptions = {
     grok: "Grok",

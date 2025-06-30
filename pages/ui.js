@@ -303,6 +303,7 @@ function renderPrompts(prompts) {
   sortedPrompts.forEach((prompt, index) => {
     const row = document.createElement("tr");
     row.dataset.index = index;
+    row.dataset.promptId = prompt.id || index;
     row.innerHTML = `
       <td><input type="checkbox" id="prompt-checkbox-${
         prompt.id || index
@@ -339,18 +340,28 @@ function renderPrompts(prompts) {
           <div class="dropdown-menu">
             ${
               prompt.type === "Workflow"
-                ? '<div class="dropdown-item" data-action="execute-workflow">Execute Workflow</div>'
-                : '<div class="dropdown-item" data-action="copy">Copy Prompt</div>'
+                ? `
+                <div class="dropdown-item" data-action="execute-workflow">Execute Workflow</div>
+                <div class="dropdown-item" data-action="copy-workflow">Copy Workflow</div>
+                <div class="dropdown-item" data-action="export-workflow">Export Workflow</div>
+                <div class="dropdown-item" data-action="delete-workflow">Delete Workflow</div>
+                <div class="dropdown-item" data-action="rename-workflow">Rename Workflow</div>
+                `
+                : `
+                <div class="dropdown-item" data-action="copy">Copy Prompt</div>
+                <div class="dropdown-item" data-action="export">Export Prompt</div>
+                <div class="dropdown-item" data-action="delete">Delete Prompt</div>
+                <div class="dropdown-item" data-action="rename">Rename</div>
+                <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
+                <div class="dropdown-item" data-action="share">Share</div>
+                <div class="dropdown-item" data-action="add-to-favorites">${
+                  prompt.isFavorite
+                    ? "Remove from Favorites"
+                    : "Add to Favorites"
+                }</div>
+                <div class="dropdown-item" data-action="show-versions">Show Versions</div>
+                `
             }
-            <div class="dropdown-item" data-action="rename">Rename</div>
-            <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
-            <div class="dropdown-item" data-action="share">Share</div>
-            <div class="dropdown-item" data-action="add-to-favorites">${
-              prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
-            }</div>
-            <div class="dropdown-item" data-action="show-versions">Show Versions</div>
-            <div class="dropdown-item" data-action="export">Export Prompt</div>
-            <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
           </div>
         </div>
       </td>
@@ -368,22 +379,33 @@ function renderPrompts(prompts) {
     });
 
     row.querySelectorAll(".dropdown-item").forEach((item) => {
-      item.addEventListener("click", (e) => {
+      item.addEventListener("click", async (e) => {
         e.stopPropagation();
         const action = item.dataset.action;
-        if (action === "copy") {
-          copyPrompt(prompt, prompt.folderId);
-        } else if (action === "execute-workflow") {
-          executeWorkflow(prompt.folderId);
-        } else if (action === "rename") {
-          renamePrompt(prompt, prompt.folderId, row);
-        } else if (action === "move-to-folder") {
-          moveToFolder(prompt, prompt.folderId, row);
+        if (action === "copy" && prompt.type !== "Workflow") {
+          await copyPrompt(prompt, prompt.folderId);
+        } else if (
+          action === "execute-workflow" &&
+          prompt.type === "Workflow"
+        ) {
+          await executeWorkflow(prompt.folderId);
+        } else if (action === "copy-workflow" && prompt.type === "Workflow") {
+          await copyWorkflow(prompt, prompt.folderId);
+        } else if (action === "export-workflow" && prompt.type === "Workflow") {
+          await exportWorkflow(prompt, prompt.folderId);
+        } else if (action === "delete-workflow" && prompt.type === "Workflow") {
+          await deleteWorkflow(prompt, prompt.folderId, row, prompts);
+        } else if (action === "rename-workflow" && prompt.type === "Workflow") {
+          await renameWorkflow(prompt, prompt.folderId, row);
+        } else if (action === "rename" && prompt.type !== "Workflow") {
+          await renamePrompt(prompt, prompt.folderId, row);
+        } else if (action === "move-to-folder" && prompt.type !== "Workflow") {
+          await moveToFolder(prompt, prompt.folderId, row);
         } else if (action === "share") {
-          sharePrompt(prompt);
+          await sharePrompt(prompt);
         } else if (action === "add-to-favorites") {
-          toggleFavorite(prompt, prompt.folderId, row);
-        } else if (action === "show-versions") {
+          await toggleFavorite(prompt, prompt.folderId, row);
+        } else if (action === "show-versions" && prompt.type !== "Workflow") {
           chrome.storage.local.get(prompt.folderId, (data) => {
             const topic = data[prompt.folderId];
             if (!topic || !topic.prompts) return;
@@ -394,10 +416,10 @@ function renderPrompts(prompts) {
               showPromptVersions(prompt.folderId, promptIndex, row);
             }
           });
-        } else if (action === "export") {
-          exportPrompt(prompt, prompt.folderId);
-        } else if (action === "move-to-trash") {
-          moveToTrash(prompt, prompt.folderId, row);
+        } else if (action === "export" && prompt.type !== "Workflow") {
+          await exportPrompt(prompt, prompt.folderId);
+        } else if (action === "delete" && prompt.type !== "Workflow") {
+          await deletePrompt(prompt, prompt.folderId, row, prompts);
         }
         dropdown.style.display = "none";
       });
