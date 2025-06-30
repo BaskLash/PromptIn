@@ -1843,32 +1843,84 @@ function setInputText(element, text) {
 function showDynamicVariablesModal(workflowId) {
   const inputField = document.getElementById("prompt-textarea");
   if (inputField) {
-    inputField.innerText = "";
+    inputField.value = "";
   }
 
   console.log("Fetching workflow with ID:", workflowId);
-  chrome.storage.local.get(workflowId, function (data) {
+  chrome.storage.local.get(workflowId, async function (data) {
     if (chrome.runtime.lastError) {
-      console.error(
-        "Error fetching workflow from Chrome storage:",
-        chrome.runtime.lastError
-      );
+      console.error("Error fetching workflow:", chrome.runtime.lastError);
       alert("Failed to load workflow. Please try again.");
       return;
     }
 
     const workflow = data[workflowId];
     if (!workflow || !workflow.name || !Array.isArray(workflow.steps)) {
-      console.error(
-        "Invalid or missing workflow data for ID:",
-        workflowId,
-        workflow
-      );
+      console.error("Invalid workflow data for ID:", workflowId, workflow);
       alert("Invalid workflow data. Please check the workflow configuration.");
       return;
     }
 
-    console.log("Creating modal for workflow:", workflow.name);
+    // Enhance steps with effective prompt content
+    for (const step of workflow.steps) {
+      if (step.useCustomPrompt && step.customPrompt) {
+        console.log(
+          `Step ${step.title || "unknown"}: Using customPrompt`,
+          step.customPrompt
+        );
+        step.effectivePrompt = step.customPrompt;
+      } else if (step.promptId) {
+        console.log(
+          `Step ${step.title || "unknown"}: Fetching prompt for promptId`,
+          step.promptId
+        );
+        const parsedId = parsePromptId(step.promptId);
+        if (!parsedId) {
+          console.error(
+            `Invalid promptId format for step ${step.title || "unknown"}:`,
+            step.promptId
+          );
+          step.effectivePrompt = "Invalid prompt ID";
+          continue;
+        }
+        const { folderId, promptIndex } = parsedId;
+        step.effectivePrompt = await new Promise((resolve) => {
+          chrome.storage.local.get(folderId, (data) => {
+            if (
+              data[folderId] &&
+              Array.isArray(data[folderId].prompts) &&
+              data[folderId].prompts[promptIndex]
+            ) {
+              const content =
+                data[folderId].prompts[promptIndex].content ||
+                "No prompt defined";
+              console.log(
+                `Step ${
+                  step.title || "unknown"
+                }: Fetched content for promptId ${step.promptId}`,
+                content
+              );
+              resolve(content);
+            } else {
+              console.error(
+                `No prompt found for promptId ${step.promptId} in step ${
+                  step.title || "unknown"
+                }`,
+                data[folderId]
+              );
+              resolve("No prompt defined");
+            }
+          });
+        });
+      } else {
+        console.warn(
+          `Step ${step.title || "unknown"}: No customPrompt or promptId defined`
+        );
+        step.effectivePrompt = "No prompt defined";
+      }
+    }
+
+    // Create modal
     const modal = document.createElement("div");
     modal.className = "modal";
     Object.assign(modal.style, {
@@ -1904,7 +1956,9 @@ function showDynamicVariablesModal(workflowId) {
     modalHeader.className = "modal-header";
     modalHeader.style.cssText =
       "display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;";
-    modalHeader.innerHTML = `<span class="close" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">×</span><h2>Configure Workflow: ${workflow.name}</h2>`;
+    modalHeader.innerHTML = `<span class="close" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">×</span><h2>Configure Workflow: ${escapeHTML(
+      workflow.name
+    )}</h2>`;
 
     const modalBody = document.createElement("div");
     modalBody.className = "modal-body";
@@ -1989,7 +2043,7 @@ function showDynamicVariablesModal(workflowId) {
     `;
     importCycleBtn.onclick = () => {
       console.log("Import Cycle clicked");
-      // Placeholder for import functionality
+      // Implement import functionality if needed
     };
 
     const exportCycleBtn = document.createElement("button");
@@ -2007,7 +2061,21 @@ function showDynamicVariablesModal(workflowId) {
     `;
     exportCycleBtn.onclick = () => {
       console.log("Export Cycle clicked");
-      // Placeholder for export functionality
+      const exportData = { workflowId, repetitions };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `workflow_${workflow.name.replace(
+        /[^a-z0-9]/gi,
+        "_"
+      )}_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     };
 
     const addRepetitionBtn = document.createElement("button");
@@ -2027,7 +2095,7 @@ function showDynamicVariablesModal(workflowId) {
     const sendBtn = document.createElement("button");
     sendBtn.type = "button";
     sendBtn.className = "action-btn";
-    sendBtn.textContent = "Send";
+    sendBtn.textContent = "Execute Workflow";
     sendBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 16px;
@@ -2055,7 +2123,7 @@ function showDynamicVariablesModal(workflowId) {
     const repetitions = [];
 
     function hasDynamicVariables(prompt) {
-      return typeof prompt === "string" && /\{[^}]+\}/.test(prompt);
+      return typeof prompt === "string" && /\{\{[^}]+}\}/.test(prompt);
     }
 
     function extractVariables(prompt) {
@@ -2067,8 +2135,8 @@ function showDynamicVariablesModal(workflowId) {
     function initRepetition() {
       return workflow.steps.map((step) => {
         const stepData = {};
-        if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
-          const vars = extractVariables(step.customPrompt);
+        if (hasDynamicVariables(step.effectivePrompt)) {
+          const vars = extractVariables(step.effectivePrompt);
           vars.forEach((v) => (stepData[v] = ""));
         }
         return stepData;
@@ -2195,14 +2263,14 @@ function showDynamicVariablesModal(workflowId) {
         workflow.steps.forEach((step, stepIndex) => {
           const stepDiv = document.createElement("div");
           stepDiv.className = "step-group";
-          stepDiv.innerHTML = `<h4>${
+          stepDiv.innerHTML = `<h4>${escapeHTML(
             step.title || "Step " + (stepIndex + 1)
-          }</h4><p style="font-size: 12px; color: #666; margin: 5px 0;">${
-            step.customPrompt || "No prompt defined"
-          }</p>`;
+          )}</h4><p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHTML(
+            step.effectivePrompt
+          )}</p>`;
 
-          if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
-            const variables = extractVariables(step.customPrompt);
+          if (hasDynamicVariables(step.effectivePrompt)) {
+            const variables = extractVariables(step.effectivePrompt);
             variables.forEach((variable) => {
               const input = document.createElement("input");
               input.type = "text";
@@ -2228,7 +2296,7 @@ function showDynamicVariablesModal(workflowId) {
           } else {
             const preview = document.createElement("div");
             preview.className = "preview constant";
-            preview.textContent = step.customPrompt || "No prompt defined";
+            preview.textContent = step.effectivePrompt;
             stepDiv.appendChild(preview);
           }
 
@@ -2251,18 +2319,18 @@ function showDynamicVariablesModal(workflowId) {
       const step = workflow.steps[stepIndex];
       if (
         !step ||
-        !step.customPrompt ||
-        !hasDynamicVariables(step.customPrompt)
+        !step.effectivePrompt ||
+        !hasDynamicVariables(step.effectivePrompt)
       )
         return;
-      let previewText = step.customPrompt;
-      const vars = extractVariables(step.customPrompt);
+      let previewText = step.effectivePrompt;
+      const vars = extractVariables(step.effectivePrompt);
       vars.forEach((variable) => {
         const val =
           (repetitions[repIndex][stepIndex] &&
             repetitions[repIndex][stepIndex][variable]) ||
           `{${variable}}`;
-        previewText = previewText.replace(`{{${variable}}}`, val);
+        previewText = previewText.replace(`{{${variable}}}`, escapeHTML(val));
       });
 
       const previewElement = stepsContainer.querySelector(
@@ -2275,7 +2343,7 @@ function showDynamicVariablesModal(workflowId) {
 
     function updateAllPreviews() {
       workflow.steps.forEach((step, stepIndex) => {
-        if (step.customPrompt && hasDynamicVariables(step.customPrompt)) {
+        if (step.effectivePrompt && hasDynamicVariables(step.effectivePrompt)) {
           repetitions.forEach((_, repIndex) => {
             updatePreview(stepIndex, repIndex);
           });
@@ -2291,52 +2359,99 @@ function showDynamicVariablesModal(workflowId) {
     sendBtn.addEventListener("click", async () => {
       const executions = repetitions.map((repData) =>
         workflow.steps.map((step, stepIndex) => {
-          if (!step.customPrompt) return "";
-          if (!hasDynamicVariables(step.customPrompt))
-            return step.customPrompt || "";
-          let promptText = step.customPrompt;
-          const vars = extractVariables(step.customPrompt);
+          if (!step.effectivePrompt) return "";
+          if (!hasDynamicVariables(step.effectivePrompt))
+            return step.effectivePrompt;
+          let promptText = step.effectivePrompt;
+          const vars = extractVariables(step.effectivePrompt);
           vars.forEach((variable) => {
             const val =
               (repData[stepIndex] && repData[stepIndex][variable]) ||
               `{${variable}}`;
             promptText = promptText.replace(`{{${variable}}}`, val);
           });
-          return promptText;
+          return {
+            prompt: promptText,
+            aiModel: step.aiModel,
+            openInNewTab: step.openInNewTab,
+          };
         })
       );
 
-      const allPrompts = executions.flat().filter((prompt) => prompt);
-
+      const allPrompts = executions.flat().filter((item) => item.prompt);
       modal.remove();
       scrollLeftBtn.remove();
       scrollRightBtn.remove();
 
-      for (const prompt of allPrompts) {
-        await sendPrompt(prompt);
+      for (const { prompt, aiModel, openInNewTab } of allPrompts) {
+        await sendPrompt(prompt, aiModel, openInNewTab);
       }
-      console.log("Workflow execution completed.");
+
+      // Update lastUsed timestamp
+      chrome.storage.local.get(workflowId, (data) => {
+        const updatedWorkflow = {
+          ...data[workflowId],
+          lastUsed: Date.now(),
+        };
+        chrome.storage.local.set({ [workflowId]: updatedWorkflow }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error updating workflow:", chrome.runtime.lastError);
+          }
+          console.log("Workflow execution completed.");
+          handleCategoryClick("Workflows");
+        });
+      });
     });
 
-    async function sendPrompt(prompt) {
+    async function sendPrompt(prompt, aiModel, openInNewTab) {
       const inputField = document.getElementById("prompt-textarea");
       if (!inputField) {
         console.error("Input field not found.");
+        alert("Input field not found.");
         return;
       }
 
       await setInputText(inputField, prompt);
 
-      const sendButton = document.querySelector("[data-testid='send-button']");
-      if (sendButton) {
-        sendButton.click();
-      } else {
-        inputField.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
-        );
-      }
+      const aiUrls = {
+        grok: "https://grok.x.ai",
+        gemini: "https://gemini.google.com",
+        chatgpt: "https://chat.openai.com",
+        claude: "https://www.anthropic.com",
+        blackbox: "https://www.blackbox.ai",
+        githubCopilot: "https://github.com/features/copilot",
+        microsoftCopilot: "https://copilot.microsoft.com",
+        mistral: "https://mistral.ai",
+        duckduckgo: "https://duckduckgo.com",
+        perplexity: "https://www.perplexity.ai",
+        deepseek: "https://www.deepseek.com",
+        deepai: "https://deepai.org",
+        qwenAi: "https://www.qwen.ai",
+      };
 
-      await waitForProcessing();
+      if (openInNewTab && aiModel && aiUrls[aiModel]) {
+        await navigator.clipboard.writeText(prompt);
+        window.open(aiUrls[aiModel], "_blank");
+        alert("Prompt copied to clipboard. Paste it into the AI interface.");
+      } else {
+        const sendButton = document.querySelector(
+          "[data-testid='send-button']"
+        );
+        if (sendButton) {
+          sendButton.click();
+        } else {
+          inputField.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+          );
+        }
+        await waitForProcessing();
+      }
+    }
+
+    async function setInputText(input, text) {
+      input.value = text;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      return new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     async function waitForProcessing() {
@@ -2349,12 +2464,46 @@ function showDynamicVariablesModal(workflowId) {
       }
     }
 
+    function parsePromptId(promptId) {
+      if (!promptId) return null;
+      const parts = promptId.split("_");
+      const promptIndex = parts.pop();
+      const folderId = parts.join("_");
+      if (!folderId || isNaN(promptIndex)) return null;
+      return { folderId, promptIndex: parseInt(promptIndex) };
+    }
+
     modalHeader.querySelector(".close").onclick = () => {
       modal.remove();
       scrollLeftBtn.remove();
       scrollRightBtn.remove();
     };
 
+    window.onclick = (event) => {
+      if (event.target === modal) {
+        modal.remove();
+        scrollLeftBtn.remove();
+        scrollRightBtn.remove();
+      }
+    };
+
     renderSteps();
   });
+}
+
+// Ensure parsePromptId is defined globally or included in workflowManagement.js
+function parsePromptId(promptId) {
+  if (!promptId) return null;
+  const parts = promptId.split("_");
+  const promptIndex = parts.pop();
+  const folderId = parts.join("_");
+  if (!folderId || isNaN(promptIndex)) return null;
+  return { folderId, promptIndex: parseInt(promptIndex) };
+}
+
+// Ensure escapeHTML is available
+function escapeHTML(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }
