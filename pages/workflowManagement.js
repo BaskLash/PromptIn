@@ -143,6 +143,18 @@ function showCreateWorkflowModal() {
           gap: 8px;
           padding: 5px 10px;
         }
+        .prompt-content-display {
+          width: 100%;
+          margin-top: 10px;
+          margin-bottom: 15px;
+          padding: 10px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          background-color: #f9f9f9;
+          font-size: 14px;
+          color: #333;
+          resize: none;
+        }
       </style>
       <label>Step Title</label>
       <input type="text" class="step-title" value="${
@@ -193,6 +205,12 @@ function showCreateWorkflowModal() {
       <select class="step-prompt" style="display: ${
         useCustomPrompt ? "none" : "block"
       }"></select>
+      <label class="prompt-content-label" style="display: ${
+        useCustomPrompt ? "none" : "block"
+      }">Prompt Content</label>
+      <textarea class="prompt-content-display" readonly style="display: ${
+        useCustomPrompt ? "none" : "block"
+      }" placeholder="Prompt content will appear here"></textarea>
       <label class="custom-prompt-text-label" style="display: ${
         useCustomPrompt ? "block" : "none"
       }">Custom Prompt</label>
@@ -213,6 +231,10 @@ function showCreateWorkflowModal() {
     `;
 
     const promptSelect = stepDiv.querySelector(".step-prompt");
+    const promptContentDisplay = stepDiv.querySelector(
+      ".prompt-content-display"
+    );
+    const promptContentLabel = stepDiv.querySelector(".prompt-content-label");
     const paramsTextarea = stepDiv.querySelector(".step-params");
     const paramsLabel = stepDiv.querySelector(".params-label");
     const customPromptTextarea = stepDiv.querySelector(
@@ -279,6 +301,8 @@ function showCreateWorkflowModal() {
           const dynamic = selectedType === "dynamic";
           promptSelect.style.display = isCustom ? "none" : "block";
           promptLabel.style.display = isCustom ? "none" : "block";
+          promptContentLabel.style.display = isCustom ? "none" : "block";
+          promptContentDisplay.style.display = isCustom ? "none" : "block";
           customPromptTextarea.style.display = isCustom ? "block" : "none";
           customPromptLabel.style.display = isCustom ? "block" : "none";
           paramsLabel.style.display = dynamic && !isCustom ? "block" : "none";
@@ -290,6 +314,7 @@ function showCreateWorkflowModal() {
           }
           if (!isCustom) {
             loadPrompts(selectedType);
+            promptContentDisplay.value = "";
           }
           lastStepConfig.isDynamic = dynamic;
           lastStepConfig.useCustomPrompt = isCustom;
@@ -308,6 +333,7 @@ function showCreateWorkflowModal() {
       const dynamicChecked = radioButtons[1].checked;
 
       if (!selectedPromptId || radioButtons[2].checked) {
+        promptContentDisplay.value = "";
         paramsTextarea.value = JSON.stringify({}, null, 2);
         lastStepConfig.parameters = {};
         steps[index].parameters = {};
@@ -327,6 +353,8 @@ function showCreateWorkflowModal() {
             });
           }
         });
+
+        promptContentDisplay.value = selectedPromptContent || "";
 
         if (selectedPromptContent && dynamicChecked) {
           const placeholders = [
@@ -931,6 +959,12 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
     isDynamic: false,
     useCustomPrompt: false,
     openInNewTab: false,
+    customPrompt: "",
+    promptId: null,
+    parameters: {},
+    staticState: { promptId: null, content: "" },
+    dynamicState: { promptId: null, content: "", parameters: {} },
+    customState: { customPrompt: "", parameters: {} },
   };
 
   sidebarContent.innerHTML = `
@@ -976,6 +1010,34 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
         padding: 8px 12px;
         cursor: pointer;
       }
+      .dynamic-notice {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 5px;
+        margin-bottom: 15px;
+        font-size: 14px;
+        color: #555;
+      }
+      .dynamic-notice span {
+        flex-grow: 1;
+      }
+      .dynamic-notice button {
+        padding: 5px 10px;
+        font-size: 14px;
+      }
+      .prompt-content-display {
+        width: 100%;
+        margin-top: 10px;
+        margin-bottom: 15px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+        font-size: 14px;
+        color: #333;
+        resize: none;
+      }
     </style>
     <label>Name</label>
     <input type="text" value="${workflow.name || ""}" id="edit-name" />
@@ -987,13 +1049,32 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
 
   const sidebar = sidebarContent.closest(".sidebar");
   const maintainScrollPosition = (cb) => {
-    const pos = sidebar.scrollTop;
-    cb();
-    sidebar.scrollTop = pos;
+    if (sidebar) {
+      const pos = sidebar.scrollTop;
+      cb();
+      sidebar.scrollTop = pos;
+    } else {
+      console.warn(
+        "Sidebar element not found, skipping scroll position maintenance"
+      );
+      cb();
+    }
   };
 
   const stepsContainer = sidebarContent.querySelector("#edit-steps");
-  let steps = workflow.steps.map((s) => ({ ...s }));
+  let steps = workflow.steps.map((s) => ({
+    ...s,
+    staticState: { promptId: s.promptId || null, content: s.content || "" },
+    dynamicState: {
+      promptId: s.promptId || null,
+      content: s.content || "",
+      parameters: s.parameters || {},
+    },
+    customState: {
+      customPrompt: s.customPrompt || "",
+      parameters: s.parameters || {},
+    },
+  }));
 
   const updateRemoveButtons = () => {
     const removeBtns = stepsContainer.querySelectorAll(".remove-step");
@@ -1014,18 +1095,20 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       ...rawStepData,
     };
 
-    const stepDiv = document.createElement("div");
-    stepDiv.className = "step-item";
-    stepDiv.dataset.stepIndex = index;
-
     const isDynamic =
-      stepData.promptType === "dynamic" || stepData.isDynamic === true;
+      stepData.promptType === "dynamic" ||
+      stepData.isDynamic === true ||
+      (stepData.useCustomPrompt && /\{[^}]+\}/.test(stepData.customPrompt));
     const useCustomPrompt =
       stepData.promptType === "custom" || stepData.useCustomPrompt === true;
 
     container.appendChild(document.createElement("h2")).textContent = `Step ${
       index + 1
     }:`;
+
+    const stepDiv = document.createElement("div");
+    stepDiv.className = "step-item";
+    stepDiv.dataset.stepIndex = index;
 
     stepDiv.innerHTML = `
       <label>Step Title</label>
@@ -1080,10 +1163,12 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       <label class="prompt-content-label" style="display: ${
         useCustomPrompt ? "none" : "block"
       }">Prompt Content</label>
-      <textarea class="step-prompt-content" readonly style="display: ${
+      <textarea class="prompt-content-display" readonly style="display: ${
         useCustomPrompt ? "none" : "block"
-      }" placeholder="Prompt content will appear here"></textarea>
-      <label class="custom-prompt-text-label" style="display: ${
+      }" placeholder="Prompt content will appear here">${
+      stepData.content || ""
+    }</textarea>
+      <label class="custom-prompt-label" style="display: ${
         useCustomPrompt ? "block" : "none"
       }">Custom Prompt</label>
       <textarea class="step-custom-prompt-text" style="display: ${
@@ -1091,6 +1176,12 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       }" placeholder="Enter custom prompt">${
       stepData.customPrompt || ""
     }</textarea>
+      <div class="dynamic-notice" style="display: ${
+        useCustomPrompt ? "block" : "none"
+      }">
+        <span>Any value written in the format {{variable}} will be treated as a dynamic parameter and used during workflow execution.</span>
+        <button type="button" class="action-btn" id="insert-variable-btn-${index}">{{Set Variable}}</button>
+      </div>
       <label class="params-label" style="display: ${
         isDynamic && !useCustomPrompt ? "block" : "none"
       }">Parameters (JSON)</label>
@@ -1112,17 +1203,21 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
       `input[name="prompt-type-${index}"]`
     );
     const promptSelect = stepDiv.querySelector(".step-prompt");
-    const promptContentTextarea = stepDiv.querySelector(".step-prompt-content");
+    const promptContentDisplay = stepDiv.querySelector(
+      ".prompt-content-display"
+    );
     const paramsTextarea = stepDiv.querySelector(".step-params");
     const paramsLabel = stepDiv.querySelector(".params-label");
     const customPromptTextarea = stepDiv.querySelector(
       ".step-custom-prompt-text"
     );
-    const customPromptLabel = stepDiv.querySelector(
-      ".custom-prompt-text-label"
-    );
+    const customPromptLabel = stepDiv.querySelector(".custom-prompt-label");
     const promptLabel = stepDiv.querySelector(".prompt-label");
     const promptContentLabel = stepDiv.querySelector(".prompt-content-label");
+    const insertVariableBtn = stepDiv.querySelector(
+      `#insert-variable-btn-${index}`
+    );
+    const dynamicNotice = stepDiv.querySelector(".dynamic-notice");
 
     if (stepData.aiModel) {
       aiModelSelect.value = stepData.aiModel;
@@ -1135,7 +1230,9 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
         defaultOption.value = "";
         defaultOption.textContent = "Select a prompt";
         defaultOption.disabled = true;
-        defaultOption.selected = !stepData.promptId;
+        defaultOption.selected =
+          !stepData[type === "static" ? "staticState" : "dynamicState"]
+            .promptId;
         promptSelect.appendChild(defaultOption);
 
         Object.entries(data).forEach(([id, topic]) => {
@@ -1151,21 +1248,47 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
                 const option = document.createElement("option");
                 option.value = generatePromptId(id, idx);
                 option.textContent = prompt.title || `Prompt ${idx + 1}`;
-                if (stepData.promptId === option.value) option.selected = true;
+                if (
+                  stepData[type === "static" ? "staticState" : "dynamicState"]
+                    .promptId === option.value
+                ) {
+                  option.selected = true;
+                }
                 promptSelect.appendChild(option);
               }
             });
           }
         });
 
-        if (stepData.promptId) {
-          promptSelect.value = stepData.promptId;
+        if (
+          stepData[type === "static" ? "staticState" : "dynamicState"].promptId
+        ) {
+          promptSelect.value =
+            stepData[
+              type === "static" ? "staticState" : "dynamicState"
+            ].promptId;
           promptSelect.dispatchEvent(new Event("change"));
         }
       });
     };
 
-    loadPrompts(isDynamic && !useCustomPrompt ? "dynamic" : "static");
+    // Initialize view based on current prompt type
+    if (useCustomPrompt) {
+      customPromptTextarea.value = stepData.customState.customPrompt;
+      promptSelect.style.display = "none";
+      promptLabel.style.display = "none";
+      promptContentDisplay.style.display = "none";
+      promptContentLabel.style.display = "none";
+    } else {
+      promptContentDisplay.value =
+        stepData[isDynamic ? "dynamicState" : "staticState"].content;
+      paramsTextarea.value = JSON.stringify(
+        stepData.dynamicState.parameters,
+        null,
+        2
+      );
+      loadPrompts(isDynamic ? "dynamic" : "static");
+    }
 
     radioButtons.forEach((radio) => {
       radio.addEventListener("change", () => {
@@ -1174,52 +1297,91 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
           const custom = pt === "custom";
           const dynamic = pt === "dynamic";
 
+          // Update view without resetting values
           promptSelect.style.display = custom ? "none" : "block";
           promptLabel.style.display = custom ? "none" : "block";
-          promptContentTextarea.style.display = custom ? "none" : "block";
+          promptContentDisplay.style.display = custom ? "none" : "block";
           promptContentLabel.style.display = custom ? "none" : "block";
           customPromptTextarea.style.display = custom ? "block" : "none";
           customPromptLabel.style.display = custom ? "block" : "none";
+          dynamicNotice.style.display = custom ? "block" : "none";
           paramsLabel.style.display = dynamic && !custom ? "block" : "none";
           paramsTextarea.style.display = dynamic && !custom ? "block" : "none";
-          if (!dynamic || custom) {
-            paramsTextarea.value = JSON.stringify({}, null, 2);
-          }
 
-          if (!custom) loadPrompts(pt);
           if (custom) {
-            promptContentTextarea.value = "";
-            paramsTextarea.value = JSON.stringify({}, null, 2);
+            customPromptTextarea.value = stepData.customState.customPrompt;
+            paramsTextarea.value = JSON.stringify(
+              stepData.customState.parameters,
+              null,
+              2
+            );
+          } else if (dynamic) {
+            promptContentDisplay.value = stepData.dynamicState.content;
+            paramsTextarea.value = JSON.stringify(
+              stepData.dynamicState.parameters,
+              null,
+              2
+            );
+            loadPrompts("dynamic");
+          } else {
+            promptContentDisplay.value = stepData.staticState.content;
+            loadPrompts("static");
           }
 
           lastStepDefaults.promptType = pt;
           lastStepDefaults.isDynamic = dynamic;
           lastStepDefaults.useCustomPrompt = custom;
+          stepData.promptType = pt;
+          stepData.isDynamic = dynamic;
+          stepData.useCustomPrompt = custom;
         });
       });
     });
 
     aiModelSelect.addEventListener("change", (e) => {
       lastStepDefaults.aiModel = e.target.value;
+      stepData.aiModel = e.target.value;
     });
 
     newTabCheckbox.addEventListener("change", (e) => {
       lastStepDefaults.openInNewTab = e.target.checked;
+      stepData.openInNewTab = e.target.checked;
     });
 
     customPromptTextarea.addEventListener("input", () => {
+      stepData.customState.customPrompt = customPromptTextarea.value;
       lastStepDefaults.customPrompt = customPromptTextarea.value;
+      if (/\{[^}]+\}/.test(customPromptTextarea.value)) {
+        const placeholders = [
+          ...customPromptTextarea.value.matchAll(/\{\{([^}]+)\}\}/g),
+        ].map((m) => m[1]);
+        const params = {};
+        placeholders.forEach(
+          (key) => (params[key] = stepData.customState.parameters[key] || "")
+        );
+        stepData.customState.parameters = params;
+        paramsTextarea.value = JSON.stringify(params, null, 2);
+      } else {
+        stepData.customState.parameters = {};
+        paramsTextarea.value = JSON.stringify({}, null, 2);
+      }
     });
 
     promptSelect.addEventListener("change", () => {
       const selId = promptSelect.value;
-      if (!selId || radioButtons[2].checked) {
-        promptContentTextarea.value = "";
+      const dynamicChecked = radioButtons[1].checked;
+      const stateKey = dynamicChecked ? "dynamicState" : "staticState";
+
+      stepData[stateKey].promptId = selId;
+
+      if (!selId) {
+        stepData[stateKey].content = "";
+        stepData[stateKey].parameters = {};
+        promptContentDisplay.value = "";
         paramsTextarea.value = JSON.stringify({}, null, 2);
         return;
       }
 
-      const dynamicChecked = radioButtons[1].checked;
       chrome.storage.local.get(null, (data) => {
         let content = null;
         Object.entries(data).forEach(([id, topic]) => {
@@ -1230,24 +1392,42 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
           }
         });
         if (content) {
-          promptContentTextarea.value = content;
+          stepData[stateKey].content = content;
+          promptContentDisplay.value = content;
           if (dynamicChecked) {
             const placeholders = [...content.matchAll(/\{\{([^}]+)\}\}/g)].map(
               (m) => m[1]
             );
-            const params = stepData.parameters || {};
-            placeholders.forEach((k) => {
-              if (!(k in params)) params[k] = "";
-            });
+            const params = {};
+            placeholders.forEach(
+              (key) =>
+                (params[key] = stepData.dynamicState.parameters[key] || "")
+            );
+            stepData.dynamicState.parameters = params;
             paramsTextarea.value = JSON.stringify(params, null, 2);
-          } else {
-            paramsTextarea.value = JSON.stringify({}, null, 2);
           }
         } else {
-          promptContentTextarea.value = "";
+          stepData[stateKey].content = "";
+          stepData[stateKey].parameters = {};
+          promptContentDisplay.value = "";
           paramsTextarea.value = JSON.stringify({}, null, 2);
         }
       });
+    });
+
+    insertVariableBtn.addEventListener("click", () => {
+      const startPos = customPromptTextarea.selectionStart;
+      const endPos = customPromptTextarea.selectionEnd;
+      const text = customPromptTextarea.value;
+      const variableText = "{{variable}}";
+      customPromptTextarea.value =
+        text.substring(0, startPos) + variableText + text.substring(endPos);
+      customPromptTextarea.focus();
+      customPromptTextarea.setSelectionRange(
+        startPos + variableText.length,
+        startPos + variableText.length
+      );
+      customPromptTextarea.dispatchEvent(new Event("input"));
     });
 
     stepDiv.querySelector(".remove-step").addEventListener("click", () => {
@@ -1298,34 +1478,31 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
             const idx = _.stepDiv.dataset.stepIndex;
             const sd = _.stepDiv;
             const title = sd.querySelector(".step-title").value.trim();
-            const promptId = sd.querySelector(".step-prompt").value;
-            const customPrompt = sd
-              .querySelector(".step-custom-prompt-text")
-              .value.trim();
             const pType = sd.querySelector(
               `input[name="prompt-type-${idx}"]:checked`
             )?.value;
             const isDyn =
               pType === "dynamic" ||
-              (pType === "custom" && /\{[^}]+\}/.test(customPrompt));
+              (pType === "custom" &&
+                /\{[^}]+\}/.test(_.customState.customPrompt));
             const useCust = pType === "custom";
-            let parameters = {};
-            if (isDyn && !useCust) {
-              try {
-                parameters = JSON.parse(
-                  sd.querySelector(".step-params").value.trim() || "{}"
-                );
-              } catch (err) {
-                throw new Error(`Step ${+idx + 1}: Invalid JSON parameters`);
-              }
-            } else if (useCust && isDyn) {
-              const placeholders = [
-                ...customPrompt.matchAll(/\{\{([^}]+)\}\}/g),
-              ].map((m) => m[1]);
-              placeholders.forEach((key) => (parameters[key] = ""));
-            }
             const aiModel = sd.querySelector(".step-ai-model").value;
             const openInNewTab = sd.querySelector(".step-new-tab").checked;
+
+            let promptId, customPrompt, parameters;
+            if (useCust) {
+              promptId = null;
+              customPrompt = _.customState.customPrompt;
+              parameters = _.customState.parameters;
+            } else if (pType === "dynamic") {
+              promptId = _.dynamicState.promptId;
+              customPrompt = null;
+              parameters = _.dynamicState.parameters;
+            } else {
+              promptId = _.staticState.promptId;
+              customPrompt = null;
+              parameters = {};
+            }
 
             if (!aiModel)
               throw new Error(`Step ${+idx + 1}: No AI model chosen`);
@@ -1338,8 +1515,10 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
               openInNewTab,
               isDynamic: isDyn,
               useCustomPrompt: useCust,
-              parameters,
               promptType: pType,
+              parameters,
+              promptId,
+              customPrompt,
             };
 
             if (useCust) {
@@ -1419,7 +1598,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
               });
 
               step.promptId = `${targetFolderId}_0`;
-              step.customPrompt = customPrompt;
               step.isHidden = true;
             } else {
               let promptExists = false;
@@ -1439,8 +1617,6 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
                 );
               }
 
-              step.promptId = promptId;
-              step.customPrompt = null;
               step.isHidden = false;
             }
 

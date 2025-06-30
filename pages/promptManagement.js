@@ -22,45 +22,61 @@ function showCreatePromptModal(category) {
   formContainer.className = "form-container";
 
   formContainer.innerHTML = `
+      <style>
+        .dynamic-notice {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: 5px;
+          margin-bottom: 15px;
+          font-size: 14px;
+          color: #555;
+        }
+        .dynamic-notice span {
+          flex-grow: 1;
+        }
+        .dynamic-notice button {
+          padding: 5px 10px;
+          font-size: 14px;
+        }
+      </style>
       <label>Title:</label>
       <input type="text" id="prompt-title" placeholder="Title eingeben" required>
       <label>Description:</label>
       <textarea id="prompt-description" placeholder="Enter a description"></textarea>
       <label>Content:</label>
       <textarea id="prompt-content" placeholder="Enter prompt content" required></textarea>
+      <div class="dynamic-notice">
+        <span>Any value written in the format {{variable}} will be treated as a dynamic parameter and used during workflow execution.</span>
+        <button type="button" class="action-btn" id="insert-variable-btn">{{Set Variable}}</button>
+      </div>
       <label>Type:</label>
       <select id="prompt-type" required>
-  <option value="" disabled selected>Wähle Typ</option>
-
-  <!-- Generative Aufgaben -->
-  <option value="textgen">Textgeneration</option>
-  <option value="rewrite">Umschreiben</option>
-  <option value="summarize">Zusammenfassen</option>
-  <option value="translate">Übersetzen</option>
-  <option value="ideation">Ideenfindung</option>
-  <option value="adcopy">Werbetexten</option>
-  <option value="storytelling">Storytelling</option>
-
-  <!-- Analytische Aufgaben -->
-  <option value="analyze">Analyse</option>
-  <option value="classify">Klassifikation</option>
-  <option value="extract">Informationsextraktion</option>
-  <option value="compare">Vergleichen / Bewerten</option>
-
-  <!-- Technische Aufgaben -->
-  <option value="codegen">Codegenerierung</option>
-  <option value="debug">Fehleranalyse</option>
-  <option value="refactor">Code-Umschreiben</option>
-  <option value="explain-code">Code erklären</option>
-
-  <!-- Prompt-spezifische Aufgaben -->
-  <option value="prompt-engineering">Prompt Engineering</option>
-  <option value="meta-prompt">Meta-Prompt</option>
-
-  <!-- Sonstige -->
-  <option value="assistant">Assistant</option>
-</select>
-
+        <option value="" disabled selected>Wähle Typ</option>
+        <!-- Generative Aufgaben -->
+        <option value="textgen">Textgeneration</option>
+        <option value="rewrite">Umschreiben</option>
+        <option value="summarize">Zusammenfassen</option>
+        <option value="translate">Übersetzen</option>
+        <option value="ideation">Ideenfindung</option>
+        <option value="adcopy">Werbetexten</option>
+        <option value="storytelling">Storytelling</option>
+        <!-- Analytische Aufgaben -->
+        <option value="analyze">Analyse</option>
+        <option value="classify">Klassifikation</option>
+        <option value="extract">Informationsextraktion</option>
+        <option value="compare">Vergleichen / Bewerten</option>
+        <!-- Technische Aufgaben -->
+        <option value="codegen">Codegenerierung</option>
+        <option value="debug">Fehleranalyse</option>
+        <option value="refactor">Code-Umschreiben</option>
+        <option value="explain-code">Code erklären</option>
+        <!-- Prompt-spezifische Aufgaben -->
+        <option value="prompt-engineering">Prompt Engineering</option>
+        <option value="meta-prompt">Meta-Prompt</option>
+        <!-- Sonstige -->
+        <option value="assistant">Assistant</option>
+      </select>
       <label>Compatible Models:</label>
       <div class="checkbox-group" id="prompt-compatible">
         <label><input type="checkbox" name="compatible" value="Grok"> Grok</label>
@@ -164,6 +180,24 @@ function showCreatePromptModal(category) {
     });
   });
 
+  // Insert variable button functionality
+  formContainer
+    .querySelector("#insert-variable-btn")
+    .addEventListener("click", () => {
+      const promptContent = formContainer.querySelector("#prompt-content");
+      const startPos = promptContent.selectionStart;
+      const endPos = promptContent.selectionEnd;
+      const text = promptContent.value;
+      const variableText = "{{variable}}";
+      promptContent.value =
+        text.substring(0, startPos) + variableText + text.substring(endPos);
+      promptContent.focus();
+      promptContent.setSelectionRange(
+        startPos + variableText.length,
+        startPos + variableText.length
+      );
+    });
+
   // Tag hinzufügen
   formContainer.querySelector("#add-tag-btn").addEventListener("click", () => {
     const newTagInput = formContainer.querySelector("#new-tag");
@@ -241,7 +275,7 @@ function showCreatePromptModal(category) {
         updatedAt: Date.now(),
         usageCount: 0,
         lastUsed: null,
-        notes: "", // Neuer Notizbereich für eine große Notiz
+        notes: "",
         versions: [
           {
             versionId: generateUUID(),
@@ -265,11 +299,11 @@ function showCreatePromptModal(category) {
               isFavorite: { from: false, to: isFavorite },
               folderId: { from: null, to: folderId || null },
               folderName: { from: null, to: folderName },
-              notes: { from: null, to: "" }, // Track initial notes creation
+              notes: { from: null, to: "" },
             },
           },
         ],
-        performanceHistory: [], // Neues Feld für Leistungsmetriken
+        performanceHistory: [],
       };
 
       saveNewPrompt(newPrompt, folderId);
