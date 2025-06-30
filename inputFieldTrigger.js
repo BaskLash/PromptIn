@@ -2163,15 +2163,17 @@ function showDynamicVariablesModal(workflowId) {
             border-radius: 5px;
           }
           .repetition {
-            background-color: white;
-            padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            width: 400px;
-            margin-right: 10px;
-            flex-shrink: 0;
-            position: relative;
-          }
+        background-color: white;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        width: 400px;
+        margin-right: 10px;
+        flex-shrink: 0;
+        position: relative;
+        overflow-y: auto; /* Hinzugefügt für vertikalen Scrollbalken */
+        max-height: 500px; /* Optional: Maximale Höhe, um Scrollbalken zu erzwingen */
+      }
           .repetition h3 {
             margin: 0 0 10px;
             font-size: 16px;
