@@ -2370,21 +2370,17 @@ function showDynamicVariablesModal(workflowId) {
               `{${variable}}`;
             promptText = promptText.replace(`{{${variable}}}`, val);
           });
-          return {
-            prompt: promptText,
-            aiModel: step.aiModel,
-            openInNewTab: step.openInNewTab,
-          };
+          return promptText;
         })
       );
 
-      const allPrompts = executions.flat().filter((item) => item.prompt);
+      const allPrompts = executions.flat().filter((item) => item);
       modal.remove();
       scrollLeftBtn.remove();
       scrollRightBtn.remove();
 
-      for (const { prompt, aiModel, openInNewTab } of allPrompts) {
-        await sendPrompt(prompt, aiModel, openInNewTab);
+      for (const prompt of allPrompts) {
+        await sendPrompt(prompt);
       }
 
       // Update lastUsed timestamp
@@ -2403,7 +2399,7 @@ function showDynamicVariablesModal(workflowId) {
       });
     });
 
-    async function sendPrompt(prompt, aiModel, openInNewTab) {
+    async function sendPrompt(prompt) {
       const inputField = document.getElementById("prompt-textarea");
       if (!inputField) {
         console.error("Input field not found.");
@@ -2413,45 +2409,27 @@ function showDynamicVariablesModal(workflowId) {
 
       await setInputText(inputField, prompt);
 
-      const aiUrls = {
-        grok: "https://grok.x.ai",
-        gemini: "https://gemini.google.com",
-        chatgpt: "https://chat.openai.com",
-        claude: "https://www.anthropic.com",
-        blackbox: "https://www.blackbox.ai",
-        githubCopilot: "https://github.com/features/copilot",
-        microsoftCopilot: "https://copilot.microsoft.com",
-        mistral: "https://mistral.ai",
-        duckduckgo: "https://duckduckgo.com",
-        perplexity: "https://www.perplexity.ai",
-        deepseek: "https://www.deepseek.com",
-        deepai: "https://deepai.org",
-        qwenAi: "https://www.qwen.ai",
-      };
-
-      if (openInNewTab && aiModel && aiUrls[aiModel]) {
-        await navigator.clipboard.writeText(prompt);
-        window.open(aiUrls[aiModel], "_blank");
-        alert("Prompt copied to clipboard. Paste it into the AI interface.");
+      const sendButton = document.querySelector("[data-testid='send-button']");
+      if (sendButton) {
+        sendButton.click();
       } else {
-        const sendButton = document.querySelector(
-          "[data-testid='send-button']"
+        inputField.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
         );
-        if (sendButton) {
-          sendButton.click();
-        } else {
-          inputField.dispatchEvent(
-            new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
-          );
-        }
-        await waitForProcessing();
       }
+
+      await waitForProcessing();
     }
 
-    async function setInputText(input, text) {
-      input.value = text;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      return new Promise((resolve) => setTimeout(resolve, 100));
+    async function setInputText(element, text) {
+      element.innerText = "";
+      element.innerText = text;
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          setTimeout(resolve, 50);
+        });
+      });
     }
 
     async function waitForProcessing() {
@@ -2471,6 +2449,12 @@ function showDynamicVariablesModal(workflowId) {
       const folderId = parts.join("_");
       if (!folderId || isNaN(promptIndex)) return null;
       return { folderId, promptIndex: parseInt(promptIndex) };
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
     }
 
     modalHeader.querySelector(".close").onclick = () => {
