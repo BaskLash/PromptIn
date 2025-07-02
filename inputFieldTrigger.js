@@ -1840,6 +1840,7 @@ function setInputText(element, text) {
 }
 
 // Function to show modal for dynamic variables in a workflow
+// Function to execute workflow on sight
 function showDynamicVariablesModal(workflowId) {
   const inputField = document.getElementById("prompt-textarea");
   if (inputField) {
@@ -2402,20 +2403,36 @@ function showDynamicVariablesModal(workflowId) {
     });
 
     async function sendPrompt(prompt) {
-      const inputField = document.getElementById("prompt-textarea");
-      if (!inputField) {
-        console.error("Input field not found.");
-        alert("Input field not found.");
+      // Versuche Gemini oder ChatGPT Senden-Button zu finden
+      const geminiSendButton = document.querySelector(
+        "[data-mat-icon-name='send']"
+      );
+      const chatgptSendButton = document.querySelector(
+        "[data-testid='send-button']"
+      );
+
+      // Aktives Eingabefeld ermitteln
+      const geminiInput = document.querySelector(
+        "[role='textbox']:not([readonly]):not([disabled])"
+      );
+      const chatgptInput = document.getElementById("prompt-textarea");
+      const activeInput = geminiInput || chatgptInput;
+
+      if (!activeInput) {
+        console.error("Kein Eingabefeld gefunden.");
+        alert("Kein Eingabefeld gefunden.");
         return;
       }
 
-      await setInputText(inputField, prompt);
+      await setInputText(activeInput, prompt);
 
-      const sendButton = document.querySelector("[data-testid='send-button']");
-      if (sendButton) {
-        sendButton.click();
+      // Senden
+      if (geminiSendButton?.parentNode) {
+        geminiSendButton.parentNode.click();
+      } else if (chatgptSendButton) {
+        chatgptSendButton.click();
       } else {
-        inputField.dispatchEvent(
+        activeInput.dispatchEvent(
           new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
         );
       }
@@ -2435,11 +2452,27 @@ function showDynamicVariablesModal(workflowId) {
     }
 
     async function waitForProcessing() {
-      const stopButtonSelector = "[data-testid='stop-button']";
-      while (!document.querySelector(stopButtonSelector)) {
+      const stopSelectorGemini = "[data-mat-icon-name='stop']";
+      const stopSelectorChatGPT = "[data-testid='stop-button']";
+
+      // Finde das erste existierende Stop-Element
+      let activeStopSelector = null;
+
+      // Warte bis eines der beiden erscheint
+      while (true) {
+        if (document.querySelector(stopSelectorGemini)) {
+          activeStopSelector = stopSelectorGemini;
+          break;
+        }
+        if (document.querySelector(stopSelectorChatGPT)) {
+          activeStopSelector = stopSelectorChatGPT;
+          break;
+        }
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
-      while (document.querySelector(stopButtonSelector)) {
+
+      // Jetzt warte, bis dieses Element wieder verschwindet
+      while (document.querySelector(activeStopSelector)) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
