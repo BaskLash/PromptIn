@@ -2403,20 +2403,25 @@ function showDynamicVariablesModal(workflowId) {
     });
 
     async function sendPrompt(prompt) {
-      // Versuche Gemini oder ChatGPT Senden-Button zu finden
+      // Versuche Gemini, ChatGPT, Grok Send-Button zu finden
       const geminiSendButton = document.querySelector(
         "[data-mat-icon-name='send']"
       );
       const chatgptSendButton = document.querySelector(
         "[data-testid='send-button']"
       );
+      const grokSendButton = document.querySelector("[type='submit']");
 
-      // Aktives Eingabefeld ermitteln
+      // Aktive Eingabefelder
       const geminiInput = document.querySelector(
         "[role='textbox']:not([readonly]):not([disabled])"
       );
       const chatgptInput = document.getElementById("prompt-textarea");
-      const activeInput = geminiInput || chatgptInput;
+      const grokInput = document.querySelector(
+        "textarea:not([readonly]):not([disabled])"
+      );
+
+      const activeInput = geminiInput || chatgptInput || grokInput;
 
       if (!activeInput) {
         console.error("Kein Eingabefeld gefunden.");
@@ -2431,6 +2436,8 @@ function showDynamicVariablesModal(workflowId) {
         geminiSendButton.parentNode.click();
       } else if (chatgptSendButton) {
         chatgptSendButton.click();
+      } else if (grokSendButton) {
+        grokSendButton.click();
       } else {
         activeInput.dispatchEvent(
           new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
@@ -2441,24 +2448,32 @@ function showDynamicVariablesModal(workflowId) {
     }
 
     async function setInputText(element, text) {
-      element.innerText = "";
-      element.innerText = text;
+      if (
+        element.tagName === "TEXTAREA" ||
+        element instanceof HTMLTextAreaElement
+      ) {
+        element.value = text;
+      } else {
+        element.innerText = text;
+      }
+
       element.dispatchEvent(new Event("input", { bubbles: true }));
+
       return new Promise((resolve) => {
-        requestAnimationFrame(() => {
-          setTimeout(resolve, 50);
-        });
+        requestAnimationFrame(() => setTimeout(resolve, 50));
       });
     }
 
     async function waitForProcessing() {
       const stopSelectorGemini = "[data-mat-icon-name='stop']";
       const stopSelectorChatGPT = "[data-testid='stop-button']";
+      const stopSelectorGrok = "[data-label='Modell-Antwort stoppen']";
+      const grokSendButtonSelector = "[type='submit']";
 
-      // Finde das erste existierende Stop-Element
+      // Prüfe, ob einer der Stop-Buttons da ist (Gemini, ChatGPT, Grok)
       let activeStopSelector = null;
 
-      // Warte bis eines der beiden erscheint
+      // Warte bis eines der Stop-Elemente erscheint
       while (true) {
         if (document.querySelector(stopSelectorGemini)) {
           activeStopSelector = stopSelectorGemini;
@@ -2468,12 +2483,28 @@ function showDynamicVariablesModal(workflowId) {
           activeStopSelector = stopSelectorChatGPT;
           break;
         }
+        if (document.querySelector(stopSelectorGrok)) {
+          activeStopSelector = stopSelectorGrok;
+          break;
+        }
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      // Jetzt warte, bis dieses Element wieder verschwindet
+      // Warte, bis Stop-Button weg ist (für Gemini, ChatGPT, Grok)
       while (document.querySelector(activeStopSelector)) {
         await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Für Grok: Warte, bis der Submit-Button wieder enabled ist
+      if (activeStopSelector === stopSelectorGrok) {
+        while (true) {
+          const grokSendButton = document.querySelector(grokSendButtonSelector);
+          if (grokSendButton && !grokSendButton.disabled) {
+            // Submit-Button ist wieder aktiv → Eingabe kann weitergehen
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
       }
     }
 

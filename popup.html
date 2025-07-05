@@ -519,29 +519,32 @@
           <div class="detail-field">
             <label data-i18n="type_label"></label>
             <select id="entry-type-add">
-              <option value="" selected>Wähle Typ</option>
-              <option value="textgen">Textgeneration</option>
-              <option value="rewrite">Umschreiben</option>
-              <option value="summarize">Zusammenfassen</option>
-              <option value="translate">Übersetzen</option>
-              <option value="ideation">Ideenfindung</option>
-              <option value="adcopy">Werbetexten</option>
-              <option value="storytelling">Storytelling</option>
-              <option value="analyze">Analyse</option>
-              <option value="classify">Klassifikation</option>
-              <option value="extract">Informationsextraktion</option>
-              <option value="compare">Vergleichen / Bewerten</option>
-              <option value="codegen">Codegenerierung</option>
-              <option value="debug">Fehleranalyse</option>
-              <option value="refactor">Code-Umschreiben</option>
-              <option value="explain-code">Code erklären</option>
-              <option value="prompt-engineering">Prompt Engineering</option>
-              <option value="meta-prompt">Meta-Prompt</option>
-              <option value="assistant">Assistant</option>
+              <option value="" selected data-i18n="select_type"></option>
+              <option value="textgen" data-i18n="textgen"></option>
+              <option value="rewrite" data-i18n="rewrite"></option>
+              <option value="summarize" data-i18n="summarize"></option>
+              <option value="translate" data-i18n="translate"></option>
+              <option value="ideation" data-i18n="ideation"></option>
+              <option value="adcopy" data-i18n="adcopy"></option>
+              <option value="storytelling" data-i18n="storytelling"></option>
+              <option value="analyze" data-i18n="analyze"></option>
+              <option value="classify" data-i18n="classify"></option>
+              <option value="extract" data-i18n="extract"></option>
+              <option value="compare" data-i18n="compare"></option>
+              <option value="codegen" data-i18n="codegen"></option>
+              <option value="debug" data-i18n="debug"></option>
+              <option value="refactor" data-i18n="refactor"></option>
+              <option value="explain-code" data-i18n="explain-code"></option>
+              <option
+                value="prompt-engineering"
+                data-i18n="prompt-engineering"
+              ></option>
+              <option value="meta-prompt" data-i18n="meta-prompt"></option>
+              <option value="assistant" data-i18n="assistant"></option>
             </select>
           </div>
           <div class="detail-field">
-            <label data-i18n="compatible_models_label">Compatible Models</label>
+            <label data-i18n="compatible_models_label"></label>
             <div class="checkbox-group scrollable" id="entry-compatible-add">
               <label
                 ><input type="checkbox" name="compatible" value="Grok" />
@@ -606,9 +609,7 @@
             </div>
           </div>
           <div class="detail-field">
-            <label data-i18n="incompatible_models_label"
-              >Incompatible Models</label
-            >
+            <label data-i18n="incompatible_models_label"></label>
             <div class="checkbox-group scrollable" id="entry-incompatible-add">
               <label
                 ><input type="checkbox" name="incompatible" value="Grok" />
@@ -685,10 +686,7 @@
             <div class="checkbox-group scrollable" id="entry-tags-add">
               <!-- Checkboxes will be dynamically populated -->
             </div>
-            <div
-              class="tag-input-group"
-              id="tag-input-group"
-            >
+            <div class="tag-input-group" id="tag-input-group">
               <input
                 type="text"
                 id="new-tag_add"
@@ -728,9 +726,12 @@
           <h2 id="tools-title" data-i18n="tools_title"></h2>
         </div>
         <div class="toggle-container">
-          <label class="toggle-label" for="highlight-toggle"
-            >Highlight to Prompt:</label
-          >
+          <p data-i18n="mark_the_prompt_with_mouse_to_save"></p>
+          <label
+            class="toggle-label"
+            for="highlight-toggle"
+            data-i18n="mark_to_prompt"
+          ></label>
           <label class="toggle-switch">
             <input type="checkbox" id="highlight-toggle" />
             <span class="toggle-slider"></span>

@@ -50,6 +50,8 @@ function showCreatePromptModal(category) {
         <span>Any value written in the format {{variable}} will be treated as a dynamic parameter and used during workflow execution.</span>
         <button type="button" class="action-btn" id="insert-variable-btn">{{Set Variable}}</button>
       </div>
+      <label>Notes:</label>
+      <textarea id="prompt-note" placeholder="Enter note to prompt"></textarea>
       <label>Type:</label>
       <select id="prompt-type" required>
         <option value="" disabled selected>Wähle Typ</option>
@@ -235,6 +237,7 @@ function showCreatePromptModal(category) {
         .getElementById("prompt-description")
         .value.trim();
       const content = document.getElementById("prompt-content").value.trim();
+      const notes = document.getElementById("prompt-note").value.trim();
       const type = document.getElementById("prompt-type").value;
       const compatibleModels = Array.from(
         document.querySelectorAll(
@@ -264,6 +267,7 @@ function showCreatePromptModal(category) {
         title,
         description,
         content,
+        notes,
         type,
         compatibleModels: compatibleModels,
         incompatibleModels: incompatibleModels,
@@ -275,7 +279,6 @@ function showCreatePromptModal(category) {
         updatedAt: Date.now(),
         usageCount: 0,
         lastUsed: null,
-        notes: "",
         versions: [
           {
             versionId: generateUUID(),

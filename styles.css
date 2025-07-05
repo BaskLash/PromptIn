@@ -367,6 +367,42 @@ body.dark-theme .side-nav {
   transform: translateX(0);
 }
 
+.side-nav::-webkit-scrollbar {
+  width: 12px;
+}
+
+.side-nav::-webkit-scrollbar-track {
+  background: var(--light-scrollbar-track);
+  border-radius: 6px;
+}
+
+body.dark-theme .side-nav::-webkit-scrollbar-track {
+  background: var(--dark-scrollbar-track);
+}
+
+.side-nav::-webkit-scrollbar-thumb {
+  background: var(--light-scrollbar-thumb);
+  border-radius: 6px;
+  border: 2px solid var(--light-scrollbar-track);
+}
+
+body.dark-theme .side-nav::-webkit-scrollbar-thumb {
+  background: var(--dark-scrollbar-thumb);
+  border: 2px solid var(--dark-scrollbar-track);
+}
+
+.side-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--light-scrollbar-thumb-hover);
+}
+
+body.dark-theme .side-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--dark-scrollbar-thumb-hover);
+}
+
+.side-nav::-webkit-scrollbar-button {
+  display: none;
+}
+
 .nav-header {
   margin-bottom: 24px;
 }
@@ -604,6 +640,8 @@ body.dark-theme .detail-overlay {
 
 #edit-btn,
 #back-btn,
+#tools-back-btn,
+#back-btn-add,
 #settings-back-btn,
 #folder-back-btn {
   background: none;
@@ -618,6 +656,8 @@ body.dark-theme .detail-overlay {
 
 body.dark-theme #edit-btn,
 body.dark-theme #back-btn,
+body.dark-theme #tools-back-btn,
+body.dark-theme #back-btn-add,
 body.dark-theme #settings-back-btn,
 body.dark-theme #folder-back-btn {
   color: var(--dark-accent);
@@ -625,6 +665,8 @@ body.dark-theme #folder-back-btn {
 
 #edit-btn:hover,
 #back-btn:hover,
+#tools-back-btn:hover,
+#back-btn-add:hover,
 #settings-back-btn:hover,
 #folder-back-btn:hover {
   background-color: rgba(0, 120, 212, 0.2);
@@ -632,6 +674,8 @@ body.dark-theme #folder-back-btn {
 
 body.dark-theme #edit-btn:hover,
 body.dark-theme #back-btn:hover,
+body.dark-theme #tools-back-btn:hover,
+body.dark-theme #back-btn-add:hover,
 body.dark-theme #settings-back-btn:hover,
 body.dark-theme #folder-back-btn:hover {
   background-color: rgba(99, 179, 237, 0.2);
@@ -699,7 +743,9 @@ body.dark-theme .detail-field select:focus {
 }
 
 .save-btn,
-.cancel-btn {
+.cancel-btn,
+.save-btn-add,
+.cancel-btn-add {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
@@ -723,6 +769,44 @@ body.dark-theme .save-btn {
 }
 
 body.dark-theme .save-btn:hover {
+  background-color: var(--dark-btn-hover);
+}
+
+.save-btn-add {
+  background-color: var(--light-btn-bg);
+  color: var(--light-text);
+}
+
+body.dark-theme .save-btn-add {
+  background-color: var(--dark-btn-bg);
+  color: var(--dark-text);
+}
+
+.save-btn-add:hover {
+  background-color: var(--light-btn-hover);
+  transform: translateY(-1px);
+}
+
+body.dark-theme .save-btn-add:hover {
+  background-color: var(--dark-btn-hover);
+}
+
+.cancel-btn-add {
+  background-color: var(--light-btn-bg);
+  color: var(--light-text);
+}
+
+body.dark-theme .cancel-btn-add {
+  background-color: var(--dark-btn-bg);
+  color: var(--dark-text);
+}
+
+.cancel-btn-add:hover {
+  background-color: var(--light-btn-hover);
+  transform: translateY(-1px);
+}
+
+body.dark-theme .cancel-btn-add:hover {
   background-color: var(--dark-btn-hover);
 }
 
