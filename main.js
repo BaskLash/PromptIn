@@ -2069,10 +2069,10 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       return;
     }
-    if (!folderId) {
+    if (!content) {
       alert(
-        translations[currentLang]?.folder_required ||
-          "Bitte wählen Sie einen Ordner aus!"
+        translations[currentLang]?.content_required ||
+          "Bitte geben sie eine Prompt ein!"
       );
       return;
     }

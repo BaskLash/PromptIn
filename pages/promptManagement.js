@@ -230,89 +230,116 @@ function showCreatePromptModal(category) {
 
   // Event-Listener für den "Create Prompt"-Button
   formContainer
-    .querySelector("#create-prompt-btn")
-    .addEventListener("click", () => {
-      const title = document.getElementById("prompt-title").value.trim();
-      const description = document
-        .getElementById("prompt-description")
-        .value.trim();
-      const content = document.getElementById("prompt-content").value.trim();
-      const notes = document.getElementById("prompt-note").value.trim();
-      const type = document.getElementById("prompt-type").value;
-      const compatibleModels = Array.from(
-        document.querySelectorAll(
-          "#prompt-compatible input[name='compatible']:checked"
-        )
-      ).map((checkbox) => checkbox.value);
-      const incompatibleModels = Array.from(
-        document.querySelectorAll(
-          "#prompt-incompatible input[name='incompatible']:checked"
-        )
-      ).map((checkbox) => checkbox.value);
-      const tags = Array.from(
-        document.querySelectorAll("#prompt-tags input[name='tags']:checked")
-      ).map((checkbox) => checkbox.value);
-      const isFavorite = document.getElementById("prompt-favorite").checked;
-      const folderId = document.getElementById("prompt-folder").value;
+  .querySelector("#create-prompt-btn")
+  .addEventListener("click", () => {
+    const titleInput = document.getElementById("prompt-title");
+    const contentInput = document.getElementById("prompt-content");
 
-      let folderName = "Single Prompt";
-      if (folderId) {
-        const selectedOption = document.querySelector(
-          `#prompt-folder option[value="${folderId}"]`
-        );
-        folderName = selectedOption ? selectedOption.textContent : folderName;
-      }
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
 
-      const newPrompt = {
-        title,
-        description,
-        content,
-        notes,
-        type,
-        compatibleModels: compatibleModels,
-        incompatibleModels: incompatibleModels,
-        tags: tags,
-        isFavorite,
-        folderId: folderId || null,
-        folderName,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        usageCount: 0,
-        lastUsed: null,
-        versions: [
-          {
-            versionId: generateUUID(),
-            title,
-            description,
-            content,
-            timestamp: Date.now(),
+    // Reset previous validation styles
+    titleInput.style.border = "";
+    contentInput.style.border = "";
+
+    // Validate inputs
+    let hasError = false;
+    if (!title) {
+      titleInput.style.border = "2px solid red";
+      hasError = true;
+    }
+
+    if (!content) {
+      contentInput.style.border = "2px solid red";
+      hasError = true;
+    }
+
+    if (hasError) {
+      alert("Bitte gib einen Titel und einen Inhalt für den Prompt ein.");
+      return;
+    }
+
+    const description = document
+      .getElementById("prompt-description")
+      .value.trim();
+    const notes = document.getElementById("prompt-note").value.trim();
+    const type = document.getElementById("prompt-type").value;
+    const compatibleModels = Array.from(
+      document.querySelectorAll(
+        "#prompt-compatible input[name='compatible']:checked"
+      )
+    ).map((checkbox) => checkbox.value);
+    const incompatibleModels = Array.from(
+      document.querySelectorAll(
+        "#prompt-incompatible input[name='incompatible']:checked"
+      )
+    ).map((checkbox) => checkbox.value);
+    const tags = Array.from(
+      document.querySelectorAll("#prompt-tags input[name='tags']:checked")
+    ).map((checkbox) => checkbox.value);
+    const isFavorite = document.getElementById("prompt-favorite").checked;
+    const folderId = document.getElementById("prompt-folder").value;
+
+    let folderName = "Single Prompt";
+    if (folderId) {
+      const selectedOption = document.querySelector(
+        `#prompt-folder option[value="${folderId}"]`
+      );
+      folderName = selectedOption ? selectedOption.textContent : folderName;
+    }
+
+    const newPrompt = {
+      title,
+      description,
+      content,
+      notes,
+      type,
+      compatibleModels: compatibleModels,
+      incompatibleModels: incompatibleModels,
+      tags: tags,
+      isFavorite,
+      folderId: folderId || null,
+      folderName,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      usageCount: 0,
+      lastUsed: null,
+      versions: [
+        {
+          versionId: generateUUID(),
+          title,
+          description,
+          content,
+          timestamp: Date.now(),
+        },
+      ],
+      metaChangeLog: [
+        {
+          timestamp: Date.now(),
+          changes: {
+            title: { from: null, to: title },
+            description: { from: null, to: description },
+            content: { from: null, to: content },
+            type: { from: null, to: type },
+            compatibleModels: { from: [], to: compatibleModels },
+            incompatibleModels: { from: [], to: incompatibleModels },
+            tags: { from: [], to: tags },
+            isFavorite: { from: false, to: isFavorite },
+            folderId: { from: null, to: folderId || null },
+            folderName: { from: null, to: folderName },
+            notes: { from: null, to: "" },
           },
-        ],
-        metaChangeLog: [
-          {
-            timestamp: Date.now(),
-            changes: {
-              title: { from: null, to: title },
-              description: { from: null, to: description },
-              content: { from: null, to: content },
-              type: { from: null, to: type },
-              compatibleModels: { from: [], to: compatibleModels },
-              incompatibleModels: { from: [], to: incompatibleModels },
-              tags: { from: [], to: tags },
-              isFavorite: { from: false, to: isFavorite },
-              folderId: { from: null, to: folderId || null },
-              folderName: { from: null, to: folderName },
-              notes: { from: null, to: "" },
-            },
-          },
-        ],
-        performanceHistory: [],
-      };
+        },
+      ],
+      performanceHistory: [],
+    };
 
-      saveNewPrompt(newPrompt, folderId);
-      modal.remove();
-      handleCategoryClick(category);
-    });
+    saveNewPrompt(newPrompt, folderId);
+    modal.remove();
+    handleCategoryClick(category);
+  });
+
+
 
   modalHeader.appendChild(closeSpan);
   modalHeader.appendChild(headerTitle);
