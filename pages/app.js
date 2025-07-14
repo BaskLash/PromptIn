@@ -16,6 +16,9 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "storage") {
     switchView("storage-view", { view: "storage" });
     initializeStorage();
+  } else if (view === "workflows") {
+    switchView("workflow-view", { view: "workflows" });
+    initializeWorkflows();
   } else {
     switchView("prompts-view", { view: "prompts", category: "All Prompts" });
     document.getElementById("prompts-header").textContent = "All Prompts";
@@ -268,6 +271,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (view === "storage") {
         switchView("storage-view", { view: "storage" });
         initializeStorage();
+      } else if (view === "workflows") {
+        switchView("workflow-view", { view: "workflows" });
+        initializeWorkflows();
       } else if (folder) {
         switchView("prompts-view", { view: "prompts", category: folder });
         document.getElementById("prompts-header").textContent =
@@ -324,6 +330,18 @@ function loadTags() {
     const tagContainer = document.getElementById("tag-container");
     if (!tagContainer) {
       console.error("Tag container not found");
+      return;
+    }
+
+    // Clear the container
+    tagContainer.innerHTML = "";
+
+    // Check if there are no tags
+    if (tags.length === 0) {
+      const noTags = document.createElement("div");
+      noTags.className = "no-tags";
+      noTags.textContent = "No tags available. Create one to get started!";
+      tagContainer.appendChild(noTags);
       return;
     }
 
@@ -428,24 +446,29 @@ function loadTags() {
       ...noFolderPrompts,
     ];
 
-    tagContainer.innerHTML = tags
-      .map((tag) => {
-        const promptCount = prompts.filter(
-          (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
-        ).length;
-        return `
-          <div class="tag-box" data-tag="${escapeHTML(tag)}">
-            <span class="tag-name">${escapeHTML(tag)}</span>
-            <span class="prompt-count">${promptCount} Prompt${
-          promptCount !== 1 ? "s" : ""
-        }</span>
-            <button class="delete-tag-btn" data-tag="${escapeHTML(
-              tag
-            )}" title="Tag löschen">×</button>
-          </div>
-        `;
-      })
-      .join("");
+    const tagGrid = document.createElement("div");
+    tagGrid.className = "tag-grid";
+
+    tags.forEach((tag) => {
+      const promptCount = prompts.filter(
+        (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
+      ).length;
+      const tagBox = document.createElement("div");
+      tagBox.className = "tag-box";
+      tagBox.dataset.tag = escapeHTML(tag);
+      tagBox.innerHTML = `
+        <span class="tag-name">${escapeHTML(tag)}</span>
+        <span class="prompt-count">${promptCount} Prompt${
+        promptCount !== 1 ? "s" : ""
+      }</span>
+        <button class="delete-tag-btn" data-tag="${escapeHTML(
+          tag
+        )}" title="Tag löschen">×</button>
+      `;
+      tagGrid.appendChild(tagBox);
+    });
+
+    tagContainer.appendChild(tagGrid);
 
     // Event-Listener für Tag-Boxen (Modal öffnen)
     document.querySelectorAll(".tag-box").forEach((box) => {

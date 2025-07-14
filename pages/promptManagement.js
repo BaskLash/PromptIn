@@ -79,38 +79,6 @@ function showCreatePromptModal(category) {
         <!-- Sonstige -->
         <option value="assistant">Assistant</option>
       </select>
-      <label>Compatible Models:</label>
-      <div class="checkbox-group" id="prompt-compatible">
-        <label><input type="checkbox" name="compatible" value="Grok"> Grok</label>
-        <label><input type="checkbox" name="compatible" value="Gemini"> Gemini</label>
-        <label><input type="checkbox" name="compatible" value="ChatGPT"> ChatGPT</label>
-        <label><input type="checkbox" name="compatible" value="Claude"> Claude</label>
-        <label><input type="checkbox" name="compatible" value="BlackBox"> BlackBox</label>
-        <label><input type="checkbox" name="compatible" value="GitHub Copilot"> GitHub Copilot</label>
-        <label><input type="checkbox" name="compatible" value="Microsoft Copilot"> Microsoft Copilot</label>
-        <label><input type="checkbox" name="compatible" value="Mistral"> Mistral</label>
-        <label><input type="checkbox" name="compatible" value="DuckDuckGo"> DuckDuckGo</label>
-        <label><input type="checkbox" name="compatible" value="Perplexity"> Perplexity</label>
-        <label><input type="checkbox" name="compatible" value="DeepSeek"> DeepSeek</label>
-        <label><input type="checkbox" name="compatible" value="Deepai"> Deepai</label>
-        <label><input type="checkbox" name="compatible" value="Qwen AI"> Qwen AI</label>
-      </div>
-      <label>Incompatible Models:</label>
-      <div class="checkbox-group" id="prompt-incompatible">
-        <label><input type="checkbox" name="incompatible" value="Grok"> Grok</label>
-        <label><input type="checkbox" name="incompatible" value="Gemini"> Gemini</label>
-        <label><input type="checkbox" name="incompatible" value="ChatGPT"> ChatGPT</label>
-        <label><input type="checkbox" name="incompatible" value="Claude"> Claude</label>
-        <label><input type="checkbox" name="incompatible" value="BlackBox"> BlackBox</label>
-        <label><input type="checkbox" name="incompatible" value="GitHub Copilot"> GitHub Copilot</label>
-        <label><input type="checkbox" name="incompatible" value="Microsoft Copilot"> Microsoft Copilot</label>
-        <label><input type="checkbox" name="incompatible" value="Mistral"> Mistral</label>
-        <label><input type="checkbox" name="incompatible" value="DuckDuckGo"> DuckDuckGo</label>
-        <label><input type="checkbox" name="incompatible" value="Perplexity"> Perplexity</label>
-        <label><input type="checkbox" name="incompatible" value="DeepSeek"> DeepSeek</label>
-        <label><input type="checkbox" name="incompatible" value="Deepai"> Deepai</label>
-        <label><input type="checkbox" name="incompatible" value="Qwen AI"> Qwen AI</label>
-      </div>
       <label>Tags:</label>
       <div class="checkbox-group" id="prompt-tags">
       </div>
@@ -165,19 +133,24 @@ function showCreatePromptModal(category) {
   });
 
   // Lade verfügbare Ordner in das Dropdown
-  chrome.storage.local.get(null, (data) => {
+  chrome.storage.local.get(["folders"], ({ folders }) => {
     const folderSelect = formContainer.querySelector("#prompt-folder");
-    const folders = Object.entries(data)
-      .filter(([, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash)
-      .map(([id, topic]) => ({ id, name: topic.name }));
 
-    folders.forEach((folder) => {
+    if (!folders) return;
+
+    const validFolders = Object.values(folders).filter(
+      (folder) => folder.promptIds && !folder.isHidden && !folder.isTrash
+    );
+
+    validFolders.forEach((folder) => {
       const option = document.createElement("option");
-      option.value = folder.id;
-      option.textContent = folder.name;
+      option.value = folder.folderId; // eindeutige ID als Wert
+      option.textContent = folder.name; // Anzeigename im Dropdown
+
       if (category && folder.name.toLowerCase() === category.toLowerCase()) {
         option.selected = true;
       }
+
       folderSelect.appendChild(option);
     });
   });
@@ -230,116 +203,114 @@ function showCreatePromptModal(category) {
 
   // Event-Listener für den "Create Prompt"-Button
   formContainer
-  .querySelector("#create-prompt-btn")
-  .addEventListener("click", () => {
-    const titleInput = document.getElementById("prompt-title");
-    const contentInput = document.getElementById("prompt-content");
+    .querySelector("#create-prompt-btn")
+    .addEventListener("click", () => {
+      const titleInput = document.getElementById("prompt-title");
+      const contentInput = document.getElementById("prompt-content");
 
-    const title = titleInput.value.trim();
-    const content = contentInput.value.trim();
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
 
-    // Reset previous validation styles
-    titleInput.style.border = "";
-    contentInput.style.border = "";
+      // Reset previous validation styles
+      titleInput.style.border = "";
+      contentInput.style.border = "";
 
-    // Validate inputs
-    let hasError = false;
-    if (!title) {
-      titleInput.style.border = "2px solid red";
-      hasError = true;
-    }
+      // Validate inputs
+      let hasError = false;
+      if (!title) {
+        titleInput.style.border = "2px solid red";
+        hasError = true;
+      }
 
-    if (!content) {
-      contentInput.style.border = "2px solid red";
-      hasError = true;
-    }
+      if (!content) {
+        contentInput.style.border = "2px solid red";
+        hasError = true;
+      }
 
-    if (hasError) {
-      alert("Bitte gib einen Titel und einen Inhalt für den Prompt ein.");
-      return;
-    }
+      if (hasError) {
+        alert("Bitte gib einen Titel und einen Inhalt für den Prompt ein.");
+        return;
+      }
 
-    const description = document
-      .getElementById("prompt-description")
-      .value.trim();
-    const notes = document.getElementById("prompt-note").value.trim();
-    const type = document.getElementById("prompt-type").value;
-    const compatibleModels = Array.from(
-      document.querySelectorAll(
-        "#prompt-compatible input[name='compatible']:checked"
-      )
-    ).map((checkbox) => checkbox.value);
-    const incompatibleModels = Array.from(
-      document.querySelectorAll(
-        "#prompt-incompatible input[name='incompatible']:checked"
-      )
-    ).map((checkbox) => checkbox.value);
-    const tags = Array.from(
-      document.querySelectorAll("#prompt-tags input[name='tags']:checked")
-    ).map((checkbox) => checkbox.value);
-    const isFavorite = document.getElementById("prompt-favorite").checked;
-    const folderId = document.getElementById("prompt-folder").value;
+      const description = document
+        .getElementById("prompt-description")
+        .value.trim();
+      const notes = document.getElementById("prompt-note").value.trim();
+      const type = document.getElementById("prompt-type").value;
+      const compatibleModels = Array.from(
+        document.querySelectorAll(
+          "#prompt-compatible input[name='compatible']:checked"
+        )
+      ).map((checkbox) => checkbox.value);
+      const incompatibleModels = Array.from(
+        document.querySelectorAll(
+          "#prompt-incompatible input[name='incompatible']:checked"
+        )
+      ).map((checkbox) => checkbox.value);
+      const tags = Array.from(
+        document.querySelectorAll("#prompt-tags input[name='tags']:checked")
+      ).map((checkbox) => checkbox.value);
+      const isFavorite = document.getElementById("prompt-favorite").checked;
+      const folderId = document.getElementById("prompt-folder").value;
 
-    let folderName = "Single Prompt";
-    if (folderId) {
-      const selectedOption = document.querySelector(
-        `#prompt-folder option[value="${folderId}"]`
-      );
-      folderName = selectedOption ? selectedOption.textContent : folderName;
-    }
+      let folderName = "Single Prompt";
+      if (folderId) {
+        const selectedOption = document.querySelector(
+          `#prompt-folder option[value="${folderId}"]`
+        );
+        folderName = selectedOption ? selectedOption.textContent : folderName;
+      }
 
-    const newPrompt = {
-      title,
-      description,
-      content,
-      notes,
-      type,
-      compatibleModels: compatibleModels,
-      incompatibleModels: incompatibleModels,
-      tags: tags,
-      isFavorite,
-      folderId: folderId || null,
-      folderName,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      usageCount: 0,
-      lastUsed: null,
-      versions: [
-        {
-          versionId: generateUUID(),
-          title,
-          description,
-          content,
-          timestamp: Date.now(),
-        },
-      ],
-      metaChangeLog: [
-        {
-          timestamp: Date.now(),
-          changes: {
-            title: { from: null, to: title },
-            description: { from: null, to: description },
-            content: { from: null, to: content },
-            type: { from: null, to: type },
-            compatibleModels: { from: [], to: compatibleModels },
-            incompatibleModels: { from: [], to: incompatibleModels },
-            tags: { from: [], to: tags },
-            isFavorite: { from: false, to: isFavorite },
-            folderId: { from: null, to: folderId || null },
-            folderName: { from: null, to: folderName },
-            notes: { from: null, to: "" },
+      const newPrompt = {
+        title,
+        description,
+        content,
+        notes,
+        type,
+        compatibleModels: compatibleModels,
+        incompatibleModels: incompatibleModels,
+        tags: tags,
+        isFavorite,
+        folderId: folderId || null,
+        folderName,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        usageCount: 0,
+        lastUsed: null,
+        versions: [
+          {
+            versionId: generateUUID(),
+            title,
+            description,
+            content,
+            timestamp: Date.now(),
           },
-        },
-      ],
-      performanceHistory: [],
-    };
+        ],
+        metaChangeLog: [
+          {
+            timestamp: Date.now(),
+            changes: {
+              title: { from: null, to: title },
+              description: { from: null, to: description },
+              content: { from: null, to: content },
+              type: { from: null, to: type },
+              compatibleModels: { from: [], to: compatibleModels },
+              incompatibleModels: { from: [], to: incompatibleModels },
+              tags: { from: [], to: tags },
+              isFavorite: { from: false, to: isFavorite },
+              folderId: { from: null, to: folderId || null },
+              folderName: { from: null, to: folderName },
+              notes: { from: null, to: "" },
+            },
+          },
+        ],
+        performanceHistory: [],
+      };
 
-    saveNewPrompt(newPrompt, folderId);
-    modal.remove();
-    handleCategoryClick(category);
-  });
-
-
+      saveNewPrompt(newPrompt, folderId);
+      modal.remove();
+      handleCategoryClick(category);
+    });
 
   modalHeader.appendChild(closeSpan);
   modalHeader.appendChild(headerTitle);
@@ -355,107 +326,114 @@ function showCreatePromptModal(category) {
   };
 }
 function saveNewPrompt(prompt, folderId) {
-  if (!prompt.id) {
-    prompt.id = generateUUID();
+  if (!prompt.promptId) {
+    prompt.promptId = generateUUID();
   }
-  chrome.storage.local.get(null, (data) => {
-    let targetFolderId = folderId;
-    let folderName = prompt.folderName || "Single Prompt";
-    let isHidden = false;
 
-    // Prüfe, ob ein existierender Ordner vorhanden ist
-    const folderEntry = folderId
-      ? Object.entries(data).find(
-          ([id, topic]) =>
-            id === folderId &&
-            topic.prompts &&
-            !topic.isHidden &&
-            !topic.isTrash
-        )
-      : null;
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
 
-    if (folderEntry) {
-      // Speichere im existierenden Ordner
-      targetFolderId = folderEntry[0];
-      const topic = folderEntry[1];
-      folderName = topic.name;
-      topic.prompts = topic.prompts || [];
+    const folderName =
+      folderId && folders[folderId] ? folders[folderId].name : null;
 
-      const newPrompt = {
-        ...prompt,
-        folderId: targetFolderId,
-        folderName,
-        compatibleModels: prompt.compatibleModels || [],
-        incompatibleModels: prompt.incompatibleModels || [],
-        tags: prompt.tags || [],
-        metaChangeLog: prompt.metaChangeLog || [],
-      };
-
-      topic.prompts.push(newPrompt);
-
-      chrome.storage.local.set({ [targetFolderId]: topic }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("Error saving prompt:", chrome.runtime.lastError);
-          alert("Fehler beim Speichern des Prompts.");
-        } else {
-          // Aktualisiere die Tabelle sofort im DOM, wenn passend
-          updateTable(newPrompt, targetFolderId, folderName, isHidden);
-        }
-      });
-    } else {
-      // Einzelprompt ohne Ordner
-      targetFolderId = `single_prompt_${Date.now()}`;
-      folderName = "Single Prompt";
-      isHidden = true;
-      const newTopic = {
-        name: folderName,
-        prompts: [
-          {
-            ...prompt,
-            folderId: targetFolderId,
-            folderName,
-            compatibleModels: prompt.compatibleModels || [],
-            incompatibleModels: prompt.incompatibleModels || [],
-            tags: prompt.tags || [],
-            metaChangeLog: prompt.metaChangeLog || [],
+    const now = Date.now();
+    const newPrompt = {
+      promptId: prompt.promptId,
+      title: prompt.title || "Neuer Prompt",
+      description: prompt.description || "",
+      content: prompt.content || "",
+      type: prompt.type || "text",
+      compatibleModels: prompt.compatibleModels || [],
+      incompatibleModels: prompt.incompatibleModels || [],
+      tags: prompt.tags || [],
+      isFavorite: prompt.isFavorite || false,
+      folderId: folderId || null,
+      createdAt: now,
+      updatedAt: now,
+      usageCount: 0,
+      lastUsed: null,
+      isTrash: false,
+      deletedAt: null,
+      notes: "",
+      versions: [
+        {
+          versionId: generateUUID(),
+          title: prompt.title || "",
+          description: prompt.description || "",
+          content: prompt.content || "",
+          timestamp: now,
+        },
+      ],
+      metaChangeLog: [
+        {
+          timestamp: now,
+          changes: {
+            title: { from: null, to: prompt.title },
+            description: { from: null, to: prompt.description },
+            content: { from: null, to: prompt.content },
+            type: { from: null, to: prompt.type },
+            compatibleModels: { from: [], to: prompt.compatibleModels || [] },
+            incompatibleModels: {
+              from: [],
+              to: prompt.incompatibleModels || [],
+            },
+            tags: { from: [], to: prompt.tags || [] },
+            isFavorite: { from: false, to: prompt.isFavorite || false },
+            folderId: { from: null, to: folderId || null },
+            folderName: { from: null, to: folderName || null },
+            notes: { from: null, to: "" },
           },
-        ],
-        isHidden: true,
-        isTrash: false,
-      };
-      chrome.storage.local.set({ [targetFolderId]: newTopic }, () => {
-        if (chrome.runtime.lastError) {
-          console.error("Error saving prompt:", chrome.runtime.lastError);
-          alert("Fehler beim Speichern des Prompts.");
-        } else {
-          // Aktualisiere die Tabelle sofort im DOM, wenn passend
-          updateTable(
-            newTopic.prompts[0],
-            targetFolderId,
-            folderName,
-            isHidden
-          );
-        }
-      });
+        },
+      ],
+      performanceHistory: [],
+    };
+
+    // Speichern in prompts
+    prompts[newPrompt.promptId] = newPrompt;
+
+    // Wenn Ordner existiert, Prompt-Referenz hinzufügen
+    if (folderId && folders[folderId]) {
+      folders[folderId].promptIds = folders[folderId].promptIds || [];
+      folders[folderId].promptIds.push(newPrompt.promptId);
+      folders[folderId].updatedAt = now;
     }
+
+    chrome.storage.local.set({ prompts, folders }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Fehler beim Speichern des Prompts:",
+          chrome.runtime.lastError
+        );
+        alert("Fehler beim Speichern.");
+      } else {
+        updateTable(
+          newPrompt,
+          folderId,
+          folderName,
+          false // isHidden ist nicht mehr relevant
+        );
+      }
+    });
   });
 
-  function updateTable(newPrompt, targetFolderId, folderName, isHidden) {
+  function updateTable(newPrompt, folders) {
     const tableBody = document.querySelector(".table-container tbody");
     const header = document.querySelector("#prompts-header");
-    const category = header ? header.dataset.category : "All Prompts"; // Fallback auf "All Prompts"
-    const isFolderPrompt =
-      !isHidden &&
-      targetFolderId &&
-      !targetFolderId.startsWith("single_prompt_");
+    const category = header ? header.dataset.category : "All Prompts";
 
-    // Prüfe, ob die Prompt in der aktuellen Kategorie angezeigt werden soll
+    const targetFolderId = newPrompt.folderId || null;
+    const folderObj = targetFolderId ? folders[targetFolderId] : null;
+    const folderName = folderObj?.name || "";
+    const isHidden = folderObj?.isHidden || false;
+
+    const isFolderPrompt = !isHidden && !!targetFolderId;
+
     const shouldDisplay =
       category === "All Prompts" ||
       (category === folderName && isFolderPrompt) ||
       (category === "Favorites" && newPrompt.isFavorite) ||
-      (category === "Single Prompts" &&
-        (!targetFolderId || targetFolderId.startsWith("single_prompt_"))) ||
+      (category === "Single Prompts" && !targetFolderId) || // 🔁 hier geändert
       (category === "Categorised Prompts" && isFolderPrompt) ||
       (category === "Dynamic Prompts" &&
         newPrompt.content &&
@@ -467,63 +445,65 @@ function saveNewPrompt(prompt, folderId) {
 
     if (tableBody && shouldDisplay) {
       const row = document.createElement("tr");
-      row.dataset.index = newPrompt.id;
-      row.innerHTML = `
-        <td><input type="checkbox" id="prompt-checkbox-${
-          newPrompt.id
-        }" name="prompt-checkbox" /></td>
-        <td>${escapeHTML(newPrompt.title || "N/A")}</td>
-        <td>${escapeHTML(newPrompt.type || "N/A")}</td>
-        <td>${
-          Array.isArray(newPrompt.compatibleModels)
-            ? escapeHTML(newPrompt.compatibleModels.join(", "))
-            : escapeHTML(newPrompt.compatibleModels || "")
-        }</td>
-        <td>${
-          Array.isArray(newPrompt.incompatibleModels)
-            ? escapeHTML(newPrompt.incompatibleModels.join(", "))
-            : escapeHTML(newPrompt.incompatibleModels || "N/A")
-        }</td>
-        <td>${
-          Array.isArray(newPrompt.tags)
-            ? escapeHTML(newPrompt.tags.join(", "))
-            : escapeHTML(newPrompt.tags || "")
-        }</td>
-        <td>${escapeHTML(folderName || "")}</td>
-        <td>${
-          newPrompt.lastUsed
-            ? new Date(newPrompt.lastUsed).toLocaleDateString("de-DE")
-            : "N/A"
-        }</td>
-        <td>${
-          newPrompt.createdAt
-            ? new Date(newPrompt.createdAt).toLocaleDateString("de-DE")
-            : "N/A"
-        }</td>
-        <td>
-          <div class="prompt-actions">
-            <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
-            <div class="dropdown-menu">
-              <div class="dropdown-item" data-action="copy">Copy Prompt</div>
-              <div class="dropdown-item" data-action="rename">Rename</div>
-              <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
-              <div class="dropdown-item" data-action="share">Share</div>
-              <div class="dropdown-item" data-action="add-to-favorites">${
-                newPrompt.isFavorite
-                  ? "Remove from Favorites"
-                  : "Add to Favorites"
-              }</div>
-              <div class="dropdown-item" data-action="show-versions">Show Versions</div>
-              <div class="dropdown-item" data-action="export">Export Prompt</div>
-              <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
-            </div>
-          </div>
-        </td>
-      `;
+      row.dataset.index = newPrompt.promptId;
 
-      // Füge Event-Listener für die Dropdown-Menü-Aktionen hinzu
+      row.innerHTML = `
+      <td><input type="checkbox" id="prompt-checkbox-${
+        newPrompt.promptId
+      }" name="prompt-checkbox" /></td>
+      <td>${escapeHTML(newPrompt.title || "N/A")}</td>
+      <td>${escapeHTML(newPrompt.type || "N/A")}</td>
+      <td>${
+        Array.isArray(newPrompt.compatibleModels)
+          ? escapeHTML(newPrompt.compatibleModels.join(", "))
+          : escapeHTML(newPrompt.compatibleModels || "")
+      }</td>
+      <td>${
+        Array.isArray(newPrompt.incompatibleModels)
+          ? escapeHTML(newPrompt.incompatibleModels.join(", "))
+          : escapeHTML(newPrompt.incompatibleModels || "N/A")
+      }</td>
+      <td>${
+        Array.isArray(newPrompt.tags)
+          ? escapeHTML(newPrompt.tags.join(", "))
+          : escapeHTML(newPrompt.tags || "")
+      }</td>
+      <td>${escapeHTML(folderName || "")}</td>
+      <td>${
+        newPrompt.lastUsed
+          ? new Date(newPrompt.lastUsed).toLocaleDateString("de-DE")
+          : "N/A"
+      }</td>
+      <td>${
+        newPrompt.createdAt
+          ? new Date(newPrompt.createdAt).toLocaleDateString("de-DE")
+          : "N/A"
+      }</td>
+      <td>
+        <div class="prompt-actions">
+          <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
+          <div class="dropdown-menu">
+            <div class="dropdown-item" data-action="copy">Copy Prompt</div>
+            <div class="dropdown-item" data-action="rename">Rename</div>
+            <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
+            <div class="dropdown-item" data-action="share">Share</div>
+            <div class="dropdown-item" data-action="add-to-favorites">${
+              newPrompt.isFavorite
+                ? "Remove from Favorites"
+                : "Add to Favorites"
+            }</div>
+            <div class="dropdown-item" data-action="show-versions">Show Versions</div>
+            <div class="dropdown-item" data-action="export">Export Prompt</div>
+            <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
+          </div>
+        </div>
+      </td>
+    `;
+
+      // Dropdown Menü
       const menuBtn = row.querySelector(".menu-btn");
       const dropdown = row.querySelector(".dropdown-menu");
+
       menuBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         document.querySelectorAll(".dropdown-menu").forEach((menu) => {
@@ -548,16 +528,7 @@ function saveNewPrompt(prompt, folderId) {
           } else if (action === "add-to-favorites") {
             toggleFavorite(newPrompt, targetFolderId, row);
           } else if (action === "show-versions") {
-            chrome.storage.local.get(targetFolderId, (data) => {
-              const topic = data[targetFolderId];
-              if (!topic || !topic.prompts) return;
-              const promptIndex = topic.prompts.findIndex(
-                (p) => p.id === newPrompt.id
-              );
-              if (promptIndex !== -1) {
-                showPromptVersions(targetFolderId, promptIndex, row);
-              }
-            });
+            showPromptVersions(newPrompt.promptId, row);
           } else if (action === "export") {
             exportPrompt(newPrompt, targetFolderId);
           } else if (action === "move-to-trash") {
@@ -567,7 +538,7 @@ function saveNewPrompt(prompt, folderId) {
         });
       });
 
-      // Füge Event-Listener für Klick auf die Zeile hinzu (Details-Sidebar)
+      // Prompt-Zeile klickbar für Sidebar
       row.addEventListener("click", (e) => {
         if (!e.target.closest(".prompt-actions")) {
           showDetailsSidebar(newPrompt, targetFolderId);
@@ -577,7 +548,7 @@ function saveNewPrompt(prompt, folderId) {
       tableBody.appendChild(row);
     }
 
-    // Aktualisiere die gesamte Tabelle für Konsistenz
+    // Kategorie ggf. neu rendern
     handleCategoryClick(category);
   }
 }
@@ -610,85 +581,75 @@ function moveToFolder(prompt, folderId, row) {
     <button type="submit" class="action-btn">Verschieben</button>
   `;
 
-  chrome.storage.local.get(null, (data) => {
+  chrome.storage.local.get(["folders"], (data) => {
     const folderSelect = form.querySelector("#target-folder");
-    const folders = Object.entries(data)
-      .filter(
-        ([id, topic]) =>
-          topic.prompts && !topic.isHidden && !topic.isTrash && id !== folderId
-      )
-      .map(([id, topic]) => ({ id, name: topic.name }));
+    const folders = data.folders || {};
 
-    folders.forEach((folder) => {
-      const option = document.createElement("option");
-      option.value = folder.id;
-      option.textContent = folder.name;
-      folderSelect.appendChild(option);
+    Object.entries(folders).forEach(([id, folder]) => {
+      if (!folder.isTrash && id !== folderId) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = folder.name;
+        folderSelect.appendChild(option);
+      }
     });
   });
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const newFolderId = form.querySelector("#target-folder").value;
+    const newFolderId = form.querySelector("#target-folder").value || null;
 
-    chrome.storage.local.get(
-      [folderId, newFolderId, "trash_folder"],
-      (data) => {
-        const topic = data[folderId];
-        if (!topic || !topic.prompts) return;
+    chrome.storage.local.get(["folders", "prompts"], (data) => {
+      const folders = data.folders || {};
+      const prompts = data.prompts || {};
 
-        const promptIndex = topic.prompts.findIndex(
-          (p) => p.title === prompt.title && p.content === prompt.content
+      const promptId = prompt.promptId;
+      const existingPrompt = prompts[promptId];
+      if (!existingPrompt) return;
+
+      // Aktuellen Ordner aktualisieren (alten promptId entfernen)
+      if (existingPrompt.folderId && folders[existingPrompt.folderId]) {
+        const oldFolder = folders[existingPrompt.folderId];
+        oldFolder.promptIds = (oldFolder.promptIds || []).filter(
+          (id) => id !== promptId
         );
-        if (promptIndex === -1) return;
-
-        const [movedPrompt] = topic.prompts.splice(promptIndex, 1);
-        let targetTopic;
-        let targetFolderId = newFolderId;
-        let folderName = "Single Prompt";
-
-        if (newFolderId) {
-          targetTopic = data[newFolderId] || {
-            name: data[newFolderId]?.name || "Unbenannt",
-            prompts: [],
-            isHidden: false,
-            isTrash: false,
-          };
-          folderName = targetTopic.name;
-        } else {
-          targetFolderId = `single_prompt_${Date.now()}`;
-          targetTopic = {
-            name: "Single Prompt",
-            prompts: [],
-            isHidden: true,
-            isTrash: false,
-          };
-        }
-
-        movedPrompt.folderId = targetFolderId;
-        movedPrompt.folderName = folderName;
-        targetTopic.prompts.push(movedPrompt);
-
-        chrome.storage.local.set(
-          { [folderId]: topic, [targetFolderId]: targetTopic },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "Fehler beim Verschieben der Prompt:",
-                chrome.runtime.lastError
-              );
-              alert("Fehler beim Verschieben der Prompt.");
-            } else {
-              row.remove();
-              const category =
-                document.querySelector(".main-header h1").textContent;
-              handleCategoryClick(category);
-              modal.remove();
-            }
-          }
-        );
+        folders[existingPrompt.folderId] = oldFolder;
       }
-    );
+
+      // Neuen Ordner setzen oder standalone
+      if (newFolderId && folders[newFolderId]) {
+        const newFolder = folders[newFolderId];
+        newFolder.promptIds = newFolder.promptIds || [];
+        if (!newFolder.promptIds.includes(promptId)) {
+          newFolder.promptIds.push(promptId);
+        }
+        folders[newFolderId] = newFolder;
+        existingPrompt.folderId = newFolderId;
+      } else {
+        // Kein Zielordner gewählt → Standalone
+        existingPrompt.folderId = null;
+      }
+
+      // Prompt aktualisieren
+      existingPrompt.updatedAt = Date.now();
+      prompts[promptId] = existingPrompt;
+
+      chrome.storage.local.set({ folders, prompts }, () => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Fehler beim Verschieben der Prompt:",
+            chrome.runtime.lastError
+          );
+          alert("Fehler beim Verschieben der Prompt.");
+        } else {
+          row.remove();
+          const category =
+            document.querySelector(".main-header h1").textContent;
+          handleCategoryClick(category);
+          modal.remove();
+        }
+      });
+    });
   });
 
   modalHeader.appendChild(closeSpan);
@@ -710,46 +671,54 @@ function moveToTrash(prompt, folderId, row) {
   )
     return;
 
-  chrome.storage.local.get([folderId, "trash_folder"], (data) => {
-    const topic = data[folderId];
-    const trashFolder = data["trash_folder"] || {
-      name: "Papierkorb",
-      prompts: [],
-      isTrash: true,
-      isHidden: false,
-    };
+  chrome.storage.local.get(["folders", "prompts"], (data) => {
+    const folders = data.folders || {};
+    const prompts = data.prompts || {};
+    const promptId = prompt.promptId;
 
-    if (!topic || !topic.prompts) return;
+    if (!promptId || !prompts[promptId]) return;
 
-    const promptIndex = topic.prompts.findIndex(
-      (p) => p.title === prompt.title && p.content === prompt.content
-    );
-    if (promptIndex === -1) return;
+    const targetPrompt = prompts[promptId];
 
-    const [movedPrompt] = topic.prompts.splice(promptIndex, 1);
-    movedPrompt.folderId = "trash_folder";
-    movedPrompt.folderName = "Papierkorb";
-    trashFolder.prompts.push(movedPrompt);
+    // Prüfe, ob sie bereits im Papierkorb ist
+    if (targetPrompt.isTrash) {
+      alert("Diese Prompt befindet sich bereits im Papierkorb.");
+      return;
+    }
 
-    chrome.storage.local.set(
-      { [folderId]: topic, trash_folder: trashFolder },
-      () => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "Fehler beim Verschieben in den Papierkorb:",
-            chrome.runtime.lastError
-          );
-          alert("Fehler beim Verschieben der Prompt in den Papierkorb.");
-        } else {
-          row.remove();
-          const category =
-            document.querySelector(".main-header h1").textContent;
-          handleCategoryClick(category);
-        }
+    // Entferne Prompt aus bisherigem Ordner
+    if (folderId && folders[folderId]) {
+      folders[folderId].promptIds = (folders[folderId].promptIds || []).filter(
+        (id) => id !== promptId
+      );
+    }
+
+    // Prompt selbst aktualisieren
+    targetPrompt.folderId = null;
+    targetPrompt.folderName = null;
+    targetPrompt.updatedAt = Date.now();
+    targetPrompt.isTrash = true;
+    targetPrompt.deletedAt = Date.now();
+
+    prompts[promptId] = targetPrompt;
+
+    // Speichern
+    chrome.storage.local.set({ folders, prompts }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Fehler beim Verschieben in den Papierkorb:",
+          chrome.runtime.lastError
+        );
+        alert("Fehler beim Verschieben der Prompt in den Papierkorb.");
+      } else {
+        row.remove();
+        const category = document.querySelector(".main-header h1").textContent;
+        handleCategoryClick(category);
       }
-    );
+    });
   });
 }
+
 function sharePrompt(prompt) {
   if (navigator.share) {
     navigator
@@ -827,17 +796,17 @@ function copyPrompt(prompt, folderId) {
     });
 }
 function renamePrompt(prompt, folderId, row) {
-  chrome.storage.local.get(folderId, (data) => {
-    const topic = data[folderId];
-    if (!topic || !topic.prompts) return;
+  const promptId = prompt.promptId;
+  if (!promptId) return;
 
-    const promptIndex = topic.prompts.findIndex(
-      (p) => p.title === prompt.title && p.content === prompt.content
-    );
-    if (promptIndex === -1) return;
+  chrome.storage.local.get(["prompts"], (data) => {
+    const prompts = data.prompts || {};
+    const targetPrompt = prompts[promptId];
+    if (!targetPrompt) return;
 
     const titleCell = row.querySelector("td:nth-child(2)");
     const originalTitle = titleCell.textContent;
+
     const input = document.createElement("input");
     input.type = "text";
     input.value = originalTitle;
@@ -849,12 +818,14 @@ function renamePrompt(prompt, folderId, row) {
     const saveNewName = () => {
       const newName = input.value.trim();
       if (newName && newName !== originalTitle) {
+        // Neue Version anlegen
         const updatedPrompt = {
-          ...topic.prompts[promptIndex],
+          ...targetPrompt,
           title: newName,
           updatedAt: Date.now(),
-          versions: topic.prompts[promptIndex].versions || [],
+          versions: targetPrompt.versions || [],
         };
+
         updatedPrompt.versions.push({
           versionId: generateUUID(),
           title: newName,
@@ -862,17 +833,21 @@ function renamePrompt(prompt, folderId, row) {
           content: updatedPrompt.content || "",
           timestamp: Date.now(),
         });
+
+        // Optional: Nur letzte 50 Versionen behalten
         if (updatedPrompt.versions.length > 50) {
           updatedPrompt.versions.shift();
         }
-        topic.prompts[promptIndex] = updatedPrompt;
-        chrome.storage.local.set({ [folderId]: topic }, () => {
+
+        // Speichern
+        prompts[promptId] = updatedPrompt;
+        chrome.storage.local.set({ prompts }, () => {
           if (chrome.runtime.lastError) {
-            console.error("Error renaming prompt:", chrome.runtime.lastError);
-            alert("Error renaming prompt.");
+            console.error("Fehler beim Umbenennen:", chrome.runtime.lastError);
+            alert("Fehler beim Umbenennen der Prompt.");
           } else {
             titleCell.textContent = newName;
-            prompt.title = newName; // Update local prompt object
+            prompt.title = newName; // Update lokale Kopie
           }
         });
       } else {
@@ -936,39 +911,40 @@ function toggleFavorite(prompt, folderId, row) {
 }
 
 function deletePrompt(prompt, folderId, row) {
-  if (!confirm("Are you sure you want to move this prompt to trash?")) return;
+  if (!confirm("Möchtest du diese Prompt unwiderruflich löschen?")) return;
 
-  chrome.storage.local.get([folderId, "trash_folder"], (data) => {
-    const topic = data[folderId];
-    const trashFolder = data["trash_folder"] || {
-      prompts: [],
-      isTrash: true,
-    };
+  const promptId = prompt.promptId;
+  if (!promptId) return;
 
-    if (!topic || !topic.prompts) return;
+  chrome.storage.local.get(["folders", "prompts"], (data) => {
+    const folders = data.folders || {};
+    const prompts = data.prompts || {};
 
-    const promptIndex = topic.prompts.findIndex(
-      (p) => p.title === prompt.title && p.content === prompt.content
-    );
-    if (promptIndex === -1) return;
+    if (!prompts[promptId]) return;
 
-    const [deletedPrompt] = topic.prompts.splice(promptIndex, 1);
-    trashFolder.prompts.push(deletedPrompt);
+    // Prompt-ID aus Ordner entfernen
+    if (folderId && folders[folderId]) {
+      folders[folderId].promptIds = (folders[folderId].promptIds || []).filter(
+        (id) => id !== promptId
+      );
+    }
 
-    chrome.storage.local.set(
-      { [folderId]: topic, trash_folder: trashFolder },
-      () => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "Error moving prompt to trash:",
-            chrome.runtime.lastError
-          );
-          alert("Error moving prompt to trash.");
-        } else {
-          row.remove();
-        }
+    // Prompt komplett aus Speicher entfernen
+    delete prompts[promptId];
+
+    chrome.storage.local.set({ folders, prompts }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Fehler beim Löschen der Prompt:",
+          chrome.runtime.lastError
+        );
+        alert("Fehler beim Löschen der Prompt.");
+      } else {
+        row.remove();
+        const category = document.querySelector(".main-header h1")?.textContent;
+        if (category) handleCategoryClick(category);
       }
-    );
+    });
   });
 }
 
@@ -987,9 +963,9 @@ function escapeHTML(str) {
  * @param {object}  prompt          – Das zu bearbeitende Prompt-Objekt
  * @param {HTMLElement} sidebarContent – Container für das Edit-Formular
  */
-function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
+function editPromptDetails(promptId, prompt, sidebarContent) {
   // --- Basis-Validierung ----------------------------------------------------
-  if (!folderId || promptIndex < 0 || !prompt || !sidebarContent) {
+  if (!promptId || !prompt || !sidebarContent) {
     console.error("Invalid parameters in editPromptDetails");
     return;
   }
@@ -1009,80 +985,69 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     <label>Content</label>
     <textarea id="edit-content">${escapeHTML(prompt.content || "")}</textarea>
 
-    <!-- ▸▸ NEU: Freie Notizen ◂◂ -->
     <label>Notes</label>
     <textarea id="edit-notes" placeholder="Add here more details about the model and how this prompt should be used for example …">${escapeHTML(
       prompt.notes || ""
     )}</textarea>
 
     <label>Type</label>
-<select id="edit-type">
-  <option value="" ${!prompt.type ? "selected" : ""}>Wähle Typ</option>
-
-  <!-- Generative Aufgaben -->
-  <option value="textgen" ${
-    prompt.type === "textgen" ? "selected" : ""
-  }>Textgeneration</option>
-  <option value="rewrite" ${
-    prompt.type === "rewrite" ? "selected" : ""
-  }>Umschreiben</option>
-  <option value="summarize" ${
-    prompt.type === "summarize" ? "selected" : ""
-  }>Zusammenfassen</option>
-  <option value="translate" ${
-    prompt.type === "translate" ? "selected" : ""
-  }>Übersetzen</option>
-  <option value="ideation" ${
-    prompt.type === "ideation" ? "selected" : ""
-  }>Ideenfindung</option>
-  <option value="adcopy" ${
-    prompt.type === "adcopy" ? "selected" : ""
-  }>Werbetexten</option>
-  <option value="storytelling" ${
-    prompt.type === "storytelling" ? "selected" : ""
-  }>Storytelling</option>
-
-  <!-- Analytische Aufgaben -->
-  <option value="analyze" ${
-    prompt.type === "analyze" ? "selected" : ""
-  }>Analyse</option>
-  <option value="classify" ${
-    prompt.type === "classify" ? "selected" : ""
-  }>Klassifikation</option>
-  <option value="extract" ${
-    prompt.type === "extract" ? "selected" : ""
-  }>Informationsextraktion</option>
-  <option value="compare" ${
-    prompt.type === "compare" ? "selected" : ""
-  }>Vergleichen / Bewerten</option>
-
-  <!-- Technische Aufgaben -->
-  <option value="codegen" ${
-    prompt.type === "codegen" ? "selected" : ""
-  }>Codegenerierung</option>
-  <option value="debug" ${
-    prompt.type === "debug" ? "selected" : ""
-  }>Fehleranalyse</option>
-  <option value="refactor" ${
-    prompt.type === "refactor" ? "selected" : ""
-  }>Code-Umschreiben</option>
-  <option value="explain-code" ${
-    prompt.type === "explain-code" ? "selected" : ""
-  }>Code erklären</option>
-
-  <!-- Prompt-spezifische Aufgaben -->
-  <option value="prompt-engineering" ${
-    prompt.type === "prompt-engineering" ? "selected" : ""
-  }>Prompt Engineering</option>
-  <option value="meta-prompt" ${
-    prompt.type === "meta-prompt" ? "selected" : ""
-  }>Meta-Prompt</option>
-
-  <!-- Sonstige -->
-  <option value="assistant" ${
-    prompt.type === "assistant" ? "selected" : ""
-  }>Assistant</option>
-</select>
+    <select id="edit-type">
+      <option value="" ${!prompt.type ? "selected" : ""}>Wähle Typ</option>
+      <option value="textgen" ${
+        prompt.type === "textgen" ? "selected" : ""
+      }>Textgeneration</option>
+      <option value="rewrite" ${
+        prompt.type === "rewrite" ? "selected" : ""
+      }>Umschreiben</option>
+      <option value="summarize" ${
+        prompt.type === "summarize" ? "selected" : ""
+      }>Zusammenfassen</option>
+      <option value="translate" ${
+        prompt.type === "translate" ? "selected" : ""
+      }>Übersetzen</option>
+      <option value="ideation" ${
+        prompt.type === "ideation" ? "selected" : ""
+      }>Ideenfindung</option>
+      <option value="adcopy" ${
+        prompt.type === "adcopy" ? "selected" : ""
+      }>Werbetexten</option>
+      <option value="storytelling" ${
+        prompt.type === "storytelling" ? "selected" : ""
+      }>Storytelling</option>
+      <option value="analyze" ${
+        prompt.type === "analyze" ? "selected" : ""
+      }>Analyse</option>
+      <option value="classify" ${
+        prompt.type === "classify" ? "selected" : ""
+      }>Klassifikation</option>
+      <option value="extract" ${
+        prompt.type === "extract" ? "selected" : ""
+      }>Informationsextraktion</option>
+      <option value="compare" ${
+        prompt.type === "compare" ? "selected" : ""
+      }>Vergleichen / Bewerten</option>
+      <option value="codegen" ${
+        prompt.type === "codegen" ? "selected" : ""
+      }>Codegenerierung</option>
+      <option value="debug" ${
+        prompt.type === "debug" ? "selected" : ""
+      }>Fehleranalyse</option>
+      <option value="refactor" ${
+        prompt.type === "refactor" ? "selected" : ""
+      }>Code-Umschreiben</option>
+      <option value="explain-code" ${
+        prompt.type === "explain-code" ? "selected" : ""
+      }>Code erklären</option>
+      <option value="prompt-engineering" ${
+        prompt.type === "prompt-engineering" ? "selected" : ""
+      }>Prompt Engineering</option>
+      <option value="meta-prompt" ${
+        prompt.type === "meta-prompt" ? "selected" : ""
+      }>Meta-Prompt</option>
+      <option value="assistant" ${
+        prompt.type === "assistant" ? "selected" : ""
+      }>Assistant</option>
+    </select>
 
     <label>Compatible Models</label>
     <div class="checkbox-group" id="edit-compatible">
@@ -1164,9 +1129,7 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     <button class="cancel-btn">Cancel</button>
   `;
 
-  // --------------------------------------------------------------------------
-  // TAGS LADEN
-  // --------------------------------------------------------------------------
+  // --- Tags laden -----------------------------------------------------------
   chrome.storage.local.get("tags", (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error loading tags:", chrome.runtime.lastError);
@@ -1194,7 +1157,6 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
       return;
     }
 
-    // Prüfen, ob Tag bereits existiert
     if (
       sidebarContent.querySelector(
         `#edit-tags input[value="${escapeHTML(newTag)}"]`
@@ -1229,54 +1191,54 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
     });
   });
 
-  // --------------------------------------------------------------------------
-  // FOLDER DROPDOWN LADEN
-  // --------------------------------------------------------------------------
-  chrome.storage.local.get(null, (data) => {
+  // --- Folder Dropdown laden ------------------------------------------------
+  chrome.storage.local.get("folders", (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error loading folders:", chrome.runtime.lastError);
       return;
     }
 
     const folderSelect = sidebarContent.querySelector("#edit-folder");
-    const folders = Object.entries(data)
-      .filter(
-        ([id, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash
-      )
-      .map(([id, topic]) => ({ id, name: topic.name }));
+    folderSelect.innerHTML = ""; // vorher leeren
 
-    folders.forEach((folder) => {
-      const option = document.createElement("option");
-      option.value = folder.id;
-      option.textContent = folder.name;
-      if (folderId === folder.id) option.selected = true;
-      folderSelect.appendChild(option);
+    const folders = data.folders || {};
+
+    Object.entries(folders).forEach(([id, folder]) => {
+      if (!folder.isHidden && !folder.isTrash) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = folder.name || "Unbenannter Ordner";
+        if (prompt.folderId === id) option.selected = true;
+        folderSelect.appendChild(option);
+      }
     });
+
+    // Optional: Möglichkeit, keinen Ordner zu wählen (folderId = null)
+    const noneOption = document.createElement("option");
+    noneOption.value = "";
+    noneOption.textContent = "Kein Ordner";
+    if (!prompt.folderId) noneOption.selected = true;
+    folderSelect.insertBefore(noneOption, folderSelect.firstChild);
   });
 
-  // --------------------------------------------------------------------------
-  // SPEICHERN
-  // --------------------------------------------------------------------------
+  // --- Speichern ------------------------------------------------------------
   sidebarContent.querySelector(".save-btn").addEventListener("click", () => {
-    chrome.storage.local.get(null, (data) => {
+    chrome.storage.local.get(["prompts", "folders"], (data) => {
       if (chrome.runtime.lastError) {
         console.error("Error loading data:", chrome.runtime.lastError);
         alert("Error loading data.");
         return;
       }
 
-      const topic = data[folderId];
-      if (!topic || !topic.prompts) {
-        alert("Invalid folder or prompts data.");
-        return;
-      }
-
-      // -------- Formulardaten auslesen --------
-      const newFolderId = sidebarContent.querySelector("#edit-folder").value;
+      const { prompts = {}, folders = {} } = data;
+      const originalFolderId = prompt.folderId;
+      const newFolderId =
+        sidebarContent.querySelector("#edit-folder").value || null;
       const newFolderName = newFolderId
-        ? data[newFolderId]?.name || "Single Prompt"
+        ? folders[newFolderId]?.name || "Single Prompt"
         : "Single Prompt";
 
+      // Formulardaten auslesen
       const compatibleModels = Array.from(
         sidebarContent.querySelectorAll(
           "#edit-compatible input[name='compatible']:checked"
@@ -1299,26 +1261,26 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         return;
       }
 
-      // -------- Prompt-Objekt aktualisieren --------
+      // Prompt-Objekt aktualisieren
       const updatedPrompt = {
         ...prompt,
         title,
         description:
           sidebarContent.querySelector("#edit-description")?.value.trim() || "",
         content: sidebarContent.querySelector("#edit-content").value.trim(),
-        notes: sidebarContent.querySelector("#edit-notes").value.trim(), // ◄◄  NEU
+        notes: sidebarContent.querySelector("#edit-notes").value.trim(),
         type: sidebarContent.querySelector("#edit-type").value,
         compatibleModels,
         incompatibleModels,
         tags,
         isFavorite: sidebarContent.querySelector("#edit-favorite").checked,
-        folderId: newFolderId || null,
+        folderId: newFolderId,
         folderName: newFolderName,
         updatedAt: Date.now(),
         metaChangeLog: prompt.metaChangeLog || [],
       };
 
-      // -------- Versionslogik (inkl. Notes) --------
+      // Versionslogik
       const hasContentChanges =
         (prompt.title || "") !== updatedPrompt.title ||
         (prompt.description || "") !== updatedPrompt.description ||
@@ -1340,7 +1302,7 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         }
       }
 
-      // -------- Meta-Change-Log --------
+      // Meta-Change-Log
       const metaChanges = {};
       if ((prompt.type || "") !== updatedPrompt.type) {
         metaChanges.type = { from: prompt.type || "", to: updatedPrompt.type };
@@ -1379,7 +1341,6 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         };
       }
       if ((prompt.notes || "") !== updatedPrompt.notes) {
-        // ◄◄  NEU
         metaChanges.notes = {
           from: prompt.notes || "",
           to: updatedPrompt.notes,
@@ -1396,78 +1357,47 @@ function editPromptDetails(folderId, promptIndex, prompt, sidebarContent) {
         }
       }
 
-      // -------- Abspeichern (ggf. Folder-Wechsel) --------
-      if (newFolderId !== folderId) {
-        // Prompt aus altem Ordner entfernen
-        topic.prompts.splice(promptIndex, 1);
-        chrome.storage.local.set({ [folderId]: topic }, () => {
-          if (chrome.runtime.lastError) {
-            console.error("Error removing prompt:", chrome.runtime.lastError);
-            alert("Error moving prompt.");
-            return;
-          }
+      // --- Ordner aktualisieren, falls sich folderId geändert hat ---
+      if (originalFolderId !== newFolderId) {
+        // Aus altem Ordner entfernen
+        if (originalFolderId && folders[originalFolderId]) {
+          folders[originalFolderId].promptIds = (
+            folders[originalFolderId].promptIds || []
+          ).filter((id) => id !== promptId);
+        }
 
-          // Ziel-Ordner vorbereiten
-          let targetTopic;
-          let targetId = newFolderId;
-
-          if (newFolderId) {
-            targetTopic = data[newFolderId] || {
-              name: newFolderName,
-              prompts: [],
-              isHidden: false,
-              isTrash: false,
-            };
-            targetTopic.prompts.push(updatedPrompt);
-          } else {
-            // Wenn kein Folder ausgewählt, Single-Prompt-Ordner anlegen
-            targetId = `single_prompt_${Date.now()}`;
-            targetTopic = {
-              name: "Single Prompt",
-              prompts: [updatedPrompt],
-              isHidden: true,
-              isTrash: false,
-            };
+        // In neuen Ordner einfügen (sofern gesetzt)
+        if (newFolderId) {
+          folders[newFolderId].promptIds = folders[newFolderId].promptIds || [];
+          if (!folders[newFolderId].promptIds.includes(promptId)) {
+            folders[newFolderId].promptIds.push(promptId);
           }
-
-          // Speichern im Ziel-Ordner
-          chrome.storage.local.set({ [targetId]: targetTopic }, () => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "Error saving to new folder:",
-                chrome.runtime.lastError
-              );
-              alert("Error saving prompt.");
-            } else {
-              showDetailsSidebar(updatedPrompt, targetId);
-              const category =
-                document.querySelector(".main-header h1")?.textContent || "";
-              handleCategoryClick(category);
-            }
-          });
-        });
-      } else {
-        // Im selben Ordner aktualisieren
-        topic.prompts[promptIndex] = updatedPrompt;
-        chrome.storage.local.set({ [folderId]: topic }, () => {
-          if (chrome.runtime.lastError) {
-            console.error("Error saving prompt:", chrome.runtime.lastError);
-            alert("Error saving prompt.");
-          } else {
-            showDetailsSidebar(updatedPrompt, folderId);
-            const category =
-              document.querySelector(".main-header h1")?.textContent || "";
-            handleCategoryClick(category);
-          }
-        });
+        }
       }
+
+      // Prompt speichern
+      prompts[promptId] = updatedPrompt;
+
+      // Speichern in chrome.storage
+      chrome.storage.local.set({ prompts, folders }, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving prompt:", chrome.runtime.lastError);
+          alert("Error saving prompt.");
+        } else {
+          showDetailsSidebar(
+            { promptId, ...updatedPrompt },
+            updatedPrompt.folderId
+          );
+          const category =
+            document.querySelector(".main-header h1")?.textContent || "";
+          handleCategoryClick(category);
+        }
+      });
     });
   });
 
-  // --------------------------------------------------------------------------
-  // CANCEL-BUTTON
-  // --------------------------------------------------------------------------
+  // --- Cancel-Button --------------------------------------------------------
   sidebarContent.querySelector(".cancel-btn").addEventListener("click", () => {
-    showDetailsSidebar(prompt, folderId);
+    showDetailsSidebar({ promptId, ...prompt }, prompt.folderId);
   });
 }

@@ -801,20 +801,30 @@ async function promptSaver(message) {
     )}`;
     const newFolder = {
       name: newFolderName,
-      prompts: [],
+      promptIds: [], // Neue Struktur: Nur Referenzen auf Prompts
       isHidden: false,
       isTrash: false,
     };
 
     try {
       await new Promise((resolve, reject) => {
-        chrome.storage.local.set({ [newFolderId]: newFolder }, () => {
+        chrome.storage.local.get(["folders"], (data) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
-          } else {
-            console.log("Neuer Ordner erstellt:", newFolder);
-            resolve();
+            return;
           }
+
+          const folders = data.folders || {};
+          folders[newFolderId] = newFolder;
+
+          chrome.storage.local.set({ folders }, () => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              console.log("Neuer Ordner erstellt:", newFolder);
+              resolve();
+            }
+          });
         });
       });
 
@@ -1417,57 +1427,54 @@ async function promptSaver(message) {
   async function loadFolders() {
     try {
       const data = await new Promise((resolve, reject) => {
-        chrome.storage.local.get(null, (data) => {
+        chrome.storage.local.get(["folders"], (data) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
-            resolve(data);
+            resolve(data.folders || {});
           }
         });
       });
 
-      // Filter für nicht-versteckte Ordner (Categorised Prompts)
-      const folders = Object.entries(data).filter(
-        ([, topic]) =>
-          topic.prompts &&
-          Array.isArray(topic.prompts) &&
-          !topic.isHidden &&
-          !topic.isTrash
+      // Aufteilen in sichtbare (Categorised Prompts) und versteckte (Single Prompts) Ordner
+      const folderEntries = Object.entries(data);
+
+      const folders = folderEntries.filter(
+        ([, folder]) => !folder.isHidden && !folder.isTrash
       );
 
-      // Filter für versteckte Ordner (Single Prompts)
-      const hiddenFolders = Object.entries(data).filter(
-        ([, topic]) =>
-          topic.prompts &&
-          Array.isArray(topic.prompts) &&
-          topic.isHidden &&
-          !topic.isTrash
+      const hiddenFolders = folderEntries.filter(
+        ([, folder]) => folder.isHidden && !folder.isTrash
       );
 
-      // Populate replaceFolderSelect mit Ordnern und Single Prompts Option
+      // replaceFolderSelect mit Gruppen für sichtbare und versteckte Ordner
       replaceFolderSelect.innerHTML = `
-        <option value="">Select a folder or category</option>
-        <optgroup label="Categorised Prompts">
-          ${folders
-            .map(
-              ([id, topic]) => `<option value="${id}">${topic.name}</option>`
-            )
-            .join("")}
-        </optgroup>
-        <optgroup label="Single Prompts">
-          <option value="single">Single Prompts</option>
-        </optgroup>
-      `;
-
-      // Populate addFolderSelect nur mit nicht-versteckten Ordnern
-      addFolderSelect.innerHTML = `
-        <option value="">Select a folder</option>
+      <option value="">Select a folder or category</option>
+      <optgroup label="Categorised Prompts">
         ${folders
-          .map(([id, topic]) => `<option value="${id}">${topic.name}</option>`)
+          .map(
+            ([id, folder]) => `<option value="${id}">${folder.name}</option>`
+          )
           .join("")}
-      `;
+      </optgroup>
+      <optgroup label="Single Prompts">
+        ${hiddenFolders
+          .map(
+            ([id, folder]) => `<option value="${id}">${folder.name}</option>`
+          )
+          .join("")}
+      </optgroup>
+    `;
+
+      // addFolderSelect nur mit nicht-versteckten Ordnern
+      addFolderSelect.innerHTML = `
+      <option value="">Select a folder</option>
+      ${folders
+        .map(([id, folder]) => `<option value="${id}">${folder.name}</option>`)
+        .join("")}
+    `;
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching folders:", error);
     }
   }
 

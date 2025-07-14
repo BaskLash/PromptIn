@@ -1,31 +1,36 @@
 function loadFolders() {
   const folderList = document.querySelector(".folder-list");
-  chrome.storage.local.get(null, function (data) {
-    folderList.innerHTML = ""; // Clear existing folder list
+  chrome.storage.local.get(["folders"], ({ folders }) => {
+    folderList.innerHTML = ""; // Vorherige Liste löschen
 
-    const folders = Object.entries(data).filter(
-      ([id, topic]) => topic.prompts && !topic.isHidden && !topic.isTrash
-    );
-
-    if (folders.length === 0) {
+    if (!folders || Object.keys(folders).length === 0) {
       folderList.innerHTML = "<li>Keine Ordner verfügbar</li>";
       return;
     }
 
-    folders.forEach(([id, topic]) => {
+    const visibleFolders = Object.entries(folders).filter(
+      ([, folder]) => !folder.isTrash
+    );
+
+    if (visibleFolders.length === 0) {
+      folderList.innerHTML = "<li>Keine Ordner verfügbar</li>";
+      return;
+    }
+
+    visibleFolders.forEach(([folderId, folder]) => {
       const li = document.createElement("li");
       li.classList.add("folder-item");
-      li.setAttribute("data-folder", topic.name);
+      li.setAttribute("data-folder", folder.name);
       li.innerHTML = `
-        📁 ${topic.name}
-        <span class="folder-actions">
-          <button class="folder-action blue-dots-button" title="Aktionen">⋯</button>
-          <div class="folder-dropdown hidden">
-            <div class="dropdown-option edit-folder">✏️ Bearbeiten</div>
-            <div class="dropdown-option delete-folder">🗑️ Löschen</div>
-          </div>
-        </span>
-      `;
+      📁 ${folder.name}
+      <span class="folder-actions">
+        <button class="folder-action blue-dots-button" title="Aktionen">⋯</button>
+        <div class="folder-dropdown hidden">
+          <div class="dropdown-option edit-folder">✏️ Bearbeiten</div>
+          <div class="dropdown-option delete-folder">🗑️ Löschen</div>
+        </div>
+      </span>
+    `;
 
       // Button mit drei Punkten → Dropdown anzeigen/ausblenden
       li.querySelector(".folder-action").addEventListener("click", (event) => {
@@ -38,12 +43,12 @@ function loadFolders() {
       // Aktionen im Dropdown
       li.querySelector(".edit-folder").addEventListener("click", (e) => {
         e.stopPropagation();
-        editFolder(id, topic);
+        editFolder(folderId, folder);
       });
 
       li.querySelector(".delete-folder").addEventListener("click", (e) => {
         e.stopPropagation();
-        deleteFolder(id);
+        deleteFolder(folderId);
       });
 
       folderList.appendChild(li);
@@ -58,7 +63,8 @@ function loadFolders() {
 
     // Sichtbarkeit des Suchfelds
     folderSearchInput = document.querySelector(".folder-search");
-    folderSearchInput.style.display = folders.length > 5 ? "block" : "none";
+    folderSearchInput.style.display =
+      visibleFolders.length > 5 ? "block" : "none";
   });
 
   function closeAllOtherDropdowns(current) {
@@ -67,7 +73,7 @@ function loadFolders() {
     });
   }
 
-  function editFolder(id, topic) {
+  function editFolder(folderId, folderData) {
     // Modal erstellen
     const modal = document.createElement("div");
     modal.className = "modal";
@@ -90,31 +96,37 @@ function loadFolders() {
 
     const form = document.createElement("form");
     form.innerHTML = `
-        <label>Ordnername:</label>
-        <input type="text" id="folder-name" value="${topic.name}" placeholder="Neuer Ordnername" required>
-        <button type="submit" class="action-btn">Speichern</button>
-    `;
+    <label>Ordnername:</label>
+    <input type="text" id="folder-name" value="${folderData.name}" placeholder="Neuer Ordnername" required>
+    <button type="submit" class="action-btn">Speichern</button>
+  `;
 
     // Event-Listener für das Formular
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const newName = form.querySelector("#folder-name").value.trim();
 
-      if (newName && newName !== topic.name) {
-        chrome.storage.local.get(id, (data) => {
-          const updatedTopic = {
-            ...data[id],
+      if (newName === "") {
+        alert("Der Ordnername darf nicht leer sein!");
+        return;
+      }
+
+      if (newName !== folderData.name) {
+        chrome.storage.local.get(["folders"], ({ folders }) => {
+          if (!folders || !folders[folderId]) {
+            alert("Ordner konnte nicht gefunden werden.");
+            return;
+          }
+
+          const updatedFolder = {
+            ...folders[folderId],
             name: newName,
             updatedAt: Date.now(),
           };
 
-          // Aktualisiere die folderName in allen Prompts des Ordners
-          updatedTopic.prompts = (updatedTopic.prompts || []).map((prompt) => ({
-            ...prompt,
-            folderName: newName,
-          }));
+          folders[folderId] = updatedFolder;
 
-          chrome.storage.local.set({ [id]: updatedTopic }, () => {
+          chrome.storage.local.set({ folders }, () => {
             if (chrome.runtime.lastError) {
               console.error(
                 "Fehler beim Aktualisieren des Ordners:",
@@ -122,22 +134,20 @@ function loadFolders() {
               );
               alert("Fehler beim Aktualisieren des Ordners.");
             } else {
-              // Aktualisiere die Ordnerliste
               loadFolders();
-              // Aktualisiere die Anzeige, falls der aktuelle Ordner angezeigt wird
+
               const currentCategory =
-                document.querySelector(".main-header h1").textContent;
-              if (currentCategory === topic.name) {
+                document.querySelector(".main-header h1")?.textContent;
+              if (currentCategory === folderData.name) {
                 handleFolderClick(newName);
               }
+
               modal.remove();
             }
           });
         });
-      } else if (newName === "") {
-        alert("Der Ordnername darf nicht leer sein!");
       } else {
-        modal.remove(); // Schließe das Modal, wenn kein neuer Name eingegeben wurde
+        modal.remove(); // kein neuer Name → einfach schließen
       }
     });
 
@@ -150,20 +160,37 @@ function loadFolders() {
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
 
-    // Schließen-Button
+    // Schließen-Events
     closeSpan.onclick = () => modal.remove();
     window.onclick = (event) => {
       if (event.target === modal) modal.remove();
     };
   }
 
-  function deleteFolder(id) {
+  function deleteFolder(folderId) {
     const confirmed = confirm("Diesen Ordner wirklich löschen?");
-    if (confirmed) {
-      chrome.storage.local.remove(id, () => {
-        loadFolders(); // neu laden
+    if (!confirmed) return;
+
+    chrome.storage.local.get(["folders"], ({ folders }) => {
+      if (!folders || !folders[folderId]) {
+        alert("Ordner konnte nicht gefunden werden.");
+        return;
+      }
+
+      delete folders[folderId];
+
+      chrome.storage.local.set({ folders }, () => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Fehler beim Löschen des Ordners:",
+            chrome.runtime.lastError
+          );
+          alert("Fehler beim Löschen des Ordners.");
+        } else {
+          loadFolders(); // neu laden
+        }
       });
-    }
+    });
   }
 }
 
@@ -190,29 +217,37 @@ addFolderBtn.addEventListener("click", () => {
 
   const form = document.createElement("form");
   form.innerHTML = `
-        <label>Ordnername:</label>
-        <input type="text" id="new-folder-name" placeholder="Neuer Ordnername" required>
-        <button type="submit" class="action-btn">Erstellen</button>
-        <button type="button" class="cancel-btn">Abbrechen</button>
-    `;
+    <label>Ordnername:</label>
+    <input type="text" id="new-folder-name" placeholder="Neuer Ordnername" required>
+    <button type="submit" class="action-btn">Erstellen</button>
+    <button type="button" class="cancel-btn">Abbrechen</button>
+  `;
 
   // Event-Listener für das Formular
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const folderName = form.querySelector("#new-folder-name").value.trim();
 
-    if (folderName) {
-      const folderId = `folder_${Date.now()}_${generateUUID()}`;
-      const newFolder = {
-        name: folderName,
-        prompts: [],
-        isHidden: false,
-        isTrash: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
+    if (!folderName) {
+      alert("Der Ordnername darf nicht leer sein!");
+      return;
+    }
 
-      chrome.storage.local.set({ [folderId]: newFolder }, () => {
+    const folderId = `folder_${Date.now()}_${generateUUID()}`;
+    const newFolder = {
+      folderId: folderId,
+      name: folderName,
+      promptIds: [],
+      isTrash: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    chrome.storage.local.get(["folders"], ({ folders }) => {
+      const updatedFolders = folders || {};
+      updatedFolders[folderId] = newFolder;
+
+      chrome.storage.local.set({ folders: updatedFolders }, () => {
         if (chrome.runtime.lastError) {
           console.error(
             "Fehler beim Erstellen des Ordners:",
@@ -225,9 +260,7 @@ addFolderBtn.addEventListener("click", () => {
           modal.remove();
         }
       });
-    } else {
-      alert("Der Ordnername darf nicht leer sein!");
-    }
+    });
   });
 
   // Abbrechen-Button

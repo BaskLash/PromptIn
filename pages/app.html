@@ -55,7 +55,6 @@
               <li data-folder="Dynamic Prompts">Dynamic Prompts</li>
               <li data-folder="Static Prompts">Static Prompts</li>
               <li data-folder="Unused Prompts">Unused Prompts</li>
-              <li data-folder="Workflows">Workflows</li>
               <li data-folder="Trash">Trash</li>
             </ul>
           </section>
@@ -84,6 +83,7 @@
             <h4 class="accordion-header">Tools</h4>
             <ul class="accordion-content">
               <li data-view="tags">Tag Overview</li>
+              <li data-view="workflows">Workflows</li>
               <li data-view="analytics">Prompt Analytics</li>
               <li data-view="storage">Storage</li>
             </ul>
@@ -372,6 +372,14 @@
             <h1>Prompt Analytics</h1>
           </div>
           <div id="analytics-container"></div>
+        </div>
+        <!-- Overview Bereich -->
+         <div id="workflow-view" style="display: none">
+          <div class="main-header">
+            <h1>Workflows</h1>
+            <button id="addWorkflowBtn">+ Add Workflow</button>
+          </div>
+          <div id="workflow-container"></div>
         </div>
         <!-- Storage Bereich -->
         <div id="storage-view" style="display: none">

@@ -494,481 +494,291 @@ function renderPrompts(prompts) {
     }
   });
 }
+const sidebar = document.getElementById("details-sidebar");
 function showDetailsSidebar(item, folderId) {
-  const sidebar = document.getElementById("details-sidebar");
   const sidebarContent = sidebar.querySelector(".sidebar-content");
   sidebarContent.innerHTML = "";
   sidebar.classList.add("open");
+  if (!item || !item.title || !item.content) {
+    sidebarContent.innerHTML = "<p>Error: Invalid prompt data.</p>";
+    return;
+  }
 
-  if (item.type === "Workflow") {
-    chrome.storage.local.get(null, (data) => {
-      const workflow = data[folderId];
-      if (!workflow) {
-        sidebarContent.innerHTML = "<p>Error: Workflow not found.</p>";
-        return;
-      }
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    const { prompts = {}, folders = {} } = data;
 
-      const stepDetails = workflow.steps.map((step, index) => {
-        // Fall 1: Kein Prompt-ID vorhanden (z. B. benutzerdefinierter Prompt ohne gespeicherte ID)
-        if (!step.promptId && !step.useCustomPrompt) {
-          return `
-            <li class="step-item">
-              <strong>Step ${index + 1}: ${
-            step.title || "Untitled Step"
-          }</strong><br>
-              AI Model: ${step.aiModel || "N/A"}<br>
-              Prompt Title: N/A<br>
-              Prompt Content: N/A<br>
-              Parameters: ${
-                step.parameters && Object.keys(step.parameters).length > 0
-                  ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
-                  : "None"
-              }
-            </li>
-          `;
-        }
-
-        // Fall 2: Benutzerdefinierter Prompt
-        if (step.useCustomPrompt && step.customPrompt) {
-          const promptTitle =
-            step.customPrompt.length > 5
-              ? step.customPrompt.substring(0, 5)
-              : step.customPrompt;
-          return `
-            <li class="step-item">
-              <strong>Step ${index + 1}: ${
-            step.title || "Untitled Step"
-          }</strong><br>
-              AI Model: ${step.aiModel || "N/A"}<br>
-              Prompt Title: ${promptTitle || "N/A"}<br>
-              Prompt Content: <pre style="background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-top: 5px; white-space: pre-wrap;">${
-                step.customPrompt || "N/A"
-              }</pre>
-              Parameters: ${
-                step.parameters && Object.keys(step.parameters).length > 0
-                  ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
-                  : "None"
-              }
-            </li>
-          `;
-        }
-
-        // Fall 3: Gespeicherter Prompt mit Prompt-ID
-        const parsedId = parsePromptId(step.promptId);
-        if (!parsedId) {
-          return `
-            <li class="step-item">
-              <strong>Step ${index + 1}: ${
-            step.title || "Untitled Step"
-          }</strong><br>
-              AI Model: ${step.aiModel || "N/A"}<br>
-              Prompt Title: Ungültige Prompt-ID (${step.promptId})<br>
-              Prompt Content: N/A<br>
-              Parameters: ${
-                step.parameters && Object.keys(step.parameters).length > 0
-                  ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
-                  : "None"
-              }
-            </li>
-          `;
-        }
-
-        const { folderId: promptFolderId, promptIndex } = parsedId;
-        const topic = data[promptFolderId];
-
-        if (
-          !topic ||
-          !topic.prompts ||
-          isNaN(promptIndex) ||
-          !topic.prompts[promptIndex]
-        ) {
-          return `
-            <li class="step-item">
-              <strong>Step ${index + 1}: ${
-            step.title || "Untitled Step"
-          }</strong><br>
-              AI Model: ${step.aiModel || "N/A"}<br>
-              Prompt Title: Nicht gefunden (ID: ${step.promptId})<br>
-              Prompt Content: N/A<br>
-              Parameters: ${
-                step.parameters && Object.keys(step.parameters).length > 0
-                  ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
-                  : "None"
-              }
-            </li>
-          `;
-        }
-
-        const prompt = topic.prompts[promptIndex];
-        return `
-          <li class="step-item">
-            <strong>Step ${index + 1}: ${
-          step.title || "Untitled Step"
-        }</strong><br>
-            AI Model: ${step.aiModel || "N/A"}<br>
-            Prompt Title: ${prompt.title || "N/A"}<br>
-            Prompt Content: <pre style="background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-top: 5px; white-space: pre-wrap;">${
-              prompt.content || "N/A"
-            }</pre>
-            Parameters: ${
-              step.parameters && Object.keys(step.parameters).length > 0
-                ? `<pre>${JSON.stringify(step.parameters, null, 2)}</pre>`
-                : "None"
-            }
-          </li>
-        `;
-      });
-
-      sidebarContent.innerHTML = `
-        <label>Name</label>
-        <input type="text" value="${workflow.name || "N/A"}" readonly>
-        <label>AI Model</label>
-        <label>Steps</label>
-        <ul class="step-list">${stepDetails.join("")}</ul>
-        <label>Created At</label>
-        <input type="text" value="${
-          workflow.createdAt
-            ? new Date(workflow.createdAt).toLocaleDateString("de-DE")
-            : "N/A"
-        }" readonly>
-        <label>Last Used</label>
-        <input type="text" value="${
-          workflow.lastUsed
-            ? new Date(workflow.lastUsed).toLocaleDateString("de-DE")
-            : "N/A"
-        }" readonly>
-        <button class="edit-btn">Edit Workflow</button>
-      `;
-
-      sidebarContent
-        .querySelector(".edit-btn")
-        .addEventListener("click", () => {
-          editWorkflowDetails(folderId, workflow, sidebarContent);
-        });
-    });
-  } else {
-    if (!item || !item.title || !item.content) {
-      sidebarContent.innerHTML = "<p>Error: Invalid prompt data.</p>";
+    const prompt = prompts[item.promptId];
+    if (!prompt) {
+      sidebarContent.innerHTML = "<p>Error: Prompt not found.</p>";
       return;
     }
 
-    chrome.storage.local.get(folderId, (data) => {
-      const topic = data[folderId];
-      if (!topic || !topic.prompts) {
-        sidebarContent.innerHTML = "<p>Error: Prompt not found.</p>";
-        return;
-      }
+    const folderName =
+      folders[prompt.folderId]?.name || prompt.folderName || "N/A";
 
-      const promptIndex = topic.prompts.findIndex(
-        (p) => p.title === item.title && p.content === item.content
-      );
-      if (promptIndex === -1) {
-        sidebarContent.innerHTML = "<p>Error: Prompt not found.</p>";
-        return;
-      }
+    const metaChangeLogEntries = (prompt.metaChangeLog || [])
+      .map(
+        (entry) => `
+      <div style="margin-bottom: 10px;">
+        <strong>${new Date(entry.timestamp).toLocaleString("de-DE")}</strong>
+        <ul>
+          ${Object.entries(entry.changes)
+            .map(([key, change]) => {
+              const formatValue = (v) =>
+                Array.isArray(v)
+                  ? v.join(", ") || "None"
+                  : v === true
+                  ? "Yes"
+                  : v === false
+                  ? "No"
+                  : v || "None";
+              return `<li><strong>${key}:</strong> From "${formatValue(
+                change.from
+              )}" to "${formatValue(change.to)}"</li>`;
+            })
+            .join("")}
+        </ul>
+      </div>
+    `
+      )
+      .join("");
 
-      const prompt = topic.prompts[promptIndex];
+    sidebarContent.innerHTML = `
+    <label>Title</label>
+    <input type="text" value="${prompt.title || "N/A"}" readonly>
+    <label>Description</label>
+    <textarea readonly>${prompt.description || "N/A"}</textarea>
+    <label>Content</label>
+    <textarea readonly>${prompt.content || "N/A"}</textarea>
+    <label>Notes</label>
+    <textarea readonly>${prompt.notes || "N/A"}</textarea>
+    <label>Type</label>
+    <input type="text" value="${prompt.type || "N/A"}" readonly>
+    <label>Compatible Models</label>
+    <input type="text" value="${
+      Array.isArray(prompt.compatibleModels)
+        ? prompt.compatibleModels.join(", ")
+        : prompt.compatibleModels || "N/A"
+    }" readonly>
+    <label>Incompatible Models</label>
+    <input type="text" value="${
+      Array.isArray(prompt.incompatibleModels)
+        ? prompt.incompatibleModels.join(", ")
+        : prompt.incompatibleModels || "N/A"
+    }" readonly>
+    <label>Tags</label>
+    <input type="text" value="${
+      Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || "N/A"
+    }" readonly>
+    <label>Folder</label>
+    <input type="text" value="${folderName}" readonly>
+    <label>Favorite</label>
+    <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
+    <label>Created At</label>
+    <input type="text" value="${
+      prompt.createdAt
+        ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+        : "N/A"
+    }" readonly>
+    <label>Updated At</label>
+    <input type="text" value="${
+      prompt.updatedAt
+        ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
+        : "N/A"
+    }" readonly>
+    <label>Last Used</label>
+    <input type="text" value="${
+      prompt.lastUsed
+        ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+        : "N/A"
+    }" readonly>
+    <label>Metadata Change Log</label>
+    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+      ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
+    </div>
+    <button class="edit-btn">Edit Prompt</button>
+  `;
 
-      const metaChangeLogEntries = (prompt.metaChangeLog || [])
-        .map(
-          (entry) => `
-        <div style="margin-bottom: 10px;">
-          <strong>${new Date(entry.timestamp).toLocaleString("de-DE")}</strong>
-          <ul>
-            ${Object.entries(entry.changes)
-              .map(([key, change]) => {
-                const formatValue = (v) =>
-                  Array.isArray(v)
-                    ? v.join(", ") || "None"
-                    : v === true
-                    ? "Yes"
-                    : v === false
-                    ? "No"
-                    : v || "None";
-                return `<li><strong>${key}:</strong> From "${formatValue(
-                  change.from
-                )}" to "${formatValue(change.to)}"</li>`;
-              })
-              .join("")}
-          </ul>
-        </div>
-      `
-        )
-        .join("");
-
-      sidebarContent.innerHTML = `
-        <label>Title</label>
-        <input type="text" value="${prompt.title || "N/A"}" readonly>
-        <label>Description</label>
-        <textarea readonly>${prompt.description || "N/A"}</textarea>
-        <label>Content</label>
-        <textarea readonly>${prompt.content || "N/A"}</textarea>
-        <label>Notes</label>
-        <textarea readonly>${prompt.notes || "N/A"}</textarea>
-        <label>Type</label>
-        <input type="text" value="${prompt.type || "N/A"}" readonly>
-        <label>Compatible Models</label>
-        <input type="text" value="${
-          Array.isArray(prompt.compatibleModels)
-            ? prompt.compatibleModels.join(", ")
-            : prompt.compatibleModels || "N/A"
-        }" readonly>
-        <label>Incompatible Models</label>
-        <input type="text" value="${
-          Array.isArray(prompt.incompatibleModels)
-            ? prompt.incompatibleModels.join(", ")
-            : prompt.incompatibleModels || "N/A"
-        }" readonly>
-        <label>Tags</label>
-        <input type="text" value="${
-          Array.isArray(prompt.tags)
-            ? prompt.tags.join(", ")
-            : prompt.tags || "N/A"
-        }" readonly>
-        <label>Folder</label>
-        <input type="text" value="${prompt.folderName || "N/A"}" readonly>
-        <label>Favorite</label>
-        <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
-        <label>Created At</label>
-        <input type="text" value="${
-          prompt.createdAt
-            ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-            : "N/A"
-        }" readonly>
-        <label>Updated At</label>
-        <input type="text" value="${
-          prompt.updatedAt
-            ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
-            : "N/A"
-        }" readonly>
-        <label>Last Used</label>
-        <input type="text" value="${
-          prompt.lastUsed
-            ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-            : "N/A"
-        }" readonly>
-        <label>Metadata Change Log</label>
-        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-          ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
-        </div>
-        <button class="edit-btn">Edit Prompt</button>
-      `;
-
-      sidebarContent
-        .querySelector(".edit-btn")
-        .addEventListener("click", () => {
-          editPromptDetails(folderId, promptIndex, prompt, sidebarContent);
-        });
+    sidebarContent.querySelector(".edit-btn").addEventListener("click", () => {
+      editPromptDetails(item.promptId, prompt, sidebarContent);
     });
-  }
-
-  sidebar.querySelector(".close-sidebar").addEventListener("click", () => {
-    sidebar.classList.remove("open");
   });
 }
+
+sidebar.querySelector(".close-sidebar").addEventListener("click", () => {
+  sidebar.classList.remove("open");
+});
 
 function initializePrompts() {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryFromUrl = urlParams.get("category");
   loadTagsFilter(); // Tags-Filter laden
+
   if (categoryFromUrl) {
     handleCategoryClick(decodeURIComponent(categoryFromUrl));
   } else {
-    chrome.storage.local.get(null, function (data) {
-      const allPrompts = Object.entries(data)
-        .filter(([, topic]) => topic.prompts && !topic.isTrash)
-        .flatMap(([id, topic]) =>
-          topic.prompts.map((prompt) => ({
+    chrome.storage.local.get(["prompts", "folders"], (data) => {
+      const prompts = data.prompts || {};
+      const folders = data.folders || {};
+
+      const allPrompts = Object.values(prompts)
+        .filter((prompt) => {
+          const folder = prompt.folderId ? folders[prompt.folderId] : null;
+          const isInTrash = folder?.isTrash === true;
+          const isHidden = folder?.isHidden === true;
+          return !isInTrash && !isHidden;
+        })
+        .map((prompt) => {
+          const folder = prompt.folderId ? folders[prompt.folderId] : null;
+          return {
             ...prompt,
-            folderId: id,
-            folderName: topic.name,
-          }))
-        );
+            folderName: folder?.name || "Unassigned",
+          };
+        });
+
       renderPrompts(allPrompts);
       document.querySelector(".main-header h1").textContent = "All Prompts";
     });
   }
 }
+
 function handleCategoryClick(category) {
-  chrome.storage.local.get(null, function (data) {
+  chrome.storage.local.get(["prompts", "folders", "trash"], function (data) {
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+    const trashRefs = data.trash || [];
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
-    const isVisibleOrHiddenTopic = (topic) => topic.prompts && !topic.isTrash;
-    const isVisibleTopic = (topic) =>
-      topic.prompts && !topic.isHidden && !topic.isTrash;
-    const isHiddenTopic = (topic) =>
-      topic.prompts && topic.isHidden && !topic.isTrash;
-    const isTrashTopic = (topic) => topic.prompts && topic.isTrash;
-    const getPromptObjects = (topic, id) =>
-      (topic.prompts || []).map((prompt) => ({
-        ...prompt,
-        folderId: id,
-        folderName: topic.name || "N/A",
-      }));
+    const getPromptList = (filterFn) => {
+      return Object.values(prompts)
+        .filter(filterFn)
+        .map((p) => ({
+          ...p,
+          folderName: folders[p.folderId]?.name || "Kein Ordner",
+        }));
+    };
 
     let filteredPrompts = [];
 
     switch (category) {
       case "All Prompts":
-        filteredPrompts = Object.entries(data)
-          .filter(([, topic]) => isVisibleOrHiddenTopic(topic))
-          .flatMap(([id, topic]) => getPromptObjects(topic, id));
+        filteredPrompts = getPromptList(() => true);
         break;
 
       case "Favorites":
-        filteredPrompts = Object.entries(data)
-          .filter(([, topic]) => isVisibleTopic(topic) || isHiddenTopic(topic))
-          .flatMap(([id, topic]) =>
-            topic.prompts
-              .filter((p) => p.isFavorite)
-              .map((prompt) => ({
-                ...prompt,
-                folderId: id,
-                folderName: topic.name || "N/A",
-              }))
-          );
+        filteredPrompts = getPromptList((p) => p.isFavorite);
         break;
 
       case "Single Prompts":
-        filteredPrompts = Object.entries(data)
-          .filter(
-            ([key]) =>
-              key.startsWith("single_prompt_") || key === "noFolderPrompts"
-          )
-          .flatMap(([key, topic]) => {
-            const promptList =
-              key === "noFolderPrompts" ? topic : topic.prompts || [];
-            return promptList.map((prompt) => ({
-              ...prompt,
-              folderId: key,
-              folderName: "Kein Ordner",
-              storageKey: key,
-            }));
-          })
-          .sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            if (dateB !== dateA) return dateB - dateA; // Neueste zuerst
-            return (a.title || "N/A").localeCompare(b.title || "N/A"); // Alphabetisch als Fallback
-          });
-        break;
-
-      case "Categorised Prompts":
-        filteredPrompts = Object.entries(data)
-          .filter(([, topic]) => isVisibleTopic(topic))
-          .flatMap(([id, topic]) => getPromptObjects(topic, id));
-        break;
-
-      case "Trash":
-        filteredPrompts = Object.entries(data)
-          .filter(([, topic]) => isTrashTopic(topic))
-          .flatMap(([id, topic]) => getPromptObjects(topic, id));
-        break;
-
-      case "Dynamic Prompts":
-        filteredPrompts = Object.entries(data).flatMap(([id, topic]) =>
-          (topic.prompts || [])
-            .filter((p) => p.content && /\{[^}]+\}/.test(p.content))
-            .map((prompt) => ({
-              ...prompt,
-              folderId: id,
-              folderName: topic.name || "N/A",
-            }))
+        filteredPrompts = getPromptList((p) => p.folderId === null).sort(
+          (a, b) => {
+            const dateA = a.createdAt || 0;
+            const dateB = b.createdAt || 0;
+            return (
+              dateB - dateA || (a.title || "").localeCompare(b.title || "")
+            );
+          }
         );
         break;
 
+      case "Categorised Prompts":
+        filteredPrompts = getPromptList((p) => p.folderId !== null);
+        break;
+
+      case "Trash":
+        filteredPrompts = trashRefs
+          .map((trashEntry) => {
+            const p = prompts[trashEntry.promptId];
+            if (!p) return null;
+            return {
+              ...p,
+              deletedAt: trashEntry.deletedAt,
+              originalFolderId: trashEntry.originalFolderId,
+              folderName: "Papierkorb",
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => b.deletedAt - a.deletedAt);
+        break;
+
+      case "Dynamic Prompts":
+        filteredPrompts = getPromptList((p) => /\{[^}]+\}/.test(p.content));
+        break;
+
       case "Static Prompts":
-        filteredPrompts = Object.entries(data)
-          .filter(([, topic]) => isVisibleTopic(topic))
-          .flatMap(([id, topic]) =>
-            topic.prompts
-              .filter((p) => p.content && !/\{[^}]+\}/.test(p.content))
-              .map((prompt) => ({
-                ...prompt,
-                folderId: id,
-                folderName: topic.name || "N/A",
-              }))
-          );
+        filteredPrompts = getPromptList(
+          (p) => p.content && !/\{[^}]+\}/.test(p.content)
+        );
         break;
 
       case "Unused Prompts":
-        filteredPrompts = Object.entries(data)
-          .filter(([, topic]) => isVisibleTopic(topic) || isHiddenTopic(topic))
-          .flatMap(([id, topic]) =>
-            topic.prompts
-              .filter((p) => !p.lastUsed || p.lastUsed < thirtyDaysAgo)
-              .map((prompt) => ({
-                ...prompt,
-                folderId: id,
-                folderName: topic.name || "N/A",
-              }))
-          );
-        break;
-
-      case "Workflows":
-        filteredPrompts = Object.entries(data)
-          .filter(([, topic]) => topic.steps)
-          .map(([id, topic]) => ({
-            title: topic.name || "Unnamed Workflow",
-            type: "Workflow",
-            compatibleModels: topic.aiModel || "N/A",
-            incompatibleModels: "N/A",
-            tags: "N/A",
-            folderName: "Workflows",
-            folderId: id,
-            lastUsed: topic.lastUsed
-              ? new Date(topic.lastUsed).toLocaleDateString("de-DE")
-              : "N/A",
-            createdAt: topic.createdAt
-              ? new Date(topic.createdAt).toLocaleDateString("de-DE")
-              : "N/A",
-          }));
+        filteredPrompts = getPromptList(
+          (p) => !p.lastUsed || p.lastUsed < thirtyDaysAgo
+        );
         break;
 
       default:
-        filteredPrompts = Object.entries(data)
-          .filter(
-            ([, topic]) =>
-              topic?.name?.toLowerCase() === category.toLowerCase() &&
-              !topic.isHidden &&
-              !topic.isTrash
-          )
-          .flatMap(([id, topic]) => getPromptObjects(topic, id));
+        const matchingFolderId = Object.entries(folders).find(
+          ([, folder]) => folder.name?.toLowerCase() === category.toLowerCase()
+        )?.[0];
+
+        if (matchingFolderId) {
+          const promptIds = folders[matchingFolderId].promptIds || [];
+          filteredPrompts = promptIds
+            .map((id) => prompts[id])
+            .filter(Boolean)
+            .map((p) => ({
+              ...p,
+              folderName: folders[matchingFolderId].name,
+            }));
+        }
         break;
     }
 
     renderPrompts(filteredPrompts);
+
     const header = document.querySelector("#prompts-header");
     if (header) {
-      header.textContent = category; // Später für Übersetzung anpassbar
-      header.dataset.category = category; // Setze das data-category-Attribut
+      header.textContent = category;
+      header.dataset.category = category;
     }
   });
 }
-function handleFolderClick(folder) {
-  chrome.storage.local.get(null, function (data) {
-    const filteredPrompts = Object.entries(data)
-      .filter(
-        ([id, topic]) =>
-          topic &&
-          typeof topic.name === "string" &&
-          topic.name.toLowerCase() === folder.toLowerCase() &&
-          !topic.isHidden &&
-          !topic.isTrash
-      )
-      .flatMap(([id, topic]) =>
-        (topic.prompts || []).map((prompt) => ({
-          ...prompt,
-          folderId: id,
-          folderName: topic.name,
-        }))
-      );
-    console.log(`Filtered prompts for folder ${folder}:`, filteredPrompts);
+
+function handleFolderClick(folderName) {
+  chrome.storage.local.get(["prompts", "folders"], function (data) {
+    const { prompts = {}, folders = {} } = data;
+
+    // Suche Ordner-ID anhand des Namens (case-insensitive)
+    const matchingEntry = Object.entries(folders).find(
+      ([, folder]) => folder.name?.toLowerCase() === folderName.toLowerCase()
+    );
+
+    if (!matchingEntry) {
+      console.warn(`Kein Ordner mit Namen "${folderName}" gefunden.`);
+      renderPrompts([]);
+      return;
+    }
+
+    const [folderId, folderObj] = matchingEntry;
+    const promptIds = folderObj.promptIds || [];
+
+    const filteredPrompts = promptIds
+      .map((id) => prompts[id])
+      .filter(Boolean)
+      .map((prompt) => ({
+        ...prompt,
+        folderId,
+        folderName: folderObj.name,
+      }));
+
+    console.log(`Filtered prompts for folder ${folderName}:`, filteredPrompts);
 
     renderPrompts(filteredPrompts);
-    document.querySelector(".main-header h1").textContent = folder;
+    document.querySelector(".main-header h1").textContent = folderName;
   });
 }
+
 function loadTagsFilter() {
   chrome.storage.local.get("tags", (data) => {
     const tagsFilter = document.getElementById("tags-filter");
