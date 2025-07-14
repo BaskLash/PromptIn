@@ -1,4 +1,28 @@
 function inputFieldTrigger() {
+  // Liste der erlaubten Domains
+  const allowedDomains = [
+    "grok.com", // Grok
+    "gemini.google.com", // Gemini
+    "chatgpt.com", // ChatGPT
+    "claude.ai", // Claude
+    "blackbox.ai", // BlackBox
+    "github.com/copilot", // GitHub Copilot (nur Copilot-Bereich)
+    "copilot.microsoft.com", // Microsoft Copilot
+    "chat.mistral.ai", // Mistral
+    "duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1", // DuckDuckGo AI Chat
+    "perplexity.ai", // Perplexity
+    "chat.deepseek.com", // DeepSeek
+    "deepai.org/chat", // DeepAI Chat
+    "chat.qwen.ai", // Qwen AI
+  ];
+
+  // Prüfe, ob die aktuelle Domain erlaubt ist
+  const currentDomain = window.location.hostname;
+  if (!allowedDomains.includes(currentDomain)) {
+    console.log(`Script nicht aktiv auf: ${currentDomain}`);
+    return; // Beende die Ausführung, wenn die Domain nicht erlaubt ist
+  }
+
   // Warte, bis das DOM geladen ist
   document.addEventListener("DOMContentLoaded", () => {
     // Warte zusätzlich 2 Sekunden nach DOM-Laden
