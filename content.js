@@ -503,7 +503,7 @@ async function promptSaver(message) {
     );
     try {
       const data = await new Promise((resolve, reject) => {
-        chrome.storage.local.get(null, (data) => {
+        chrome.storage.local.get(["folders", "prompts"], (data) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
@@ -511,6 +511,9 @@ async function promptSaver(message) {
           }
         });
       });
+
+      const folders = data.folders || {};
+      const prompts = data.prompts || {};
 
       combinePromptSelect.innerHTML =
         '<option value="">Select a prompt</option>';
@@ -520,130 +523,132 @@ async function promptSaver(message) {
       suggestedPromptsLabel.style.display = "none";
 
       const allPrompts = [];
-      Object.entries(data).forEach(([folderId, topic]) => {
-        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
-          topic.prompts.forEach((prompt, index) => {
-            const similarity = currentPrompt
-              ? computeCosineSimilarity(currentPrompt, prompt.content || "")
-              : 0;
-            allPrompts.push({
-              folderId,
-              index,
-              title: prompt.title || "Untitled Prompt",
-              content: prompt.content || "",
-              folderName: topic.isHidden ? "Single Prompt" : topic.name,
-              createdAt: prompt.createdAt || 0,
-              similarity,
-            });
-          });
-        }
+
+      Object.entries(prompts).forEach(([promptId, prompt]) => {
+        if (prompt.isDeleted) return;
+
+        const folderId = prompt.folderId || null;
+        const folder = folderId ? folders[folderId] : null;
+        const folderName = folder?.isHidden
+          ? "Single Prompt"
+          : folder?.name || "Ohne Ordner";
+
+        const similarity = currentPrompt
+          ? computeCosineSimilarity(currentPrompt, prompt.content || "")
+          : 0;
+
+        allPrompts.push({
+          promptId,
+          folderId,
+          title: prompt.title || "Untitled Prompt",
+          content: prompt.content || "",
+          folderName,
+          createdAt: prompt.createdAt || 0,
+          similarity,
+        });
       });
 
       console.log("Alle Prompts geladen:", allPrompts.length);
 
-      // Populate combinePromptSelect (alle Prompts)
       allPrompts
-        .sort((a, b) => b.createdAt - a.createdAt) // Neueste zuerst
+        .sort((a, b) => b.createdAt - a.createdAt)
         .forEach((prompt) => {
           const option = document.createElement("option");
-          option.value = `${prompt.folderId}:${prompt.index}`;
+          option.value = prompt.promptId;
           option.textContent = `${prompt.title} (${prompt.folderName})`;
           option.title = prompt.title;
           combinePromptSelect.appendChild(option);
         });
 
-      // Populate suggested prompts dropdown (max. 5 neueste oder ähnliche Prompts)
-      if (currentPrompt && currentPrompt.trim() !== "") {
+      const displaySuggestedPrompts = (prompts) => {
+        prompts.forEach((prompt) => {
+          const item = document.createElement("div");
+          item.className = "dropdown-item";
+          item.setAttribute("data-value", prompt.promptId);
+
+          const header = document.createElement("div");
+          header.className = "dropdown-item-header";
+
+          const title = document.createElement("span");
+          title.className = "dropdown-item-title";
+          title.textContent =
+            prompt.title.length > 50
+              ? prompt.title.slice(0, 50) + "..."
+              : prompt.title;
+          title.title = `${prompt.title} (Ähnlichkeit: ${(
+            prompt.similarity * 100
+          ).toFixed(2)}%, Kategorie: ${prompt.folderName}, Erstellt: ${new Date(
+            prompt.createdAt
+          ).toLocaleDateString()})`;
+
+          const toggle = document.createElement("span");
+          toggle.className = "dropdown-item-toggle";
+          toggle.textContent = "Inhalt anzeigen";
+
+          header.appendChild(title);
+          header.appendChild(toggle);
+
+          const contentWrapper = document.createElement("div");
+          contentWrapper.className = "dropdown-item-content-wrapper";
+          contentWrapper.style.display = "none";
+
+          const contentLabel = document.createElement("div");
+          contentLabel.className = "dropdown-item-label";
+          contentLabel.textContent = "Prompt-Inhalt:";
+
+          const content = document.createElement("div");
+          content.className = "dropdown-item-content";
+          content.style.marginBottom = "10px";
+          content.style.padding = "10px";
+          content.style.background = "#f8f9fa";
+          content.style.borderRadius = "4px";
+          content.style.fontSize = "13px";
+          content.style.color = "#2c3e50";
+          content.style.whiteSpace = "pre-wrap";
+          content.textContent = prompt.content || "Kein Inhalt verfügbar";
+
+          contentWrapper.appendChild(contentLabel);
+          contentWrapper.appendChild(content);
+
+          item.appendChild(header);
+          item.appendChild(contentWrapper);
+
+          toggle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isActive = contentWrapper.style.display === "block";
+            contentWrapper.style.display = isActive ? "none" : "block";
+            toggle.textContent = isActive
+              ? "Inhalt anzeigen"
+              : "Inhalt ausblenden";
+          });
+
+          item.addEventListener("click", () => {
+            combinePromptSelect.value = prompt.promptId;
+            suggestedDropdownButton.textContent = prompt.title;
+            suggestedDropdownContent.style.display = "none";
+            const event = new Event("change");
+            combinePromptSelect.dispatchEvent(event);
+          });
+
+          suggestedDropdownContent.appendChild(item);
+        });
+
+        suggestedPromptsDropdown.style.display = "block";
+        suggestedPromptsLabel.style.display = "block";
+      };
+
+      if (currentPrompt?.trim()) {
         const suggestedPrompts = allPrompts
           .sort((a, b) => {
-            // Priorität 1: Neueste Prompts (createdAt)
-            if (a.createdAt !== b.createdAt) {
-              return b.createdAt - a.createdAt;
-            }
-            // Priorität 2: Ähnlichkeit (falls createdAt gleich)
+            if (a.createdAt !== b.createdAt) return b.createdAt - a.createdAt;
             return b.similarity - a.similarity;
           })
-          .slice(0, 5); // Max. 5 Vorschläge
+          .slice(0, 5);
 
         console.log("Vorgeschlagene Prompts:", suggestedPrompts);
 
         if (suggestedPrompts.length > 0) {
-          suggestedPromptsDropdown.style.display = "block";
-          suggestedPromptsLabel.style.display = "block";
-          suggestedPrompts.forEach((prompt) => {
-            const item = document.createElement("div");
-            item.className = "dropdown-item";
-            item.setAttribute(
-              "data-value",
-              `${prompt.folderId}:${prompt.index}`
-            );
-
-            const header = document.createElement("div");
-            header.className = "dropdown-item-header";
-
-            const title = document.createElement("span");
-            title.className = "dropdown-item-title";
-            title.textContent =
-              prompt.title.length > 50
-                ? prompt.title.slice(0, 50) + "..."
-                : prompt.title;
-            title.title = `${prompt.title} (Ähnlichkeit: ${(
-              prompt.similarity * 100
-            ).toFixed(2)}%, Kategorie: ${
-              prompt.folderName
-            }, Erstellt: ${new Date(prompt.createdAt).toLocaleDateString()})`;
-
-            const toggle = document.createElement("span");
-            toggle.className = "dropdown-item-toggle";
-            toggle.textContent = "Inhalt anzeigen";
-
-            header.appendChild(title);
-            header.appendChild(toggle);
-
-            const contentWrapper = document.createElement("div");
-            contentWrapper.className = "dropdown-item-content-wrapper";
-            contentWrapper.style.display = "none";
-
-            const contentLabel = document.createElement("div");
-            contentLabel.className = "dropdown-item-label";
-            contentLabel.textContent = "Prompt-Inhalt:";
-
-            const content = document.createElement("div");
-            content.className = "dropdown-item-content";
-            content.style.marginBottom = "10px";
-            content.style.padding = "10px";
-            content.style.background = "#f8f9fa";
-            content.style.borderRadius = "4px";
-            content.style.fontSize = "13px";
-            content.style.color = "#2c3e50";
-            content.style.whiteSpace = "pre-wrap";
-            content.textContent = prompt.content || "Kein Inhalt verfügbar";
-
-            contentWrapper.appendChild(contentLabel);
-            contentWrapper.appendChild(content);
-
-            item.appendChild(header);
-            item.appendChild(contentWrapper);
-
-            toggle.addEventListener("click", (e) => {
-              e.stopPropagation();
-              const isActive = contentWrapper.style.display === "block";
-              contentWrapper.style.display = isActive ? "none" : "block";
-              toggle.textContent = isActive
-                ? "Inhalt anzeigen"
-                : "Inhalt ausblenden";
-            });
-
-            item.addEventListener("click", () => {
-              combinePromptSelect.value = `${prompt.folderId}:${prompt.index}`;
-              suggestedDropdownButton.textContent = prompt.title;
-              suggestedDropdownContent.style.display = "none";
-              const event = new Event("change");
-              combinePromptSelect.dispatchEvent(event);
-            });
-
-            suggestedDropdownContent.appendChild(item);
-          });
+          displaySuggestedPrompts(suggestedPrompts);
         } else {
           suggestedDropdownContent.innerHTML =
             "<div class='dropdown-item'>Keine ähnlichen Prompts gefunden.</div>";
@@ -651,86 +656,12 @@ async function promptSaver(message) {
           suggestedPromptsLabel.style.display = "block";
         }
       } else {
-        // Zeige die 5 neuesten Prompts, wenn kein currentPrompt vorhanden ist
         const recentPrompts = allPrompts
           .sort((a, b) => b.createdAt - a.createdAt)
           .slice(0, 5);
 
         if (recentPrompts.length > 0) {
-          suggestedPromptsDropdown.style.display = "block";
-          suggestedPromptsLabel.style.display = "block";
-          recentPrompts.forEach((prompt) => {
-            const item = document.createElement("div");
-            item.className = "dropdown-item";
-            item.setAttribute(
-              "data-value",
-              `${prompt.folderId}:${prompt.index}`
-            );
-
-            const header = document.createElement("div");
-            header.className = "dropdown-item-header";
-
-            const title = document.createElement("span");
-            title.className = "dropdown-item-title";
-            title.textContent =
-              prompt.title.length > 50
-                ? prompt.title.slice(0, 50) + "..."
-                : prompt.title;
-            title.title = `${prompt.title} (Kategorie: ${
-              prompt.folderName
-            }, Erstellt: ${new Date(prompt.createdAt).toLocaleDateString()})`;
-
-            const toggle = document.createElement("span");
-            toggle.className = "dropdown-item-toggle";
-            toggle.textContent = "Inhalt anzeigen";
-
-            header.appendChild(title);
-            header.appendChild(toggle);
-
-            const contentWrapper = document.createElement("div");
-            contentWrapper.className = "dropdown-item-content-wrapper";
-            contentWrapper.style.display = "none";
-
-            const contentLabel = document.createElement("div");
-            contentLabel.className = "dropdown-item-label";
-            contentLabel.textContent = "Prompt-Inhalt:";
-
-            const content = document.createElement("div");
-            content.className = "dropdown-item-content";
-            content.style.marginBottom = "10px";
-            content.style.padding = "10px";
-            content.style.background = "#f8f9fa";
-            content.style.borderRadius = "4px";
-            content.style.fontSize = "13px";
-            content.style.color = "#2c3e50";
-            content.style.whiteSpace = "pre-wrap";
-            content.textContent = prompt.content || "Kein Inhalt verfügbar";
-
-            contentWrapper.appendChild(contentLabel);
-            contentWrapper.appendChild(content);
-
-            item.appendChild(header);
-            item.appendChild(contentWrapper);
-
-            toggle.addEventListener("click", (e) => {
-              e.stopPropagation();
-              const isActive = contentWrapper.style.display === "block";
-              contentWrapper.style.display = isActive ? "none" : "block";
-              toggle.textContent = isActive
-                ? "Inhalt anzeigen"
-                : "Inhalt ausblenden";
-            });
-
-            item.addEventListener("click", () => {
-              combinePromptSelect.value = `${prompt.folderId}:${prompt.index}`;
-              suggestedDropdownButton.textContent = prompt.title;
-              suggestedDropdownContent.style.display = "none";
-              const event = new Event("change");
-              combinePromptSelect.dispatchEvent(event);
-            });
-
-            suggestedDropdownContent.appendChild(item);
-          });
+          displaySuggestedPrompts(recentPrompts);
         } else {
           suggestedDropdownContent.innerHTML =
             "<div class='dropdown-item'>Keine Prompts verfügbar.</div>";
@@ -1572,16 +1503,15 @@ async function promptSaver(message) {
   }
 
   // Funktion zum Laden ähnlicher Prompts
-  // Funktion zum Laden ähnlicher Prompts
   async function loadSimilarPrompts(currentPrompt) {
     console.log(
       "loadSimilarPrompts gestartet mit currentPrompt:",
       currentPrompt
     );
-    dropdownContent.innerHTML = ""; // Inhalt zurücksetzen
+    dropdownContent.innerHTML = "";
     dropdownButton.textContent = "Select a similar prompt";
-    similarPromptsDropdown.style.display = "none"; // Standardmäßig ausblenden
-    similarPromptsLabel.style.display = "none"; // Standardmäßig ausblenden
+    similarPromptsDropdown.style.display = "none";
+    similarPromptsLabel.style.display = "none";
 
     if (!currentPrompt || currentPrompt.trim() === "") {
       console.log("Leerer Prompt, Dropdown bleibt leer.");
@@ -1602,50 +1532,57 @@ async function promptSaver(message) {
           }
         });
       });
+
       console.log("Daten aus chrome.storage.local geladen:", data);
 
+      const { prompts = {}, folders = {} } = data;
       const allPrompts = [];
-      Object.entries(data).forEach(([folderId, topic]) => {
-        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
-          topic.prompts.forEach((prompt, index) => {
-            const similarity = computeCosineSimilarity(
-              currentPrompt,
-              prompt.content || ""
-            );
-            const { diffCount } = computePromptDiffForItem(
-              currentPrompt,
-              prompt.content || "",
-              document.createElement("div")
-            );
-            allPrompts.push({
-              folderId,
-              index,
-              title: prompt.title || "Untitled Prompt",
-              description: prompt.description || "Keine Beschreibung verfügbar",
-              content: prompt.content || "",
-              similarity,
-              diffCount,
-              isHidden: topic.isHidden || false,
-              folderName: topic.isHidden ? "Single Prompt" : topic.name,
-            });
-          });
-        }
+
+      Object.entries(prompts).forEach(([promptId, prompt]) => {
+        if (!prompt || !prompt.content) return;
+
+        const folderId = prompt.folderId;
+        const folder = folders[folderId] || {};
+        if (folder.isTrash) return;
+
+        const similarity = computeCosineSimilarity(
+          currentPrompt,
+          prompt.content
+        );
+        const { diffCount } = computePromptDiffForItem(
+          currentPrompt,
+          prompt.content,
+          document.createElement("div")
+        );
+
+        allPrompts.push({
+          promptId,
+          title: prompt.title || "Untitled Prompt",
+          description: prompt.description || "Keine Beschreibung verfügbar",
+          content: prompt.content,
+          similarity,
+          diffCount,
+          isHidden: folder.isHidden || false,
+          folderName: folder.isHidden
+            ? "Single Prompt"
+            : folder.name || "Unbenannter Ordner",
+          folderId: folderId || null,
+        });
       });
 
       const similarPrompts = allPrompts
         .filter((p) => p.similarity > 0.1)
-        .sort((a, b) => a.diffCount - b.diffCount); // Sortiere nach geringstem Unterschied
+        .sort((a, b) => a.diffCount - b.diffCount);
 
-      // Check for identical prompts (diffCount === 0)
       const identicalPrompt = similarPrompts.find((p) => p.diffCount === 0);
       if (identicalPrompt) {
         console.log("Identischer Prompt gefunden:", identicalPrompt.title);
         dropdownContent.innerHTML = `
-          <div class='dropdown-item'>
-            This prompt already exists:<br>
-            <strong>Title:</strong> ${identicalPrompt.title}<br>
-            <strong>Description:</strong> ${identicalPrompt.description}
-          </div>`;
+        <div class='dropdown-item'>
+          This prompt already exists:<br>
+          <strong>Title:</strong> ${identicalPrompt.title}<br>
+          <strong>Description:</strong> ${identicalPrompt.description}
+        </div>`;
         similarPromptsDropdown.style.display = "block";
         similarPromptsLabel.style.display = "block";
         return;
@@ -1665,7 +1602,6 @@ async function promptSaver(message) {
       similarPromptsLabel.style.display = "block";
 
       similarPrompts.forEach((prompt, index) => {
-        // Skip prompts with diffCount === 0 (handled above)
         if (prompt.diffCount === 0) return;
 
         const item = document.createElement("div");
@@ -1694,7 +1630,6 @@ async function promptSaver(message) {
         contentWrapper.className = "dropdown-item-content-wrapper";
         contentWrapper.style.display = "none";
 
-        // Prompt-Inhalt mit Label
         const contentLabel = document.createElement("div");
         contentLabel.className = "dropdown-item-label";
         contentLabel.textContent = "Prompt Content:";
@@ -1710,7 +1645,6 @@ async function promptSaver(message) {
         content.style.whiteSpace = "pre-wrap";
         content.textContent = prompt.content || "Kein Inhalt verfügbar";
 
-        // Differenzbereich mit Label
         const diffLabel = document.createElement("div");
         diffLabel.className = "dropdown-item-label";
         diffLabel.textContent = "Differences:";
@@ -1744,12 +1678,6 @@ async function promptSaver(message) {
           const isActive = contentWrapper.style.display === "block";
           contentWrapper.style.display = isActive ? "none" : "block";
           toggle.textContent = isActive ? "Show content" : "Hide content";
-          console.log(
-            "Toggle geklickt für:",
-            prompt.title,
-            "Aktiv:",
-            !isActive
-          );
 
           if (!isActive) {
             const { diffCount } = computePromptDiffForItem(
@@ -1773,45 +1701,51 @@ async function promptSaver(message) {
           replacePromptSelect.innerHTML =
             '<option value="">Select a prompt</option>';
 
-          if (prompt.isHidden) {
-            // Für Single Prompts, lade Prompts aus allen versteckten Ordnern
-            chrome.storage.local.get(null, (data) => {
-              let singlePrompts = [];
-              Object.entries(data).forEach(([id, topic]) => {
-                if (topic.isHidden && !topic.isTrash && topic.prompts) {
-                  topic.prompts.forEach((p, i) => {
-                    singlePrompts.push({
-                      folderId: id,
-                      index: i,
-                      title: p.title || "Untitled Prompt",
-                    });
+          chrome.storage.local.get(null, (data) => {
+            const { prompts = {}, folders = {} } = data;
+            let promptOptions = [];
+
+            if (prompt.isHidden) {
+              Object.entries(folders).forEach(([id, folder]) => {
+                if (
+                  folder.isHidden &&
+                  !folder.isTrash &&
+                  Array.isArray(folder.promptIds)
+                ) {
+                  folder.promptIds.forEach((pid) => {
+                    const p = prompts[pid];
+                    if (p) {
+                      promptOptions.push({
+                        promptId: pid,
+                        title: p.title || "Untitled Prompt",
+                      });
+                    }
                   });
                 }
               });
-              singlePrompts.forEach((p) => {
-                const option = document.createElement("option");
-                option.value = `${p.folderId}:${p.index}`;
-                option.textContent = p.title;
-                if (p.folderId === prompt.folderId && p.index === prompt.index)
-                  option.selected = true;
-                replacePromptSelect.appendChild(option);
-              });
-            });
-          } else {
-            // Für Categorised Prompts, lade Prompts aus dem spezifischen Ordner
-            chrome.storage.local.get(prompt.folderId, (data) => {
-              const topic = data[prompt.folderId];
-              if (topic && topic.prompts) {
-                topic.prompts.forEach((p, i) => {
-                  const option = document.createElement("option");
-                  option.value = i;
-                  option.textContent = p.title || "Untitled Prompt";
-                  if (i === prompt.index) option.selected = true;
-                  replacePromptSelect.appendChild(option);
+            } else {
+              const folder = folders[prompt.folderId];
+              if (folder && Array.isArray(folder.promptIds)) {
+                folder.promptIds.forEach((pid) => {
+                  const p = prompts[pid];
+                  if (p) {
+                    promptOptions.push({
+                      promptId: pid,
+                      title: p.title || "Untitled Prompt",
+                    });
+                  }
                 });
               }
+            }
+
+            promptOptions.forEach((p) => {
+              const option = document.createElement("option");
+              option.value = p.promptId;
+              option.textContent = p.title;
+              if (p.promptId === prompt.promptId) option.selected = true;
+              replacePromptSelect.appendChild(option);
             });
-          }
+          });
 
           dropdownButton.textContent = prompt.title;
           dropdownContent.style.display = "none";
