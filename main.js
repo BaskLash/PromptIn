@@ -527,6 +527,7 @@ function showFolder(folderId) {
 }
 
 function showCategory(category) {
+  console.log(`showCategory called with category: ${category}`);
   const folderEntries = document.getElementById("folder-entries");
   const promptSearchInput = document.getElementById("prompt-search");
   folderEntries.innerHTML = "";
@@ -536,19 +537,37 @@ function showCategory(category) {
     const prompts = data.prompts || {};
 
     let allPrompts = [];
+
+    console.log("Storage Data:", data); // Debugging
+    console.log("Prompts:", prompts, "Folders:", folders); // Debugging
+
+    // Prompts aus Ordnern laden
     Object.entries(folders).forEach(([folderId, folder]) => {
       if (Array.isArray(folder.promptIds)) {
-        folder.promptIds.forEach((pid) => {
-          const prompt = prompts[pid];
+        folder.promptIds.forEach((promptId) => {
+          const prompt = prompts[promptId];
           if (prompt) {
             allPrompts.push({
               prompt,
               folderId,
-              promptId: pid, // Verwende pid direkt
-              isHidden: folder.isHidden || false,
+              promptId,
               isTrash: folder.isTrash || false,
+              isHidden: folder.isHidden || false,
             });
           }
+        });
+      }
+    });
+
+    // Prompts ohne Ordnerzuweisung (folderId === null)
+    Object.entries(prompts).forEach(([promptId, prompt]) => {
+      if (!prompt.folderId) {
+        allPrompts.push({
+          prompt,
+          folderId: null,
+          promptId,
+          isTrash: false,
+          isHidden: false,
         });
       }
     });
@@ -562,39 +581,40 @@ function showCategory(category) {
         displayName =
           translations[currentLang]?.category_favorites || "Favorites";
         break;
+
       case "category_all_prompts":
         filteredPrompts = allPrompts.filter(({ isTrash }) => !isTrash);
         displayName =
           translations[currentLang]?.category_all_prompts || "All Prompts";
         break;
+
       case "category_single_prompts":
-        filteredPrompts = allPrompts.filter(({ folderId }) =>
-          folderId.startsWith("single_prompt_")
-        );
+        filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.folderId);
+        console.log("Single Prompts:", filteredPrompts); // Debugging
         displayName =
           translations[currentLang]?.category_single_prompts ||
           "Single Prompts";
         break;
+
       case "category_categorised_prompts":
         filteredPrompts = allPrompts.filter(
-          ({ folderId }) =>
-            !folderId.startsWith("single_prompt_") &&
-            !folderId.startsWith("workflow_")
+          ({ prompt }) =>
+            prompt.folderId && !prompt.folderId.startsWith("workflow_")
         );
         displayName =
           translations[currentLang]?.category_categorised_prompts ||
           "Categorised Prompts";
         break;
+
       case "category_dynamic_prompts":
-        filteredPrompts = allPrompts.filter(
-          ({ prompt }) =>
-            prompt.type === "prompt-engineering" ||
-            prompt.type === "meta-prompt"
+        filteredPrompts = allPrompts.filter(({ prompt }) =>
+          ["prompt-engineering", "meta-prompt"].includes(prompt.type)
         );
         displayName =
           translations[currentLang]?.category_dynamic_prompts ||
           "Dynamic Prompts";
         break;
+
       case "category_static_prompts":
         filteredPrompts = allPrompts.filter(
           ({ prompt }) =>
@@ -605,23 +625,28 @@ function showCategory(category) {
           translations[currentLang]?.category_static_prompts ||
           "Static Prompts";
         break;
+
       case "category_unused_prompts":
         filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.lastUsed);
         displayName =
           translations[currentLang]?.category_unused_prompts ||
           "Unused Prompts";
         break;
+
       case "category_workflows":
-        filteredPrompts = allPrompts.filter(({ folderId }) =>
-          folderId.startsWith("workflow_")
+        filteredPrompts = allPrompts.filter(
+          ({ prompt }) =>
+            prompt.folderId && prompt.folderId.startsWith("workflow_")
         );
         displayName =
           translations[currentLang]?.category_workflows || "Workflows";
         break;
+
       case "category_trash":
         filteredPrompts = allPrompts.filter(({ isTrash }) => isTrash);
         displayName = translations[currentLang]?.category_trash || "Trash";
         break;
+
       default:
         filteredPrompts = [];
     }
@@ -640,6 +665,7 @@ function showCategory(category) {
         }</td></tr>`;
         return;
       }
+
       promptsToRender.forEach(({ prompt, folderId, promptId }) => {
         const tr = document.createElement("tr");
         tr.dataset.entry = prompt.title;
@@ -652,10 +678,8 @@ function showCategory(category) {
           </td>
         `;
         folderEntries.appendChild(tr);
-        console.log(
-          `Prompt Row: ID=${promptId}, FolderID=${folderId}, Title=${prompt.title}`
-        ); // Debugging
       });
+
       attachFolderTableEvents();
     }
 
@@ -669,6 +693,7 @@ function showCategory(category) {
         renderPrompts(filteredPrompts);
         return;
       }
+
       const scoredPrompts = filteredPrompts.map(
         ({ prompt, folderId, promptId }) => {
           const titleDistance = levenshteinDistance(
@@ -690,7 +715,9 @@ function showCategory(category) {
           return { prompt, folderId, promptId, distance: minDistance };
         }
       );
+
       scoredPrompts.sort((a, b) => a.distance - b.distance);
+
       const searchedPrompts = scoredPrompts.map(
         ({ prompt, folderId, promptId }) => ({
           prompt,
@@ -698,12 +725,14 @@ function showCategory(category) {
           promptId,
         })
       );
+
       renderPrompts(searchedPrompts);
     });
 
     document.getElementById("folder-overlay").classList.add("open");
     document.getElementById("side-nav").classList.remove("open");
     document.getElementById("plus-btn").style.display = "none";
+
     navigationState = { source: "category", folderId: null, category };
   });
 }
@@ -1360,6 +1389,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (lang !== "de") loadTranslations("de"); // Fallback auf Deutsch
     }
   }
+
+  attachCategoryClickEvents();
 
   // Übersicht öffnen
   overviewBtn.addEventListener("click", () => {

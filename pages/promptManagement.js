@@ -321,9 +321,6 @@ function showCreatePromptModal(category) {
   document.body.appendChild(modal);
 
   closeSpan.onclick = () => modal.remove();
-  window.onclick = (event) => {
-    if (event.target === modal) modal.remove();
-  };
 }
 function saveNewPrompt(prompt, folderId) {
   if (!prompt.promptId) {
@@ -528,7 +525,11 @@ function saveNewPrompt(prompt, folderId) {
           } else if (action === "add-to-favorites") {
             toggleFavorite(newPrompt, targetFolderId, row);
           } else if (action === "show-versions") {
-            showPromptVersions(newPrompt.promptId, row);
+            if (!newPrompt.promptId) {
+              console.error("Prompt ID is missing for showPromptVersions");
+              return;
+            }
+            showPromptVersions(newPrompt.promptId);
           } else if (action === "export") {
             exportPrompt(newPrompt, targetFolderId);
           } else if (action === "move-to-trash") {

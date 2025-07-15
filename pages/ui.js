@@ -406,16 +406,11 @@ function renderPrompts(prompts) {
         } else if (action === "add-to-favorites") {
           await toggleFavorite(prompt, prompt.folderId, row);
         } else if (action === "show-versions" && prompt.type !== "Workflow") {
-          chrome.storage.local.get(prompt.folderId, (data) => {
-            const topic = data[prompt.folderId];
-            if (!topic || !topic.prompts) return;
-            const promptIndex = topic.prompts.findIndex(
-              (p) => p.title === prompt.title && p.content === prompt.content
-            );
-            if (promptIndex !== -1) {
-              showPromptVersions(prompt.folderId, promptIndex, row);
-            }
-          });
+          if (!prompt.promptId) {
+            console.error("Prompt ID is missing for showPromptVersions");
+            return;
+          }
+          showPromptVersions(prompt.promptId);
         } else if (action === "export" && prompt.type !== "Workflow") {
           await exportPrompt(prompt, prompt.folderId);
         } else if (action === "delete" && prompt.type !== "Workflow") {
