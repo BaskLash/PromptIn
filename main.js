@@ -312,43 +312,24 @@ function sortPrompts(prompts) {
   });
 }
 
-function attachMainTableEvents() {
-  document
-    .querySelectorAll(".entry-table:not(.folder-entry-table) tr")
-    .forEach((tr) => {
-      const btn = tr.querySelector(".action-btn");
-      if (btn) {
-        tr.addEventListener("mouseenter", () => {
-          hoveredRow = tr;
-          keepActionButtonVisible(btn);
-        });
-
-        tr.addEventListener("mouseleave", () => {
-          if (!isDropdownOpen || btn !== currentButton) {
-            hideActionButton(btn);
-          }
-          hoveredRow = null;
-        });
-
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          handleActionButtonClick(btn, tr);
-        });
-      }
-
-      tr.addEventListener("click", (event) => {
-        if (!event.target.classList.contains("action-btn")) {
-          const promptId = tr.dataset.promptId; // Verwende promptId statt promptIndex
-          navigationState = { source: "main", folderId: null };
-          showPromptDetails(promptId); // Übergib promptId
-        }
-      });
-    });
-}
-
 function attachFolderTableEvents() {
-  document.querySelectorAll(".folder-entry-table tr").forEach((row) => {
+  const rows = document.querySelectorAll(".folder-entry-table tr");
+  console.log(`Found ${rows.length} rows in folder-entry-table`); // Debugging
+  rows.forEach((row) => {
     const actionBtn = row.querySelector(".action-btn");
+    const promptId = row.dataset.promptId;
+    const folderId = row.dataset.folderId;
+    if (!promptId) {
+      console.error(
+        `Missing promptId for row: Dataset=${JSON.stringify(row.dataset)}`
+      );
+      return;
+    }
+    console.log(
+      `Binding events for row: PromptID=${promptId}, FolderID=${folderId}, Dataset=${JSON.stringify(
+        row.dataset
+      )}`
+    ); // Debugging
     if (actionBtn) {
       row.addEventListener("mouseenter", () => {
         hoveredRow = row;
@@ -370,12 +351,70 @@ function attachFolderTableEvents() {
 
     row.addEventListener("click", (event) => {
       if (!event.target.classList.contains("action-btn")) {
-        const promptId = row.dataset.promptId; // Verwende promptId statt promptIndex
-        showPromptDetails(promptId); // Übergib promptId
-        document.getElementById("folder-overlay").classList.remove("open");
+        console.log(
+          `Row clicked: PromptID=${promptId}, FolderID=${folderId}, Dataset=${JSON.stringify(
+            row.dataset
+          )}`
+        ); // Debugging
+        navigationState = {
+          source: "folder",
+          folderId: folderId,
+          category: null,
+        };
+        showPromptDetails(promptId);
       }
     });
   });
+}
+
+function attachMainTableEvents() {
+  document
+    .querySelectorAll(".entry-table:not(.folder-entry-table) tr")
+    .forEach((tr) => {
+      const btn = tr.querySelector(".action-btn");
+      const promptId = tr.dataset.promptId;
+      if (!promptId) {
+        console.error(
+          `Missing promptId for row: Dataset=${JSON.stringify(tr.dataset)}`
+        );
+        return;
+      }
+      console.log(
+        `Binding events for row: PromptID=${promptId}, Dataset=${JSON.stringify(
+          tr.dataset
+        )}`
+      ); // Debugging
+      if (btn) {
+        tr.addEventListener("mouseenter", () => {
+          hoveredRow = tr;
+          keepActionButtonVisible(btn);
+        });
+
+        tr.addEventListener("mouseleave", () => {
+          if (!isDropdownOpen || btn !== currentButton) {
+            hideActionButton(btn);
+          }
+          hoveredRow = null;
+        });
+
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          handleActionButtonClick(btn, tr);
+        });
+      }
+
+      tr.addEventListener("click", (event) => {
+        if (!event.target.classList.contains("action-btn")) {
+          console.log(
+            `Row clicked: PromptID=${promptId}, Dataset=${JSON.stringify(
+              tr.dataset
+            )}`
+          );
+          navigationState = { source: "main", folderId: null, category: null };
+          showPromptDetails(promptId);
+        }
+      });
+    });
 }
 
 function showFolder(folderId) {
@@ -388,7 +427,6 @@ function showFolder(folderId) {
     const prompts = data.prompts || {};
     const folder = folders[folderId];
 
-    // Öffne das Overlay sofort
     document.getElementById("folder-overlay").classList.add("open");
     document.getElementById("side-nav").classList.remove("open");
     document.getElementById("plus-btn").style.display = "none";
@@ -413,18 +451,18 @@ function showFolder(folderId) {
     promptSearchInput.style.display = "block";
     folderSortBtn.style.display = "block";
 
-    function renderPrompts(promptsToRender) {
+    function renderPrompts(promptsToRender, folderId) {
       folderEntries.innerHTML = "";
       if (promptsToRender.length === 0) {
         folderEntries.innerHTML =
           '<tr><td colspan="2">Keine Prompts gefunden</td></tr>';
         return;
       }
-      promptsToRender.forEach((prompt) => {
+      promptsToRender.forEach(({ prompt, id }) => {
         const tr = document.createElement("tr");
         tr.dataset.entry = prompt.title;
         tr.dataset.folderId = folderId;
-        tr.dataset.promptId = prompt.id;
+        tr.dataset.promptId = id;
         tr.innerHTML = `
           <td>${prompt.title}</td>
           <td class="action-cell">
@@ -432,7 +470,11 @@ function showFolder(folderId) {
           </td>
         `;
         folderEntries.appendChild(tr);
+        console.log(
+          `Prompt Row: ID=${id}, FolderID=${folderId}, Title=${prompt.title}`
+        ); // Debugging
       });
+      console.log("Attaching folder table events..."); // Debugging
       attachFolderTableEvents();
     }
 
@@ -440,21 +482,22 @@ function showFolder(folderId) {
       .map((pid) => {
         const prompt = prompts[pid];
         if (prompt) return { prompt, id: pid };
+        console.warn(`Prompt with ID ${pid} not found in prompts`); // Debugging
         return null;
       })
       .filter(Boolean);
 
     promptsWithDetails = sortPrompts(promptsWithDetails);
-    renderPrompts(promptsWithDetails.map(({ prompt }) => prompt));
+    renderPrompts(promptsWithDetails, folderId);
 
     promptSearchInput.value = "";
     promptSearchInput.oninput = function () {
       const searchTerm = this.value.trim().toLowerCase();
       if (!searchTerm) {
-        renderPrompts(promptsWithDetails.map(({ prompt }) => prompt));
+        renderPrompts(promptsWithDetails, folderId);
         return;
       }
-      const scoredPrompts = promptsWithDetails.map(({ prompt }) => {
+      const scoredPrompts = promptsWithDetails.map(({ prompt, id }) => {
         const titleDistance = levenshteinDistance(
           prompt.title.toLowerCase(),
           searchTerm
@@ -471,11 +514,14 @@ function showFolder(folderId) {
           descriptionDistance,
           contentDistance
         );
-        return { prompt, distance: minDistance };
+        return { prompt, id, distance: minDistance };
       });
       scoredPrompts.sort((a, b) => a.distance - b.distance);
-      const filteredPrompts = scoredPrompts.map(({ prompt }) => prompt);
-      renderPrompts(filteredPrompts);
+      const filteredPrompts = scoredPrompts.map(({ prompt, id }) => ({
+        prompt,
+        id,
+      }));
+      renderPrompts(filteredPrompts, folderId);
     };
   });
 }
@@ -489,18 +535,16 @@ function showCategory(category) {
     const folders = data.folders || {};
     const prompts = data.prompts || {};
 
-    // Alle Prompts aus allen Ordnern als flache Liste mit Details
     let allPrompts = [];
     Object.entries(folders).forEach(([folderId, folder]) => {
       if (Array.isArray(folder.promptIds)) {
-        folder.promptIds.forEach((pid, index) => {
+        folder.promptIds.forEach((pid) => {
           const prompt = prompts[pid];
           if (prompt) {
             allPrompts.push({
               prompt,
               folderId,
-              promptId: pid,
-              index,
+              promptId: pid, // Verwende pid direkt
               isHidden: folder.isHidden || false,
               isTrash: folder.isTrash || false,
             });
@@ -600,7 +644,7 @@ function showCategory(category) {
         const tr = document.createElement("tr");
         tr.dataset.entry = prompt.title;
         tr.dataset.folderId = folderId;
-        tr.dataset.promptId = promptId; // besser als Index
+        tr.dataset.promptId = promptId;
         tr.innerHTML = `
           <td>${prompt.title}</td>
           <td class="action-cell">
@@ -608,6 +652,9 @@ function showCategory(category) {
           </td>
         `;
         folderEntries.appendChild(tr);
+        console.log(
+          `Prompt Row: ID=${promptId}, FolderID=${folderId}, Title=${prompt.title}`
+        ); // Debugging
       });
       attachFolderTableEvents();
     }
@@ -672,7 +719,7 @@ function loadPromptsTable() {
     const prompts = data.prompts || {};
 
     const allPromptEntries = Object.entries(prompts)
-      .filter(([, prompt]) => !prompt.isTrash) // Papierkorb ausschließen
+      .filter(([, prompt]) => !prompt.isTrash)
       .map(([promptId, prompt]) => ({
         promptId,
         prompt,
@@ -689,7 +736,6 @@ function loadPromptsTable() {
         tr.dataset.entry = prompt.title;
         tr.dataset.promptId = promptId;
         tr.dataset.folderId = folderId;
-
         tr.innerHTML = `
           <td>${prompt.title}</td>
           <td class="action-cell">
@@ -697,6 +743,9 @@ function loadPromptsTable() {
           </td>
         `;
         tableBody.appendChild(tr);
+        console.log(
+          `Prompt Row: ID=${promptId}, FolderID=${folderId}, Title=${prompt.title}`
+        ); // Debugging
       });
     }
 
@@ -705,13 +754,17 @@ function loadPromptsTable() {
 }
 
 function showPromptDetails(promptId) {
+  console.log(`showPromptDetails called with PromptID=${promptId}`); // Debugging
   chrome.storage.local.get(["prompts", "folders", "tags"], function (data) {
     const prompts = data.prompts || {};
     const folders = data.folders || {};
     const tags = data.tags || [];
 
     const prompt = prompts[promptId];
-    if (!prompt) return;
+    if (!prompt) {
+      console.error(`Prompt with ID ${promptId} not found!`); // Debugging
+      return;
+    }
 
     const detailOverlay = document.getElementById("detail-overlay");
     const detailTitle = document.getElementById("detail-title");
@@ -765,7 +818,6 @@ function showPromptDetails(promptId) {
       "Qwen AI",
     ];
 
-    // Compatible
     entryCompatible.innerHTML = modelList
       .map(
         (model) => `
@@ -779,7 +831,6 @@ function showPromptDetails(promptId) {
       )
       .join("");
 
-    // Incompatible
     entryIncompatible.innerHTML = modelList
       .map(
         (model) => `
@@ -793,7 +844,6 @@ function showPromptDetails(promptId) {
       )
       .join("");
 
-    // Tags
     entryTags.innerHTML = tags
       .map(
         (tag) => `
@@ -805,7 +855,6 @@ function showPromptDetails(promptId) {
       )
       .join("");
 
-    // Ordnerauswahl
     entryFolder.innerHTML =
       '<option value="" data-i18n="folder_select"></option>';
 
@@ -821,7 +870,6 @@ function showPromptDetails(promptId) {
 
     applyTranslations(currentLang);
 
-    // Disable Bearbeitung
     entryTitle.readOnly = true;
     entryDescription.readOnly = true;
     entryContent.readOnly = true;
@@ -836,14 +884,54 @@ function showPromptDetails(promptId) {
     addTagBtn.disabled = true;
     tagInputGroup.style.display = "none";
 
-    // Detail-Aktionen ausblenden
     document.querySelector(".detail-actions").style.display = "none";
 
-    // Prompt-Referenz speichern
     entryTitle.dataset.promptId = promptId;
 
     detailOverlay.classList.add("open");
     document.getElementById("plus-btn").style.display = "none";
+
+    if (navigationState.source === "folder" && navigationState.folderId) {
+      console.log(
+        `Keeping folder-overlay open for FolderID=${navigationState.folderId}`
+      );
+      document.getElementById("folder-overlay").classList.add("open");
+    } else {
+      console.log("Closing folder-overlay for main view");
+      document.getElementById("folder-overlay").classList.remove("open");
+    }
+  });
+}
+
+function validateFolderPrompts() {
+  chrome.storage.local.get(["folders", "prompts"], (data) => {
+    const folders = data.folders || {};
+    const prompts = data.prompts || {};
+    let updated = false;
+
+    Object.entries(folders).forEach(([folderId, folder]) => {
+      if (folder.promptIds) {
+        const validPromptIds = folder.promptIds.filter(
+          (pid) => prompts[pid] && prompts[pid].promptId === pid
+        );
+        if (validPromptIds.length !== folder.promptIds.length) {
+          console.warn(
+            `Invalid prompt IDs removed from folder ${folderId}:`,
+            folder.promptIds.filter(
+              (pid) => !prompts[pid] || prompts[pid].promptId !== pid
+            )
+          );
+          folder.promptIds = validPromptIds;
+          updated = true;
+        }
+      }
+    });
+
+    if (updated) {
+      chrome.storage.local.set({ folders }, () => {
+        console.log("Folders updated with valid prompt IDs");
+      });
+    }
   });
 }
 
@@ -1258,6 +1346,7 @@ function importDataFromJSON(event) {
 
 // DOMContentLoaded Event Listener
 document.addEventListener("DOMContentLoaded", () => {
+  validateFolderPrompts();
   async function loadTranslations(lang) {
     try {
       const response = await fetch(`i18n/${lang}.json`);
@@ -1438,7 +1527,17 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("detail-overlay").classList.remove("open");
     document.getElementById("plus-btn").style.display = "flex";
     if (navigationState.source === "folder" && navigationState.folderId) {
-      showFolder(navigationState.folderId);
+      showFolder(navigationState.folderId); // Zurück zur Ordneransicht
+    } else if (
+      navigationState.source === "category" &&
+      navigationState.category
+    ) {
+      showCategory(navigationState.category); // Zurück zur Kategorieansicht
+    } else {
+      // Zurück zur Hauptübersicht
+      document.getElementById("folder-overlay").classList.remove("open");
+      document.getElementById("side-nav").classList.remove("open");
+      loadPromptsTable(); // Hauptübersicht neu laden
     }
   });
 
@@ -2135,9 +2234,9 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // Prompt in den ausgewählten Ordner speichern
-    chrome.storage.local.get(["folders", "promptsById"], (data) => {
+    chrome.storage.local.get(["folders", "prompts"], (data) => {
       const folders = data.folders || {};
-      const promptsById = data.promptsById || {};
+      const prompts = data.prompts || {};
 
       // Existierenden Ordner holen oder neu erstellen
       const folder = folders[folderId] || {
@@ -2152,8 +2251,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const promptId = newPrompt.id || `prompt_${Date.now()}`;
       newPrompt.id = promptId;
 
-      // Prompt in promptsById speichern / aktualisieren
-      promptsById[promptId] = newPrompt;
+      prompts[promptId] = newPrompt;
 
       // Prompt-ID zum Ordner hinzufügen, falls noch nicht vorhanden
       if (!folder.promptIds.includes(promptId)) {
@@ -2167,7 +2265,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ...folders,
             [folderId]: folder,
           },
-          promptsById: promptsById,
+          prompts: prompts,
         },
         () => {
           console.log(
@@ -2258,9 +2356,9 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       // Daten aus storage holen
-      chrome.storage.local.get(["folders", "promptsById"], (data) => {
+      chrome.storage.local.get(["folders", "prompts"], (data) => {
         const folders = data.folders || {};
-        const promptsById = data.promptsById || {};
+        const prompts = data.prompts || {};
 
         // Ordner auslesen oder neu anlegen
         const folder = folders[folderId] || {
@@ -2271,7 +2369,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Prompt speichern
-        promptsById[promptId] = promptObj;
+        prompts[promptId] = promptObj;
 
         // Prompt-ID dem Ordner hinzufügen (wenn noch nicht vorhanden)
         if (!folder.promptIds.includes(promptId)) {
@@ -2282,7 +2380,7 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.storage.local.set(
           {
             folders: { ...folders, [folderId]: folder },
-            promptsById: promptsById,
+            prompts: prompts,
           },
           () => {
             document.getElementById("detail-overlay").classList.remove("open");
