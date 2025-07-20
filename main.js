@@ -8,14 +8,130 @@ const folderSortDropdown = document.getElementById("folder-sort-dropdown");
 let navigationState = { source: "main", folderId: null };
 let sortState = { sortBy: "title", sortOrder: "ascending" };
 let translations = {};
-let currentLang =
-  navigator.language.split("-")[0] || localStorage.getItem("language") || "en";
+let currentLang = "";
 let isSortDropdownOpen = false;
 let isFolderSortDropdownOpen = false;
 let currentButton = null;
 let isDropdownOpen = false;
 let isMouseOverDropdown = false;
 let hoveredRow = null;
+
+// Global Functions
+function updateSortButtonText() {
+  const sortKeyMap = {
+    lastUsed: "last_used",
+    title: "title",
+    ascending: "ascending",
+    descending: "descending",
+  };
+
+  const sortByKey = `sort_by_${
+    sortKeyMap[sortState.sortBy] || sortState.sortBy
+  }`;
+  const sortOrderKey = `sort_${
+    sortKeyMap[sortState.sortOrder] || sortState.sortOrder
+  }`;
+
+  const sortByText =
+    translations[currentLang]?.[sortByKey] ||
+    translations["de"]?.[sortByKey] || // Fallback to German
+    sortState.sortBy; // Fallback to raw sortBy value
+  const sortOrderText =
+    translations[currentLang]?.[sortOrderKey] ||
+    translations["de"]?.[sortOrderKey] || // Fallback to German
+    sortState.sortOrder; // Fallback to raw sortOrder value
+
+  console.log(
+    `Updating sort button: Lang=${currentLang}, sortByKey=${sortByKey}, sortOrderKey=${sortOrderKey}, sortByText=${sortByText}, sortOrderText=${sortOrderText}`
+  ); // Debugging
+
+  sortBtn.textContent = `${sortByText} (${sortOrderText})`;
+
+  // Always update folderSortBtn to ensure consistency
+  folderSortBtn.textContent = `${sortByText} (${sortOrderText})`;
+}
+
+function updateSortDropdownSelection(dropdown = sortDropdown) {
+  dropdown.querySelectorAll(".sort-option").forEach((option) => {
+    option.classList.remove("selected");
+    if (
+      (option.dataset.sortOrder &&
+        option.dataset.sortOrder === sortState.sortOrder) ||
+      (option.dataset.sortBy && option.dataset.sortBy === sortState.sortBy)
+    ) {
+      option.classList.add("selected");
+    }
+  });
+  updateSortButtonText();
+}
+
+function sortPrompts(prompts) {
+  return prompts.sort((a, b) => {
+    let aValue, bValue;
+
+    switch (sortState.sortBy) {
+      case "title":
+        aValue = a.prompt.title?.toLowerCase() || "";
+        bValue = b.prompt.title?.toLowerCase() || "";
+        break;
+      case "lastUsed":
+        aValue = a.prompt.lastUsed || 0;
+        bValue = b.prompt.lastUsed || 0;
+        break;
+      default:
+        aValue = a.prompt.title?.toLowerCase() || "";
+        bValue = b.prompt.title?.toLowerCase() || "";
+    }
+
+    const order = sortState.sortOrder === "ascending" ? 1 : -1;
+
+    if (aValue < bValue) return -1 * order;
+    if (aValue > bValue) return 1 * order;
+    return 0;
+  });
+}
+
+function handleSortOptionClick(option) {
+  const dropdown = option.closest(".sort-dropdown");
+  const previousSortState = { ...sortState }; // For debugging
+
+  if (option.dataset.sortOrder) {
+    sortState.sortOrder = option.dataset.sortOrder;
+  } else if (option.dataset.sortBy) {
+    sortState.sortBy = option.dataset.sortBy;
+  }
+
+  console.log(
+    `Sort option clicked: Previous state=${JSON.stringify(
+      previousSortState
+    )}, New state=${JSON.stringify(sortState)}`
+  ); // Debugging
+
+  dropdown.style.display = "none";
+  if (dropdown.id === "sort-dropdown") {
+    isSortDropdownOpen = false;
+  } else if (dropdown.id === "folder-sort-dropdown") {
+    isFolderSortDropdownOpen = false;
+  }
+
+  updateSortDropdownSelection(dropdown); // Update dropdown selection and button text
+  // Refresh table based on context
+  if (navigationState.source === "folder" && navigationState.folderId) {
+    console.log(`Refreshing folder view: FolderID=${navigationState.folderId}`);
+    showFolder(navigationState.folderId);
+  } else if (
+    navigationState.source === "category" &&
+    navigationState.category
+  ) {
+    console.log(
+      `Refreshing category view: Category=${navigationState.category}`
+    );
+    showCategory(navigationState.category);
+  } else {
+    console.log("Refreshing main prompts table");
+    loadPromptsTable();
+  }
+}
 
 function levenshteinDistance(a, b) {
   // Erstelle eine Matrix mit den Dimensionen (m+1) x (n+1)
@@ -207,38 +323,6 @@ function deleteFolder(folderId) {
   });
 }
 
-// Global Functions
-function updateSortButtonText() {
-  const sortByKey = `sort_by_${sortState.sortBy}`;
-  const sortOrderKey = `sort_${sortState.sortOrder}`;
-  sortBtn.textContent = `${
-    translations[currentLang]?.[sortByKey] || sortState.sortBy
-  } (${translations[currentLang]?.[sortOrderKey] || sortState.sortOrder})`;
-  // Update folder sort button text if in folder or category view
-  if (
-    navigationState.source === "folder" ||
-    navigationState.source === "category"
-  ) {
-    folderSortBtn.textContent = `${
-      translations[currentLang]?.[sortByKey] || sortState.sortBy
-    } (${translations[currentLang]?.[sortOrderKey] || sortState.sortOrder})`;
-  }
-}
-
-function updateSortDropdownSelection(dropdown = sortDropdown) {
-  dropdown.querySelectorAll(".sort-option").forEach((option) => {
-    option.classList.remove("selected");
-    if (
-      (option.dataset.sortOrder &&
-        option.dataset.sortOrder === sortState.sortOrder) ||
-      (option.dataset.sortBy && option.dataset.sortBy === sortState.sortBy)
-    ) {
-      option.classList.add("selected");
-    }
-  });
-  updateSortButtonText();
-}
-
 function toggleSortDropdown() {
   if (isSortDropdownOpen) {
     sortDropdown.style.display = "none";
@@ -265,51 +349,6 @@ function toggleFolderSortDropdown() {
     isFolderSortDropdownOpen = true;
     updateSortDropdownSelection(folderSortDropdown);
   }
-}
-
-function handleSortOptionClick(option) {
-  const dropdown = option.closest(".sort-dropdown");
-  if (option.dataset.sortOrder) {
-    sortState.sortOrder = option.dataset.sortOrder;
-  } else if (option.dataset.sortBy) {
-    sortState.sortBy = option.dataset.sortBy;
-  }
-  dropdown.style.display = "none";
-  if (dropdown.id === "sort-dropdown") {
-    isSortDropdownOpen = false;
-  } else if (dropdown.id === "folder-sort-dropdown") {
-    isFolderSortDropdownOpen = false;
-  }
-  updateSortButtonText();
-  // Refresh table based on context
-  if (navigationState.source === "folder" && navigationState.folderId) {
-    showFolder(navigationState.folderId);
-  } else if (
-    navigationState.source === "category" &&
-    navigationState.category
-  ) {
-    showCategory(navigationState.category);
-  } else {
-    loadPromptsTable();
-  }
-}
-
-function sortPrompts(prompts) {
-  return prompts.sort((a, b) => {
-    let aValue, bValue;
-    if (sortState.sortBy === "title") {
-      aValue = a.prompt.title.toLowerCase();
-      bValue = b.prompt.title.toLowerCase();
-    } else if (sortState.sortBy === "lastUsed") {
-      aValue = a.prompt.lastUsed || 0;
-      bValue = b.prompt.lastUsed || 0;
-    }
-    if (sortState.sortOrder === "ascending") {
-      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-    } else {
-      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-    }
-  });
 }
 
 function attachFolderTableEvents() {
@@ -1376,50 +1415,116 @@ function importDataFromJSON(event) {
 // DOMContentLoaded Event Listener
 document.addEventListener("DOMContentLoaded", () => {
   validateFolderPrompts();
+  document.getElementById("language-select").addEventListener("change", (e) => {
+    currentLang = e.target.value;
+    chrome.storage.local.set({ language: currentLang }, () => {
+      loadTranslations(currentLang);
+    });
+  });
   async function loadTranslations(lang) {
     try {
       const response = await fetch(`i18n/${lang}.json`);
       if (!response.ok)
         throw new Error(`Fehler beim Laden der Übersetzungen für ${lang}`);
       translations[lang] = await response.json();
+      currentLang = lang; // Update currentLang explicitly
       applyTranslations(lang);
-      updateSortButtonText(); // Initialize sort button text after translations are loaded
+      updateSortButtonText(); // Ensure sort button text updates after loading translations
     } catch (error) {
       console.error(error);
-      if (lang !== "de") loadTranslations("de"); // Fallback auf Deutsch
+      if (lang !== "de") {
+        console.warn(`Falling back to German for language: ${lang}`);
+        loadTranslations("de"); // Fallback to German
+      }
     }
   }
+
+  // Sprache aus Chrome Storage laden (oder fallback auf navigator.language)
+  chrome.storage.local.get(["language"], (result) => {
+    let currentLang =
+      result.language || navigator.language.split("-")[0] || "en";
+
+    // Wenn noch keine Sprache gesetzt wurde, speichere die ermittelte
+    if (!result.language) {
+      chrome.storage.local.set({ language: currentLang });
+    }
+
+    // Initiale Sprache laden
+    loadTranslations(currentLang);
+    document.getElementById("language-select").value = currentLang;
+
+    // Sprachauswahl
+    document
+      .getElementById("language-select")
+      .addEventListener("change", (e) => {
+        currentLang = e.target.value;
+
+        chrome.storage.local.set({ language: currentLang }, () => {
+          loadTranslations(currentLang);
+        });
+      });
+  });
 
   attachCategoryClickEvents();
 
   // Übersicht öffnen
   overviewBtn.addEventListener("click", () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("/pages/app.html") });
+    const appBaseUrl = chrome.runtime.getURL("/pages/app.html");
+
+    chrome.tabs.query({}, function (tabs) {
+      const existingTab = tabs.find(
+        (tab) => tab.url && tab.url.startsWith(appBaseUrl)
+      );
+
+      if (existingTab) {
+        // Tab with the base URL (even with params) exists
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // No matching tab found, open new one
+        chrome.tabs.create({ url: appBaseUrl });
+      }
+    });
   });
 
   // FAQ
   faqBtn.addEventListener("click", () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("/pages/faq.html") });
+    const appUrl = chrome.runtime.getURL("/pages/faq.html");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
   });
 
-  // Initiale Sprache laden
-  loadTranslations(currentLang);
-  document.getElementById("language-select").value = currentLang;
-
-  // Sprachauswahl
-  document.getElementById("language-select").addEventListener("change", (e) => {
-    currentLang = e.target.value;
-    localStorage.setItem("language", currentLang);
-    loadTranslations(currentLang);
-  });
-
-  // Theme Initialization
-  const savedTheme = localStorage.getItem("theme") || "system";
+  // Theme Initialization (mit chrome.storage.local)
   const themeSelect = document.getElementById("theme-select");
-  themeSelect.value = savedTheme;
 
+  chrome.storage.local.get(["theme"], (result) => {
+    const savedTheme = result.theme || "system";
+
+    // Falls kein Theme gesetzt ist, speichere den Systemwert
+    if (!result.theme) {
+      chrome.storage.local.set({ theme: savedTheme });
+    }
+
+    themeSelect.value = savedTheme;
+    applyTheme(savedTheme);
+  });
+
+  // Theme-Anwendung
   function applyTheme(theme) {
     document.body.classList.remove("light-theme", "dark-theme");
+
     if (theme === "dark") {
       document.body.classList.add("dark-theme");
     } else if (theme === "light") {
@@ -1430,14 +1535,14 @@ document.addEventListener("DOMContentLoaded", () => {
       ).matches;
       document.body.classList.add(prefersDark ? "dark-theme" : "light-theme");
     }
-    localStorage.setItem("theme", theme);
+
+    chrome.storage.local.set({ theme });
   }
 
-  applyTheme(savedTheme);
-
-  // Theme Selection
+  // Theme-Änderung durch User
   themeSelect.addEventListener("change", (e) => {
-    applyTheme(e.target.value);
+    const selectedTheme = e.target.value;
+    applyTheme(selectedTheme);
   });
 
   // System Theme Listener
@@ -1648,99 +1753,48 @@ document.addEventListener("DOMContentLoaded", () => {
     const content = document.getElementById("entry-content").value.trim();
     const type = document.getElementById("entry-type").value;
     const isFavorite = document.getElementById("entry-favorite").checked;
-    const folderId =
-      document.getElementById("entry-title").dataset.folderId || null;
+    const folderId = document.getElementById("entry-folder").value;
     const promptId =
       document.getElementById("entry-title").dataset.promptId || null;
-    const newFolderId = document.getElementById("entry-folder").value;
-    const compatibleModels = Array.from(
-      document.querySelectorAll(
-        "#entry-compatible input[type='checkbox']:checked"
-      )
-    ).map((checkbox) => checkbox.value);
-    const incompatibleModels = Array.from(
-      document.querySelectorAll(
-        "#entry-incompatible input[type='checkbox']:checked"
-      )
-    ).map((checkbox) => checkbox.value);
-    const notes = document.getElementById("entry-notes").value.trim();
     const tags = Array.from(
       document.querySelectorAll("#entry-tags input[type='checkbox']:checked")
-    ).map((checkbox) => checkbox.value);
+    ).map((cb) => cb.value);
+    const notes = document.getElementById("entry-notes").value.trim();
 
     if (!title) {
       alert(translations[currentLang]?.required_title || "Title is required!");
       return;
     }
 
-    if (!newFolderId) {
+    if (!folderId) {
       alert(
         translations[currentLang]?.select_folder || "Please select a folder!"
       );
       return;
     }
 
-    chrome.storage.local.get(["folders", "prompts"], (data) => {
-      const folders = data.folders || {};
-      const prompts = data.prompts || {};
-
-      const isNewPrompt = !promptId;
-      const now = Date.now();
-
-      let id = promptId || generateUUID();
-
-      const promptObj = {
-        ...prompts[id],
-        id,
+    savePrompt(
+      {
+        promptId,
         title,
         description,
         content,
         type,
         isFavorite,
-        compatibleModels,
-        incompatibleModels,
         tags,
         notes,
-        folderId: newFolderId,
-        createdAt: prompts[id]?.createdAt || now,
-        lastUsed: now,
-        updatedAt: now,
-        metaChangeLog: prompts[id]?.metaChangeLog || [],
-      };
-
-      // Set or update the prompt
-      prompts[id] = promptObj;
-
-      // Handle folder assignment (move promptId if needed)
-      if (isNewPrompt) {
-        folders[newFolderId] = folders[newFolderId] || {
-          name: "Unbenannt",
-          promptIds: [],
-        };
-        folders[newFolderId].promptIds.push(id);
-      } else if (folderId !== newFolderId) {
-        // Moved to a different folder
-        if (folders[folderId]) {
-          folders[folderId].promptIds = folders[folderId].promptIds.filter(
-            (pid) => pid !== id
-          );
-        }
-        folders[newFolderId] = folders[newFolderId] || {
-          name: "Unbenannt",
-          promptIds: [],
-        };
-        if (!folders[newFolderId].promptIds.includes(id)) {
-          folders[newFolderId].promptIds.push(id);
-        }
+      },
+      {
+        folderId,
+        overwritePromptId: promptId,
+        onSuccess: () => {
+          document.getElementById("detail-overlay").classList.remove("open");
+          document.getElementById("plus-btn").style.display = "flex";
+          loadFolders();
+          loadPromptsTable();
+        },
       }
-
-      chrome.storage.local.set({ prompts, folders }, () => {
-        document.getElementById("detail-overlay").classList.remove("open");
-        document.getElementById("plus-btn").style.display = "flex";
-        loadFolders();
-        loadPromptsTable();
-      });
-    });
+    );
   });
 
   cancelBtn.addEventListener("click", () => {
@@ -2047,8 +2101,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const entryContent = document.getElementById("entry-content-add");
     const entryNotes = document.getElementById("entry-notes-add");
     const entryType = document.getElementById("entry-type-add");
-    const entryCompatible = document.getElementById("entry-compatible-add");
-    const entryIncompatible = document.getElementById("entry-incompatible-add");
     const entryTags = document.getElementById("entry-tags-add");
     const tagInputGroup = document.getElementById("tag-input-group");
     const newTagInput = document.getElementById("new-tag_add");
@@ -2063,12 +2115,6 @@ document.addEventListener("DOMContentLoaded", () => {
     entryContent.value = "";
     entryNotes.value = "";
     entryType.value = "";
-    entryCompatible
-      .querySelectorAll("input")
-      .forEach((input) => (input.checked = false));
-    entryIncompatible
-      .querySelectorAll("input")
-      .forEach((input) => (input.checked = false));
     entryFavorite.checked = false;
     entryFolder.innerHTML = '<option value="">Ordner auswählen</option>';
 
@@ -2172,7 +2218,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".save-btn-add").addEventListener("click", () => {
-    // Eingabefelder auslesen
     const title = document.getElementById("entry-title-add").value.trim();
     const description = document
       .getElementById("entry-description-add")
@@ -2180,16 +2225,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const content = document.getElementById("entry-content-add").value.trim();
     const notes = document.getElementById("entry-notes-add").value.trim();
     const type = document.getElementById("entry-type-add").value;
-    const compatibleModels = Array.from(
-      document
-        .getElementById("entry-compatible-add")
-        .querySelectorAll("input:checked")
-    ).map((input) => input.value);
-    const incompatibleModels = Array.from(
-      document
-        .getElementById("entry-incompatible-add")
-        .querySelectorAll("input:checked")
-    ).map((input) => input.value);
     const tags = Array.from(
       document
         .getElementById("entry-tags-add")
@@ -2202,7 +2237,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ?.textContent
       : null;
 
-    // Validierung: Titel und Ordner sind Pflichtfelder
+    // Validierung
     if (!title) {
       alert(
         translations[currentLang]?.title_required || "Titel ist erforderlich!"
@@ -2212,102 +2247,31 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!content) {
       alert(
         translations[currentLang]?.content_required ||
-          "Bitte geben sie eine Prompt ein!"
+          "Bitte geben Sie einen Prompt ein!"
       );
       return;
     }
 
-    // Neues Prompt-Objekt mit der neuen Datenstruktur erstellen
-    const newPrompt = {
-      title,
-      description,
-      content,
-      type,
-      compatibleModels,
-      incompatibleModels,
-      tags,
-      isFavorite,
-      folderId: folderId || null,
-      folderName,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      usageCount: 0,
-      lastUsed: null,
-      notes,
-      versions: [
-        {
-          versionId: generateUUID(),
-          title,
-          description,
-          content,
-          timestamp: Date.now(),
-        },
-      ],
-      metaChangeLog: [
-        {
-          timestamp: Date.now(),
-          changes: {
-            title: { from: null, to: title },
-            description: { from: null, to: description },
-            content: { from: null, to: content },
-            type: { from: null, to: type },
-            compatibleModels: { from: [], to: compatibleModels },
-            incompatibleModels: { from: [], to: incompatibleModels },
-            tags: { from: [], to: tags },
-            isFavorite: { from: false, to: isFavorite },
-            folderId: { from: null, to: folderId || null },
-            folderName: { from: null, to: folderName },
-            notes: { from: null, to: notes },
-          },
-        },
-      ],
-      performanceHistory: [],
-    };
-
-    // Prompt in den ausgewählten Ordner speichern
-    chrome.storage.local.get(["folders", "prompts"], (data) => {
-      const folders = data.folders || {};
-      const prompts = data.prompts || {};
-
-      // Existierenden Ordner holen oder neu erstellen
-      const folder = folders[folderId] || {
-        name: folderName || "",
-        promptIds: [],
-        isHidden: false,
-        isTrash: false,
-      };
-
-      // Neues Prompt-ID annehmen, z.B. aus newPrompt.id
-      // Falls newPrompt noch keine ID hat, muss diese erzeugt werden (hier Beispiel mit timestamp)
-      const promptId = newPrompt.id || `prompt_${Date.now()}`;
-      newPrompt.id = promptId;
-
-      prompts[promptId] = newPrompt;
-
-      // Prompt-ID zum Ordner hinzufügen, falls noch nicht vorhanden
-      if (!folder.promptIds.includes(promptId)) {
-        folder.promptIds.push(promptId);
-      }
-
-      // Änderungen speichern
-      chrome.storage.local.set(
-        {
-          folders: {
-            ...folders,
-            [folderId]: folder,
-          },
-          prompts: prompts,
-        },
-        () => {
-          console.log(
-            `Prompt "${newPrompt.title}" in Ordner "${folderId}" gespeichert`
-          );
-
-          // Overlay schließen und UI zurücksetzen
+    // Prompt über zentrale Funktion speichern
+    savePrompt(
+      {
+        title,
+        description,
+        content,
+        type,
+        tags,
+        isFavorite,
+        notes,
+        // compatibleModels, incompatibleModels, versions, metaChangeLog etc. werden automatisch gesetzt
+      },
+      {
+        folderId: folderId || null,
+        folderName: folderName || null,
+        onSuccess: () => {
           document.getElementById("add-overlay").classList.remove("open");
           document.getElementById("plus-btn").style.display = "flex";
 
-          // Ordneransicht aktualisieren, falls der Ordner geöffnet ist
+          // Falls gerade geöffneter Ordner aktualisiert werden muss
           if (
             navigationState.source === "folder" &&
             navigationState.folderId === folderId
@@ -2315,18 +2279,19 @@ document.addEventListener("DOMContentLoaded", () => {
             showFolder(folderId);
           }
 
-          // Folders und Prompts-Tabelle aktualisieren
           loadFolders();
           loadPromptsTable();
-        }
-      );
-    });
+        },
+      }
+    );
   });
 
-  // Save New Prompt
+  // Save New Prompt (über zentrale savePrompt-Funktion)
   saveBtn.addEventListener("click", (e) => {
-    // Wenn noch kein folderId in dataset (neuer Prompt)
-    if (!document.getElementById("entry-title").dataset.folderId) {
+    const hasFolderId = document.getElementById("entry-title").dataset.folderId;
+
+    // Nur bei neuem Prompt (kein folderId gesetzt)
+    if (!hasFolderId) {
       const title = document.getElementById("entry-title").value.trim();
       const description = document
         .getElementById("entry-description")
@@ -2336,16 +2301,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const newTag = document.getElementById("new-tag").value.trim();
       const isFavorite = document.getElementById("entry-favorite").checked;
       const folderId = document.getElementById("entry-folder").value;
-      const compatibleModels = Array.from(
-        document.querySelectorAll(
-          "#entry-compatible input[name='compatible']:checked"
-        )
-      ).map((checkbox) => checkbox.value);
-      const incompatibleModels = Array.from(
-        document.querySelectorAll(
-          "#entry-incompatible input[name='incompatible']:checked"
-        )
-      ).map((checkbox) => checkbox.value);
+
       const tags = Array.from(
         document.querySelectorAll("#entry-tags input[name='tags']:checked")
       ).map((checkbox) => checkbox.value);
@@ -2364,63 +2320,27 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Prompt-Objekt erzeugen mit neuer ID
-      const promptId = `prompt_${Date.now()}`;
-      const promptObj = {
-        id: promptId,
-        title,
-        description,
-        content,
-        type,
-        tags: newTag ? [...tags, newTag] : tags,
-        isFavorite,
-        compatibleModels,
-        incompatibleModels,
-        createdAt: Date.now(),
-        lastUsed: Date.now(),
-        updatedAt: Date.now(),
-        folderId,
-        folderName:
-          document.querySelector(`#entry-folder option[value="${folderId}"]`)
-            ?.textContent || "Single Prompt",
-        metaChangeLog: [],
-      };
-
-      // Daten aus storage holen
-      chrome.storage.local.get(["folders", "prompts"], (data) => {
-        const folders = data.folders || {};
-        const prompts = data.prompts || {};
-
-        // Ordner auslesen oder neu anlegen
-        const folder = folders[folderId] || {
-          name: "Unbekannt",
-          promptIds: [],
-          isHidden: false,
-          isTrash: false,
-        };
-
-        // Prompt speichern
-        prompts[promptId] = promptObj;
-
-        // Prompt-ID dem Ordner hinzufügen (wenn noch nicht vorhanden)
-        if (!folder.promptIds.includes(promptId)) {
-          folder.promptIds.push(promptId);
-        }
-
-        // Änderungen zurück in den Storage schreiben
-        chrome.storage.local.set(
-          {
-            folders: { ...folders, [folderId]: folder },
-            prompts: prompts,
-          },
-          () => {
+      // Prompt speichern über zentrale Funktion
+      savePrompt(
+        {
+          title,
+          description,
+          content,
+          type,
+          tags: newTag ? [...tags, newTag] : tags,
+          isFavorite,
+          // compatibleModels, incompatibleModels und notes werden automatisch auf Defaults gesetzt
+        },
+        {
+          folderId,
+          onSuccess: () => {
             document.getElementById("detail-overlay").classList.remove("open");
             document.getElementById("plus-btn").style.display = "flex";
             loadFolders();
             loadPromptsTable();
-          }
-        );
-      });
+          },
+        }
+      );
     }
   });
 

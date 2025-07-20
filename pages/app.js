@@ -10,6 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "tags") {
     switchView("tags-view", { view: "tags" });
     loadTags();
+  } else if (view === "anonymizer") {
+    switchView("anonymizer-view", { view: "anonymizer" });
+    initializeAnonymizer();
   } else if (view === "analytics") {
     switchView("analytics-view", { view: "analytics" });
     initializeAnalytics();
@@ -265,6 +268,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (view === "tags") {
         switchView("tags-view", { view: "tags" });
         loadTags();
+      } else if (view === "anonymizer") {
+        switchView("anonymizer-view", { view: "anonymizer" });
+        initializeAnonymizer();
       } else if (view === "analytics") {
         switchView("analytics-view", { view: "analytics" });
         initializeAnalytics();

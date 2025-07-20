@@ -1315,50 +1315,38 @@ async function promptSaver(message) {
   async function loadFolders() {
     try {
       const data = await new Promise((resolve, reject) => {
-        chrome.storage.local.get(["folders"], (data) => {
+        chrome.storage.local.get(["folders"], (result) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
-            resolve(data.folders || {});
+            resolve(result.folders || {});
           }
         });
       });
 
-      const folderEntries = Object.entries(data);
-
-      const folders = folderEntries.filter(
+      const folders = Object.entries(data).filter(
         ([, folder]) => !folder.isHidden && !folder.isTrash
       );
-      const hiddenFolders = folderEntries.filter(
-        ([, folder]) => folder.isHidden && !folder.isTrash
-      );
 
+      // Dropdown zum Ersetzen eines Ordners
       replaceFolderSelect.innerHTML = `
-        <option value="">Select a folder or category</option>
-        <optgroup label="Categorised Prompts">
-          ${folders
-            .map(
-              ([id, folder]) => `<option value="${id}">${folder.name}</option>`
-            )
-            .join("")}
-        </optgroup>
-        <optgroup label="Single Prompts">
-          ${hiddenFolders
-            .map(
-              ([id, folder]) => `<option value="${id}">${folder.name}</option>`
-            )
-            .join("")}
-        </optgroup>
-      `;
-
-      addFolderSelect.innerHTML = `
-        <option value="">Select a folder</option>
+      <option value="">Select a folder or category</option>
+      <optgroup label="Categorised Prompts">
         ${folders
           .map(
             ([id, folder]) => `<option value="${id}">${folder.name}</option>`
           )
           .join("")}
-      `;
+      </optgroup>
+    `;
+
+      // Dropdown zum Hinzufügen zu einem Ordner
+      addFolderSelect.innerHTML = `
+      <option value="">Select a folder</option>
+      ${folders
+        .map(([id, folder]) => `<option value="${id}">${folder.name}</option>`)
+        .join("")}
+    `;
     } catch (error) {
       console.error("Error fetching folders:", error);
     }
