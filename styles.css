@@ -178,9 +178,9 @@ body.dark-theme .main-content {
 
 .sort-btn {
   padding: 8px 16px;
-  background-color: var(--light-btn-bg);
-  color: var(--light-text);
-  border: none;
+  background-color: white;
+  color:black;
+  border: 1px solid black;
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
@@ -192,7 +192,7 @@ body.dark-theme .sort-btn {
 }
 
 .sort-btn:hover {
-  background-color: var(--light-btn-hover);
+  background-color: lightgray;
   transform: translateY(-1px);
 }
 
@@ -891,10 +891,10 @@ body.dark-theme .action-dropdown button:hover {
 
 .settings-actions button {
   padding: 8px 16px;
-  border: none;
+  border: 1px solid black;
   border-radius: 6px;
   cursor: pointer;
-  background-color: var(--light-btn-bg);
+  background-color: white;
   color: var(--light-text);
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
@@ -905,7 +905,7 @@ body.dark-theme .settings-actions button {
 }
 
 .settings-actions button:hover {
-  background-color: var(--light-btn-hover);
+  background-color: lightgrey;
   transform: translateY(-1px);
 }
 
@@ -914,16 +914,17 @@ body.dark-theme .settings-actions button:hover {
 }
 
 #delete-data-btn {
-  background-color: #dc3545;
   padding: 8px 16px;
-  border: none;
+  border: 1px solid red;
+  background-color: white;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--light-text);
+  color: black;
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 body.dark-theme #delete-data-btn {
+  background-color: #dc3545;
   color: var(--dark-text);
 }
 
