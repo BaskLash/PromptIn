@@ -476,8 +476,11 @@ function showFolder(folderId) {
       !Array.isArray(folder.promptIds) ||
       folder.promptIds.length === 0
     ) {
-      folderEntries.innerHTML =
-        '<tr><td colspan="2">No prompts in this folder</td></tr>';
+      const noPromptsText =
+        translations[currentLang]?.noPromptsInFolder ||
+        translations["de"]?.noPromptsInFolder ||
+        "Keine Prompts in diesem Ordner";
+      folderEntries.innerHTML = `<tr><td colspan="2" style="display: block; visibility: visible;">${noPromptsText}</td></tr>`;
       promptSearchInput.style.display = "none";
       folderSortBtn.style.display = "none";
       folderSortDropdown.style.display = "none";
@@ -493,10 +496,20 @@ function showFolder(folderId) {
     function renderPrompts(promptsToRender, folderId) {
       folderEntries.innerHTML = "";
       if (promptsToRender.length === 0) {
-        folderEntries.innerHTML =
-          '<tr><td colspan="2">Keine Prompts gefunden</td></tr>';
+        const noPromptsText =
+          translations[currentLang]?.noPromptsFound ||
+          translations["de"]?.noPromptsFound ||
+          "No prompts found";
+        console.log(
+          `noPromptsText: ${noPromptsText}, currentLang: ${currentLang}, translations:`,
+          translations
+        );
+        // ❗️ Hier KEIN data-i18n mehr, weil Text direkt gesetzt wird
+        folderEntries.innerHTML = `<tr><td colspan="2" style="display: block; visibility: visible;">${noPromptsText}</td></tr>`;
+        console.log(`folderEntries HTML: ${folderEntries.innerHTML}`);
         return;
       }
+
       promptsToRender.forEach(({ prompt, id }) => {
         const tr = document.createElement("tr");
         tr.dataset.entry = prompt.title;
@@ -511,9 +524,10 @@ function showFolder(folderId) {
         folderEntries.appendChild(tr);
         console.log(
           `Prompt Row: ID=${id}, FolderID=${folderId}, Title=${prompt.title}`
-        ); // Debugging
+        );
       });
-      console.log("Attaching folder table events..."); // Debugging
+
+      console.log("Attaching folder table events...");
       attachFolderTableEvents();
     }
 
@@ -521,7 +535,7 @@ function showFolder(folderId) {
       .map((pid) => {
         const prompt = prompts[pid];
         if (prompt) return { prompt, id: pid };
-        console.warn(`Prompt with ID ${pid} not found in prompts`); // Debugging
+        console.warn(`Prompt with ID ${pid} not found in prompts`);
         return null;
       })
       .filter(Boolean);

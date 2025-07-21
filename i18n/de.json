@@ -108,5 +108,7 @@
   "sort_descending": "Absteigend",
   "sort_by": "Sortieren nach",
   "sort_by_title": "Titel",
-  "sort_by_last_used": "Zuletzt verwendet"
+  "sort_by_last_used": "Zuletzt verwendet",
+  "noPromptsInFolder": "Keine Prompts in diesem Ordner",
+  "noPromptsFound": "Keine Prompts gefunden"
 }
