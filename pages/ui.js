@@ -494,6 +494,7 @@ function showDetailsSidebar(item, folderId) {
   const sidebarContent = sidebar.querySelector(".sidebar-content");
   sidebarContent.innerHTML = "";
   sidebar.classList.add("open");
+  document.getElementById("details-sidebar-resizer").style.display = "block";
   if (!item || !item.title || !item.content) {
     sidebarContent.innerHTML = "<p>Error: Invalid prompt data.</p>";
     return;
@@ -602,6 +603,7 @@ function showDetailsSidebar(item, folderId) {
 
 sidebar.querySelector(".close-sidebar").addEventListener("click", () => {
   sidebar.classList.remove("open");
+  document.getElementById("details-sidebar-resizer").style.display = "none";
 });
 
 function initializePrompts() {

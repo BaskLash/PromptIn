@@ -58,21 +58,6 @@ header {
   border-radius: 4px;
 }
 
-#sidebar-resizer {
-  width: 5px;
-  cursor: col-resize;
-  background-color: #ddd;
-  height: calc(100vh - var(--header-height));
-  position: sticky;
-  top: var(--header-height);
-  z-index: 10;
-  transition: background-color 0.2s ease;
-}
-
-#sidebar-resizer:hover {
-  background-color: var(--accent-color);
-}
-
 .container {
   display: flex;
   min-height: calc(100vh - var(--header-height));
@@ -621,11 +606,11 @@ table thead {
 .table-container th:not(:first-child):not(:last-child) {
   cursor: pointer;
 }
-
 .details-sidebar {
   width: var(--details-sidebar-width, 300px);
 }
-#details-sidebar-resizer {
+
+#sidebar-resizer {
   width: 5px;
   cursor: col-resize;
   background-color: #ddd;
@@ -634,6 +619,21 @@ table thead {
   top: var(--header-height);
   z-index: 10;
   transition: background-color 0.2s ease;
+}
+
+#sidebar-resizer:hover {
+  background-color: var(--accent-color);
+}
+
+#details-sidebar-resizer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: yellow;
+  z-index: 1200;
 }
 
 #details-sidebar-resizer:hover {

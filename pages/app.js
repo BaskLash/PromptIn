@@ -161,64 +161,71 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
   });
 
-  // Details Sidebar Resizer
-  const detailsResizer = document.getElementById("details-sidebar-resizer");
-  const detailsSidebar = document.querySelector(".details-sidebar");
-  let isDetailsResizing = false;
-  let detailsAnimationFrameId = null;
-  let detailsCurrentX = 0;
-
-  const detailsMinWidth = 200;
-  const detailsMaxWidth = 600;
-
-  // Restore saved width from localStorage
   const savedDetailsWidth = localStorage.getItem("detailsSidebarWidth");
   if (savedDetailsWidth) {
-    detailsSidebar.style.width = `${savedDetailsWidth}px`;
+    document.getElementById(
+      "details-sidebar"
+    ).style.width = `${savedDetailsWidth}px`;
     document.documentElement.style.setProperty(
       "--details-sidebar-width",
       `${savedDetailsWidth}px`
     );
   }
 
-  const resizeDetailsSidebar = () => {
+  // Details Sidebar Resizer
+  const resizerB = document.getElementById("details-sidebar-resizer");
+  const sidebarB = document.getElementById("details-sidebar");
+
+  let isResizingB = false;
+  let animationFrameIdB = null;
+  let currentX_B = 0;
+
+  const minWidthB = 200;
+  const maxWidthB = 800;
+
+  // Breite setzen
+  const resizeSidebarB = () => {
+    const windowWidth = window.innerWidth;
     const newWidth = Math.min(
-      Math.max(window.innerWidth - detailsCurrentX, detailsMinWidth),
-      detailsMaxWidth
+      Math.max(windowWidth - currentX_B, minWidthB),
+      maxWidthB
     );
-    detailsSidebar.style.width = `${newWidth}px`;
+    sidebarB.style.width = `${newWidth}px`;
     document.documentElement.style.setProperty(
       "--details-sidebar-width",
       `${newWidth}px`
     );
-    detailsAnimationFrameId = null;
+    animationFrameIdB = null;
   };
 
-  const onDetailsPointerMove = (e) => {
-    if (!isDetailsResizing) return;
-    detailsCurrentX = e.clientX;
-    if (!detailsAnimationFrameId) {
-      detailsAnimationFrameId = requestAnimationFrame(resizeDetailsSidebar);
+  // Mausbewegung während des Resizings
+  const onPointerMoveB = (e) => {
+    if (!isResizingB) return;
+    currentX_B = e.clientX;
+    if (!animationFrameIdB) {
+      animationFrameIdB = requestAnimationFrame(resizeSidebarB);
     }
   };
 
-  const onDetailsPointerUp = () => {
-    if (!isDetailsResizing) return;
-    isDetailsResizing = false;
+  // Maus loslassen → speichern
+  const onPointerUpB = () => {
+    if (!isResizingB) return;
+    isResizingB = false;
     document.body.style.cursor = "default";
-    document.removeEventListener("pointermove", onDetailsPointerMove);
-    document.removeEventListener("pointerup", onDetailsPointerUp);
+    document.removeEventListener("pointermove", onPointerMoveB);
+    document.removeEventListener("pointerup", onPointerUpB);
 
-    const finalWidth = detailsSidebar.offsetWidth;
-    localStorage.setItem("detailsSidebarWidth", finalWidth.toString());
+    const finalWidthB = sidebarB.offsetWidth;
+    localStorage.setItem("detailsSidebarWidth", finalWidthB.toString());
   };
 
-  detailsResizer.addEventListener("pointerdown", (e) => {
-    isDetailsResizing = true;
-    detailsCurrentX = e.clientX;
+  // Start-Event
+  resizerB.addEventListener("pointerdown", (e) => {
+    isResizingB = true;
+    currentX_B = e.clientX;
     document.body.style.cursor = "col-resize";
-    document.addEventListener("pointermove", onDetailsPointerMove);
-    document.addEventListener("pointerup", onDetailsPointerUp);
+    document.addEventListener("pointermove", onPointerMoveB);
+    document.addEventListener("pointerup", onPointerUpB);
     e.preventDefault();
   });
 
