@@ -1,13 +1,11 @@
 function initializeAnonymizer() {
   console.log("Anonymizer is on");
 
-  // Show the anonymizer view
   const anonymizerView = document.getElementById("anonymizer-view");
   if (anonymizerView) {
     anonymizerView.style.display = "block";
   }
 
-  // Populate the anonymizer container with the required content
   const container = document.querySelector(".anonymizer-container");
   if (container) {
     container.innerHTML = `
@@ -76,31 +74,54 @@ function initializeAnonymizer() {
     let lastInput = "";
     let lastOutput = "";
 
+    // Erlaubte Windows-Ordnernamen
+    const allowedWindowsFolders = [
+      "Users",
+      "Downloads",
+      "Documents",
+      "Desktop",
+      "Pictures",
+      "Videos",
+      "Music",
+      "AppData",
+      "Program Files",
+      "Program Files (x86)",
+      "Windows",
+    ];
+
     const patterns = [
       {
-        regex: /\b([A-ZÄÖÜ][a-zäöüß]+(?:[-\s][A-ZÄÖÜ][a-zäöüß]+)+)\b/g,
-        replacement: "[NAME]",
-        label: "Namen",
-      },
-      {
-        regex: /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g,
-        replacement: "[EMAIL]",
-        label: "E-Mails",
-      },
-      {
-        regex: /\b(?:\+49|0)[1-9][0-9\s\-\/]{7,}\b/g,
-        replacement: "[PHONE]",
-        label: "Telefonnummern",
-      },
-      {
-        regex: /\b[a-zA-Z]{2,}\.[a-zA-Z]{2,}\b/g,
-        replacement: "[USERNAME]",
-        label: "Benutzernamen",
-      },
-      {
-        regex: /([A-Za-z]:\\Users\\)([a-zA-Z0-9._-]+)(\\[^<>:"|?*]*)/g,
+        label: "Benutzername in Pfad",
+        regex: /([A-Za-z]:\\Users\\)([a-zA-Z0-9._-]+)(\\[^\n\r]*)/g,
         replacement: "$1[USERNAME]$3",
-        label: "Dateipfade",
+      },
+      {
+        label: "vorname.nachname",
+        regex: /\b([a-zäöüß]{2,})\.([a-zäöüß]{2,})\b/gi,
+        replacement: "[USERNAME]",
+      },
+      {
+        label: "E-Mail",
+        regex: /\b[\w.-]+@[\w.-]+\.[a-z]{2,}\b/gi,
+        replacement: "[EMAIL]",
+      },
+      {
+        label: "Telefonnummern",
+        regex: /\b(?:\+49|0)[1-9][0-9\s\-\/]{6,}\b/g,
+        replacement: "[PHONE]",
+      },
+      {
+        label: "Klarer Vorname Nachname",
+        regex: /\b(max mustermann|olivier lüthy|anna schmidt)\b/gi,
+        replacement: "[NAME]",
+      },
+      {
+        label: "Spezifische Dateinamen",
+        regex: /\\([^\\/:*?"<>|\n\r]+[_-][^\\/:*?"<>|\n\r]+)\b/g,
+        replacement: (match, p1) => {
+          // Prüfen, ob der Dateiname ein erlaubter Windows-Ordner ist
+          return allowedWindowsFolders.includes(p1) ? match : "\\[FILENAME]";
+        },
       },
     ];
 
@@ -110,82 +131,74 @@ function initializeAnonymizer() {
 
       lastInput = input;
       let anonymized = input;
-      let originalWithMarks = input;
+      let markedOriginal = input;
       let counts = {};
 
-      patterns.forEach((p) => {
-        const matches = anonymized.match(p.regex);
-        counts[p.label] = matches ? matches.length : 0;
-        anonymized = anonymized.replace(p.regex, p.replacement);
-        originalWithMarks = originalWithMarks.replace(
-          p.regex,
-          (m) => `<span class="removed">${m}</span>`
-        );
-      });
+      patterns.forEach(({ regex, replacement, label }) => {
+        const matches = anonymized.match(regex);
+        counts[label] = matches ? matches.length : 0;
 
-      const uncertainPattern = /\b\w*[._-]\w+\b/g;
-      anonymized = anonymized.replace(uncertainPattern, (match) => {
-        if (!patterns.some((p) => p.regex.test(match))) {
-          originalWithMarks = originalWithMarks.replace(
-            match,
-            `<span class="uncertain">${match}</span>`
-          );
-          return "[UNSICHER]";
-        }
-        return match;
+        anonymized = anonymized.replace(regex, replacement);
+        markedOriginal = markedOriginal.replace(
+          regex,
+          (match) => `<span class="removed">${match}</span>`
+        );
       });
 
       lastOutput = anonymized;
 
       document.getElementById(
         "originalText"
-      ).innerHTML = `Original:\n${originalWithMarks}`;
+      ).innerHTML = `Original:\n${markedOriginal}`;
       document.getElementById(
         "anonymizedText"
       ).innerHTML = `Anonymisiert:\n${anonymized.replace(
-        /\[([A-Z]+)\]/g,
+        /\[([A-Z_]+)\]/g,
         '<span class="added">[$1]</span>'
       )}`;
 
-      const statsText =
+      const stats =
         Object.entries(counts)
-          .map(([label, num]) => `${num}× ${label}`)
-          .filter((e) => !e.startsWith("0"))
+          .filter(([_, count]) => count > 0)
+          .map(([label, count]) => `${count}× ${label}`)
           .join(", ") || "Keine sensiblen Daten erkannt.";
 
       document.getElementById(
         "statusOutput"
-      ).textContent = `✅ Ersetzt: ${statsText}`;
+      ).textContent = `✅ Ersetzt: ${stats}`;
     }
 
     function anonymizeSelection() {
       const textarea = document.getElementById("inputPrompt");
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      if (start === end) {
+      const { selectionStart, selectionEnd } = textarea;
+
+      if (selectionStart === selectionEnd) {
         alert("Bitte wählen Sie einen Textabschnitt aus.");
         return;
       }
 
-      const text = textarea.value;
-      lastInput = text;
+      const fullText = textarea.value;
+      lastInput = fullText;
 
-      let selection = text.slice(start, end);
-      patterns.forEach((p) => {
-        selection = selection.replace(p.regex, p.replacement);
+      let selection = fullText.slice(selectionStart, selectionEnd);
+
+      patterns.forEach(({ regex, replacement }) => {
+        selection = selection.replace(regex, replacement);
       });
 
       selection = selection.replace(/\b\w*[._-]\w+\b/g, (match) => {
-        if (!patterns.some((p) => p.regex.test(match))) {
+        if (!patterns.some(({ regex }) => regex.test(match))) {
           return "[UNSICHER]";
         }
         return match;
       });
 
-      const newText = text.slice(0, start) + selection + text.slice(end);
-      textarea.value = newText;
+      textarea.value =
+        fullText.slice(0, selectionStart) +
+        selection +
+        fullText.slice(selectionEnd);
+      lastOutput = textarea.value;
 
-      lastOutput = newText;
       document.getElementById(
         "statusOutput"
       ).textContent = `✅ Auswahl anonymisiert`;
@@ -213,7 +226,6 @@ function initializeAnonymizer() {
       link.click();
     }
 
-    // Bind buttons
     document
       .getElementById("btnAnonymizeText")
       .addEventListener("click", anonymizeText);

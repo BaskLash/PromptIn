@@ -16,9 +16,6 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "analytics") {
     switchView("analytics-view", { view: "analytics" });
     initializeAnalytics();
-  } else if (view === "storage") {
-    switchView("storage-view", { view: "storage" });
-    initializeStorage();
   } else if (view === "workflows") {
     switchView("workflow-view", { view: "workflows" });
     initializeWorkflows();
@@ -274,9 +271,6 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (view === "analytics") {
         switchView("analytics-view", { view: "analytics" });
         initializeAnalytics();
-      } else if (view === "storage") {
-        switchView("storage-view", { view: "storage" });
-        initializeStorage();
       } else if (view === "workflows") {
         switchView("workflow-view", { view: "workflows" });
         initializeWorkflows();
