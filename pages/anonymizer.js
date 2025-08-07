@@ -74,8 +74,7 @@ function initializeAnonymizer() {
     let lastInput = "";
     let lastOutput = "";
 
-    // Erlaubte Windows-Ordnernamen
-    const allowedWindowsFolders = [
+    const allowedFolders = [
       "Users",
       "Downloads",
       "Documents",
@@ -87,41 +86,149 @@ function initializeAnonymizer() {
       "Program Files",
       "Program Files (x86)",
       "Windows",
+      "Projekte",
+      "Backups",
+      "Kundendaten",
+      "Temp",
+      "intern",
+      "HR",
+      "data",
+      "Confidential",
+      "Personal",
+      "logs",
+      "AI-Work",
+      "OpenAI",
+      "ChatGPT",
+      "ExportLogs",
+      "home",
+      "mnt",
+    ];
+
+    const nonNameWords = [
+      "straße",
+      "platz",
+      "weg",
+      "firma",
+      "gmbh",
+      "ag",
+      "berlin",
+      "münchen",
+      "deutschland",
+      "projekt",
+      "daten",
+      "system",
+      "openai",
+      "chatgpt",
+      "exportlogs",
+      "confidential",
+      "personal",
+      "logs",
+      "ai-work",
+      "backup",
+      "final",
+      "draft",
+      "export",
+      "sensitive",
+      "info",
+      "dump",
+      "profil",
+      "notes",
+      "client",
+      "session",
+      "planung",
+      "meeting",
+      "version",
+      "dokuments",
+      "datei",
+      "senior",
+      "manager",
     ];
 
     const patterns = [
+      // Logeinträge zuerst, um spezifische Formate zu priorisieren
       {
-        label: "Benutzername in Pfad",
-        regex: /([A-Za-z]:\\Users\\)([a-zA-Z0-9._-]+)(\\[^\n\r]*)/g,
-        replacement: "$1[USERNAME]$3",
+        label: "Benutzer in Logeinträgen",
+        regex: /\[LOG\].*Benutzer\s+"([^"]+)"/g,
+        replacement: '[LOG] ... Benutzer "[USERNAME]"',
       },
       {
-        label: "vorname.nachname",
-        regex: /\b([a-zäöüß]{2,})\.([a-zäöüß]{2,})\b/gi,
-        replacement: "[USERNAME]",
+        label: "Pfade in Logeinträgen",
+        regex: /\[DEBUG\].*Path:\s*([^\s]+)/g,
+        replacement: "[DEBUG] Path: [PATH]",
       },
+      // E-Mail-Adressen
       {
         label: "E-Mail",
-        regex: /\b[\w.-]+@[\w.-]+\.[a-z]{2,}\b/gi,
+        regex: /\b[\w._%+-]+@[\w.-]+\.[a-z]{2,}(?:\.[a-z]{2,})?\b/g,
         replacement: "[EMAIL]",
       },
+      // Telefonnummern
       {
         label: "Telefonnummern",
         regex: /\b(?:\+49|0)[1-9][0-9\s\-\/]{6,}\b/g,
         replacement: "[PHONE]",
       },
+      // Benutzernamen in Pfaden
       {
-        label: "Klarer Vorname Nachname",
-        regex: /\b(max mustermann|olivier lüthy|anna schmidt)\b/gi,
-        replacement: "[NAME]",
+        label: "Benutzername in Windows-Pfad",
+        regex: /([A-Za-z]:\\Users\\)([a-zA-Z0-9._-]+)(\\[^\n\r]*\\)([^\\]+)\b/g,
+        replacement: "$1[USERNAME]$3[FILENAME]",
       },
       {
-        label: "Spezifische Dateinamen",
-        regex: /\\([^\\/:*?"<>|\n\r]+[_-][^\\/:*?"<>|\n\r]+)\b/g,
-        replacement: (match, p1) => {
-          // Prüfen, ob der Dateiname ein erlaubter Windows-Ordner ist
-          return allowedWindowsFolders.includes(p1) ? match : "\\[FILENAME]";
+        label: "Benutzername in Unix-Pfad",
+        regex: /(\/home\/)([a-zA-Z0-9._-]+)(\/[^\n\r]*\/)([^\/]+)\b/g,
+        replacement: "$1[USERNAME]$3[FILENAME]",
+      },
+      // Allgemeine Namen
+      {
+        label: "Allgemeiner Vorname Nachname",
+        regex: /\b([A-ZÄÖÜ][a-zäöüß]{1,}(?:[\s-][A-ZÄÖÜ][a-zäöüß]{1,})*)\b/g,
+        replacement: (match) => {
+          const parts = match.split(/\s+/);
+          if (parts.some((part) => nonNameWords.includes(part.toLowerCase()))) {
+            return match;
+          }
+          return "[NAME]";
         },
+      },
+      // Generische Konstruktionen
+      {
+        label: "Name in generischen Konstruktionen",
+        regex:
+          /(Name|Benutzername):\s*[A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?/gi,
+        replacement: "$1: [NAME]",
+      },
+      // Benutzernamen
+      {
+        label: "vorname.nachname",
+        regex: /\b[a-zäöüß]{2,}\.[a-zäöüß]{2,}\b/gi,
+        replacement: "[USERNAME]",
+      },
+      {
+        label: "Komplexe Benutzernamen",
+        regex: /\b([a-zäöüß]+-lead\.[a-zäöüß]+)\b/gi,
+        replacement: "[USERNAME]",
+      },
+      {
+        label: "Generische Benutzernamen",
+        regex: /\b(admin_user\d+|project-[a-zäöüß]+|[a-zäöüß]+-lead)\b/gi,
+        replacement: "[USERNAME]",
+      },
+      // Dateinamen
+      {
+        label: "Windows-Dateinamen",
+        regex: /\\([^\\]+[_-][^\\]+\.[a-z0-9]+)\b/gi,
+        replacement: "\\[FILENAME]",
+      },
+      {
+        label: "Unix-Dateinamen",
+        regex: /(\/[^\/]+[_-][^\/]+\.[a-z0-9]+)\b/gi,
+        replacement: "/[FILENAME]",
+      },
+      {
+        label: "Dateien in Anführungszeichen",
+        regex: /"[^"]+[_-][^"]+\.[a-z0-9]+"/gi,
+        replacement: '"[FILENAME]"',
       },
     ];
 
@@ -184,13 +291,6 @@ function initializeAnonymizer() {
 
       patterns.forEach(({ regex, replacement }) => {
         selection = selection.replace(regex, replacement);
-      });
-
-      selection = selection.replace(/\b\w*[._-]\w+\b/g, (match) => {
-        if (!patterns.some(({ regex }) => regex.test(match))) {
-          return "[UNSICHER]";
-        }
-        return match;
       });
 
       textarea.value =
