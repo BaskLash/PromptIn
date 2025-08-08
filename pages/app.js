@@ -328,22 +328,25 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function loadTags() {
-  chrome.storage.local.get(null, (data) => {
+  chrome.storage.local.get(["tags", "prompts"], (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error loading data:", chrome.runtime.lastError);
       return;
     }
+
     const tags = data.tags || [];
+    const allPrompts = data.prompts || {};
     const tagContainer = document.getElementById("tag-container");
+
     if (!tagContainer) {
       console.error("Tag container not found");
       return;
     }
 
-    // Clear the container
+    // Container leeren
     tagContainer.innerHTML = "";
 
-    // Check if there are no tags
+    // Falls keine Tags vorhanden
     if (tags.length === 0) {
       const noTags = document.createElement("div");
       noTags.className = "no-tags";
@@ -352,126 +355,39 @@ function loadTags() {
       return;
     }
 
-    // Sammle und aktualisiere Prompts
-    const folderPrompts = Object.entries(data)
-      .filter(
-        ([key, topic]) =>
-          topic.prompts && !topic.isTrash && key.startsWith("folder_")
-      )
-      .flatMap(([key, topic]) => {
-        const updatedPrompts = topic.prompts.map((prompt) => {
-          if (!prompt.id) {
-            prompt.id = `prompt_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
-          }
-          return {
-            ...prompt,
-            storageKey: key,
-            folderId: prompt.folderId || key,
-            tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-          };
-        });
-        // Speichere die aktualisierten Prompts zurück
-        chrome.storage.local.set({
-          [key]: { ...topic, prompts: updatedPrompts },
-        });
-        return updatedPrompts;
-      });
-
-    const hiddenFolderPrompts = Object.entries(data)
-      .filter(
-        ([key, topic]) =>
-          topic.prompts && !topic.isTrash && key.startsWith("hidden_folder_")
-      )
-      .flatMap(([key, topic]) => {
-        const updatedPrompts = topic.prompts.map((prompt) => {
-          if (!prompt.id) {
-            prompt.id = `prompt_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
-          }
-          return {
-            ...prompt,
-            storageKey: key,
-            folderId: prompt.folderId || key,
-            tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-          };
-        });
-        chrome.storage.local.set({
-          [key]: { ...topic, prompts: updatedPrompts },
-        });
-        return updatedPrompts;
-      });
-
-    const singlePrompts = Object.entries(data)
-      .filter(
-        ([key, topic]) =>
-          topic.prompts && !topic.isTrash && key.startsWith("single_prompt_")
-      )
-      .flatMap(([key, topic]) => {
-        const updatedPrompts = topic.prompts.map((prompt) => {
-          if (!prompt.id) {
-            prompt.id = `prompt_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
-          }
-          return {
-            ...prompt,
-            storageKey: key,
-            folderId: prompt.folderId || key,
-            tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-          };
-        });
-        chrome.storage.local.set({
-          [key]: { ...topic, prompts: updatedPrompts },
-        });
-        return updatedPrompts;
-      });
-
-    const noFolderPrompts = (data.noFolderPrompts || []).map((prompt) => {
-      if (!prompt.id) {
-        prompt.id = `prompt_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
-      }
-      return {
+    // Prompts in Array-Form bringen
+    const promptsArray = Object.entries(allPrompts).map(
+      ([promptId, prompt]) => ({
         ...prompt,
-        storageKey: "noFolderPrompts",
-        folderId: null,
+        id: promptId,
+        folderId: prompt.folderId || null,
         tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-      };
-    });
-    if (data.noFolderPrompts) {
-      chrome.storage.local.set({ noFolderPrompts: noFolderPrompts });
-    }
+      })
+    );
 
-    const prompts = [
-      ...folderPrompts,
-      ...hiddenFolderPrompts,
-      ...singlePrompts,
-      ...noFolderPrompts,
-    ];
-
+    // Tag-Gitter erstellen
     const tagGrid = document.createElement("div");
     tagGrid.className = "tag-grid";
+    tagGrid.style.display = "flex"; // <-- Hinzugefügte Zeile
 
     tags.forEach((tag) => {
-      const promptCount = prompts.filter(
-        (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
+      const promptCount = promptsArray.filter((prompt) =>
+        prompt.tags.includes(tag)
       ).length;
+
       const tagBox = document.createElement("div");
       tagBox.className = "tag-box";
       tagBox.dataset.tag = escapeHTML(tag);
       tagBox.innerHTML = `
-        <span class="tag-name">${escapeHTML(tag)}</span>
-        <span class="prompt-count">${promptCount} Prompt${
+    <span class="tag-name">${escapeHTML(tag)}</span>
+    <span class="prompt-count">${promptCount} Prompt${
         promptCount !== 1 ? "s" : ""
       }</span>
-        <button class="delete-tag-btn" data-tag="${escapeHTML(
-          tag
-        )}" title="Tag löschen">×</button>
-      `;
+    <button class="delete-tag-btn" data-tag="${escapeHTML(
+      tag
+    )}" title="Tag löschen">×</button>
+  `;
+
       tagGrid.appendChild(tagBox);
     });
 
@@ -482,7 +398,7 @@ function loadTags() {
       box.addEventListener("click", (e) => {
         if (!e.target.classList.contains("delete-tag-btn")) {
           const tag = box.dataset.tag;
-          showPromptModal(tag, prompts);
+          showPromptModal(tag, promptsArray);
         }
       });
     });
@@ -490,10 +406,56 @@ function loadTags() {
     // Event-Listener für Delete-Tag-Buttons
     document.querySelectorAll(".delete-tag-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        e.stopPropagation(); // Verhindert das Öffnen des Modals
+        e.stopPropagation();
         deleteTag(btn.dataset.tag);
       });
     });
+  });
+}
+
+function deleteTag(tagToDelete) {
+  if (!tagToDelete) return;
+
+  chrome.storage.local.get(["tags", "prompts"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const tags = data.tags || [];
+    const prompts = data.prompts || {};
+
+    // 1. Tag aus der globalen Tag-Liste entfernen
+    const updatedTags = tags.filter((tag) => tag !== tagToDelete);
+
+    // 2. Tag bei allen Prompts löschen
+    const updatedPrompts = {};
+    for (const [promptId, prompt] of Object.entries(prompts)) {
+      if (Array.isArray(prompt.tags) && prompt.tags.includes(tagToDelete)) {
+        updatedPrompts[promptId] = {
+          ...prompt,
+          tags: prompt.tags.filter((tag) => tag !== tagToDelete),
+        };
+      }
+    }
+
+    // 3. Änderungen speichern
+    chrome.storage.local.set(
+      {
+        tags: updatedTags,
+        prompts: { ...prompts, ...updatedPrompts },
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving updated tags:", chrome.runtime.lastError);
+        } else {
+          console.log(
+            `Tag "${tagToDelete}" gelöscht und aus allen Prompts entfernt.`
+          );
+          loadTags(); // UI neu laden
+        }
+      }
+    );
   });
 }
 
@@ -546,7 +508,9 @@ function showPromptModal(tag, prompts) {
   }
 
   modalTagName.textContent = escapeHTML(tag);
-  const filteredPrompts = prompts.filter(
+
+  // Nur Prompts mit passendem Tag anzeigen
+  const filteredPrompts = Object.values(prompts).filter(
     (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
   );
 
@@ -556,91 +520,67 @@ function showPromptModal(tag, prompts) {
     modalPromptList.innerHTML = filteredPrompts
       .map((prompt) => {
         return `
-          <div class="prompt-item" data-prompt-id="${escapeHTML(
-            prompt.id
-          )}" data-storage-key="${escapeHTML(
-          prompt.storageKey
-        )}" data-folder="${escapeHTML(
-          prompt.folderName || "Kein Ordner"
-        )}" style="cursor: pointer;">
+          <div class="prompt-item" 
+               data-prompt-id="${escapeHTML(prompt.id)}" 
+               data-folder-id="${escapeHTML(prompt.folderId || "")}"
+               style="cursor: pointer;">
             <h3>${escapeHTML(prompt.title || "Untitled")}</h3>
             <p>Category: ${escapeHTML(prompt.folderName || "Kein Ordner")}</p>
             <p>Created: ${new Date(prompt.createdAt || 0).toLocaleString()}</p>
-            <button class="remove-tag-btn" data-tag="${escapeHTML(
-              tag
-            )}" data-prompt-id="${escapeHTML(
-          prompt.id
-        )}" data-storage-key="${escapeHTML(
-          prompt.storageKey
-        )}" title="Tag von diesem Prompt entfernen">×</button>
+            <button class="remove-tag-btn" 
+                    data-tag="${escapeHTML(tag)}" 
+                    data-prompt-id="${escapeHTML(prompt.id)}" 
+                    title="Tag von diesem Prompt entfernen">×</button>
           </div>
         `;
       })
       .join("");
   }
 
-  // Entferne alte Event-Listener für remove-tag-btn
-  const removeTagButtons = document.querySelectorAll(".remove-tag-btn");
-  removeTagButtons.forEach((btn) => {
+  // Entferne alte Event-Listener für remove-tag-btn (durch Klonen)
+  document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
   });
 
-  // Füge neue Event-Listener für remove-tag-btn hinzu
+  // Event Listener für Tag-Entfernen-Buttons
   document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const tag = btn.dataset.tag;
       const promptId = btn.dataset.promptId;
-      const storageKey = btn.dataset.storageKey;
-      console.log(
-        `Remove tag button clicked: tag=${tag}, promptId=${promptId}, storageKey=${storageKey}`
-      );
+
       if (!promptId) {
         console.error("Prompt-ID fehlt oder ist undefined!");
+        return;
       }
-      removeTagFromPrompt(tag, storageKey, promptId);
+
+      removeTagFromPrompt(tag, promptId);
     });
   });
 
-  // Füge Event-Listener für Klicks auf prompt-item hinzu
+  // Klick auf Prompt-Item → zur passenden Ansicht springen
   document.querySelectorAll(".prompt-item").forEach((item) => {
-    item.addEventListener("click", (e) => {
-      if (!e.target.classList.contains("remove-tag-btn")) {
-        const folder = item.dataset.folder;
-        const storageKey = item.dataset.storageKey;
-        console.log(
-          `Prompt item clicked, navigating to folder: ${folder}, storageKey: ${storageKey}`
-        );
-        if (
-          folder === "Kein Ordner" ||
-          storageKey.startsWith("single_prompt_") ||
-          storageKey === "noFolderPrompts"
-        ) {
-          modal.style.display = "none";
-          switchView("prompts-view", {
-            view: "prompts",
-            category: "Single Prompts",
-          });
-          // Verwende den übersetzten Text aus der Navigation
-          const singlePromptsNavItem = document.querySelector(
-            '.accordion-content li[data-folder="Single Prompts"]'
-          );
-          document.getElementById("prompts-header").textContent =
-            singlePromptsNavItem
-              ? singlePromptsNavItem.textContent.trim()
-              : "Single Prompts"; // Fallback
-          handleCategoryClick("Single Prompts");
-        } else {
-          modal.style.display = "none";
-          switchView("prompts-view", { view: "prompts", folder: folder });
-          handleFolderClick(folder);
-        }
+    item.addEventListener("click", () => {
+      const folderId = item.dataset.folderId;
+      modal.style.display = "none";
+
+      if (!folderId) {
+        // Kein Ordner → Single Prompts Ansicht
+        switchView("prompts-view", {
+          view: "prompts",
+          category: "Single Prompts",
+        });
+        handleCategoryClick("Single Prompts");
+      } else {
+        // Ordneransicht
+        switchView("prompts-view", { view: "prompts", folderId });
+        handleFolderClick(folderId);
       }
     });
   });
 
-  // Modal schließen bei Klick auf close-modal
+  // Modal schließen
   const closeModal = document.querySelector(".close-modal");
   if (closeModal) {
     closeModal.addEventListener("click", () => {
@@ -651,60 +591,57 @@ function showPromptModal(tag, prompts) {
   modal.style.display = "flex";
 }
 
-function removeTagFromPrompt(tag, storageKey, promptId) {
-  chrome.storage.local.get(storageKey, (data) => {
+/**
+ * Entfernt einen Tag aus einem Prompt und aktualisiert den Speicher + DOM.
+ */
+function removeTagFromPrompt(tag, promptId) {
+  chrome.storage.local.get(["prompts"], (data) => {
     if (chrome.runtime.lastError) {
-      console.error("Error loading storage key:", chrome.runtime.lastError);
-      return;
-    }
-    let promptsData = data[storageKey];
-    if (!promptsData) {
-      console.error(`Storage key ${storageKey} not found`);
+      console.error("Error loading prompts:", chrome.runtime.lastError);
       return;
     }
 
-    const isFolder = storageKey !== "noFolderPrompts" && promptsData.prompts;
-    const updatedPrompts = (isFolder ? promptsData.prompts : promptsData).map(
-      (prompt) => {
-        if (
-          String(prompt.id) === String(promptId) &&
-          Array.isArray(prompt.tags) &&
-          prompt.tags.includes(tag)
-        ) {
-          return {
-            ...prompt,
-            tags: prompt.tags.filter((t) => t !== tag),
-          };
-        }
-        return prompt;
-      }
-    );
+    const prompts = data.prompts || {};
 
-    const saveData = isFolder
-      ? { [storageKey]: { ...promptsData, prompts: updatedPrompts } }
-      : { [storageKey]: updatedPrompts };
-    chrome.storage.local.set(saveData, () => {
+    if (!prompts[promptId]) {
+      console.error(`Prompt mit ID ${promptId} nicht gefunden`);
+      return;
+    }
+
+    const prompt = prompts[promptId];
+
+    if (!Array.isArray(prompt.tags) || !prompt.tags.includes(tag)) {
+      console.warn(`Tag "${tag}" nicht im Prompt ${promptId} enthalten`);
+      return;
+    }
+
+    // Tag entfernen
+    prompts[promptId] = {
+      ...prompt,
+      tags: prompt.tags.filter((t) => t !== tag),
+    };
+
+    // Änderungen speichern
+    chrome.storage.local.set({ prompts }, () => {
       if (chrome.runtime.lastError) {
-        console.error("Error saving prompts:", chrome.runtime.lastError);
+        console.error(
+          "Error saving updated prompts:",
+          chrome.runtime.lastError
+        );
         return;
       }
-      console.log(`Tag ${tag} removed from prompt ${promptId}`);
-      // DOM direkt aktualisieren
-      const promptItem = document.querySelector(
-        `.prompt-item[data-prompt-id="${escapeHTML(
+
+      console.log(`Tag "${tag}" wurde aus Prompt ${promptId} entfernt.`);
+
+      // Prompt-Element aus der Tag-Liste entfernen
+      const promptElement = document.querySelector(
+        `#modalPromptList .prompt-item[data-prompt-id="${CSS.escape(
           promptId
-        )}"][data-storage-key="${escapeHTML(storageKey)}"]`
+        )}"]`
       );
-      if (promptItem) {
-        const remainingTags =
-          updatedPrompts.find((p) => String(p.id) === String(promptId))?.tags ||
-          [];
-        if (!remainingTags.includes(tag)) {
-          promptItem.remove(); // Entferne das prompt-item, wenn der Tag nicht mehr vorhanden ist
-        }
+      if (promptElement) {
+        promptElement.remove();
       }
-      // Optional: loadTags(), falls die Tag-Boxen aktualisiert werden sollen
-      loadTags(); // Tags neu laden, um Modal und Tag-Counts zu aktualisieren
     });
   });
 }

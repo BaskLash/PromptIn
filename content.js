@@ -99,13 +99,34 @@ async function createNewPrompt(
   closeModal
 ) {
   const promptId = `prompt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  const currentUrl = window.location.hostname;
+  const compatibleModels = currentUrl.includes("chatgpt.com")
+    ? ["ChatGPT"]
+    : ["Unknown"];
+  const incompatibleModels = [];
+  const tags = [];
+  const isFavorite = false;
+  const folderId = null;
+  const folderName = null;
+  const notes = "";
+  const type = "default"; // Assuming a default type; adjust as needed
 
   const newPrompt = {
     title: promptTitle,
     description: promptDescription,
     content: promptContent,
+    notes,
+    type,
+    compatibleModels,
+    incompatibleModels,
+    tags,
+    isFavorite,
+    folderId,
+    folderName,
     createdAt: Date.now(),
-    folderId: null, // kein zugewiesener Ordner
+    updatedAt: Date.now(),
+    usageCount: 0,
+    lastUsed: null,
     versions: [
       {
         versionId: generateUUID(),
@@ -115,6 +136,25 @@ async function createNewPrompt(
         timestamp: Date.now(),
       },
     ],
+    metaChangeLog: [
+      {
+        timestamp: Date.now(),
+        changes: {
+          title: { from: null, to: promptTitle },
+          description: { from: null, to: promptDescription },
+          content: { from: null, to: promptContent },
+          type: { from: null, to: type },
+          compatibleModels: { from: [], to: compatibleModels },
+          incompatibleModels: { from: [], to: incompatibleModels },
+          tags: { from: [], to: tags },
+          isFavorite: { from: false, to: isFavorite },
+          folderId: { from: null, to: folderId },
+          folderName: { from: null, to: folderName },
+          notes: { from: null, to: notes },
+        },
+      },
+    ],
+    performanceHistory: [],
   };
 
   try {
@@ -139,6 +179,7 @@ async function createNewPrompt(
           reject(chrome.runtime.lastError);
         } else {
           console.log("Neuer Prompt gespeichert:", { promptId });
+          alert("Prompt erfolgreich erstellt!");
           resolve();
         }
       });
@@ -179,6 +220,19 @@ async function replacePrompt(
     }
 
     const oldPrompt = prompts[promptId];
+    const currentUrl = window.location.hostname;
+    const compatibleModels = currentUrl.includes("chatgpt.com")
+      ? ["ChatGPT"]
+      : ["Unknown"];
+    const incompatibleModels = oldPrompt.incompatibleModels || [];
+    const tags = oldPrompt.tags || [];
+    const isFavorite = oldPrompt.isFavorite || false;
+    const folderName =
+      folderId && folders[folderId]
+        ? folders[folderId].name
+        : oldPrompt.folderName;
+    const notes = oldPrompt.notes || "";
+    const type = oldPrompt.type || "default";
 
     // Neue Version anhängen
     const newVersion = {
@@ -194,8 +248,34 @@ async function replacePrompt(
       title: promptTitle,
       description: promptDescription,
       content: promptContent,
+      notes,
+      type,
+      compatibleModels,
+      incompatibleModels,
+      tags,
+      isFavorite,
+      folderId,
+      folderName,
       updatedAt: Date.now(),
+      usageCount: oldPrompt.usageCount || 0,
+      lastUsed: oldPrompt.lastUsed || null,
       versions: [newVersion, ...(oldPrompt.versions || [])],
+      metaChangeLog: [
+        {
+          timestamp: Date.now(),
+          changes: {
+            title: { from: oldPrompt.title, to: promptTitle },
+            description: { from: oldPrompt.description, to: promptDescription },
+            content: { from: oldPrompt.content, to: promptContent },
+            compatibleModels: {
+              from: oldPrompt.compatibleModels || [],
+              to: compatibleModels,
+            },
+          },
+        },
+        ...(oldPrompt.metaChangeLog || []),
+      ],
+      performanceHistory: oldPrompt.performanceHistory || [],
     };
 
     prompts[promptId] = updatedPrompt;
@@ -214,6 +294,7 @@ async function replacePrompt(
           reject(chrome.runtime.lastError);
         } else {
           console.log(`Prompt ${promptId} erfolgreich ersetzt.`);
+          alert("Prompt erfolgreich ersetzt!");
           resolve();
         }
       });
@@ -235,25 +316,17 @@ async function addPromptToFolder(
   closeModal
 ) {
   const promptId = `prompt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-  const promptObject = {
-    title: promptTitle,
-    description: promptDescription,
-    content: promptContent,
-    createdAt: Date.now(),
-    folderId: folderId,
-    versions: [
-      {
-        versionId: generateUUID(),
-        title: promptTitle,
-        description: promptDescription,
-        content: promptContent,
-        timestamp: Date.now(),
-      },
-    ],
-  };
+  const currentUrl = window.location.hostname;
+  const compatibleModels = currentUrl.includes("chatgpt.com")
+    ? ["ChatGPT"]
+    : ["Unknown"];
+  const incompatibleModels = [];
+  const tags = [];
+  const isFavorite = false;
+  const notes = "";
+  const type = "default"; // Assuming a default type; adjust as needed
 
   try {
-    // Fetch existing prompts and folders
     const data = await new Promise((resolve, reject) => {
       chrome.storage.local.get(["prompts", "folders"], (data) => {
         if (chrome.runtime.lastError) {
@@ -267,25 +340,70 @@ async function addPromptToFolder(
     const prompts = data.prompts || {};
     const folders = data.folders || {};
 
-    // Ensure the folder exists
     if (!folders[folderId]) {
       throw new Error(`Folder ${folderId} does not exist.`);
     }
 
-    // Add new prompt to prompts object
+    const folderName = folders[folderId].name;
+
+    const promptObject = {
+      title: promptTitle,
+      description: promptDescription,
+      content: promptContent,
+      notes,
+      type,
+      compatibleModels,
+      incompatibleModels,
+      tags,
+      isFavorite,
+      folderId,
+      folderName,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      usageCount: 0,
+      lastUsed: null,
+      versions: [
+        {
+          versionId: generateUUID(),
+          title: promptTitle,
+          description: promptDescription,
+          content: promptContent,
+          timestamp: Date.now(),
+        },
+      ],
+      metaChangeLog: [
+        {
+          timestamp: Date.now(),
+          changes: {
+            title: { from: null, to: promptTitle },
+            description: { from: null, to: promptDescription },
+            content: { from: null, to: promptContent },
+            type: { from: null, to: type },
+            compatibleModels: { from: [], to: compatibleModels },
+            incompatibleModels: { from: [], to: incompatibleModels },
+            tags: { from: [], to: tags },
+            isFavorite: { from: false, to: isFavorite },
+            folderId: { from: null, to: folderId },
+            folderName: { from: null, to: folderName },
+            notes: { from: null, to: notes },
+          },
+        },
+      ],
+      performanceHistory: [],
+    };
+
     prompts[promptId] = promptObject;
 
-    // Update folder's promptIds
     folders[folderId].promptIds = folders[folderId].promptIds || [];
     folders[folderId].promptIds.push(promptId);
 
-    // Save updated prompts and folders
     await new Promise((resolve, reject) => {
       chrome.storage.local.set({ prompts, folders }, () => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
         } else {
           console.log(`Prompt ${promptId} added to folder ${folderId}`);
+          alert("Prompt erfolgreich zum Ordner hinzugefügt!");
           resolve();
         }
       });
@@ -308,7 +426,7 @@ async function combineWithExistingPrompt(
 ) {
   try {
     const data = await new Promise((resolve, reject) => {
-      chrome.storage.local.get("prompts", (data) => {
+      chrome.storage.local.get(["prompts", "folders"], (data) => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
         } else {
@@ -318,6 +436,7 @@ async function combineWithExistingPrompt(
     });
 
     const prompts = data.prompts || {};
+    const folders = data.folders || {};
 
     if (!prompts[promptId]) {
       alert("Prompt nicht gefunden!");
@@ -325,26 +444,68 @@ async function combineWithExistingPrompt(
     }
 
     const existingPrompt = prompts[promptId];
+    const currentUrl = window.location.hostname;
+    const compatibleModels = currentUrl.includes("chatgpt.com")
+      ? ["ChatGPT"]
+      : ["Unknown"];
+    const incompatibleModels = existingPrompt.incompatibleModels || [];
+    const tags = existingPrompt.tags || [];
+    const isFavorite = existingPrompt.isFavorite || false;
+    const folderId = existingPrompt.folderId || null;
+    const folderName =
+      folderId && folders[folderId]
+        ? folders[folderId].name
+        : existingPrompt.folderName;
+    const notes = existingPrompt.notes || "";
+    const type = existingPrompt.type || "default";
 
-    // Nur content aktualisieren
-    existingPrompt.content = combinedText;
-
-    // Neue Version hinzufügen
     const newVersion = {
       versionId: generateUUID(),
-      title: existingPrompt.title || "Untitled Prompt",
-      description: existingPrompt.description || "",
+      title: promptTitle,
+      description: promptDescription,
       content: combinedText,
       timestamp: Date.now(),
     };
 
-    if (!existingPrompt.versions) {
-      existingPrompt.versions = [];
-    }
+    const updatedPrompt = {
+      ...existingPrompt,
+      title: promptTitle,
+      description: promptDescription,
+      content: combinedText,
+      notes,
+      type,
+      compatibleModels,
+      incompatibleModels,
+      tags,
+      isFavorite,
+      folderId,
+      folderName,
+      updatedAt: Date.now(),
+      usageCount: existingPrompt.usageCount || 0,
+      lastUsed: existingPrompt.lastUsed || null,
+      versions: [newVersion, ...(existingPrompt.versions || [])],
+      metaChangeLog: [
+        {
+          timestamp: Date.now(),
+          changes: {
+            title: { from: existingPrompt.title, to: promptTitle },
+            description: {
+              from: existingPrompt.description,
+              to: promptDescription,
+            },
+            content: { from: existingPrompt.content, to: combinedText },
+            compatibleModels: {
+              from: existingPrompt.compatibleModels || [],
+              to: compatibleModels,
+            },
+          },
+        },
+        ...(existingPrompt.metaChangeLog || []),
+      ],
+      performanceHistory: existingPrompt.performanceHistory || [],
+    };
 
-    existingPrompt.versions.unshift(newVersion); // Neueste Version zuerst
-
-    prompts[promptId] = existingPrompt;
+    prompts[promptId] = updatedPrompt;
 
     await new Promise((resolve, reject) => {
       chrome.storage.local.set({ prompts }, () => {
@@ -354,6 +515,7 @@ async function combineWithExistingPrompt(
           console.log(
             `Prompt ${promptId} erfolgreich kombiniert und gespeichert.`
           );
+          alert("Prompt erfolgreich kombiniert und gespeichert!");
           resolve();
         }
       });
@@ -1367,6 +1529,7 @@ async function promptSaver(message) {
       const folders = data.folders || {};
       const prompts = data.prompts || {};
 
+      // Reset der Select- und Vorschlags-UI
       combinePromptSelect.innerHTML =
         '<option value="">Select a prompt</option>';
       suggestedDropdownContent.innerHTML = "";
@@ -1376,15 +1539,15 @@ async function promptSaver(message) {
 
       const allPrompts = [];
 
+      // Alle Prompts durchgehen
       Object.entries(prompts).forEach(([promptId, prompt]) => {
         if (prompt.isDeleted) return;
 
         const folderId = prompt.folderId || null;
-        const folder = folderId ? folders[folderId] : null;
-
-        const folderName = folder?.isHidden
-          ? "Single Prompt"
-          : folder?.name || "Ohne Ordner";
+        const folderName =
+          folderId && folders[folderId]
+            ? folders[folderId].name || "Ohne Ordner"
+            : "Ohne Ordner";
 
         const similarity = currentPrompt
           ? computeCosineSimilarity(currentPrompt, prompt.content || "")
@@ -1401,6 +1564,7 @@ async function promptSaver(message) {
         });
       });
 
+      // Prompts nach Datum sortieren (neueste zuerst)
       allPrompts
         .sort((a, b) => b.createdAt - a.createdAt)
         .forEach((prompt) => {
@@ -1411,6 +1575,7 @@ async function promptSaver(message) {
           combinePromptSelect.appendChild(option);
         });
 
+      // Funktion zum Anzeigen der Vorschläge
       const displaySuggestedPrompts = (prompts) => {
         prompts.forEach((prompt) => {
           const item = document.createElement("div");
@@ -1488,6 +1653,7 @@ async function promptSaver(message) {
         suggestedPromptsLabel.style.display = "block";
       };
 
+      // Relevante Prompts ermitteln
       const getRelevantPrompts = () => {
         if (currentPrompt?.trim()) {
           return allPrompts
@@ -1551,28 +1717,30 @@ async function promptSaver(message) {
 
       const allPrompts = [];
 
-      Object.entries(data).forEach(([folderId, folder]) => {
-        if (folder.isTrash || !folder.prompts) return;
+      // Durch alle Prompts iterieren
+      Object.entries(data.prompts || {}).forEach(([promptId, prompt]) => {
+        if (!prompt || !prompt.content) return;
 
-        folder.prompts.forEach((prompt, index) => {
-          if (!prompt || !prompt.content) return;
+        const similarity = computeCosineSimilarity(
+          currentPrompt,
+          prompt.content
+        );
 
-          const similarity = computeCosineSimilarity(
-            currentPrompt,
-            prompt.content
-          );
-          allPrompts.push({
-            promptId: `${folderId}:${index}`,
-            title: prompt.title || "Untitled Prompt",
-            description: prompt.description || "Keine Beschreibung verfügbar",
-            content: prompt.content,
-            similarity,
-            isHidden: folder.isHidden || false,
-            folderName: folder.isHidden
-              ? "Single Prompt"
-              : folder.name || "Unbenannter Ordner",
-            folderId: folderId,
-          });
+        // Ordnername bestimmen (falls vorhanden)
+        let folderName = "Kein Ordner";
+        if (prompt.folderId && data.folders && data.folders[prompt.folderId]) {
+          folderName =
+            data.folders[prompt.folderId].name || "Unbenannter Ordner";
+        }
+
+        allPrompts.push({
+          promptId,
+          title: prompt.title || "Untitled Prompt",
+          description: prompt.description || "Keine Beschreibung verfügbar",
+          content: prompt.content,
+          similarity,
+          folderName,
+          folderId: prompt.folderId || null,
         });
       });
 
@@ -1651,30 +1819,32 @@ async function promptSaver(message) {
         });
 
         item.addEventListener("click", () => {
-          replaceFolderSelect.value = prompt.isHidden
-            ? "single"
-            : prompt.folderId;
+          replaceFolderSelect.value = prompt.folderId || "";
           replacePromptSelect.disabled = false;
           replacePromptSelect.innerHTML =
             '<option value="">Select a prompt</option>';
 
-          chrome.storage.local.get(prompt.folderId, (data) => {
-            const folder = data[prompt.folderId];
-            if (folder && folder.prompts) {
-              const promptOptions = folder.prompts.map((p, index) => ({
-                promptId: `${prompt.folderId}:${index}`,
-                title: p.title || "Untitled Prompt",
-              }));
+          // Prompt-Liste für den entsprechenden Ordner laden
+          if (
+            prompt.folderId &&
+            data.folders &&
+            data.folders[prompt.folderId]
+          ) {
+            const promptOptions = data.folders[prompt.folderId].promptIds.map(
+              (pid) => ({
+                promptId: pid,
+                title: data.prompts[pid]?.title || "Untitled Prompt",
+              })
+            );
 
-              promptOptions.forEach((p) => {
-                const option = document.createElement("option");
-                option.value = p.promptId;
-                option.textContent = p.title;
-                if (p.promptId === prompt.promptId) option.selected = true;
-                replacePromptSelect.appendChild(option);
-              });
-            }
-          });
+            promptOptions.forEach((p) => {
+              const option = document.createElement("option");
+              option.value = p.promptId;
+              option.textContent = p.title;
+              if (p.promptId === prompt.promptId) option.selected = true;
+              replacePromptSelect.appendChild(option);
+            });
+          }
 
           dropdownButton.textContent = prompt.title;
           dropdownContent.style.display = "none";
@@ -1750,83 +1920,55 @@ async function promptSaver(message) {
     replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
     shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
 
-    if (folderId) {
-      try {
-        if (folderId === "single") {
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(null, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
+    if (!folderId) return;
 
-          let singlePrompts = [];
-          Object.entries(data).forEach(([id, topic]) => {
-            if (topic.isHidden && !topic.isTrash && topic.prompts) {
-              topic.prompts.forEach((prompt, index) => {
-                singlePrompts.push({
-                  folderId: id,
-                  index,
-                  title: prompt.title || "Untitled Prompt",
-                });
-              });
-            }
-          });
-
-          singlePrompts.forEach((prompt) => {
-            const option = document.createElement("option");
-            option.value = `${prompt.folderId}:${prompt.index}`;
-            option.textContent =
-              prompt.title.length > 50
-                ? prompt.title.slice(0, 50) + "..."
-                : prompt.title;
-            option.title = prompt.title;
-            replacePromptSelect.appendChild(option);
-          });
-        } else {
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(folderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
-
-          const topic = data[folderId];
-          if (topic && topic.prompts) {
-            topic.prompts.forEach((prompt, index) => {
-              const option = document.createElement("option");
-              option.value = index;
-              const promptTitle = prompt.title || "Untitled Prompt";
-              option.textContent =
-                promptTitle.length > 50
-                  ? promptTitle.slice(0, 50) + "..."
-                  : promptTitle;
-              option.title = promptTitle;
-              replacePromptSelect.appendChild(option);
-            });
+    try {
+      const data = await new Promise((resolve, reject) => {
+        chrome.storage.local.get(["folders", "prompts"], (data) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(data);
           }
-        }
-      } catch (error) {
-        console.error("Error fetching folder data:", error);
+        });
+      });
+
+      const folders = data.folders || {};
+      const prompts = data.prompts || {};
+      const folder = folders[folderId];
+
+      if (!folder || !Array.isArray(folder.promptIds)) {
+        console.warn(`Folder ${folderId} not found or has no prompts.`);
+        return;
       }
+
+      folder.promptIds.forEach((promptId) => {
+        const prompt = prompts[promptId];
+        if (!prompt) return;
+
+        const option = document.createElement("option");
+        option.value = promptId;
+        const promptTitle = prompt.title || "Untitled Prompt";
+        option.textContent =
+          promptTitle.length > 50
+            ? promptTitle.slice(0, 50) + "..."
+            : promptTitle;
+        option.title = promptTitle;
+        replacePromptSelect.appendChild(option);
+      });
+    } catch (error) {
+      console.error("Error fetching folder or prompt data:", error);
     }
   });
 
   combinePromptSelect.addEventListener("change", async (e) => {
-    const promptValue = combinePromptSelect.value;
+    const promptId = combinePromptSelect.value;
     combinedPromptPreview.innerHTML = "The combined prompt will appear here...";
 
-    if (promptValue !== "") {
+    if (promptId !== "") {
       try {
-        const [folderId, promptIndex] = promptValue.split(":");
         const data = await new Promise((resolve, reject) => {
-          chrome.storage.local.get(folderId, (data) => {
+          chrome.storage.local.get(["prompts"], (data) => {
             if (chrome.runtime.lastError) {
               reject(chrome.runtime.lastError);
             } else {
@@ -1835,9 +1977,11 @@ async function promptSaver(message) {
           });
         });
 
-        const topic = data[folderId];
-        if (topic && topic.prompts && topic.prompts[promptIndex]) {
-          const existingPrompt = topic.prompts[promptIndex].content || "";
+        const prompts = data.prompts || {};
+        const existingPromptObj = prompts[promptId];
+
+        if (existingPromptObj && existingPromptObj.content) {
+          const existingPrompt = existingPromptObj.content;
           const currentPrompt = promptTextarea.value.trim();
           computeCombinedPromptDiff(
             existingPrompt,
@@ -1856,47 +2000,29 @@ async function promptSaver(message) {
   });
 
   replacePromptSelect.addEventListener("change", async (e) => {
-    const folderId = replaceFolderSelect.value;
-    const promptValue = replacePromptSelect.value;
+    const promptId = replacePromptSelect.value;
 
-    if (folderId && promptValue !== "") {
+    if (promptId !== "") {
       try {
-        if (folderId === "single") {
-          const [singleFolderId, promptIndex] = promptValue.split(":");
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(singleFolderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
+        const data = await new Promise((resolve, reject) => {
+          chrome.storage.local.get(["prompts"], (data) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve(data);
+            }
           });
+        });
 
-          const topic = data[singleFolderId];
-          if (topic && topic.prompts && topic.prompts[promptIndex]) {
-            const selectedPrompt = topic.prompts[promptIndex].content;
-            const currentPrompt = promptTextarea.value.trim();
-            computePromptDiff(currentPrompt, selectedPrompt);
-          }
+        const prompts = data.prompts || {};
+        const selectedPrompt = prompts[promptId];
+
+        if (selectedPrompt && selectedPrompt.content) {
+          const currentPrompt = promptTextarea.value.trim();
+          computePromptDiff(currentPrompt, selectedPrompt.content);
         } else {
-          const promptIndex = promptValue;
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(folderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
-
-          const topic = data[folderId];
-          if (topic && topic.prompts && topic.prompts[promptIndex]) {
-            const selectedPrompt = topic.prompts[promptIndex].content;
-            const currentPrompt = promptTextarea.value.trim();
-            computePromptDiff(currentPrompt, selectedPrompt);
-          }
+          shadowRoot.getElementById("promptDiffOutput").innerHTML =
+            "Error: Selected prompt not found.";
         }
       } catch (error) {
         console.error("Error fetching prompt data:", error);
