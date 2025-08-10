@@ -267,7 +267,38 @@ function inputFieldTrigger() {
               return;
             }
 
+            // Mapping of domains to model names
+            const domainToModelMap = {
+              "chatgpt.com": "ChatGPT",
+              "grok.com": "Grok",
+              "gemini.google.com": "Gemini",
+              "claude.ai": "Claude",
+              "blackbox.ai": "BlackBox",
+              "github.com": "GitHub Copilot",
+              "copilot.microsoft.com": "Microsoft Copilot",
+              "chat.mistral.ai": "Mistral",
+              "duckduckgo.com": "DuckDuckGo AI Chat",
+              "perplexity.ai": "Perplexity",
+              "chat.deepseek.com": "DeepSeek",
+              "deepai.org": "DeepAI",
+              "chat.qwen.ai": "Qwen AI",
+            };
+
+            // Function to get current mode based on domain
+            function getCurrentMode() {
+              const currentDomain = window.location.hostname;
+              for (const [domain, model] of Object.entries(domainToModelMap)) {
+                if (currentDomain.includes(domain)) {
+                  return model;
+                }
+              }
+              return null; // Fallback if no matching domain is found
+            }
+
+            const currentMode = getCurrentMode();
+
             categories = {
+              Recommended: [],
               "Last Used": [],
               Favorites: [],
               Workflows: [],
@@ -295,6 +326,7 @@ function inputFieldTrigger() {
             const folders = data.folders || {};
 
             // Alle Prompts durchgehen
+            let recommended = [];
             for (const [promptId, prompt] of Object.entries(prompts)) {
               if (prompt.isTrash) continue;
 
@@ -313,6 +345,30 @@ function inputFieldTrigger() {
                 lastUsed,
                 folder: folder || null,
               });
+
+              // Recommended (filtered by compatibleModels)
+              if (
+                currentMode &&
+                Array.isArray(prompt.compatibleModels) &&
+                prompt.compatibleModels.includes(currentMode)
+              ) {
+                recommended.push({
+                  title,
+                  usageCount: prompt.usageCount || 0,
+                  key,
+                  folder,
+                  prompt,
+                  folderId,
+                  promptId,
+                });
+                promptSourceMap.set(key, {
+                  category: "Recommended",
+                  folder,
+                  prompt,
+                  folderId,
+                  promptId,
+                });
+              }
 
               // All Prompts
               categories["All Prompts"].push(title);
@@ -366,6 +422,10 @@ function inputFieldTrigger() {
                 });
               }
             }
+
+            // Sort Recommended by usageCount descending
+            recommended.sort((a, b) => b.usageCount - a.usageCount);
+            categories["Recommended"] = recommended.map((r) => r.title);
 
             // Sort Last Used
             allPrompts.sort((a, b) => b.lastUsed - a.lastUsed);

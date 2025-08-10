@@ -1780,13 +1780,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (!folderId) {
-      alert(
-        translations[currentLang]?.select_folder || "Please select a folder!"
-      );
-      return;
-    }
-
     savePrompt(
       {
         promptId,
@@ -2323,13 +2316,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!title) {
         alert(
           translations[currentLang]?.required_title || "Title is required!"
-        );
-        return;
-      }
-
-      if (!folderId) {
-        alert(
-          translations[currentLang]?.select_folder || "Please select a folder!"
         );
         return;
       }

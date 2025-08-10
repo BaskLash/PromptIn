@@ -98,6 +98,7 @@ async function createNewPrompt(
   promptContent,
   closeModal
 ) {
+  console.log("So werde ich gespeichert bei PromptSaver");
   const promptId = `prompt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   const currentUrl = window.location.hostname;
   const compatibleModels = currentUrl.includes("chatgpt.com")
@@ -107,11 +108,12 @@ async function createNewPrompt(
   const tags = [];
   const isFavorite = false;
   const folderId = null;
-  const folderName = null;
+  const folderName = "Single Prompt"; // Standardwert für folderName
   const notes = "";
-  const type = "default"; // Assuming a default type; adjust as needed
+  const type = "textgen"; // Standardwert für Typ, passend zu showCreatePromptModal
 
   const newPrompt = {
+    promptId: promptId,
     title: promptTitle,
     description: promptDescription,
     content: promptContent,
@@ -127,6 +129,8 @@ async function createNewPrompt(
     updatedAt: Date.now(),
     usageCount: 0,
     lastUsed: null,
+    isTrash: false, // Hinzugefügt für Konsistenz
+    deletedAt: null, // Hinzugefügt für Konsistenz
     versions: [
       {
         versionId: generateUUID(),
@@ -160,7 +164,8 @@ async function createNewPrompt(
   try {
     // Bestehende Prompts laden
     const data = await new Promise((resolve, reject) => {
-      chrome.storage.local.get(["prompts"], (data) => {
+      chrome.storage.local.get(["prompts", "folders"], (data) => {
+        // Hinzugefügt: "folders" laden, um updateTable zu unterstützen
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
         } else {
@@ -170,6 +175,7 @@ async function createNewPrompt(
     });
 
     const prompts = data.prompts || {};
+    const folders = data.folders || {}; // Hinzugefügt für updateTable
     prompts[promptId] = newPrompt;
 
     // Neuen Prompt speichern
@@ -179,12 +185,18 @@ async function createNewPrompt(
           reject(chrome.runtime.lastError);
         } else {
           console.log("Neuer Prompt gespeichert:", { promptId });
-          alert("Prompt erfolgreich erstellt!");
+          // Tabelle aktualisieren
+          updateTable(newPrompt, folderId, folderName, false, folders);
           resolve();
         }
       });
     });
 
+    // Kategorie neu rendern
+    const category = "Single Prompts"; // Standardkategorie für neue Prompts ohne Ordner
+    handleCategoryClick(category);
+
+    alert("Prompt erfolgreich erstellt!");
     closeModal();
   } catch (error) {
     console.error("Fehler beim Erstellen des Prompts:", error);
@@ -1690,6 +1702,99 @@ async function promptSaver(message) {
     }
   }
 
+  function computePromptDiffForItem(
+    currentPrompt,
+    selectedPrompt,
+    diffContainer
+  ) {
+    diffContainer.innerHTML = ""; // Leere den Container
+
+    // Normalize whitespace and split into words
+    const words1 = (selectedPrompt || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w);
+    const words2 = (currentPrompt || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w);
+
+    // Compute diff
+    let i = 0,
+      j = 0;
+    const unifiedDiff = [];
+    let diffCount = 0; // Zähler für Unterschiede
+
+    while (i < words1.length || j < words2.length) {
+      if (i < words1.length && j < words2.length && words1[i] === words2[j]) {
+        unifiedDiff.push({ value: words1[i], type: "common" });
+        i++;
+        j++;
+      } else {
+        let foundMatch = false;
+        for (let k = j; k < Math.min(words2.length, j + 3); k++) {
+          for (let m = i; m < Math.min(words1.length, i + 3); m++) {
+            if (words1[m] === words2[k]) {
+              while (i < m) {
+                unifiedDiff.push({ value: words1[i], type: "removed" });
+                diffCount++;
+                i++;
+              }
+              while (j < k) {
+                unifiedDiff.push({ value: words2[j], type: "added" });
+                diffCount++;
+                j++;
+              }
+              unifiedDiff.push({ value: words1[m], type: "common" });
+              i++;
+              j++;
+              foundMatch = true;
+              break;
+            }
+          }
+          if (foundMatch) break;
+        }
+        if (!foundMatch) {
+          if (i < words1.length) {
+            unifiedDiff.push({ value: words1[i], type: "removed" });
+            diffCount++;
+            i++;
+          }
+          if (j < words2.length) {
+            unifiedDiff.push({ value: words2[j], type: "added" });
+            diffCount++;
+            j++;
+          }
+        }
+      }
+    }
+
+    // Render diff
+    let lastWasRemoved = false;
+    unifiedDiff.forEach((part, index) => {
+      const span = document.createElement("span");
+      span.className = `diff-word ${part.type}`;
+      span.textContent = part.value + " ";
+
+      if (lastWasRemoved && part.type === "added") {
+        const prevPart = unifiedDiff[index - 1];
+        if (prevPart && prevPart.type === "removed") {
+          const arrow = document.createElement("span");
+          arrow.textContent = "→ ";
+          arrow.className = "arrow";
+          diffContainer.appendChild(arrow);
+        }
+      }
+
+      diffContainer.appendChild(span);
+      lastWasRemoved = part.type === "removed";
+    });
+
+    return { diffCount };
+  }
+
   async function loadSimilarPrompts(currentPrompt) {
     dropdownContent.innerHTML = "";
     dropdownButton.textContent = "Select a similar prompt";
@@ -1726,6 +1831,13 @@ async function promptSaver(message) {
           prompt.content
         );
 
+        // Unterschiede berechnen (wie in Code 2)
+        const { diffCount } = computePromptDiffForItem(
+          currentPrompt,
+          prompt.content || "",
+          document.createElement("div")
+        );
+
         // Ordnername bestimmen (falls vorhanden)
         let folderName = "Kein Ordner";
         if (prompt.folderId && data.folders && data.folders[prompt.folderId]) {
@@ -1739,6 +1851,7 @@ async function promptSaver(message) {
           description: prompt.description || "Keine Beschreibung verfügbar",
           content: prompt.content,
           similarity,
+          diffCount,
           folderName,
           folderId: prompt.folderId || null,
         });
@@ -1746,7 +1859,21 @@ async function promptSaver(message) {
 
       const similarPrompts = allPrompts
         .filter((p) => p.similarity > 0.1)
-        .sort((a, b) => b.similarity - a.similarity);
+        .sort((a, b) => a.diffCount - b.diffCount); // sortiere wie Code 2 nach Diff
+
+      // Falls identischer Prompt gefunden wird
+      const identicalPrompt = similarPrompts.find((p) => p.diffCount === 0);
+      if (identicalPrompt) {
+        dropdownContent.innerHTML = `
+          <div class='dropdown-item'>
+            This prompt already exists:<br>
+            <strong>Title:</strong> ${identicalPrompt.title}<br>
+            <strong>Description:</strong> ${identicalPrompt.description}
+          </div>`;
+        similarPromptsDropdown.style.display = "block";
+        similarPromptsLabel.style.display = "block";
+        return;
+      }
 
       if (similarPrompts.length === 0) {
         dropdownContent.innerHTML =
@@ -1760,6 +1887,8 @@ async function promptSaver(message) {
       similarPromptsLabel.style.display = "block";
 
       similarPrompts.forEach((prompt) => {
+        if (prompt.diffCount === 0) return; // identische überspringen
+
         const item = document.createElement("div");
         item.className = "dropdown-item";
         item.setAttribute("data-value", prompt.promptId);
@@ -1773,24 +1902,23 @@ async function promptSaver(message) {
           prompt.title.length > 50
             ? prompt.title.slice(0, 50) + "..."
             : prompt.title;
-        title.title = `${prompt.title} (Ähnlichkeit: ${(
-          prompt.similarity * 100
-        ).toFixed(2)}%)`;
+        title.title = `${prompt.title} (Differences: ${prompt.diffCount} words, Category: ${prompt.folderName})`;
 
         const toggle = document.createElement("span");
         toggle.className = "dropdown-item-toggle";
-        toggle.textContent = "Inhalt anzeigen";
+        toggle.textContent = "Show content";
 
         header.appendChild(title);
         header.appendChild(toggle);
 
+        // === Angepasster Anzeigebereich (Prompt Content + Differences) ===
         const contentWrapper = document.createElement("div");
         contentWrapper.className = "dropdown-item-content-wrapper";
         contentWrapper.style.display = "none";
 
         const contentLabel = document.createElement("div");
         contentLabel.className = "dropdown-item-label";
-        contentLabel.textContent = "Prompt-Inhalt:";
+        contentLabel.textContent = "Prompt Content:";
 
         const content = document.createElement("div");
         content.className = "dropdown-item-content";
@@ -1803,8 +1931,31 @@ async function promptSaver(message) {
         content.style.whiteSpace = "pre-wrap";
         content.textContent = prompt.content || "Kein Inhalt verfügbar";
 
+        const diffLabel = document.createElement("div");
+        diffLabel.className = "dropdown-item-label";
+        diffLabel.textContent = "Differences:";
+
+        const diffContainer = document.createElement("div");
+        diffContainer.className = "dropdown-item-diff";
+        diffContainer.style.marginTop = "10px";
+        diffContainer.style.padding = "10px";
+        diffContainer.style.background = "#f8f9fa";
+        diffContainer.style.borderRadius = "4px";
+        diffContainer.style.fontSize = "13px";
+        diffContainer.style.color = "#2c3e50";
+
+        const diffSummary = document.createElement("div");
+        diffSummary.className = "diff-summary";
+        diffSummary.style.marginTop = "10px";
+        diffSummary.style.fontWeight = "bold";
+        diffSummary.style.color = "#1e90ff";
+
         contentWrapper.appendChild(contentLabel);
         contentWrapper.appendChild(content);
+        contentWrapper.appendChild(diffLabel);
+        contentWrapper.appendChild(diffContainer);
+        contentWrapper.appendChild(diffSummary);
+        // === Ende angepasster Anzeigebereich ===
 
         item.appendChild(header);
         item.appendChild(contentWrapper);
@@ -1813,9 +1964,20 @@ async function promptSaver(message) {
           e.stopPropagation();
           const isActive = contentWrapper.style.display === "block";
           contentWrapper.style.display = isActive ? "none" : "block";
-          toggle.textContent = isActive
-            ? "Inhalt anzeigen"
-            : "Inhalt ausblenden";
+          toggle.textContent = isActive ? "Show content" : "Hide content";
+
+          if (!isActive) {
+            const { diffCount } = computePromptDiffForItem(
+              currentPrompt,
+              prompt.content,
+              diffContainer
+            );
+            const wordLabel = diffCount === 1 ? "Wort" : "Wörter";
+            diffSummary.textContent = `Unterschiede: ${diffCount} ${wordLabel}`;
+          } else {
+            diffContainer.innerHTML = "";
+            diffSummary.textContent = "";
+          }
         });
 
         item.addEventListener("click", () => {
@@ -1824,7 +1986,6 @@ async function promptSaver(message) {
           replacePromptSelect.innerHTML =
             '<option value="">Select a prompt</option>';
 
-          // Prompt-Liste für den entsprechenden Ordner laden
           if (
             prompt.folderId &&
             data.folders &&

@@ -422,7 +422,7 @@ function renderPrompts(prompts) {
 
     row.addEventListener("click", (e) => {
       if (!e.target.closest(".prompt-actions")) {
-        showDetailsSidebar(prompt, prompt.folderId);
+        showDetailsSidebar(prompt);
       }
     });
 
@@ -495,22 +495,20 @@ function showDetailsSidebar(item, folderId) {
   sidebarContent.innerHTML = "";
   sidebar.classList.add("open");
   document.getElementById("details-sidebar-resizer").style.display = "block";
-  if (!item || !item.title || !item.content) {
-    sidebarContent.innerHTML = "<p>Error: Invalid prompt data.</p>";
-    return;
-  }
 
-  chrome.storage.local.get(["prompts", "folders"], (data) => {
-    const { prompts = {}, folders = {} } = data;
+  // if (!item || !item.promptId) {
+  //   sidebarContent.innerHTML = "<p>Error: Invalid prompt data.</p>";
+  //   return;
+  // }
 
-    const prompt = prompts[item.promptId];
-    if (!prompt) {
-      sidebarContent.innerHTML = "<p>Error: Prompt not found.</p>";
-      return;
-    }
+  chrome.storage.local.get(["prompts"], (data) => {
+    const allPrompts = data.prompts || {};
+    const prompt = allPrompts[item.promptId];
 
-    const folderName =
-      folders[prompt.folderId]?.name || prompt.folderName || "N/A";
+    // if (!prompt) {
+    //   sidebarContent.innerHTML = "<p>Error: Prompt not found.</p>";
+    //   return;
+    // }
 
     const metaChangeLogEntries = (prompt.metaChangeLog || [])
       .map(
@@ -567,7 +565,7 @@ function showDetailsSidebar(item, folderId) {
       Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || "N/A"
     }" readonly>
     <label>Folder</label>
-    <input type="text" value="${folderName}" readonly>
+    <input type="text" value="${prompt.folderName || "N/A"}" readonly>
     <label>Favorite</label>
     <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
     <label>Created At</label>
@@ -596,7 +594,7 @@ function showDetailsSidebar(item, folderId) {
   `;
 
     sidebarContent.querySelector(".edit-btn").addEventListener("click", () => {
-      editPromptDetails(item.promptId, prompt, sidebarContent);
+      editPromptDetails(prompt.promptId, prompt, sidebarContent);
     });
   });
 }

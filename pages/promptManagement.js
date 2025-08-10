@@ -323,6 +323,7 @@ function showCreatePromptModal(category) {
   closeSpan.onclick = () => modal.remove();
 }
 function saveNewPrompt(prompt, folderId) {
+  console.log("Hier werde ich hinzugefügt")
   if (!prompt.promptId) {
     prompt.promptId = generateUUID();
   }
@@ -366,19 +367,19 @@ function saveNewPrompt(prompt, folderId) {
         {
           timestamp: now,
           changes: {
-            title: { from: null, to: prompt.title },
-            description: { from: null, to: prompt.description },
-            content: { from: null, to: prompt.content },
-            type: { from: null, to: prompt.type },
-            compatibleModels: { from: [], to: prompt.compatibleModels || [] },
+            title: { from: null, to: "" },
+            description: { from: null, to: "" },
+            content: { from: null, to: "" },
+            type: { from: null, to: "" },
+            compatibleModels: { from: [], to: "" || [] },
             incompatibleModels: {
               from: [],
               to: prompt.incompatibleModels || [],
             },
-            tags: { from: [], to: prompt.tags || [] },
-            isFavorite: { from: false, to: prompt.isFavorite || false },
-            folderId: { from: null, to: folderId || null },
-            folderName: { from: null, to: folderName || null },
+            tags: { from: [], to: "" || [] },
+            isFavorite: { from: false, to: "" || false },
+            folderId: { from: null, to: "" || null },
+            folderName: { from: null, to: "" || null },
             notes: { from: null, to: "" },
           },
         },
