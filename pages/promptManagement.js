@@ -363,27 +363,6 @@ function saveNewPrompt(prompt, folderId) {
           timestamp: now,
         },
       ],
-      metaChangeLog: [
-        {
-          timestamp: now,
-          changes: {
-            title: { from: null, to: "" },
-            description: { from: null, to: "" },
-            content: { from: null, to: "" },
-            type: { from: null, to: "" },
-            compatibleModels: { from: [], to: "" || [] },
-            incompatibleModels: {
-              from: [],
-              to: prompt.incompatibleModels || [],
-            },
-            tags: { from: [], to: "" || [] },
-            isFavorite: { from: false, to: "" || false },
-            folderId: { from: null, to: "" || null },
-            folderName: { from: null, to: "" || null },
-            notes: { from: null, to: "" },
-          },
-        },
-      ],
       performanceHistory: [],
     };
 

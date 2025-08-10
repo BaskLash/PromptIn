@@ -1,16 +1,21 @@
 function initializeAnalytics() {
   console.log("Analytics wird initialisiert");
-  chrome.storage.local.get(null, (data) => {
-    const prompts = Object.entries(data)
-      .filter(([key, topic]) => topic.prompts && !topic.isTrash)
-      .flatMap(([key, topic]) =>
-        topic.prompts.map((prompt) => ({
-          ...prompt,
-          folderId: key,
-          folderName: topic.name || "Single Prompt",
-          performanceHistory: prompt.performanceHistory || [], // Neues Feld
-        }))
-      );
+
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    const promptsById = data.prompts || {};
+    const foldersById = data.folders || {};
+
+    // Alle Prompts in ein Array umwandeln und Foldernamen ergänzen
+    const prompts = Object.values(promptsById)
+      .filter((prompt) => !prompt.isTrash) // Falls es ein isTrash-Feld gibt
+      .map((prompt) => ({
+        ...prompt,
+        folderName: prompt.folderId
+          ? foldersById[prompt.folderId]?.name || "Unbenannter Ordner"
+          : "Kein Ordner",
+        performanceHistory: prompt.performanceHistory || [],
+      }));
+
     console.log("Geladene Prompts:", prompts);
     renderAnalytics(prompts);
   });
@@ -633,53 +638,46 @@ function createSuggestionSection(prompts) {
   });
   return section;
 }
-function logPromptPerformance(promptId, folderId, metrics) {
-  chrome.storage.local.get([folderId], (data) => {
-    const topic = data[folderId];
-    if (!topic || !topic.prompts) {
-      console.error(`Folder ${folderId} not found or has no prompts`);
+function logPromptPerformance(promptId, metrics) {
+  chrome.storage.local.get(["prompts"], (data) => {
+    const prompts = data.prompts || {};
+
+    // Finde den Prompt direkt in der flachen Struktur
+    const prompt = prompts[promptId];
+    if (!prompt) {
+      console.error(`Prompt ${promptId} not found`);
       return;
     }
 
-    // Finde den Prompt
-    const promptIndex = topic.prompts.findIndex((p) => p.title === promptId);
-    if (promptIndex === -1) {
-      console.error(`Prompt ${promptId} not found in folder ${folderId}`);
-      return;
-    }
-
-    // Aktualisiere performanceHistory
-    const prompt = topic.prompts[promptIndex];
+    // performanceHistory initialisieren, falls nicht vorhanden
     if (!prompt.performanceHistory) {
       prompt.performanceHistory = [];
     }
 
-    // Füge neue Metriken hinzu
-    prompt.performanceHistory = [
-      ...prompt.performanceHistory,
-      {
-        timestamp: Date.now(),
-        metrics: {
-          score: metrics.score || 0, // z. B. Qualitätsbewertung (0–1)
-          tokens: metrics.tokens || 0, // Token-Anzahl
-          latency: metrics.latency || 0, // Antwortzeit in ms
-        },
+    // Neue Metriken hinzufügen
+    prompt.performanceHistory.push({
+      timestamp: Date.now(),
+      metrics: {
+        score: metrics.score || 0, // Qualitätsbewertung (0–1)
+        tokens: metrics.tokens || 0, // Token-Anzahl
+        latency: metrics.latency || 0, // Antwortzeit in ms
       },
-    ];
+    });
 
-    // Aktualisiere usageCount und lastUsed
+    // usageCount und lastUsed aktualisieren
     prompt.usageCount = (prompt.usageCount || 0) + 1;
     prompt.lastUsed = Date.now();
 
-    // Speichere die aktualisierten Daten
-    topic.prompts[promptIndex] = prompt;
-    chrome.storage.local.set({ [folderId]: topic }, () => {
+    // Geänderten Prompt zurückspeichern
+    prompts[promptId] = prompt;
+    chrome.storage.local.set({ prompts }, () => {
       console.log(`Performance metrics for prompt ${promptId} saved`);
       // Optional: Analytics neu rendern
       initializeAnalytics();
     });
   });
 }
+
 function calculateChangeFrequency(prompts) {
   // Aggregiere Änderungen pro Prompt
   const changeCounts = {};

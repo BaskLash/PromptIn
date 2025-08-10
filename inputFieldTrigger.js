@@ -1,26 +1,32 @@
 function inputFieldTrigger() {
   // Liste der erlaubten Domains
   const allowedDomains = [
-    "grok.com", // Grok
-    "gemini.google.com", // Gemini
-    "chatgpt.com", // ChatGPT
-    "claude.ai", // Claude
-    "blackbox.ai", // BlackBox
-    "github.com/copilot", // GitHub Copilot (nur Copilot-Bereich)
-    "copilot.microsoft.com", // Microsoft Copilot
-    "chat.mistral.ai", // Mistral
-    "duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1", // DuckDuckGo AI Chat
-    "perplexity.ai", // Perplexity
-    "chat.deepseek.com", // DeepSeek
-    "deepai.org/chat", // DeepAI Chat
-    "chat.qwen.ai", // Qwen AI
+    "grok.com",
+    "gemini.google.com",
+    "chatgpt.com",
+    "claude.ai",
+    "blackbox.ai",
+    "github.com/copilot",
+    "copilot.microsoft.com",
+    "chat.mistral.ai",
+    "duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1",
+    "perplexity.ai",
+    "chat.deepseek.com",
+    "deepai.org/chat",
+    "chat.qwen.ai",
   ];
 
-  // Prüfe, ob die aktuelle Domain erlaubt ist
-  const currentDomain = window.location.hostname;
-  if (!allowedDomains.includes(currentDomain)) {
+  const currentDomain = window.location.hostname
+    .toLowerCase()
+    .replace(/^www\./, "");
+
+  if (
+    !allowedDomains.some(
+      (domain) => currentDomain === domain.replace(/^www\./, "")
+    )
+  ) {
     console.log(`Script nicht aktiv auf: ${currentDomain}`);
-    return; // Beende die Ausführung, wenn die Domain nicht erlaubt ist
+    return;
   }
 
   // Warte, bis das DOM geladen ist
@@ -613,7 +619,12 @@ function inputFieldTrigger() {
                   : source && source.category === "Categorised Prompts"
                   ? `${title} (${source.folder})`
                   : title;
-              contentItem.textContent = displayText;
+              if (categoryOrFolder === "Last Used") {
+                const lastUsedDate = source.prompt.lastUsed ? new Date(source.prompt.lastUsed).toLocaleString() : "Never used";
+                contentItem.textContent = `${displayText} - Last used: ${lastUsedDate}`;
+              } else {
+                contentItem.textContent = displayText;
+              }
               contentItem.style.padding = "10px";
               contentItem.style.cursor = "pointer";
               contentItem.style.borderRadius = "4px";
@@ -677,11 +688,8 @@ function inputFieldTrigger() {
                 clearFocus();
 
                 // Nur für reguläre Prompts lastUsed aktualisieren
-                if (
-                  source.category !== "Workflows" &&
-                  source.promptIndex !== undefined
-                ) {
-                  updatePromptLastUsed(source.folderId, source.promptIndex);
+                if (source.category !== "Workflows") {
+                  updatePromptLastUsed(source.promptId);
                 }
               });
 
@@ -948,18 +956,7 @@ function inputFieldTrigger() {
                 dropdown.style.display = "none";
                 clearFocus();
 
-                const promptIndex = await findPromptIndex(
-                  source.folderId,
-                  source.prompt
-                );
-                if (promptIndex !== -1) {
-                  updatePromptLastUsed(source.folderId, promptIndex);
-                } else {
-                  console.error(
-                    "Prompt index not found for folder:",
-                    source.folderId
-                  );
-                }
+                updatePromptLastUsed(source.promptId);
               });
 
               contentPanel.appendChild(contentItem);
@@ -1262,12 +1259,6 @@ function inputFieldTrigger() {
                 renderCategoryNavigation();
                 if (selectedCategoryOrFolder) {
                   renderContentPanel(selectedCategoryOrFolder);
-                  const activeNavItem = navPanel.querySelector(
-                    ".nav-item.active, .folder-item.active"
-                  );
-                  if (activeNavItem) {
-                    setFocus(activeNavItem);
-                  }
                 }
               }
             }
@@ -1831,6 +1822,7 @@ function inputFieldTrigger() {
   });
 }
 function updatePromptLastUsed(promptId) {
+  console.log("Ok, we're updating")
   chrome.storage.local.get("prompts", (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error fetching prompts:", chrome.runtime.lastError);
@@ -1878,7 +1870,6 @@ function updatePromptLastUsed(promptId) {
     );
   });
 }
-
 function findPromptIndex(folderId, prompt) {
   return new Promise((resolve) => {
     chrome.storage.local.get(["folders", "prompts"], function (data) {
@@ -2638,16 +2629,6 @@ function showDynamicVariablesModal(workflowId) {
 
     renderSteps();
   });
-}
-
-// Ensure parsePromptId is defined globally or included in workflowManagement.js
-function parsePromptId(promptId) {
-  if (!promptId) return null;
-  const parts = promptId.split("_");
-  const promptIndex = parts.pop();
-  const folderId = parts.join("_");
-  if (!folderId || isNaN(promptIndex)) return null;
-  return { folderId, promptIndex: parseInt(promptIndex) };
 }
 
 // Ensure escapeHTML is available
