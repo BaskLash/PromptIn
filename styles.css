@@ -179,7 +179,7 @@ body.dark-theme .main-content {
 .sort-btn {
   padding: 8px 16px;
   background-color: white;
-  color:black;
+  color: black;
   border: 1px solid black;
   border-radius: 6px;
   cursor: pointer;
@@ -1189,4 +1189,7 @@ body.dark-theme .checkbox-group.scrollable {
   .detail-overlay {
     padding: 8px;
   }
+}
+#tools-overlay div {
+  cursor: pointer;
 }

@@ -51,6 +51,152 @@ function updateSortButtonText() {
   folderSortBtn.textContent = `${sortByText} (${sortOrderText})`;
 }
 
+function showPromptDetails(promptId) {
+  console.log(`showPromptDetails called with PromptID=${promptId}`);
+  chrome.storage.local.get(["prompts", "folders", "tags"], function (data) {
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+    const tags = data.tags || [];
+
+    const prompt = prompts[promptId];
+    if (!prompt) {
+      console.error(`Prompt with ID ${promptId} not found!`);
+      return;
+    }
+
+    const detailOverlay = document.getElementById("detail-overlay");
+    const detailTitle = document.getElementById("detail-title");
+    const entryTitle = document.getElementById("entry-title");
+    const entryDescription = document.getElementById("entry-description");
+    const entryContent = document.getElementById("entry-content");
+    const entryType = document.getElementById("entry-type");
+    const entryCompatible = document.getElementById("entry-compatible");
+    const entryIncompatible = document.getElementById("entry-incompatible");
+    const entryTags = document.getElementById("entry-tags");
+    const tagInputGroup = document.getElementById("tag-input-group");
+    const newTagInput = document.getElementById("new-tag");
+    const addTagBtn = document.getElementById("add-tag-btn");
+    const entryFavorite = document.getElementById("entry-favorite");
+    const entryCreatedAt = document.getElementById("entry-created-at");
+    const entryLastUsed = document.getElementById("entry-last-used");
+    const entryLastModified = document.getElementById("entry-last-modified");
+    const entryNotes = document.getElementById("entry-notes");
+    const entryFolder = document.getElementById("entry-folder");
+    const saveBtnEdit = document.querySelector(".save-btn-edit");
+
+    // store promptId for saving later
+    saveBtnEdit.dataset.promptId = promptId;
+
+    detailTitle.textContent = prompt.title;
+    entryTitle.value = prompt.title || "";
+    entryDescription.value = prompt.description || "";
+    entryContent.value = prompt.content || "";
+    entryFavorite.checked = prompt.isFavorite || false;
+    entryCreatedAt.value = prompt.createdAt
+      ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+      : "N/A";
+    entryLastUsed.value = prompt.lastUsed
+      ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+      : "N/A";
+    entryLastModified.value = prompt.updatedAt
+      ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
+      : "N/A";
+    entryNotes.value = prompt.notes || "";
+    entryType.value = prompt.type || "";
+
+    const modelList = [
+      "Grok",
+      "Gemini",
+      "ChatGPT",
+      "Claude",
+      "BlackBox",
+      "GitHub Copilot",
+      "Microsoft Copilot",
+      "Mistral",
+      "DuckDuckGo",
+      "Perplexity",
+      "DeepSeek",
+      "Deepai",
+      "Qwen AI",
+    ];
+
+    entryCompatible.innerHTML = modelList
+      .map(
+        (model) => `
+      <label>
+        <input type="checkbox" name="compatible" value="${model}" 
+          ${prompt.compatibleModels?.includes(model) ? "checked" : ""} disabled>
+        ${model}
+      </label>`
+      )
+      .join("");
+
+    entryIncompatible.innerHTML = modelList
+      .map(
+        (model) => `
+      <label>
+        <input type="checkbox" name="incompatible" value="${model}" 
+          ${
+            prompt.incompatibleModels?.includes(model) ? "checked" : ""
+          } disabled>
+        ${model}
+      </label>`
+      )
+      .join("");
+
+    entryTags.innerHTML = tags
+      .map(
+        (tag) => `
+      <label>
+        <input type="checkbox" name="tags" value="${tag}" 
+          ${prompt.tags?.includes(tag) ? "checked" : ""} disabled>
+        ${tag}
+      </label>`
+      )
+      .join("");
+
+    entryFolder.innerHTML =
+      '<option value="" data-i18n="folder_select"></option>';
+    Object.entries(folders).forEach(([folderId, folder]) => {
+      const option = document.createElement("option");
+      option.value = folderId;
+      option.textContent = folder.name || "Unbenannter Ordner";
+      if (prompt.folderId === folderId) {
+        option.selected = true;
+      }
+      entryFolder.appendChild(option);
+    });
+
+    applyTranslations(currentLang);
+
+    // set all fields to read-only initially
+    entryTitle.readOnly = true;
+    entryDescription.readOnly = true;
+    entryContent.readOnly = true;
+    entryType.disabled = true;
+    entryFavorite.disabled = true;
+    entryCreatedAt.readOnly = true;
+    entryLastUsed.readOnly = true;
+    entryLastModified.readOnly = true;
+    entryNotes.readOnly = true;
+    entryFolder.disabled = true;
+    newTagInput.readOnly = true;
+    addTagBtn.disabled = true;
+    tagInputGroup.style.display = "none";
+
+    document.querySelector(".detail-actions").style.display = "none";
+
+    detailOverlay.classList.add("open");
+    document.getElementById("plus-btn").style.display = "none";
+
+    if (navigationState.source === "folder" && navigationState.folderId) {
+      document.getElementById("folder-overlay").classList.add("open");
+    } else {
+      document.getElementById("folder-overlay").classList.remove("open");
+    }
+  });
+}
+
 function updateSortDropdownSelection(dropdown = sortDropdown) {
   dropdown.querySelectorAll(".sort-option").forEach((option) => {
     option.classList.remove("selected");
@@ -686,15 +832,6 @@ function showCategory(category) {
           "Unused Prompts";
         break;
 
-      case "category_workflows":
-        filteredPrompts = allPrompts.filter(
-          ({ prompt }) =>
-            prompt.folderId && prompt.folderId.startsWith("workflow_")
-        );
-        displayName =
-          translations[currentLang]?.category_workflows || "Workflows";
-        break;
-
       case "category_trash":
         filteredPrompts = allPrompts.filter(({ isTrash }) => isTrash);
         displayName = translations[currentLang]?.category_trash || "Trash";
@@ -787,201 +924,6 @@ function showCategory(category) {
     document.getElementById("plus-btn").style.display = "none";
 
     navigationState = { source: "category", folderId: null, category };
-  });
-}
-
-function loadPromptsTable() {
-  const tableBody = document.querySelector(
-    ".entry-table:not(.folder-entry-table) tbody"
-  );
-  tableBody.innerHTML = "";
-
-  chrome.storage.local.get(["folders", "prompts"], function (data) {
-    const folders = data.folders || {};
-    const prompts = data.prompts || {};
-
-    const allPromptEntries = Object.entries(prompts)
-      .filter(([, prompt]) => !prompt.isTrash)
-      .map(([promptId, prompt]) => ({
-        promptId,
-        prompt,
-        folderId: prompt.folderId || null,
-      }));
-
-    if (allPromptEntries.length === 0) {
-      tableBody.innerHTML =
-        '<tr><td colspan="2">Keine Prompts vorhanden</td></tr>';
-    } else {
-      const sortedPrompts = sortPrompts(allPromptEntries);
-      sortedPrompts.forEach(({ prompt, promptId, folderId }) => {
-        const tr = document.createElement("tr");
-        tr.dataset.entry = prompt.title;
-        tr.dataset.promptId = promptId;
-        tr.dataset.folderId = folderId;
-        tr.innerHTML = `
-          <td>${prompt.title}</td>
-          <td class="action-cell">
-            <button class="action-btn">⋮</button>
-          </td>
-        `;
-        tableBody.appendChild(tr);
-        console.log(
-          `Prompt Row: ID=${promptId}, FolderID=${folderId}, Title=${prompt.title}`
-        ); // Debugging
-      });
-    }
-
-    attachMainTableEvents();
-  });
-}
-
-function showPromptDetails(promptId) {
-  console.log(`showPromptDetails called with PromptID=${promptId}`); // Debugging
-  chrome.storage.local.get(["prompts", "folders", "tags"], function (data) {
-    const prompts = data.prompts || {};
-    const folders = data.folders || {};
-    const tags = data.tags || [];
-
-    const prompt = prompts[promptId];
-    if (!prompt) {
-      console.error(`Prompt with ID ${promptId} not found!`); // Debugging
-      return;
-    }
-
-    const detailOverlay = document.getElementById("detail-overlay");
-    const detailTitle = document.getElementById("detail-title");
-    const entryTitle = document.getElementById("entry-title");
-    const entryDescription = document.getElementById("entry-description");
-    const entryContent = document.getElementById("entry-content");
-    const entryType = document.getElementById("entry-type");
-    const entryCompatible = document.getElementById("entry-compatible");
-    const entryIncompatible = document.getElementById("entry-incompatible");
-    const entryTags = document.getElementById("entry-tags");
-    const tagInputGroup = document.getElementById("tag-input-group");
-    const newTagInput = document.getElementById("new-tag");
-    const addTagBtn = document.getElementById("add-tag-btn");
-    const entryFavorite = document.getElementById("entry-favorite");
-    const entryCreatedAt = document.getElementById("entry-created-at");
-    const entryLastUsed = document.getElementById("entry-last-used");
-    const entryLastModified = document.getElementById("entry-last-modified");
-    const entryNotes = document.getElementById("entry-notes");
-    const entryFolder = document.getElementById("entry-folder");
-
-    detailTitle.textContent = prompt.title;
-    entryTitle.value = prompt.title || "";
-    entryDescription.value = prompt.description || "";
-    entryContent.value = prompt.content || "";
-    entryFavorite.checked = prompt.isFavorite || false;
-    entryCreatedAt.value = prompt.createdAt
-      ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-      : "N/A";
-    entryLastUsed.value = prompt.lastUsed
-      ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-      : "N/A";
-    entryLastModified.value = prompt.updatedAt
-      ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
-      : "N/A";
-    entryNotes.value = prompt.notes || "";
-    entryType.value = prompt.type || "";
-
-    const modelList = [
-      "Grok",
-      "Gemini",
-      "ChatGPT",
-      "Claude",
-      "BlackBox",
-      "GitHub Copilot",
-      "Microsoft Copilot",
-      "Mistral",
-      "DuckDuckGo",
-      "Perplexity",
-      "DeepSeek",
-      "Deepai",
-      "Qwen AI",
-    ];
-
-    entryCompatible.innerHTML = modelList
-      .map(
-        (model) => `
-        <label>
-          <input type="checkbox" name="compatible" value="${model}" 
-            ${
-              prompt.compatibleModels?.includes(model) ? "checked" : ""
-            } disabled>
-          ${model}
-        </label>`
-      )
-      .join("");
-
-    entryIncompatible.innerHTML = modelList
-      .map(
-        (model) => `
-        <label>
-          <input type="checkbox" name="incompatible" value="${model}" 
-            ${
-              prompt.incompatibleModels?.includes(model) ? "checked" : ""
-            } disabled>
-          ${model}
-        </label>`
-      )
-      .join("");
-
-    entryTags.innerHTML = tags
-      .map(
-        (tag) => `
-        <label>
-          <input type="checkbox" name="tags" value="${tag}" 
-            ${prompt.tags?.includes(tag) ? "checked" : ""} disabled>
-          ${tag}
-        </label>`
-      )
-      .join("");
-
-    entryFolder.innerHTML =
-      '<option value="" data-i18n="folder_select"></option>';
-
-    Object.entries(folders).forEach(([folderId, folder]) => {
-      const option = document.createElement("option");
-      option.value = folderId;
-      option.textContent = folder.name || "Unbenannter Ordner";
-      if (prompt.folderId === folderId) {
-        option.selected = true;
-      }
-      entryFolder.appendChild(option);
-    });
-
-    applyTranslations(currentLang);
-
-    entryTitle.readOnly = true;
-    entryDescription.readOnly = true;
-    entryContent.readOnly = true;
-    entryType.disabled = true;
-    entryFavorite.disabled = true;
-    entryCreatedAt.readOnly = true;
-    entryLastUsed.readOnly = true;
-    entryLastModified.readOnly = true;
-    entryNotes.readOnly = true;
-    entryFolder.disabled = true;
-    newTagInput.readOnly = true;
-    addTagBtn.disabled = true;
-    tagInputGroup.style.display = "none";
-
-    document.querySelector(".detail-actions").style.display = "none";
-
-    entryTitle.dataset.promptId = promptId;
-
-    detailOverlay.classList.add("open");
-    document.getElementById("plus-btn").style.display = "none";
-
-    if (navigationState.source === "folder" && navigationState.folderId) {
-      console.log(
-        `Keeping folder-overlay open for FolderID=${navigationState.folderId}`
-      );
-      document.getElementById("folder-overlay").classList.add("open");
-    } else {
-      console.log("Closing folder-overlay for main view");
-      document.getElementById("folder-overlay").classList.remove("open");
-    }
   });
 }
 
@@ -1502,6 +1444,74 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  document.querySelector(".workflows").addEventListener("click", () => {
+    const appUrl = chrome.runtime.getURL("/pages/app.html?view=workflows");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
+  });
+
+  document.querySelector(".tags").addEventListener("click", () => {
+    const appUrl = chrome.runtime.getURL("/pages/app.html?view=tags");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
+  });
+
+  document.querySelector(".text-anonymizer").addEventListener("click", () => {
+    const appUrl = chrome.runtime.getURL("/pages/app.html?view=anonymizer");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
+  });
+
+  document.querySelector(".prompt-analytics").addEventListener("click", () => {
+    const appUrl = chrome.runtime.getURL("/pages/app.html?view=analytics");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
+  });
+
   // FAQ
   faqBtn.addEventListener("click", () => {
     const appUrl = chrome.runtime.getURL("/pages/faq.html");
@@ -1636,7 +1646,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .querySelector(".add-folder-header-btn")
     .addEventListener("click", () => {
-      const folderName = prompt("New Foldername:");
+      const folderName = prompt(
+        translations[currentLang]?.new_foldername || "Neuer Ordnername"
+      );
       if (folderName) {
         const folderId = generateUUID();
         chrome.storage.local.get("folders", (data) => {
@@ -1691,6 +1703,52 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  /* Prompts Overview for Popup */
+  function loadPromptsTable() {
+    const tableBody = document.querySelector(
+      ".entry-table:not(.folder-entry-table) tbody"
+    );
+    tableBody.innerHTML = "";
+
+    chrome.storage.local.get(["folders", "prompts"], function (data) {
+      const folders = data.folders || {};
+      const prompts = data.prompts || {};
+
+      const allPromptEntries = Object.entries(prompts)
+        .filter(([, prompt]) => !prompt.isTrash)
+        .map(([promptId, prompt]) => ({
+          promptId,
+          prompt,
+          folderId: prompt.folderId || null,
+        }));
+
+      if (allPromptEntries.length === 0) {
+        tableBody.innerHTML =
+          '<tr><td colspan="2">Keine Prompts vorhanden</td></tr>';
+      } else {
+        const sortedPrompts = sortPrompts(allPromptEntries);
+        sortedPrompts.forEach(({ prompt, promptId, folderId }) => {
+          const tr = document.createElement("tr");
+          tr.dataset.entry = prompt.title;
+          tr.dataset.promptId = promptId;
+          tr.dataset.folderId = folderId;
+          tr.innerHTML = `
+          <td>${prompt.title}</td>
+          <td class="action-cell">
+            <button class="action-btn">⋮</button>
+          </td>
+        `;
+          tableBody.appendChild(tr);
+          console.log(
+            `Prompt Row: ID=${promptId}, FolderID=${folderId}, Title=${prompt.title}`
+          ); // Debugging
+        });
+      }
+
+      attachMainTableEvents();
+    });
+  }
+
   editBtn.addEventListener("click", () => {
     const entryCompatible = document.getElementById("entry-compatible");
     const entryIncompatible = document.getElementById("entry-incompatible");
@@ -1706,37 +1764,145 @@ document.addEventListener("DOMContentLoaded", () => {
     const addTagBtn = document.getElementById("add-tag-btn");
     const entryTags = document.getElementById("entry-tags");
 
-    entryTitle.readOnly = false;
-    entryDescription.readOnly = false;
-    entryContent.readOnly = false;
-    entryNotes.readOnly = false;
-    entryType.disabled = false;
-    entryFavorite.disabled = false;
-    entryFolder.disabled = false;
-    newTagInput.readOnly = false;
-    addTagBtn.disabled = false;
-    tagInputGroup.style.display = "block";
+    const isEditing = editBtn.dataset.editing === "true";
 
-    entryCompatible
-      .querySelectorAll("input[type='checkbox']")
-      .forEach((checkbox) => {
-        checkbox.disabled = false;
-      });
+    if (!isEditing) {
+      // --- Bearbeiten aktivieren ---
+      entryTitle.readOnly = false;
+      entryDescription.readOnly = false;
+      entryContent.readOnly = false;
+      entryNotes.readOnly = false;
+      entryType.disabled = false;
+      entryFavorite.disabled = false;
+      entryFolder.disabled = false;
+      newTagInput.readOnly = false;
+      addTagBtn.disabled = false;
+      tagInputGroup.style.display = "block";
 
-    entryIncompatible
-      .querySelectorAll("input[type='checkbox']")
-      .forEach((checkbox) => {
-        checkbox.disabled = false;
-      });
+      entryCompatible
+        .querySelectorAll("input[type='checkbox']")
+        .forEach((cb) => (cb.disabled = false));
+      entryIncompatible
+        .querySelectorAll("input[type='checkbox']")
+        .forEach((cb) => (cb.disabled = false));
+      entryTags
+        .querySelectorAll("input[type='checkbox']")
+        .forEach((cb) => (cb.disabled = false));
 
-    entryTags.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-      checkbox.disabled = false;
-    });
+      document.querySelector(".detail-actions").style.display = "block";
+      editBtn.textContent =
+        translations[currentLang]?.finish_editing || "Bearbeitung beenden";
+      editBtn.dataset.editing = "true";
+    } else {
+      // --- Bearbeiten deaktivieren ---
+      entryTitle.readOnly = true;
+      entryDescription.readOnly = true;
+      entryContent.readOnly = true;
+      entryNotes.readOnly = true;
+      entryType.disabled = true;
+      entryFavorite.disabled = true;
+      entryFolder.disabled = true;
+      newTagInput.readOnly = true;
+      addTagBtn.disabled = true;
+      tagInputGroup.style.display = "none";
 
-    document.querySelector(".detail-actions").style.display = "block";
-    editBtn.textContent =
-      translations[currentLang]?.finish_editing || "Bearbeitung beenden";
-    editBtn.dataset.editing = "true";
+      entryCompatible
+        .querySelectorAll("input[type='checkbox']")
+        .forEach((cb) => (cb.disabled = true));
+      entryIncompatible
+        .querySelectorAll("input[type='checkbox']")
+        .forEach((cb) => (cb.disabled = true));
+      entryTags
+        .querySelectorAll("input[type='checkbox']")
+        .forEach((cb) => (cb.disabled = true));
+
+      document.querySelector(".detail-actions").style.display = "none";
+      editBtn.textContent = translations[currentLang]?.edit || "Bearbeiten";
+      editBtn.dataset.editing = "false";
+    }
+  });
+
+  const saveBtnEdit = document.querySelector(".save-btn-edit");
+
+  saveBtnEdit.addEventListener("click", async () => {
+    const promptId = saveBtnEdit.dataset.promptId;
+    if (!promptId) {
+      console.error("Prompt-ID fehlt");
+      return;
+    }
+
+    // load current prompts from storage
+    const data = await chrome.storage.local.get("prompts");
+    const prompts = data.prompts || {};
+
+    if (!prompts[promptId]) {
+      console.error("Prompt nicht gefunden");
+      return;
+    }
+
+    // --- Werte aus dem Formular holen ---
+    const entryTitle = document.getElementById("entry-title").value.trim();
+    const entryDescription = document
+      .getElementById("entry-description")
+      .value.trim();
+    const entryContent = document.getElementById("entry-content").value.trim();
+    const entryNotes = document.getElementById("entry-notes").value.trim();
+    const entryType = document.getElementById("entry-type").value;
+    const entryFavorite = document.getElementById("entry-favorite").checked;
+    const entryFolder = document.getElementById("entry-folder").value || null;
+
+    const compatibleModels = Array.from(
+      document.querySelectorAll(
+        "#entry-compatible input[type='checkbox']:checked"
+      )
+    ).map((cb) => cb.value);
+
+    const incompatibleModels = Array.from(
+      document.querySelectorAll(
+        "#entry-incompatible input[type='checkbox']:checked"
+      )
+    ).map((cb) => cb.value);
+
+    const tags = Array.from(
+      document.querySelectorAll("#entry-tags input[type='checkbox']:checked")
+    ).map((cb) => cb.value);
+
+    // --- Prompt-Daten aktualisieren ---
+    prompts[promptId] = {
+      ...prompts[promptId],
+      title: entryTitle,
+      description: entryDescription,
+      content: entryContent,
+      notes: entryNotes,
+      type: entryType,
+      favorite: entryFavorite,
+      folderId: entryFolder,
+      tags,
+      compatibleModels,
+      incompatibleModels,
+      updatedAt: Date.now(),
+    };
+
+    try {
+      await chrome.storage.local.set({ prompts });
+      console.log(`Prompt ${promptId} wurde erfolgreich gespeichert.`);
+
+      document.getElementById("detail-overlay").classList.remove("open");
+      document.getElementById("plus-btn").style.display = "flex";
+
+      if (navigationState.source === "folder" && navigationState.folderId) {
+        showFolder(navigationState.folderId);
+      } else if (
+        navigationState.source === "category" &&
+        navigationState.category
+      ) {
+        showCategory(navigationState.category);
+      } else {
+        loadPromptsTable();
+      }
+    } catch (err) {
+      console.error("Fehler beim Speichern des Prompts:", err);
+    }
   });
 
   // Add Overlay Buttons
@@ -1759,60 +1925,66 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  saveBtn.addEventListener("click", () => {
-    const title = document.getElementById("entry-title").value.trim();
-    const description = document
-      .getElementById("entry-description")
-      .value.trim();
-    const content = document.getElementById("entry-content").value.trim();
-    const type = document.getElementById("entry-type").value;
-    const isFavorite = document.getElementById("entry-favorite").checked;
-    const folderId = document.getElementById("entry-folder").value;
-    const promptId =
-      document.getElementById("entry-title").dataset.promptId || null;
-    const tags = Array.from(
-      document.querySelectorAll("#entry-tags input[type='checkbox']:checked")
-    ).map((cb) => cb.value);
-    const notes = document.getElementById("entry-notes").value.trim();
+  if (saveBtn) {
+    saveBtn.addEventListener("click", () => {
+      const title = document.getElementById("entry-title").value.trim();
+      const description = document
+        .getElementById("entry-description")
+        .value.trim();
+      const content = document.getElementById("entry-content").value.trim();
+      const type = document.getElementById("entry-type").value;
+      const isFavorite = document.getElementById("entry-favorite").checked;
+      const folderId = document.getElementById("entry-folder").value;
+      const promptId =
+        document.getElementById("entry-title").dataset.promptId || null;
+      const tags = Array.from(
+        document.querySelectorAll("#entry-tags input[type='checkbox']:checked")
+      ).map((cb) => cb.value);
+      const notes = document.getElementById("entry-notes").value.trim();
 
-    if (!title) {
-      alert(translations[currentLang]?.required_title || "Title is required!");
-      return;
-    }
-
-    savePrompt(
-      {
-        promptId,
-        title,
-        description,
-        content,
-        type,
-        isFavorite,
-        tags,
-        notes,
-      },
-      {
-        folderId,
-        overwritePromptId: promptId,
-        onSuccess: () => {
-          document.getElementById("detail-overlay").classList.remove("open");
-          document.getElementById("plus-btn").style.display = "flex";
-          loadFolders();
-          loadPromptsTable();
-        },
+      if (!title) {
+        alert(
+          translations[currentLang]?.required_title || "Title is required!"
+        );
+        return;
       }
-    );
-  });
 
-  cancelBtn.addEventListener("click", () => {
-    const folderId = document.getElementById("entry-title").dataset.folderId;
-    const promptIndex = parseInt(
-      document.getElementById("entry-title").dataset.promptIndex
-    );
-    if (folderId && !isNaN(promptIndex)) {
-      showPromptDetails(folderId, promptIndex);
-    }
-  });
+      savePrompt(
+        {
+          promptId,
+          title,
+          description,
+          content,
+          type,
+          isFavorite,
+          tags,
+          notes,
+        },
+        {
+          folderId,
+          overwritePromptId: promptId,
+          onSuccess: () => {
+            document.getElementById("detail-overlay").classList.remove("open");
+            document.getElementById("plus-btn").style.display = "flex";
+            loadFolders();
+            loadPromptsTable();
+          },
+        }
+      );
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", () => {
+      const folderId = document.getElementById("entry-title").dataset.folderId;
+      const promptIndex = parseInt(
+        document.getElementById("entry-title").dataset.promptIndex
+      );
+      if (folderId && !isNaN(promptIndex)) {
+        showPromptDetails(folderId, promptIndex);
+      }
+    });
+  }
 
   // Search Prompts
   document
@@ -1848,8 +2020,10 @@ document.addEventListener("DOMContentLoaded", () => {
           .filter(({ isTrash }) => !isTrash);
 
         if (filteredPrompts.length === 0) {
-          tableBody.innerHTML =
-            '<tr><td colspan="2">Keine Prompts gefunden</td></tr>';
+          tableBody.innerHTML = `<tr><td colspan="2">${
+            translations[currentLang]?.no_prompts_found ||
+            "Keine Prompts gefunden"
+          }</td></tr>`;
         } else {
           filteredPrompts.forEach(({ prompt, promptId, folderId }) => {
             const tr = document.createElement("tr");
@@ -2123,7 +2297,7 @@ document.addEventListener("DOMContentLoaded", () => {
     entryNotes.value = "";
     entryType.value = "";
     entryFavorite.checked = false;
-    entryFolder.innerHTML = '<option value="">Ordner auswählen</option>';
+    entryFolder.innerHTML = `<option value="">${translations[currentLang]?.folder_select}</option>`;
 
     // Populate tags
     chrome.storage.local.get("tags", (tagData) => {
@@ -2196,7 +2370,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("add-tag-btn_add").addEventListener("click", () => {
     const newTagInput = document.getElementById("new-tag_add");
     const newTag = newTagInput.value.trim();
-    const entryTags = document.getElementById("entry-tags-add"); // angepasst: Zielcontainer für die Checkboxen
+    const entryTags = document.getElementById("entry-tags-add");
     const existingTags = Array.from(
       entryTags.querySelectorAll("input[type='checkbox']")
     ).map((cb) => cb.value);
@@ -2294,55 +2468,60 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Save New Prompt (über zentrale savePrompt-Funktion)
-  saveBtn.addEventListener("click", (e) => {
-    const hasFolderId = document.getElementById("entry-title").dataset.folderId;
+  if (saveBtn) {
+    saveBtn.addEventListener("click", (e) => {
+      const hasFolderId =
+        document.getElementById("entry-title").dataset.folderId;
 
-    // Nur bei neuem Prompt (kein folderId gesetzt)
-    if (!hasFolderId) {
-      const title = document.getElementById("entry-title").value.trim();
-      const description = document
-        .getElementById("entry-description")
-        .value.trim();
-      const content = document.getElementById("entry-content").value.trim();
-      const type = document.getElementById("entry-type").value;
-      const newTag = document.getElementById("new-tag").value.trim();
-      const isFavorite = document.getElementById("entry-favorite").checked;
-      const folderId = document.getElementById("entry-folder").value;
+      // Nur bei neuem Prompt (kein folderId gesetzt)
+      if (!hasFolderId) {
+        const title = document.getElementById("entry-title").value.trim();
+        const description = document
+          .getElementById("entry-description")
+          .value.trim();
+        const content = document.getElementById("entry-content").value.trim();
+        const type = document.getElementById("entry-type").value;
+        const newTag = document.getElementById("new-tag").value.trim();
+        const isFavorite = document.getElementById("entry-favorite").checked;
+        const folderId = document.getElementById("entry-folder").value;
 
-      const tags = Array.from(
-        document.querySelectorAll("#entry-tags input[name='tags']:checked")
-      ).map((checkbox) => checkbox.value);
+        const tags = Array.from(
+          document.querySelectorAll("#entry-tags input[name='tags']:checked")
+        ).map((checkbox) => checkbox.value);
 
-      if (!title) {
-        alert(
-          translations[currentLang]?.required_title || "Title is required!"
-        );
-        return;
-      }
-
-      // Prompt speichern über zentrale Funktion
-      savePrompt(
-        {
-          title,
-          description,
-          content,
-          type,
-          tags: newTag ? [...tags, newTag] : tags,
-          isFavorite,
-          // compatibleModels, incompatibleModels und notes werden automatisch auf Defaults gesetzt
-        },
-        {
-          folderId,
-          onSuccess: () => {
-            document.getElementById("detail-overlay").classList.remove("open");
-            document.getElementById("plus-btn").style.display = "flex";
-            loadFolders();
-            loadPromptsTable();
-          },
+        if (!title) {
+          alert(
+            translations[currentLang]?.required_title || "Title is required!"
+          );
+          return;
         }
-      );
-    }
-  });
+
+        // Prompt speichern über zentrale Funktion
+        savePrompt(
+          {
+            title,
+            description,
+            content,
+            type,
+            tags: newTag ? [...tags, newTag] : tags,
+            isFavorite,
+            // compatibleModels, incompatibleModels und notes werden automatisch auf Defaults gesetzt
+          },
+          {
+            folderId,
+            onSuccess: () => {
+              document
+                .getElementById("detail-overlay")
+                .classList.remove("open");
+              document.getElementById("plus-btn").style.display = "flex";
+              loadFolders();
+              loadPromptsTable();
+            },
+          }
+        );
+      }
+    });
+  }
 
   document.getElementById("add-tag-btn").addEventListener("click", () => {
     const newTagInput = document.getElementById("new-tag");

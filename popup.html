@@ -34,7 +34,7 @@
       <!-- Hauptinhalt -->
       <div class="main-content">
         <label data-i18n="sort_by_label"></label>
-        <button class="sort-btn" data-i18n="sort_button"></button>
+        <button class="sort-btn"></button>
         <div class="sort-dropdown" id="sort-dropdown" style="display: none">
           <div class="sort-section">
             <div class="sort-header" data-i18n="sort_order"></div>
@@ -90,7 +90,6 @@
                 <li data-i18n="category_dynamic_prompts"></li>
                 <li data-i18n="category_static_prompts"></li>
                 <li data-i18n="category_unused_prompts"></li>
-                <li data-i18n="category_workflows"></li>
                 <li data-i18n="category_trash"></li>
               </ul>
             </div>
@@ -151,7 +150,7 @@
             ></textarea>
           </div>
           <div class="detail-field">
-            <label data-i18n="notes_label">Notes</label>
+            <label data-i18n="notes_label"></label>
             <textarea
               id="entry-notes"
               readonly
@@ -159,13 +158,18 @@
             ></textarea>
           </div>
           <div class="detail-field">
-            <label data-i18n="last_modified_label">Last Modified</label>
+            <label data-i18n="last_modified_label"></label>
             <input type="text" id="entry-last-modified" readonly />
           </div>
           <div class="detail-field">
             <label data-i18n="type_label"></label>
             <select id="entry-type" disabled>
-              <option value="" disabled selected>Wähle Typ</option>
+              <option
+                value=""
+                disabled
+                selected
+                data-i18n="select_type"
+              ></option>
               <option value="textgen">Textgeneration</option>
               <option value="rewrite">Umschreiben</option>
               <option value="summarize">Zusammenfassen</option>
@@ -187,7 +191,7 @@
             </select>
           </div>
           <div class="detail-field">
-            <label data-i18n="compatible_models_label">Compatible Models</label>
+            <label data-i18n="compatible_models_label"></label>
             <div class="checkbox-group scrollable" id="entry-compatible">
               <label
                 ><input
@@ -309,9 +313,7 @@
             </div>
           </div>
           <div class="detail-field">
-            <label data-i18n="incompatible_models_label"
-              >Incompatible Models</label
-            >
+            <label data-i18n="incompatible_models_label"></label>
             <div class="checkbox-group scrollable" id="entry-incompatible">
               <label
                 ><input
@@ -476,8 +478,8 @@
             </select>
           </div>
           <div class="detail-actions">
-            <button class="save-btn" data-i18n="save_button"></button>
-            <button class="cancel-btn" data-i18n="cancel_button"></button>
+            <button class="save-btn-edit" data-i18n="save_button"></button>
+            <button class="cancel-btn-edit" data-i18n="cancel_button"></button>
           </div>
         </div>
       </div>
@@ -511,7 +513,7 @@
             ></textarea>
           </div>
           <div class="detail-field">
-            <label data-i18n="notes_label">Notes</label>
+            <label data-i18n="notes_label"></label>
             <textarea
               id="entry-notes-add"
               data-i18n-placeholder="notes_placeholder"
@@ -599,6 +601,18 @@
             <input type="checkbox" id="highlight-toggle" />
             <span class="toggle-slider"></span>
           </label>
+        </div><br>
+        <div class="workflows">
+          Workflows
+        </div><br>
+        <div class="tags">
+          Tag Overview
+        </div><br>
+        <div class="text-anonymizer">
+          Text Anonymizer
+        </div><br>
+        <div class="prompt-analytics">
+          Prompt Analytics
         </div>
       </div>
 

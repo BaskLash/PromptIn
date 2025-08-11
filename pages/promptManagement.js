@@ -286,24 +286,6 @@ function showCreatePromptModal(category) {
             timestamp: Date.now(),
           },
         ],
-        metaChangeLog: [
-          {
-            timestamp: Date.now(),
-            changes: {
-              title: { from: null, to: title },
-              description: { from: null, to: description },
-              content: { from: null, to: content },
-              type: { from: null, to: type },
-              compatibleModels: { from: [], to: compatibleModels },
-              incompatibleModels: { from: [], to: incompatibleModels },
-              tags: { from: [], to: tags },
-              isFavorite: { from: false, to: isFavorite },
-              folderId: { from: null, to: folderId || null },
-              folderName: { from: null, to: folderName },
-              notes: { from: null, to: "" },
-            },
-          },
-        ],
         performanceHistory: [],
       };
 
@@ -323,7 +305,7 @@ function showCreatePromptModal(category) {
   closeSpan.onclick = () => modal.remove();
 }
 function saveNewPrompt(prompt, folderId) {
-  console.log("Hier werde ich hinzugefügt")
+  console.log("Hier werde ich hinzugefügt");
   if (!prompt.promptId) {
     prompt.promptId = generateUUID();
   }
@@ -410,7 +392,7 @@ function saveNewPrompt(prompt, folderId) {
       category === "All Prompts" ||
       (category === folderName && isFolderPrompt) ||
       (category === "Favorites" && newPrompt.isFavorite) ||
-      (category === "Single Prompts" && !targetFolderId) || // 🔁 hier geändert
+      (category === "Single Prompts" && !targetFolderId) ||
       (category === "Categorised Prompts" && isFolderPrompt) ||
       (category === "Dynamic Prompts" &&
         newPrompt.content &&
@@ -503,7 +485,7 @@ function saveNewPrompt(prompt, folderId) {
           } else if (action === "share") {
             sharePrompt(newPrompt);
           } else if (action === "add-to-favorites") {
-            toggleFavorite(newPrompt, targetFolderId, row);
+            toggleFavorite(newPrompt);
           } else if (action === "show-versions") {
             if (!newPrompt.promptId) {
               console.error("Prompt ID is missing for showPromptVersions");
@@ -701,6 +683,7 @@ function moveToTrash(prompt, folderId, row) {
 }
 
 function sharePrompt(prompt) {
+  console.log(prompt.promptId);
   if (navigator.share) {
     navigator
       .share({
@@ -715,23 +698,84 @@ function sharePrompt(prompt) {
   }
 }
 
-function exportPrompt(prompt, folderId) {
-  chrome.storage.local.get(folderId, (data) => {
-    const topic = data[folderId];
-    if (!topic || !topic.prompts) {
+function toggleFavorite(promptId) {
+  console.log("ID: " + promptId);
+  chrome.storage.local.get(["prompts"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error reading prompts:", chrome.runtime.lastError);
+      alert("Fehler beim Laden der Prompts.");
+      return;
+    }
+
+    const prompts = data.prompts || {};
+    const prompt = prompts[promptId];
+
+    if (!prompt) {
+      console.warn(`Prompt mit ID ${promptId} nicht gefunden.`);
+      return;
+    }
+
+    const oldIsFavorite = prompt.isFavorite || false;
+    const now = Date.now();
+
+    const updatedPrompt = {
+      ...prompt,
+      isFavorite: !oldIsFavorite,
+      updatedAt: now,
+      metaChangeLog: prompt.metaChangeLog ? [...prompt.metaChangeLog] : [],
+    };
+
+    updatedPrompt.metaChangeLog.push({
+      timestamp: now,
+      changes: {
+        isFavorite: { from: oldIsFavorite, to: updatedPrompt.isFavorite },
+      },
+    });
+
+    // Max 50 Einträge behalten
+    if (updatedPrompt.metaChangeLog.length > 50) {
+      updatedPrompt.metaChangeLog.shift();
+    }
+
+    // Prompt speichern
+    prompts[promptId] = updatedPrompt;
+
+    chrome.storage.local.set({ prompts }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Fehler beim Speichern:", chrome.runtime.lastError);
+        alert("Fehler beim Aktualisieren des Favoritenstatus.");
+        return;
+      }
+
+      // UI Update, z.B. Button-Text aktualisieren (Annahme: row ist bekannt)
+      if (typeof row !== "undefined") {
+        const favButton = row.querySelector('[data-action="add-to-favorites"]');
+        if (favButton) {
+          favButton.textContent = updatedPrompt.isFavorite
+            ? "Remove from Favorites"
+            : "Add to Favorites";
+        }
+      }
+
+      // Aktuelle Kategorie neu laden (Annahme: handleCategoryClick ist definiert)
+      const category = document.querySelector(".main-header h1")?.textContent;
+      if (category) {
+        handleCategoryClick(category);
+      }
+    });
+  });
+}
+
+function exportPrompt(promptId) {
+  chrome.storage.local.get(["prompts"], (data) => {
+    const allPrompts = data.prompts || {};
+    const fullPrompt = allPrompts[promptId];
+
+    if (!fullPrompt) {
       alert("Fehler: Prompt nicht gefunden.");
       return;
     }
 
-    const promptIndex = topic.prompts.findIndex(
-      (p) => p.title === prompt.title && p.content === prompt.content
-    );
-    if (promptIndex === -1) {
-      alert("Fehler: Prompt nicht gefunden.");
-      return;
-    }
-
-    const fullPrompt = topic.prompts[promptIndex];
     const exportData = {
       ...fullPrompt,
       exportedAt: Date.now(), // Zeitstempel des Exports
@@ -753,6 +797,7 @@ function exportPrompt(prompt, folderId) {
     URL.revokeObjectURL(url);
   });
 }
+
 function copyPrompt(prompt, folderId) {
   const textToCopy = prompt.content || prompt.title || "";
   navigator.clipboard
@@ -843,55 +888,8 @@ function renamePrompt(prompt, folderId, row) {
   });
 }
 
-function toggleFavorite(prompt, folderId, row) {
-  chrome.storage.local.get(folderId, (data) => {
-    const topic = data[folderId];
-    if (!topic || !topic.prompts) return;
-
-    const promptIndex = topic.prompts.findIndex(
-      (p) => p.title === prompt.title && p.content === prompt.content
-    );
-    if (promptIndex === -1) return;
-
-    const updatedPrompt = {
-      ...topic.prompts[promptIndex],
-      isFavorite: !topic.prompts[promptIndex].isFavorite,
-      updatedAt: Date.now(),
-      metaChangeLog: topic.prompts[promptIndex].metaChangeLog || [],
-    };
-
-    updatedPrompt.metaChangeLog.push({
-      timestamp: Date.now(),
-      changes: {
-        isFavorite: {
-          from: topic.prompts[promptIndex].isFavorite,
-          to: updatedPrompt.isFavorite,
-        },
-      },
-    });
-    if (updatedPrompt.metaChangeLog.length > 50) {
-      updatedPrompt.metaChangeLog.shift();
-    }
-
-    topic.prompts[promptIndex] = updatedPrompt;
-    chrome.storage.local.set({ [folderId]: topic }, () => {
-      if (chrome.runtime.lastError) {
-        console.error("Error toggling favorite:", chrome.runtime.lastError);
-        alert("Error toggling favorite.");
-      } else {
-        prompt.isFavorite = updatedPrompt.isFavorite; // Update local prompt
-        row.querySelector('[data-action="add-to-favorites"]').textContent =
-          updatedPrompt.isFavorite
-            ? "Remove from Favorites"
-            : "Add to Favorites";
-        const category = document.querySelector(".main-header h1").textContent;
-        handleCategoryClick(category);
-      }
-    });
-  });
-}
-
 function deletePrompt(prompt, folderId, row) {
+  console.log("ID: " + prompt.promptId)
   if (!confirm("Möchtest du diese Prompt unwiderruflich löschen?")) return;
 
   const promptId = prompt.promptId;

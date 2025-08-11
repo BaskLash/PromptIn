@@ -36,7 +36,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // FAQ
   faqBtn.addEventListener("click", () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("pages/faq.html") });
+    const appUrl = chrome.runtime.getURL("/pages/faq.html");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
   });
 
   surveyBtn.addEventListener("click", () => {
@@ -497,7 +510,7 @@ function initializeTags() {
   });
 }
 
-function showPromptModal(tag, prompts) {
+function showPromptModal(tag) {
   const modal = document.getElementById("promptModal");
   const modalTagName = document.getElementById("modalTagName");
   const modalPromptList = document.getElementById("modalPromptList");
@@ -507,88 +520,93 @@ function showPromptModal(tag, prompts) {
     return;
   }
 
-  modalTagName.textContent = escapeHTML(tag);
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    const allPrompts = data.prompts || {};
+    const folders = data.folders || {};
 
-  // Nur Prompts mit passendem Tag anzeigen
-  const filteredPrompts = Object.values(prompts).filter(
-    (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
-  );
+    modalTagName.textContent = escapeHTML(tag);
 
-  if (filteredPrompts.length === 0) {
-    modalPromptList.innerHTML = "<p>No prompts found for this tag.</p>";
-  } else {
-    modalPromptList.innerHTML = filteredPrompts
-      .map((prompt) => {
-        return `
-          <div class="prompt-item" 
-               data-prompt-id="${escapeHTML(prompt.id)}" 
-               data-folder-id="${escapeHTML(prompt.folderId || "")}"
-               style="cursor: pointer;">
-            <h3>${escapeHTML(prompt.title || "Untitled")}</h3>
-            <p>Category: ${escapeHTML(prompt.folderName || "Kein Ordner")}</p>
-            <p>Created: ${new Date(prompt.createdAt || 0).toLocaleString()}</p>
-            <button class="remove-tag-btn" 
-                    data-tag="${escapeHTML(tag)}" 
-                    data-prompt-id="${escapeHTML(prompt.id)}" 
-                    title="Tag von diesem Prompt entfernen">×</button>
-          </div>
-        `;
-      })
-      .join("");
-  }
+    // Alle Prompts filtern, die den Tag enthalten
+    const filteredPrompts = Object.values(allPrompts).filter(
+      (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
+    );
 
-  // Entferne alte Event-Listener für remove-tag-btn (durch Klonen)
-  document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
-  });
+    if (filteredPrompts.length === 0) {
+      modalPromptList.innerHTML = "<p>No prompts found for this tag.</p>";
+    } else {
+      modalPromptList.innerHTML = filteredPrompts
+        .map((prompt) => {
+          const folderName = prompt.folderId
+            ? folders[prompt.folderId]?.name || "Unbekannter Ordner"
+            : "Kein Ordner";
 
-  // Event Listener für Tag-Entfernen-Buttons
-  document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const tag = btn.dataset.tag;
-      const promptId = btn.dataset.promptId;
+          return `
+            <div class="prompt-item" 
+                 data-prompt-id="${escapeHTML(prompt.id)}" 
+                 data-folder-id="${escapeHTML(prompt.folderId || "")}"
+                 style="cursor: pointer;">
+              <h3>${escapeHTML(prompt.title || "Untitled")}</h3>
+              <p>Category: ${escapeHTML(folderName)}</p>
+              <p>Created: ${new Date(
+                prompt.createdAt || 0
+              ).toLocaleString()}</p>
+              <button class="remove-tag-btn" 
+                      data-tag="${escapeHTML(tag)}" 
+                      data-prompt-id="${escapeHTML(prompt.id)}" 
+                      title="Tag von diesem Prompt entfernen">×</button>
+            </div>
+          `;
+        })
+        .join("");
+    }
 
-      if (!promptId) {
-        console.error("Prompt-ID fehlt oder ist undefined!");
-        return;
-      }
+    // Remove-Tag-Button Click Events setzen
+    document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const tag = btn.dataset.tag;
+        const promptId = btn.dataset.promptId;
 
-      removeTagFromPrompt(tag, promptId);
+        if (!promptId) {
+          console.error("Prompt-ID fehlt oder ist undefined!");
+          return;
+        }
+
+        removeTagFromPrompt(tag, promptId);
+      });
     });
-  });
 
-  // Klick auf Prompt-Item → zur passenden Ansicht springen
-  document.querySelectorAll(".prompt-item").forEach((item) => {
-    item.addEventListener("click", () => {
-      const folderId = item.dataset.folderId;
-      modal.style.display = "none";
+    // Prompt-Item Click Events setzen
+    document.querySelectorAll(".prompt-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        const folderId = item.dataset.folderId;
+        modal.style.display = "none";
 
-      if (!folderId) {
-        // Kein Ordner → Single Prompts Ansicht
-        switchView("prompts-view", {
-          view: "prompts",
-          category: "Single Prompts",
-        });
-        handleCategoryClick("Single Prompts");
-      } else {
-        // Ordneransicht
-        switchView("prompts-view", { view: "prompts", folderId });
-        handleFolderClick(folderId);
-      }
+        if (!folderId) {
+          // Kein Ordner → Single Prompts Ansicht
+          switchView("prompts-view", {
+            view: "prompts",
+            category: "Single Prompts",
+          });
+          handleCategoryClick("Single Prompts");
+        } else {
+          // Ordneransicht
+          switchView("prompts-view", { view: "prompts", folderId });
+          handleFolderClick(folderId);
+        }
+      });
     });
+
+    // Modal schließen
+    const closeModal = document.querySelector(".close-modal");
+    if (closeModal) {
+      closeModal.addEventListener("click", () => {
+        modal.style.display = "none";
+      });
+    }
+
+    modal.style.display = "flex";
   });
-
-  // Modal schließen
-  const closeModal = document.querySelector(".close-modal");
-  if (closeModal) {
-    closeModal.addEventListener("click", () => {
-      modal.style.display = "none";
-    });
-  }
-
-  modal.style.display = "flex";
 }
 
 /**

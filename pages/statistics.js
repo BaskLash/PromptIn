@@ -401,8 +401,9 @@ function createUsageSection(usageByTime) {
     </div>
   `;
 
-  const labels = Object.keys(usageByTime.monthly).sort();
-  const data = labels.map((key) => usageByTime.monthly[key]);
+  // Use daily data instead of monthly
+  const labels = Object.keys(usageByTime.daily).sort();
+  const data = labels.map((key) => usageByTime.daily[key]);
 
   const chartConfig = {
     type: "line",
@@ -410,7 +411,7 @@ function createUsageSection(usageByTime) {
       labels: labels,
       datasets: [
         {
-          label: "Prompt usage per month",
+          label: "Prompt usage per day", // Changed label here
           data: data,
           borderColor: "#4e73df",
           backgroundColor: "rgba(78, 115, 223, 0.2)",

@@ -1,4 +1,5 @@
 function showPromptVersions(promptId) {
+  console.log("ID: " + promptId)
   chrome.storage.local.get(["prompts"], function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
