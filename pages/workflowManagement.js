@@ -393,10 +393,10 @@ function initializeWorkflows() {
         const actions = document.createElement("div");
         actions.className = "workflow-actions";
 
-        const executeBtn = document.createElement("button");
-        executeBtn.className = "action-btn execute-btn";
-        executeBtn.textContent = "Execute";
-        executeBtn.onclick = () => executeWorkflow(workflow.id);
+        // const executeBtn = document.createElement("button");
+        // executeBtn.className = "action-btn execute-btn";
+        // executeBtn.textContent = "Execute";
+        // executeBtn.onclick = () => executeWorkflow(workflow.id);
 
         const editBtn = document.createElement("button");
         editBtn.className = "action-btn edit-btn";
@@ -419,7 +419,7 @@ function initializeWorkflows() {
         deleteBtn.onclick = () =>
           deleteWorkflow(workflow.id, card, workflowList);
 
-        actions.append(executeBtn, editBtn, copyBtn, exportBtn, deleteBtn);
+        actions.append(editBtn, copyBtn, exportBtn, deleteBtn);
         card.append(title, info, actions);
         grid.appendChild(card);
       });
@@ -980,7 +980,7 @@ function initializeWorkflows() {
                       tags: { from: [], to: [] },
                       isFavorite: { from: false, to: false },
                       folderId: { from: null, to: null },
-                      folderName: { from: null, to: "Single Prompt" },
+                      folderName: { from: null, to: null },
                       notes: { from: null, to: "" },
                     },
                   },

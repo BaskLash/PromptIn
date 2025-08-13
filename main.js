@@ -51,6 +51,52 @@ function updateSortButtonText() {
   folderSortBtn.textContent = `${sortByText} (${sortOrderText})`;
 }
 
+/* Prompts Overview for Popup */
+function loadPromptsTable() {
+  const tableBody = document.querySelector(
+    ".entry-table:not(.folder-entry-table) tbody"
+  );
+  tableBody.innerHTML = "";
+
+  chrome.storage.local.get(["folders", "prompts"], function (data) {
+    const folders = data.folders || {};
+    const prompts = data.prompts || {};
+
+    const allPromptEntries = Object.entries(prompts)
+      .filter(([, prompt]) => !prompt.isTrash)
+      .map(([promptId, prompt]) => ({
+        promptId,
+        prompt,
+        folderId: prompt.folderId || null,
+      }));
+
+    if (allPromptEntries.length === 0) {
+      tableBody.innerHTML =
+        '<tr><td colspan="2">Keine Prompts vorhanden</td></tr>';
+    } else {
+      const sortedPrompts = sortPrompts(allPromptEntries);
+      sortedPrompts.forEach(({ prompt, promptId, folderId }) => {
+        const tr = document.createElement("tr");
+        tr.dataset.entry = prompt.title;
+        tr.dataset.promptId = promptId;
+        tr.dataset.folderId = folderId;
+        tr.innerHTML = `
+          <td>${prompt.title}</td>
+          <td class="action-cell">
+            <button class="action-btn">⋮</button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+        console.log(
+          `Prompt Row: ID=${promptId}, FolderID=${folderId}, Title=${prompt.title}`
+        ); // Debugging
+      });
+    }
+
+    attachMainTableEvents();
+  });
+}
+
 function showPromptDetails(promptId) {
   console.log(`showPromptDetails called with PromptID=${promptId}`);
   chrome.storage.local.get(["prompts", "folders", "tags"], function (data) {
@@ -1122,99 +1168,74 @@ function exportDataToJSON() {
       folders: [],
       prompts: [],
       workflows: [],
-      tags: data.tags || [],
+      tags: Array.isArray(data.tags) ? data.tags : [],
     };
 
-    Object.entries(data).forEach(([key, topic]) => {
-      if (key.startsWith("folder_") || key.startsWith("hidden_folder_")) {
-        exportData.folders.push({
-          folderId: key,
-          folderName: topic.name || "Unnamed Folder",
-          isHidden: key.startsWith("hidden_folder_") || topic.isHidden || false,
-          isTrash: topic.isTrash || false,
-        });
+    const folders = data.folders || {};
+    const prompts = data.prompts || {};
+    const workflows = data.workflows || {};
 
-        if (topic.prompts && Array.isArray(topic.prompts)) {
-          topic.prompts.forEach((prompt) => {
-            exportData.prompts.push({
-              folderId: key,
-              folderName: topic.name || "Unnamed Folder",
-              isHidden:
-                key.startsWith("hidden_folder_") || topic.isHidden || false,
-              isTrash: topic.isTrash || false,
-              prompt: {
-                ...prompt,
-                id:
-                  prompt.id ||
-                  `prompt_${Date.now()}_${Math.random()
-                    .toString(36)
-                    .substr(2, 9)}`,
-                tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-              },
-            });
-          });
-        }
-      }
-
-      if (
-        key.startsWith("single_prompt_") &&
-        topic.prompts &&
-        Array.isArray(topic.prompts)
-      ) {
-        topic.prompts.forEach((prompt) => {
-          exportData.prompts.push({
-            folderId: key,
-            folderName: topic.name || "Single Prompt",
-            isHidden: topic.isHidden || false,
-            isTrash: topic.isTrash || false,
-            prompt: {
-              ...prompt,
-              id:
-                prompt.id ||
-                `prompt_${Date.now()}_${Math.random()
-                  .toString(36)
-                  .substr(2, 9)}`,
-              tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-            },
-          });
-        });
-      }
-
-      if (key === "noFolderPrompts" && Array.isArray(topic)) {
-        topic.forEach((prompt) => {
-          exportData.prompts.push({
-            folderId: "noFolderPrompts",
-            folderName: "No Folder",
-            isHidden: false,
-            isTrash: false,
-            prompt: {
-              ...prompt,
-              id:
-                prompt.id ||
-                `prompt_${Date.now()}_${Math.random()
-                  .toString(36)
-                  .substr(2, 9)}`,
-              tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-            },
-          });
-        });
-      }
-
-      if (
-        key.startsWith("workflow_") &&
-        topic.steps &&
-        Array.isArray(topic.steps)
-      ) {
-        exportData.workflows.push({
-          workflowId: key,
-          workflowName: topic.name || "Unnamed Workflow",
-          steps: topic.steps,
-          createdAt: topic.createdAt || Date.now(),
-          tags: Array.isArray(topic.tags) ? topic.tags : [],
-        });
-      }
+    // Folders exportieren
+    Object.entries(folders).forEach(([folderId, folder]) => {
+      exportData.folders.push({
+        ...folder, // Alle Eigenschaften des Ordners übernehmen
+        folderId, // Sicherstellen, dass folderId explizit gesetzt ist
+        promptIds: Array.isArray(folder.promptIds) ? folder.promptIds : [],
+      });
     });
 
+    // Prompts exportieren
+    Object.entries(prompts).forEach(([promptId, prompt]) => {
+      const folder = prompt.folderId && folders[prompt.folderId];
+      exportData.prompts.push({
+        folderId: prompt.folderId || null,
+        folderName: folder ? folder.name || "Unnamed Folder" : "No Folder",
+        isHidden: folder ? folder.isHidden || false : false,
+        isTrash: folder ? folder.isTrash || false : false,
+        prompt: {
+          ...prompt, // Alle Eigenschaften des Prompts übernehmen
+          promptId:
+            prompt.promptId ||
+            promptId ||
+            `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+          versions: Array.isArray(prompt.versions)
+            ? prompt.versions.map((version) => ({
+                ...version, // Alle Eigenschaften der Version übernehmen
+                versionId:
+                  version.versionId ||
+                  `version_${Date.now()}_${Math.random()
+                    .toString(36)
+                    .substr(2, 9)}`,
+              }))
+            : [],
+          metaChangeLog: Array.isArray(prompt.metaChangeLog)
+            ? prompt.metaChangeLog
+            : [],
+          performanceHistory: Array.isArray(prompt.performanceHistory)
+            ? prompt.performanceHistory
+            : [],
+          createdAt: prompt.createdAt || Date.now(),
+          updatedAt: prompt.updatedAt || Date.now(),
+          usageCount: prompt.usageCount || 0,
+          lastUsed: prompt.lastUsed || null,
+          isTrash: prompt.isTrash || false,
+          deletedAt: prompt.deletedAt || null,
+        },
+      });
+    });
+
+    // Workflows exportieren
+    Object.entries(workflows).forEach(([workflowId, workflow]) => {
+      exportData.workflows.push({
+        ...workflow, // Alle Eigenschaften des Workflows übernehmen
+        workflowId, // Sicherstellen, dass workflowId explizit gesetzt ist
+        steps: Array.isArray(workflow.steps) ? workflow.steps : [],
+        tags: Array.isArray(workflow.tags) ? workflow.tags : [],
+      });
+    });
+
+    // Prüfen, ob etwas exportiert wird
     if (
       exportData.folders.length === 0 &&
       exportData.prompts.length === 0 &&
@@ -1225,6 +1246,7 @@ function exportDataToJSON() {
       return;
     }
 
+    // JSON-Datei erstellen und herunterladen
     const jsonString = JSON.stringify(exportData, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -1235,6 +1257,7 @@ function exportDataToJSON() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
     console.log("Data exported successfully");
   });
 }
@@ -1255,14 +1278,12 @@ function importDataFromJSON(event) {
   reader.onload = function (e) {
     try {
       const importedData = JSON.parse(e.target.result);
+
+      // Basis-Validierung
       if (
-        !importedData.prompts ||
         !Array.isArray(importedData.prompts) ||
-        !importedData.folders ||
         !Array.isArray(importedData.folders) ||
-        !importedData.workflows ||
         !Array.isArray(importedData.workflows) ||
-        !importedData.tags ||
         !Array.isArray(importedData.tags)
       ) {
         alert(
@@ -1273,80 +1294,140 @@ function importDataFromJSON(event) {
 
       chrome.storage.local.get(null, function (existingData) {
         const updatedData = existingData || {};
+        updatedData.prompts = updatedData.prompts || {};
+        updatedData.folders = updatedData.folders || {};
+        updatedData.workflows = updatedData.workflows || {};
+        updatedData.tags = updatedData.tags || [];
 
-        const existingTags = updatedData.tags || [];
-        const newTags = [...new Set([...existingTags, ...importedData.tags])];
-        updatedData.tags = newTags;
+        // Tags mergen (Duplikate entfernen)
+        const allTags = new Set([...updatedData.tags, ...importedData.tags]);
+        updatedData.tags = Array.from(allTags);
 
-        importedData.folders.forEach((folder) => {
-          const { folderId, folderName, isHidden, isTrash } = folder;
-          if (!updatedData[folderId]) {
-            updatedData[folderId] = {
-              name: folderName || "Unnamed Folder",
-              prompts: [],
-              isHidden: isHidden || false,
-              isTrash: isTrash || false,
-            };
-          } else {
-            updatedData[folderId].name =
-              updatedData[folderId].name || folderName || "Unnamed Folder";
-            updatedData[folderId].isHidden =
-              updatedData[folderId].isHidden !== undefined
-                ? updatedData[folderId].isHidden
-                : isHidden || false;
-            updatedData[folderId].isTrash =
-              updatedData[folderId].isTrash !== undefined
-                ? updatedData[folderId].isTrash
-                : isTrash || false;
-            updatedData[folderId].prompts = updatedData[folderId].prompts || [];
+        // Mapping für neue IDs
+        const promptIdMapping = {};
+        const folderIdMapping = {};
+        const workflowIdMapping = {};
+        const versionIdMapping = {};
+
+        // Prompts importieren
+        importedData.prompts.forEach((promptEntry) => {
+          const prompt = promptEntry.prompt;
+          let newPromptId = prompt.promptId || prompt.id;
+          if (updatedData.prompts[newPromptId]) {
+            newPromptId = `prompt_${Date.now()}_${Math.random()
+              .toString(36)
+              .substr(2, 9)}`;
           }
-        });
+          promptIdMapping[prompt.promptId || prompt.id] = newPromptId;
 
-        importedData.prompts.forEach((item) => {
-          const { folderId, folderName, isHidden, isTrash, prompt } = item;
-          if (!updatedData[folderId]) {
-            updatedData[folderId] = {
-              name: folderName || "Unnamed Folder",
-              prompts: [],
-              isHidden: isHidden || false,
-              isTrash: isTrash || false,
-            };
-          }
-          prompt.id =
-            prompt.id ||
-            `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          prompt.tags = Array.isArray(prompt.tags)
-            ? prompt.tags.filter((tag) => newTags.includes(tag))
+          // Version-IDs mappen
+          const versions = Array.isArray(prompt.versions)
+            ? prompt.versions.map((version) => {
+                let newVersionId = version.versionId;
+                if (
+                  versionIdMapping[newVersionId] ||
+                  Object.values(versionIdMapping).includes(newVersionId)
+                ) {
+                  newVersionId = `version_${Date.now()}_${Math.random()
+                    .toString(36)
+                    .substr(2, 9)}`;
+                }
+                versionIdMapping[version.versionId] = newVersionId;
+                return {
+                  ...version,
+                  versionId: newVersionId,
+                };
+              })
             : [];
-          updatedData[folderId].prompts.push(prompt);
-        });
 
-        importedData.workflows.forEach((workflow) => {
-          const { workflowId, workflowName, steps, createdAt, tags } = workflow;
-          updatedData[workflowId] = {
-            name: workflowName || "Unnamed Workflow",
-            steps: steps || [],
-            createdAt: createdAt || Date.now(),
-            tags: Array.isArray(tags)
-              ? tags.filter((tag) => newTags.includes(tag))
+          prompt.tags = Array.isArray(prompt.tags)
+            ? prompt.tags.filter((tag) => updatedData.tags.includes(tag))
+            : [];
+          updatedData.prompts[newPromptId] = {
+            ...prompt,
+            promptId: newPromptId,
+            folderId: promptEntry.folderId || null,
+            versions,
+            metaChangeLog: Array.isArray(prompt.metaChangeLog)
+              ? prompt.metaChangeLog
               : [],
+            performanceHistory: Array.isArray(prompt.performanceHistory)
+              ? prompt.performanceHistory
+              : [],
+            createdAt: prompt.createdAt || Date.now(),
+            updatedAt: prompt.updatedAt || Date.now(),
+            usageCount: prompt.usageCount || 0,
+            lastUsed: prompt.lastUsed || null,
+            isTrash: prompt.isTrash || false,
+            deletedAt: prompt.deletedAt || null,
           };
         });
 
-        const noFolderPrompts = importedData.prompts
-          .filter((item) => item.folderId === "noFolderPrompts")
-          .map((item) => ({
-            ...item.prompt,
-            id:
-              item.prompt.id ||
-              `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            tags: Array.isArray(item.prompt.tags)
-              ? item.prompt.tags.filter((tag) => newTags.includes(tag))
+        // Folders importieren
+        importedData.folders.forEach((folder) => {
+          let newFolderId = folder.folderId;
+          if (updatedData.folders[newFolderId]) {
+            newFolderId = `folder_${Date.now()}_${Math.random()
+              .toString(36)
+              .substr(2, 9)}`;
+          }
+          folderIdMapping[folder.folderId] = newFolderId;
+          updatedData.folders[newFolderId] = {
+            ...folder, // Alle Eigenschaften des Ordners übernehmen
+            name: folder.folderName || folder.name || "Unnamed Folder",
+            promptIds: Array.isArray(folder.promptIds)
+              ? folder.promptIds
+                  .map((id) => promptIdMapping[id] || id)
+                  .filter((id) => updatedData.prompts[id])
               : [],
-          }));
-        updatedData.noFolderPrompts = updatedData.noFolderPrompts
-          ? [...updatedData.noFolderPrompts, ...noFolderPrompts]
-          : noFolderPrompts;
+            isHidden: !!folder.isHidden,
+            isTrash: !!folder.isTrash,
+            createdAt: folder.createdAt || Date.now(),
+            updatedAt: folder.updatedAt || Date.now(),
+          };
+        });
+
+        // Prompt-IDs in Folders basierend auf prompt.folderId aktualisieren
+        Object.entries(updatedData.prompts).forEach(([promptId, prompt]) => {
+          if (prompt.folderId) {
+            const newFolderId =
+              folderIdMapping[prompt.folderId] || prompt.folderId;
+            if (updatedData.folders[newFolderId]) {
+              if (!Array.isArray(updatedData.folders[newFolderId].promptIds)) {
+                updatedData.folders[newFolderId].promptIds = [];
+              }
+              if (
+                !updatedData.folders[newFolderId].promptIds.includes(promptId)
+              ) {
+                updatedData.folders[newFolderId].promptIds.push(promptId);
+              }
+              updatedData.prompts[promptId].folderId = newFolderId;
+            } else {
+              updatedData.prompts[promptId].folderId = null;
+            }
+          }
+        });
+
+        // Workflows importieren
+        importedData.workflows.forEach((workflow) => {
+          let newWorkflowId = workflow.workflowId;
+          if (updatedData.workflows[newWorkflowId]) {
+            newWorkflowId = `workflow_${Date.now()}_${Math.random()
+              .toString(36)
+              .substr(2, 9)}`;
+          }
+          workflowIdMapping[workflow.workflowId] = newWorkflowId;
+          workflow.tags = Array.isArray(workflow.tags)
+            ? workflow.tags.filter((tag) => updatedData.tags.includes(tag))
+            : [];
+          updatedData.workflows[newWorkflowId] = {
+            ...workflow, // Alle Eigenschaften des Workflows übernehmen
+            name: workflow.workflowName || workflow.name || "Unnamed Workflow",
+            steps: Array.isArray(workflow.steps) ? workflow.steps : [],
+            createdAt: workflow.createdAt || Date.now(),
+            tags: workflow.tags,
+          };
+        });
 
         chrome.storage.local.set(updatedData, function () {
           if (chrome.runtime.lastError) {
@@ -1354,9 +1435,9 @@ function importDataFromJSON(event) {
             alert("Error importing data. Please try again.");
           } else {
             console.log("Data imported successfully");
-            loadPromptsTable();
-            loadFolders();
             alert("Data imported successfully!");
+            if (typeof loadPromptsTable === "function") loadPromptsTable();
+            if (typeof loadFolders === "function") loadFolders();
           }
         });
       });
@@ -1365,6 +1446,7 @@ function importDataFromJSON(event) {
       alert("Error parsing JSON file. Please check the file and try again.");
     }
   };
+
   reader.readAsText(file);
 }
 
@@ -1702,52 +1784,6 @@ document.addEventListener("DOMContentLoaded", () => {
       loadPromptsTable(); // Hauptübersicht neu laden
     }
   });
-
-  /* Prompts Overview for Popup */
-  function loadPromptsTable() {
-    const tableBody = document.querySelector(
-      ".entry-table:not(.folder-entry-table) tbody"
-    );
-    tableBody.innerHTML = "";
-
-    chrome.storage.local.get(["folders", "prompts"], function (data) {
-      const folders = data.folders || {};
-      const prompts = data.prompts || {};
-
-      const allPromptEntries = Object.entries(prompts)
-        .filter(([, prompt]) => !prompt.isTrash)
-        .map(([promptId, prompt]) => ({
-          promptId,
-          prompt,
-          folderId: prompt.folderId || null,
-        }));
-
-      if (allPromptEntries.length === 0) {
-        tableBody.innerHTML =
-          '<tr><td colspan="2">Keine Prompts vorhanden</td></tr>';
-      } else {
-        const sortedPrompts = sortPrompts(allPromptEntries);
-        sortedPrompts.forEach(({ prompt, promptId, folderId }) => {
-          const tr = document.createElement("tr");
-          tr.dataset.entry = prompt.title;
-          tr.dataset.promptId = promptId;
-          tr.dataset.folderId = folderId;
-          tr.innerHTML = `
-          <td>${prompt.title}</td>
-          <td class="action-cell">
-            <button class="action-btn">⋮</button>
-          </td>
-        `;
-          tableBody.appendChild(tr);
-          console.log(
-            `Prompt Row: ID=${promptId}, FolderID=${folderId}, Title=${prompt.title}`
-          ); // Debugging
-        });
-      }
-
-      attachMainTableEvents();
-    });
-  }
 
   editBtn.addEventListener("click", () => {
     const entryCompatible = document.getElementById("entry-compatible");
