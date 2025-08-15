@@ -76,6 +76,12 @@ function renderAnalytics(prompts) {
   // const suggestionSection = createSuggestionSection(prompts);
   // container.appendChild(suggestionSection);
 
+  // Change frequency by model
+  const modelChangeFrequency = calculateChangeFrequencyByModel(prompts);
+  container.appendChild(
+    createModelChangeFrequencySection(modelChangeFrequency)
+  );
+
   // Append new container to analytics-container
   analyticsContainer.appendChild(container);
   console.log("Berechnete Daten für Nutzung:", calculateUsageByTime(prompts));
@@ -808,6 +814,175 @@ function createChangeFrequencySection(changeFrequency) {
   } catch (error) {
     console.error("Error when initializing the change frequency chart:", error);
     section.innerHTML = `<h2>Change frequency of the top 5 prompts</h2><p>Error when rendering the diagram: ${error.message}</p>`;
+  }
+
+  return section;
+}
+
+function calculateChangeFrequencyByModel(prompts) {
+  const modelChangeCounts = {};
+
+  prompts.forEach((prompt) => {
+    if (
+      !prompt.metaChangeLog ||
+      !Array.isArray(prompt.metaChangeLog) ||
+      !prompt.compatibleModels
+    )
+      return;
+
+    let models = prompt.compatibleModels;
+    if (typeof models === "string") {
+      models = models
+        .split(",")
+        .map((model) => model.trim())
+        .filter((model) => model);
+    } else if (!Array.isArray(models)) {
+      return;
+    }
+
+    models.forEach((model) => {
+      modelChangeCounts[model] =
+        (modelChangeCounts[model] || 0) + prompt.metaChangeLog.length;
+    });
+  });
+
+  // Sort models by change count and take top 5
+  const sortedModels = Object.entries(modelChangeCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([model]) => model);
+
+  const changeOverTime = {};
+  const allDates = new Set();
+
+  prompts.forEach((prompt) => {
+    if (
+      !prompt.metaChangeLog ||
+      !Array.isArray(prompt.metaChangeLog) ||
+      !prompt.compatibleModels
+    )
+      return;
+
+    let models = prompt.compatibleModels;
+    if (typeof models === "string") {
+      models = models
+        .split(",")
+        .map((model) => model.trim())
+        .filter((model) => model);
+    } else if (!Array.isArray(models)) {
+      return;
+    }
+
+    models.forEach((model) => {
+      if (!sortedModels.includes(model)) return;
+      changeOverTime[model] = changeOverTime[model] || {};
+
+      prompt.metaChangeLog.forEach((change) => {
+        const date = new Date(change.timestamp).toISOString().split("T")[0];
+        changeOverTime[model][date] = (changeOverTime[model][date] || 0) + 1;
+        allDates.add(date);
+      });
+    });
+  });
+
+  const sortedDates = Array.from(allDates).sort();
+  return {
+    changeOverTime,
+    dates: sortedDates,
+    models: sortedModels,
+  };
+}
+
+function createModelChangeFrequencySection(changeFrequency) {
+  const section = document.createElement("div");
+  section.className = "analytics-section";
+  section.innerHTML = `
+    <h2>Change frequency by model</h2>
+    <div class="chart-container" style="height: 300px;">
+      <canvas id="modelChangeFrequencyChart"></canvas>
+    </div>
+  `;
+
+  if (!changeFrequency.dates.length || !changeFrequency.models.length) {
+    section.innerHTML = `<h2>Change frequency by model</h2><p>No change data available.</p>`;
+    console.warn("No data available for model change frequency chart.");
+    return section;
+  }
+
+  const colors = ["#4e73df", "#1cc88a", "#36b9cc", "#f6c23e", "#e74a3b"];
+  const datasets = changeFrequency.models.map((model, index) => ({
+    label: model,
+    data: changeFrequency.dates.map(
+      (date) => changeFrequency.changeOverTime[model][date] || 0
+    ),
+    borderColor: colors[index % colors.length],
+    backgroundColor: colors[index % colors.length],
+    fill: false,
+    tension: 0.4,
+    pointRadius: 5,
+    pointHoverRadius: 8,
+  }));
+
+  const chartConfig = {
+    type: "line",
+    data: {
+      labels: changeFrequency.dates,
+      datasets: datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: "category",
+          labels: changeFrequency.dates,
+          title: {
+            display: true,
+            text: "Datum",
+          },
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Number of changes",
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: true,
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              return `${context.dataset.label}: ${context.raw} Changes on ${context.label}`;
+            },
+          },
+        },
+      },
+    },
+  };
+
+  try {
+    const canvas = section.querySelector("#modelChangeFrequencyChart");
+    if (!canvas) {
+      console.error("Canvas element for modelChangeFrequencyChart not found.");
+      section.innerHTML = `<h2>Change frequency by model</h2><p>Error: Chart could not be created.</p>`;
+      return section;
+    }
+    if (typeof Chart === "undefined") {
+      console.error("Chart.js is not loaded.");
+      section.innerHTML = `<h2>Change frequency by model</h2><p>Error: Chart.js is not available.</p>`;
+      return section;
+    }
+    new Chart(canvas, chartConfig);
+  } catch (error) {
+    console.error(
+      "Error initializing the model change frequency chart:",
+      error
+    );
+    section.innerHTML = `<h2>Change frequency by model</h2><p>Error rendering chart: ${error.message}</p>`;
   }
 
   return section;

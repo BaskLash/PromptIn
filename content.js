@@ -100,17 +100,29 @@ async function createNewPrompt(
 ) {
   console.log("So werde ich gespeichert bei PromptSaver");
   const promptId = `prompt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-  const currentUrl = window.location.hostname;
-  const compatibleModels = currentUrl.includes("chatgpt.com")
-    ? ["ChatGPT"]
-    : ["Unknown"];
+  const hostname = window.location.hostname.toLowerCase();
+
+  let compatibleModels;
+
+  if (hostname === "chatgpt.com") {
+    compatibleModels = ["ChatGPT"];
+  } else if (hostname === "grok.com") {
+    compatibleModels = ["Grok"];
+  } else if (hostname === "gemini.google.com") {
+    compatibleModels = ["Gemini"];
+  } else {
+    compatibleModels = ["Unknown"];
+  }
+
+  console.log(compatibleModels);
+
   const incompatibleModels = [];
   const tags = [];
   const isFavorite = false;
   const folderId = null;
-  const folderName = "Single Prompt"; // Standardwert für folderName
+  const folderName = ""; // Standardwert für folderName
   const notes = "";
-  const type = "textgen"; // Standardwert für Typ, passend zu showCreatePromptModal
+  const type = "";
 
   const newPrompt = {
     promptId: promptId,
@@ -126,7 +138,7 @@ async function createNewPrompt(
     folderId,
     folderName,
     createdAt: Date.now(),
-    updatedAt: Date.now(),
+    updatedAt: null,
     usageCount: 0,
     lastUsed: null,
     isTrash: false, // Hinzugefügt für Konsistenz
