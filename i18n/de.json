@@ -37,6 +37,7 @@
   "content_label": "Inhalt",
   "content_placeholder": "Prompt-Inhalt eingeben",
   "notes_placeholder": "Notiz eingeben",
+  "type_label": "Typ",
   "select_type": "Wähle Typ",
   "textgen": "Textgeneration",
   "rewrite": "Umschreiben",

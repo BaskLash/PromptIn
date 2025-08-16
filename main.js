@@ -102,7 +102,7 @@ function showPromptDetails(promptId) {
   chrome.storage.local.get(["prompts", "folders", "tags"], function (data) {
     const prompts = data.prompts || {};
     const folders = data.folders || {};
-    const tags = data.tags || [];
+    const tags = data.tags || {};
 
     const prompt = prompts[promptId];
     if (!prompt) {
@@ -135,21 +135,57 @@ function showPromptDetails(promptId) {
 
     detailTitle.textContent = prompt.title;
     entryTitle.value = prompt.title || "";
+
+    // description handling
     entryDescription.value = prompt.description || "";
+    if (!prompt.description) {
+      entryDescription.value = "No description provided";
+      entryDescription.style.fontStyle = "italic";
+      entryDescription.style.color = "gray";
+    } else {
+      entryDescription.style.fontStyle = "normal";
+      entryDescription.style.color = "inherit";
+    }
+
     entryContent.value = prompt.content || "";
-    entryFavorite.checked = prompt.isFavorite || false;
+
+    // favorite handling
+    if (prompt.isFavorite) {
+      entryFavorite.checked = true;
+    } else {
+      entryFavorite.checked = false;
+      entryFavorite.insertAdjacentHTML(
+        "afterend",
+        `<p style="font-style: italic; color: gray;">is not favorite</p>`
+      );
+    }
+
+    // type handling
+    entryType.value = prompt.type || "No type specified";
+
+    // created / last used / modified handling
     entryCreatedAt.value = prompt.createdAt
       ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-      : "N/A";
+      : "Not available";
     entryLastUsed.value = prompt.lastUsed
       ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-      : "N/A";
+      : "Never used";
     entryLastModified.value = prompt.updatedAt
       ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
-      : "N/A";
-    entryNotes.value = prompt.notes || "";
-    entryType.value = prompt.type || "";
+      : "Not available";
 
+    // notes handling
+    entryNotes.value = prompt.notes || "";
+    if (!prompt.notes) {
+      entryNotes.value = "No notes provided";
+      entryNotes.style.fontStyle = "italic";
+      entryNotes.style.color = "gray";
+    } else {
+      entryNotes.style.fontStyle = "normal";
+      entryNotes.style.color = "inherit";
+    }
+
+    // models handling
     const modelList = [
       "Grok",
       "Gemini",
@@ -166,47 +202,63 @@ function showPromptDetails(promptId) {
       "Qwen AI",
     ];
 
-    entryCompatible.innerHTML = modelList
-      .map(
-        (model) => `
-      <label>
-        <input type="checkbox" name="compatible" value="${model}" 
-          ${prompt.compatibleModels?.includes(model) ? "checked" : ""} disabled>
-        ${model}
-      </label>`
-      )
-      .join("");
+    const compatible = prompt.compatibleModels || [];
+    const incompatible = prompt.incompatibleModels || [];
 
-    entryIncompatible.innerHTML = modelList
-      .map(
-        (model) => `
-      <label>
-        <input type="checkbox" name="incompatible" value="${model}" 
-          ${
-            prompt.incompatibleModels?.includes(model) ? "checked" : ""
-          } disabled>
-        ${model}
-      </label>`
-      )
-      .join("");
+    if (!compatible.length) {
+      entryCompatible.innerHTML = `<p style="font-style: italic; color: gray;">is not matched with any compatible models</p>`;
+    } else {
+      entryCompatible.innerHTML = compatible
+        .map(
+          (model) => `
+        <label>
+          <input type="checkbox" name="compatible" value="${model}" checked disabled>
+          ${model}
+        </label>`
+        )
+        .join("");
+    }
 
-    entryTags.innerHTML = tags
-      .map(
-        (tag) => `
-      <label>
-        <input type="checkbox" name="tags" value="${tag}" 
-          ${prompt.tags?.includes(tag) ? "checked" : ""} disabled>
-        ${tag}
-      </label>`
-      )
-      .join("");
+    if (!incompatible.length) {
+      entryIncompatible.innerHTML = `<p style="font-style: italic; color: gray;">is not matched with any incompatible models</p>`;
+    } else {
+      entryIncompatible.innerHTML = incompatible
+        .map(
+          (model) => `
+        <label>
+          <input type="checkbox" name="incompatible" value="${model}" checked disabled>
+          ${model}
+        </label>`
+        )
+        .join("");
+    }
 
+    // tags handling
+    const tagList = Array.isArray(tags) ? tags : Object.values(tags || {});
+    if (!tagList.length) {
+      entryTags.innerHTML = `<p style="font-style: italic; color: gray;">No tags available</p>`;
+    } else if (!prompt.tags || prompt.tags.length === 0) {
+      entryTags.innerHTML = `<p style="font-style: italic; color: gray;">This prompt has no tags</p>`;
+    } else {
+      entryTags.innerHTML = tagList
+        .map(
+          (tag) => `
+        <label>
+          <input type="checkbox" name="tags" value="${tag}" 
+            ${prompt.tags?.includes(tag) ? "checked" : ""} disabled>
+          ${tag}
+        </label>`
+        )
+        .join("");
+    }
+
+    // folder handling
     entryFolder.innerHTML =
-      '<option value="" data-i18n="folder_select"></option>';
+      '<option value="" data-i18n="folder_unassigned">Not assigned to any folder</option>';
     Object.entries(folders).forEach(([folderId, folder]) => {
       const option = document.createElement("option");
       option.value = folderId;
-      option.textContent = folder.name || "Unbenannter Ordner";
+      option.textContent = folder.name || "Unnamed folder";
       if (prompt.folderId === folderId) {
         option.selected = true;
       }
@@ -362,6 +414,8 @@ const dropdown = document.createElement("div");
 dropdown.classList.add("action-dropdown");
 dropdown.innerHTML = `
     <button class="copy-btn">Copy</button>
+    <button class='share-btn'>Share</button>
+    <button class='favorit-btn'>Mark as favorit</button>
     <button class="rename-btn">Rename</button>
     <button class="delete-btn">Delete</button>
   `;
@@ -389,6 +443,51 @@ dropdown.querySelector(".copy-btn").addEventListener("click", () => {
     }
   }
   currentButton = null;
+});
+
+dropdown.querySelector(".share-btn").addEventListener("click", () => {
+  console.log("We are sharing!");
+  const promptId = dropdown.dataset.promptId;
+  console.log("Prompt ID: " + promptId);
+
+  chrome.storage.local.get(["prompts"], function (data) {
+    const prompt = data.prompts?.[promptId];
+    if (prompt) {
+      console.log("here we are at sharing");
+      const textToShare = prompt.text || "Check out this prompt!";
+
+      // 1. If Web Share API is supported (works on mobile & some desktops)
+      if (navigator.share) {
+        navigator
+          .share({
+            title: "Shared Prompt",
+            text: textToShare,
+          })
+          .catch((err) => {
+            console.error("Share failed:", err);
+          });
+      } else {
+        // 2. Fallback options: WhatsApp and Email
+        const encodedText = encodeURIComponent(textToShare);
+
+        // WhatsApp
+        const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+
+        // Email
+        const emailUrl = `mailto:?subject=Shared Prompt&body=${encodedText}`;
+
+        // Show a small chooser (could be a custom popup)
+        const choice = confirm(
+          "Click OK to share via WhatsApp, Cancel for Email"
+        );
+        if (choice) {
+          window.open(whatsappUrl, "_blank");
+        } else {
+          window.open(emailUrl, "_blank");
+        }
+      }
+    }
+  });
 });
 
 // Rename Prompt
@@ -1195,18 +1294,13 @@ function exportDataToJSON() {
         prompt: {
           ...prompt, // Alle Eigenschaften des Prompts übernehmen
           promptId:
-            prompt.promptId ||
-            promptId ||
-            `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            prompt.promptId || promptId || `${Date.now()}_${generateUUID()}`,
           tags: Array.isArray(prompt.tags) ? prompt.tags : [],
           versions: Array.isArray(prompt.versions)
             ? prompt.versions.map((version) => ({
                 ...version, // Alle Eigenschaften der Version übernehmen
                 versionId:
-                  version.versionId ||
-                  `version_${Date.now()}_${Math.random()
-                    .toString(36)
-                    .substr(2, 9)}`,
+                  version.versionId || `${Date.now()}_${generateUUID()}`,
               }))
             : [],
           metaChangeLog: Array.isArray(prompt.metaChangeLog)
@@ -1314,9 +1408,7 @@ function importDataFromJSON(event) {
           const prompt = promptEntry.prompt;
           let newPromptId = prompt.promptId || prompt.id;
           if (updatedData.prompts[newPromptId]) {
-            newPromptId = `prompt_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
+            newPromptId = `${Date.now()}_${generateUUID()}`;
           }
           promptIdMapping[prompt.promptId || prompt.id] = newPromptId;
 
@@ -1328,9 +1420,7 @@ function importDataFromJSON(event) {
                   versionIdMapping[newVersionId] ||
                   Object.values(versionIdMapping).includes(newVersionId)
                 ) {
-                  newVersionId = `version_${Date.now()}_${Math.random()
-                    .toString(36)
-                    .substr(2, 9)}`;
+                  newVersionId = `${Date.now()}_${generateUUID()}`;
                 }
                 versionIdMapping[version.versionId] = newVersionId;
                 return {
@@ -1367,9 +1457,7 @@ function importDataFromJSON(event) {
         importedData.folders.forEach((folder) => {
           let newFolderId = folder.folderId;
           if (updatedData.folders[newFolderId]) {
-            newFolderId = `folder_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
+            newFolderId = `${Date.now()}_${generateUUID()}`;
           }
           folderIdMapping[folder.folderId] = newFolderId;
           updatedData.folders[newFolderId] = {
@@ -1732,7 +1820,7 @@ document.addEventListener("DOMContentLoaded", () => {
         translations[currentLang]?.new_foldername || "Neuer Ordnername"
       );
       if (folderName) {
-        const folderId = generateUUID();
+        const folderId = `${Date.now()}_${generateUUID()}`;
         chrome.storage.local.get("folders", (data) => {
           const folders = data.folders || {};
 

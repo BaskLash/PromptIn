@@ -399,12 +399,6 @@ table thead {
   background-color: #f0f0f0;
   cursor: pointer;
 }
-.remove-tag-btn {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-}
 /* Container für Tags */
 .tag-container {
   display: flex;
@@ -470,6 +464,19 @@ table thead {
 }
 
 .remove-tag-btn:hover {
+  color: #a71d2a; /* Dunklere Farbe bei Hover */
+}
+.remove-type-btn{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #dc3545; /* Rote Farbe für Lösch-Button */
+}
+.remove-type-btn:hover {
   color: #a71d2a; /* Dunklere Farbe bei Hover */
 }
 .close-modal {

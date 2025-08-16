@@ -82,6 +82,12 @@ function renderAnalytics(prompts) {
     createModelChangeFrequencySection(modelChangeFrequency)
   );
 
+  // Frequency of compatible/incompatible model changes per prompt
+  const modelCompatibilityChanges = calculateModelCompatibilityChanges(prompts);
+  container.appendChild(
+    createModelCompatibilityChangesSection(modelCompatibilityChanges)
+  );
+
   // Append new container to analytics-container
   analyticsContainer.appendChild(container);
   console.log("Berechnete Daten für Nutzung:", calculateUsageByTime(prompts));
@@ -983,6 +989,160 @@ function createModelChangeFrequencySection(changeFrequency) {
       error
     );
     section.innerHTML = `<h2>Change frequency by model</h2><p>Error rendering chart: ${error.message}</p>`;
+  }
+
+  return section;
+}
+function calculateModelCompatibilityChanges(prompts) {
+  const modelChangeCounts = {};
+
+  prompts.forEach((prompt) => {
+    if (
+      !prompt.metaChangeLog ||
+      !Array.isArray(prompt.metaChangeLog) ||
+      !prompt.title
+    )
+      return;
+
+    const modelChanges = prompt.metaChangeLog.filter(
+      (change) =>
+        change.changes &&
+        Object.keys(change.changes).includes("compatibleModels")
+    );
+
+    if (modelChanges.length > 0) {
+      modelChangeCounts[prompt.title] = modelChanges.length;
+    }
+  });
+
+  // Select top 5 prompts by number of compatibleModels changes
+  const sortedPrompts = Object.entries(modelChangeCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([title]) => title);
+
+  const changeOverTime = {};
+  const allDates = new Set();
+
+  prompts
+    .filter((prompt) => sortedPrompts.includes(prompt.title))
+    .forEach((prompt) => {
+      const promptKey = prompt.title;
+      changeOverTime[promptKey] = {};
+
+      if (prompt.metaChangeLog && Array.isArray(prompt.metaChangeLog)) {
+        prompt.metaChangeLog
+          .filter(
+            (change) =>
+              change.changes &&
+              Object.keys(change.changes).includes("compatibleModels")
+          )
+          .forEach((change) => {
+            const date = new Date(change.timestamp).toISOString().split("T")[0];
+            changeOverTime[promptKey][date] =
+              (changeOverTime[promptKey][date] || 0) + 1;
+            allDates.add(date);
+          });
+      }
+    });
+
+  const sortedDates = Array.from(allDates).sort();
+  return {
+    changeOverTime,
+    dates: sortedDates,
+    prompts: sortedPrompts,
+  };
+}
+
+function createModelCompatibilityChangesSection(changeData) {
+  const section = document.createElement("div");
+  section.className = "analytics-section";
+  section.innerHTML = `
+    <h2>Frequency of compatible/incompatible model changes per prompt</h2>
+    <div class="chart-container" style="height: 300px;">
+      <canvas id="modelCompatibilityChangesChart"></canvas>
+    </div>
+  `;
+
+  if (!changeData.dates.length || !changeData.prompts.length) {
+    section.innerHTML = `<h2>Frequency of compatible/incompatible model changes per prompt</h2><p>No model compatibility change data available.</p>`;
+    console.warn("No data available for model compatibility changes chart.");
+    return section;
+  }
+
+  const colors = ["#4e73df", "#1cc88a", "#36b9cc", "#f6c23e", "#e74a3b"];
+  const datasets = changeData.prompts.map((prompt, index) => ({
+    label: prompt,
+    data: changeData.dates.map(
+      (date) => changeData.changeOverTime[prompt][date] || 0
+    ),
+    backgroundColor: colors[index % colors.length],
+    borderColor: colors[index % colors.length],
+    borderWidth: 1,
+  }));
+
+  const chartConfig = {
+    type: "bar",
+    data: {
+      labels: changeData.dates,
+      datasets: datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: "category",
+          labels: changeData.dates,
+          title: {
+            display: true,
+            text: "Date",
+          },
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Number of model changes",
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: true,
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              return `${context.dataset.label}: ${context.raw} model changes on ${context.label}`;
+            },
+          },
+        },
+      },
+    },
+  };
+
+  try {
+    const canvas = section.querySelector("#modelCompatibilityChangesChart");
+    if (!canvas) {
+      console.error(
+        "Canvas element for modelCompatibilityChangesChart not found."
+      );
+      section.innerHTML = `<h2>Frequency of compatible/incompatible model changes per prompt</h2><p>Error: Chart could not be created.</p>`;
+      return section;
+    }
+    if (typeof Chart === "undefined") {
+      console.error("Chart.js is not loaded.");
+      section.innerHTML = `<h2>Frequency of compatible/incompatible model changes per prompt</h2><p>Error: Chart.js is not available.</p>`;
+      return section;
+    }
+    new Chart(canvas, chartConfig);
+  } catch (error) {
+    console.error(
+      "Error initializing the model compatibility changes chart:",
+      error
+    );
+    section.innerHTML = `<h2>Frequency of compatible/incompatible model changes per prompt</h2><p>Error rendering chart: ${error.message}</p>`;
   }
 
   return section;

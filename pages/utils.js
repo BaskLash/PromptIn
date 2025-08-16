@@ -52,7 +52,11 @@ function savePrompt(
     const folders = data.folders || {};
     const now = Date.now();
 
-    const id = overwritePromptId || promptData.promptId || generateUUID();
+    const id =
+      overwritePromptId ||
+      promptData.promptId ||
+      `${Date.now()}_${generateUUID()}`;
+
     const existing = prompts[id] || {};
 
     const newPrompt = {
@@ -77,7 +81,7 @@ function savePrompt(
     // Neue Version anhängen
     if (!overwritePromptId || promptData.forceNewVersion) {
       newPrompt.versions.push({
-        versionId: generateUUID(),
+        versionId: `${Date.now()}_${generateUUID()}`,
         title: newPrompt.title,
         description: newPrompt.description,
         content: newPrompt.content,

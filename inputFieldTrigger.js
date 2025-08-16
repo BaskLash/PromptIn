@@ -1,3 +1,227 @@
+// Initialize categories and promptSourceMap
+let categories = {
+  Favorites: [],
+  Workflows: [], // Added Workflows category
+  "All Prompts": [],
+  "Single Prompts": [],
+  "Categorised Prompts": { all: [] },
+};
+
+let promptSourceMap = new Map();
+let currentFocusElement = null;
+let selectedCategoryOrFolder = null;
+let isPasting = false;
+let isEscaped = false;
+// Initialize state variables for slash handling
+let isDropdownTriggered = false;
+let isSlashKeyboardInput = false;
+
+// Function to update dropdown data from Chrome storage
+function updateDropdownData(callback) {
+  chrome.storage.local.get(["prompts", "folders", "workflows"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error(
+        "Error fetching data from Chrome storage:",
+        chrome.runtime.lastError
+      );
+      return;
+    }
+
+    // Mapping of domains to model names
+    const domainToModelMap = {
+      "chatgpt.com": "ChatGPT",
+      "grok.com": "Grok",
+      "gemini.google.com": "Gemini",
+      "claude.ai": "Claude",
+      "blackbox.ai": "BlackBox",
+      "github.com": "GitHub Copilot",
+      "copilot.microsoft.com": "Microsoft Copilot",
+      "chat.mistral.ai": "Mistral",
+      "duckduckgo.com": "DuckDuckGo AI Chat",
+      "perplexity.ai": "Perplexity",
+      "chat.deepseek.com": "DeepSeek",
+      "deepai.org": "DeepAI",
+      "chat.qwen.ai": "Qwen AI",
+    };
+
+    // Function to get current mode based on domain
+    function getCurrentMode() {
+      const currentDomain = window.location.hostname;
+      for (const [domain, model] of Object.entries(domainToModelMap)) {
+        if (currentDomain.includes(domain)) {
+          return model;
+        }
+      }
+      return null; // Fallback if no matching domain is found
+    }
+
+    const currentMode = getCurrentMode();
+
+    categories = {
+      Recommended: [],
+      "Last Used": [],
+      Favorites: [],
+      Workflows: [],
+      "All Prompts": [],
+      "Single Prompts": [],
+      "Categorised Prompts": { all: [] },
+    };
+    promptSourceMap = new Map();
+    const allPrompts = [];
+
+    // Workflows
+    const workflows = data.workflows || {};
+    for (const [workflowId, workflow] of Object.entries(workflows)) {
+      if (!workflow.isTrash) {
+        categories.Workflows.push(workflow.name);
+        promptSourceMap.set(`${workflow.name}_${workflowId}`, {
+          category: "Workflows",
+          workflow,
+          workflowId,
+        });
+      }
+    }
+
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+
+    // Alle Prompts durchgehen
+    let recommended = [];
+    for (const [promptId, prompt] of Object.entries(prompts)) {
+      if (prompt.isTrash) continue;
+
+      const title = prompt.title || "Untitled Prompt";
+      const folderId = prompt.folderId || null;
+      const folder = folderId && folders[folderId]?.name;
+      const lastUsed = prompt.lastUsed || 0;
+
+      const key = `${title}_${promptId}`;
+
+      allPrompts.push({
+        title,
+        prompt,
+        folderId,
+        promptId,
+        lastUsed,
+        folder: folder || null,
+      });
+
+      // Recommended (filtered by compatibleModels)
+      if (
+        currentMode &&
+        Array.isArray(prompt.compatibleModels) &&
+        prompt.compatibleModels.includes(currentMode)
+      ) {
+        recommended.push({
+          title,
+          usageCount: prompt.usageCount || 0,
+          key,
+          folder,
+          prompt,
+          folderId,
+          promptId,
+        });
+        promptSourceMap.set(key, {
+          category: "Recommended",
+          folder,
+          prompt,
+          folderId,
+          promptId,
+        });
+      }
+
+      // All Prompts
+      categories["All Prompts"].push(title);
+      promptSourceMap.set(key, {
+        category: "All Prompts",
+        folder,
+        prompt,
+        folderId,
+        promptId,
+      });
+
+      // Single Prompts (folderId null)
+      if (folderId === null) {
+        categories["Single Prompts"].push(title);
+        promptSourceMap.set(key, {
+          category: "Single Prompts",
+          folder: null,
+          prompt,
+          folderId,
+          promptId,
+        });
+      }
+
+      // Categorised Prompts
+      if (folderId && folder) {
+        if (!categories["Categorised Prompts"][folder]) {
+          categories["Categorised Prompts"][folder] = [];
+        }
+        categories["Categorised Prompts"][folder].push(title);
+        categories["Categorised Prompts"].all.push(`${folder}: ${title}`);
+        promptSourceMap.set(key, {
+          category: "Categorised Prompts",
+          folder,
+          prompt,
+          folderId,
+          promptId,
+        });
+      }
+
+      // Favorites
+      if (prompt.isFavorite) {
+        categories["Favorites"].push(title);
+        promptSourceMap.set(key, {
+          category: "Favorites",
+          folder: folder || null,
+          prompt,
+          folderId,
+          promptId,
+        });
+      }
+    }
+
+    // Sort Recommended by usageCount descending
+    recommended.sort((a, b) => b.usageCount - a.usageCount);
+    categories["Recommended"] = recommended.map((r) => r.title);
+
+    // Sort Last Used
+    allPrompts.sort((a, b) => b.lastUsed - a.lastUsed);
+    categories["Last Used"] = [];
+    allPrompts
+      .slice(0, 10)
+      .forEach(({ title, prompt, folderId, promptId, folder }) => {
+        const key = `${title}_${promptId}`;
+        categories["Last Used"].push(title);
+        promptSourceMap.set(key, {
+          category: "Last Used",
+          folder,
+          prompt,
+          folderId,
+          promptId,
+        });
+      });
+
+    // Alphabetisch sortieren
+    Object.keys(categories).forEach((key) => {
+      if (Array.isArray(categories[key]) && key !== "Last Used") {
+        categories[key] = [...new Set(categories[key])].sort();
+      } else if (key === "Categorised Prompts") {
+        categories[key].all = [...new Set(categories[key].all)].sort();
+        Object.keys(categories[key]).forEach((folder) => {
+          if (folder !== "all") {
+            categories[key][folder] = [
+              ...new Set(categories[key][folder]),
+            ].sort();
+          }
+        });
+      }
+    });
+
+    if (callback) callback();
+  });
+}
+
 function inputFieldTrigger() {
   // Liste der erlaubten Domains
   const allowedDomains = [
@@ -242,235 +466,6 @@ function inputFieldTrigger() {
 `;
       dropdown.appendChild(footerPanel);
 
-      // Initialize categories and promptSourceMap
-      let categories = {
-        Favorites: [],
-        Workflows: [], // Added Workflows category
-        "All Prompts": [],
-        "Single Prompts": [],
-        "Categorised Prompts": { all: [] },
-      };
-
-      let promptSourceMap = new Map();
-      let currentFocusElement = null;
-      let selectedCategoryOrFolder = null;
-      let isPasting = false;
-      let isEscaped = false;
-      // Initialize state variables for slash handling
-      let isDropdownTriggered = false;
-      let isSlashKeyboardInput = false;
-
-      // Function to update dropdown data from Chrome storage
-      function updateDropdownData(callback) {
-        chrome.storage.local.get(
-          ["prompts", "folders", "workflows"],
-          (data) => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "Error fetching data from Chrome storage:",
-                chrome.runtime.lastError
-              );
-              return;
-            }
-
-            // Mapping of domains to model names
-            const domainToModelMap = {
-              "chatgpt.com": "ChatGPT",
-              "grok.com": "Grok",
-              "gemini.google.com": "Gemini",
-              "claude.ai": "Claude",
-              "blackbox.ai": "BlackBox",
-              "github.com": "GitHub Copilot",
-              "copilot.microsoft.com": "Microsoft Copilot",
-              "chat.mistral.ai": "Mistral",
-              "duckduckgo.com": "DuckDuckGo AI Chat",
-              "perplexity.ai": "Perplexity",
-              "chat.deepseek.com": "DeepSeek",
-              "deepai.org": "DeepAI",
-              "chat.qwen.ai": "Qwen AI",
-            };
-
-            // Function to get current mode based on domain
-            function getCurrentMode() {
-              const currentDomain = window.location.hostname;
-              for (const [domain, model] of Object.entries(domainToModelMap)) {
-                if (currentDomain.includes(domain)) {
-                  return model;
-                }
-              }
-              return null; // Fallback if no matching domain is found
-            }
-
-            const currentMode = getCurrentMode();
-
-            categories = {
-              Recommended: [],
-              "Last Used": [],
-              Favorites: [],
-              Workflows: [],
-              "All Prompts": [],
-              "Single Prompts": [],
-              "Categorised Prompts": { all: [] },
-            };
-            promptSourceMap = new Map();
-            const allPrompts = [];
-
-            // Workflows
-            const workflows = data.workflows || {};
-            for (const [workflowId, workflow] of Object.entries(workflows)) {
-              if (!workflow.isTrash) {
-                categories.Workflows.push(workflow.name);
-                promptSourceMap.set(`${workflow.name}_${workflowId}`, {
-                  category: "Workflows",
-                  workflow,
-                  workflowId,
-                });
-              }
-            }
-
-            const prompts = data.prompts || {};
-            const folders = data.folders || {};
-
-            // Alle Prompts durchgehen
-            let recommended = [];
-            for (const [promptId, prompt] of Object.entries(prompts)) {
-              if (prompt.isTrash) continue;
-
-              const title = prompt.title || "Untitled Prompt";
-              const folderId = prompt.folderId || null;
-              const folder = folderId && folders[folderId]?.name;
-              const lastUsed = prompt.lastUsed || 0;
-
-              const key = `${title}_${promptId}`;
-
-              allPrompts.push({
-                title,
-                prompt,
-                folderId,
-                promptId,
-                lastUsed,
-                folder: folder || null,
-              });
-
-              // Recommended (filtered by compatibleModels)
-              if (
-                currentMode &&
-                Array.isArray(prompt.compatibleModels) &&
-                prompt.compatibleModels.includes(currentMode)
-              ) {
-                recommended.push({
-                  title,
-                  usageCount: prompt.usageCount || 0,
-                  key,
-                  folder,
-                  prompt,
-                  folderId,
-                  promptId,
-                });
-                promptSourceMap.set(key, {
-                  category: "Recommended",
-                  folder,
-                  prompt,
-                  folderId,
-                  promptId,
-                });
-              }
-
-              // All Prompts
-              categories["All Prompts"].push(title);
-              promptSourceMap.set(key, {
-                category: "All Prompts",
-                folder,
-                prompt,
-                folderId,
-                promptId,
-              });
-
-              // Single Prompts (folderId null)
-              if (folderId === null) {
-                categories["Single Prompts"].push(title);
-                promptSourceMap.set(key, {
-                  category: "Single Prompts",
-                  folder: null,
-                  prompt,
-                  folderId,
-                  promptId,
-                });
-              }
-
-              // Categorised Prompts
-              if (folderId && folder) {
-                if (!categories["Categorised Prompts"][folder]) {
-                  categories["Categorised Prompts"][folder] = [];
-                }
-                categories["Categorised Prompts"][folder].push(title);
-                categories["Categorised Prompts"].all.push(
-                  `${folder}: ${title}`
-                );
-                promptSourceMap.set(key, {
-                  category: "Categorised Prompts",
-                  folder,
-                  prompt,
-                  folderId,
-                  promptId,
-                });
-              }
-
-              // Favorites
-              if (prompt.isFavorite) {
-                categories["Favorites"].push(title);
-                promptSourceMap.set(key, {
-                  category: "Favorites",
-                  folder: folder || null,
-                  prompt,
-                  folderId,
-                  promptId,
-                });
-              }
-            }
-
-            // Sort Recommended by usageCount descending
-            recommended.sort((a, b) => b.usageCount - a.usageCount);
-            categories["Recommended"] = recommended.map((r) => r.title);
-
-            // Sort Last Used
-            allPrompts.sort((a, b) => b.lastUsed - a.lastUsed);
-            categories["Last Used"] = [];
-            allPrompts
-              .slice(0, 10)
-              .forEach(({ title, prompt, folderId, promptId, folder }) => {
-                const key = `${title}_${promptId}`;
-                categories["Last Used"].push(title);
-                promptSourceMap.set(key, {
-                  category: "Last Used",
-                  folder,
-                  prompt,
-                  folderId,
-                  promptId,
-                });
-              });
-
-            // Alphabetisch sortieren
-            Object.keys(categories).forEach((key) => {
-              if (Array.isArray(categories[key]) && key !== "Last Used") {
-                categories[key] = [...new Set(categories[key])].sort();
-              } else if (key === "Categorised Prompts") {
-                categories[key].all = [...new Set(categories[key].all)].sort();
-                Object.keys(categories[key]).forEach((folder) => {
-                  if (folder !== "all") {
-                    categories[key][folder] = [
-                      ...new Set(categories[key][folder]),
-                    ].sort();
-                  }
-                });
-              }
-            });
-
-            if (callback) callback();
-          }
-        );
-      }
-
       // Function to set focus styling
       function setFocus(element) {
         console.log("Setting focus to:", element?.textContent || "null");
@@ -620,7 +615,9 @@ function inputFieldTrigger() {
                   ? `${title} (${source.folder})`
                   : title;
               if (categoryOrFolder === "Last Used") {
-                const lastUsedDate = source.prompt.lastUsed ? new Date(source.prompt.lastUsed).toLocaleString() : "Never used";
+                const lastUsedDate = source.prompt.lastUsed
+                  ? new Date(source.prompt.lastUsed).toLocaleString()
+                  : "Never used";
                 contentItem.textContent = `${displayText} - Last used: ${lastUsedDate}`;
               } else {
                 contentItem.textContent = displayText;
@@ -1822,7 +1819,7 @@ function inputFieldTrigger() {
   });
 }
 function updatePromptLastUsed(promptId) {
-  console.log("Ok, we're updating")
+  console.log("Ok, we're updating");
   chrome.storage.local.get("prompts", (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error fetching prompts:", chrome.runtime.lastError);

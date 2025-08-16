@@ -942,7 +942,7 @@ function initializeWorkflows() {
                   : customPrompt;
 
               const newPrompt = {
-                promptId: generateUUID(),
+                promptId: `${Date.now()}_${generateUUID()}`,
                 title: promptTitle,
                 description: "",
                 content: customPrompt,
@@ -960,7 +960,7 @@ function initializeWorkflows() {
                 notes: "",
                 versions: [
                   {
-                    versionId: generateUUID(),
+                    versionId: `${Date.now()}_${generateUUID()}`,
                     title: promptTitle,
                     description: "",
                     content: customPrompt,
@@ -1628,7 +1628,7 @@ function showCreateWorkflowModal() {
           };
 
           if (useCustomPrompt) {
-            const newPromptId = generateUUID();
+            const newPromptId = `prompt_${Date.now()}_${generateUUID()}`;
             const snippet =
               customPrompt.length > 10
                 ? customPrompt.substring(0, 10)
@@ -1654,7 +1654,7 @@ function showCreateWorkflowModal() {
               notes: "",
               versions: [
                 {
-                  versionId: generateUUID(),
+                  versionId: `${Date.now()}_${generateUUID()}`,
                   title: promptTitle,
                   description: "",
                   content: customPrompt,
@@ -2764,7 +2764,7 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
             let promptId, customPrompt, parameters;
 
             if (useCust) {
-              promptId = generateUUID();
+              promptId = `${Date.now()}_${generateUUID()}`;
               customPrompt = _.customState.customPrompt;
               parameters = _.customState.parameters;
 
@@ -2790,7 +2790,7 @@ function editWorkflowDetails(workflowId, workflow, sidebarContent) {
                 notes: "",
                 versions: [
                   {
-                    versionId: generateUUID(),
+                    versionId: `${Date.now()}_${generateUUID()}`,
                     title: customPrompt.substring(0, 20),
                     description: "",
                     content: customPrompt,

@@ -169,6 +169,7 @@ function filterFolders() {
     folderList.appendChild(item);
   });
 }
+// Responsible for prompts table rendering with prompts
 function renderPrompts(prompts) {
   const tbody = document.querySelector(".table-container tbody");
   tbody.innerHTML = "";
@@ -309,7 +310,7 @@ function renderPrompts(prompts) {
         prompt.id || index
       }" name="prompt-checkbox" /></td>
       <td>${prompt.title || "N/A"}</td>
-      <td>${prompt.type || "N/A"}</td>
+      <td>${prompt.types || "N/A"}</td>
       <td>${
         Array.isArray(prompt.compatibleModels)
           ? prompt.compatibleModels.join(", ")
@@ -547,7 +548,9 @@ function showDetailsSidebar(item, folderId) {
     <label>Notes</label>
     <textarea readonly>${prompt.notes || "N/A"}</textarea>
     <label>Type</label>
-    <input type="text" value="${prompt.type || "N/A"}" readonly>
+    <input type="text" value="${
+      Array.isArray(prompt.types) ? prompt.types.join(", ") : prompt.types || "N/A"
+    }" readonly>
     <label>Compatible Models</label>
     <input type="text" value="${
       Array.isArray(prompt.compatibleModels)

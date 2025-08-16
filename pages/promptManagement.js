@@ -39,6 +39,11 @@ function showCreatePromptModal(category) {
           padding: 5px 10px;
           font-size: 14px;
         }
+        .no-items-notice {
+          font-style: italic;
+          color: #888;
+          margin-bottom: 10px;
+        }
       </style>
       <label>Title:</label>
       <input type="text" id="prompt-title" placeholder="Title eingeben" required>
@@ -52,35 +57,17 @@ function showCreatePromptModal(category) {
       </div>
       <label>Notes:</label>
       <textarea id="prompt-note" placeholder="Enter note to prompt"></textarea>
-      <label>Type:</label>
-      <select id="prompt-type" required>
-        <option value="" disabled selected>Wähle Typ</option>
-        <!-- Generative Aufgaben -->
-        <option value="textgen">Textgeneration</option>
-        <option value="rewrite">Umschreiben</option>
-        <option value="summarize">Zusammenfassen</option>
-        <option value="translate">Übersetzen</option>
-        <option value="ideation">Ideenfindung</option>
-        <option value="adcopy">Werbetexten</option>
-        <option value="storytelling">Storytelling</option>
-        <!-- Analytische Aufgaben -->
-        <option value="analyze">Analyse</option>
-        <option value="classify">Klassifikation</option>
-        <option value="extract">Informationsextraktion</option>
-        <option value="compare">Vergleichen / Bewerten</option>
-        <!-- Technische Aufgaben -->
-        <option value="codegen">Codegenerierung</option>
-        <option value="debug">Fehleranalyse</option>
-        <option value="refactor">Code-Umschreiben</option>
-        <option value="explain-code">Code erklären</option>
-        <!-- Prompt-spezifische Aufgaben -->
-        <option value="prompt-engineering">Prompt Engineering</option>
-        <option value="meta-prompt">Meta-Prompt</option>
-        <!-- Sonstige -->
-        <option value="assistant">Assistant</option>
-      </select>
+      <label>Types:</label>
+      <div class="checkbox-group" id="prompt-types">
+        <div class="no-items-notice" id="no-types-notice">No types available</div>
+      </div>
+      <div class="type-input-group">
+        <input type="text" id="new-type" placeholder="New Type">
+        <button type="button" class="action-btn" id="add-type-btn">Add new Type</button>
+      </div>
       <label>Tags:</label>
       <div class="checkbox-group" id="prompt-tags">
+        <div class="no-items-notice" id="no-tags-notice">No tags available</div>
       </div>
       <div class="tag-input-group">
         <input type="text" id="new-tag" placeholder="New Tag">
@@ -109,27 +96,38 @@ function showCreatePromptModal(category) {
       <button type="button" class="action-btn" id="create-prompt-btn">Create Prompt</button>
     `;
 
+  // Lade verfügbare Types
+  chrome.storage.local.get("types", (data) => {
+    const typeContainer = formContainer.querySelector("#prompt-types");
+    const noTypesNotice = formContainer.querySelector("#no-types-notice");
+    const types = data.types || [];
+    if (types.length > 0) {
+      noTypesNotice.style.display = "none";
+      types.forEach((type) => {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" name="types" value="${type}"> ${type}`;
+        typeContainer.appendChild(label);
+      });
+    } else {
+      noTypesNotice.style.display = "block";
+    }
+  });
+
   // Lade verfügbare Tags
   chrome.storage.local.get("tags", (data) => {
     const tagContainer = formContainer.querySelector("#prompt-tags");
-    const tags = data.tags || [
-      "SEO",
-      "Marketing",
-      "Social Media",
-      "Advertisement",
-      "Copywriting",
-      "Productivity",
-      "E-Commerce",
-      "Education",
-      "Tech",
-      "Healthcare",
-      "HR",
-    ];
-    tags.forEach((tag) => {
-      const label = document.createElement("label");
-      label.innerHTML = `<input type="checkbox" name="tags" value="${tag}"> ${tag}`;
-      tagContainer.appendChild(label);
-    });
+    const noTagsNotice = formContainer.querySelector("#no-tags-notice");
+    const tags = data.tags || [];
+    if (tags.length > 0) {
+      noTagsNotice.style.display = "none";
+      tags.forEach((tag) => {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" name="tags" value="${tag}"> ${tag}`;
+        tagContainer.appendChild(label);
+      });
+    } else {
+      noTagsNotice.style.display = "block";
+    }
   });
 
   // Lade verfügbare Ordner in das Dropdown
@@ -144,8 +142,8 @@ function showCreatePromptModal(category) {
 
     validFolders.forEach((folder) => {
       const option = document.createElement("option");
-      option.value = folder.folderId; // eindeutige ID als Wert
-      option.textContent = folder.name; // Anzeigename im Dropdown
+      option.value = folder.folderId;
+      option.textContent = folder.name;
 
       if (category && folder.name.toLowerCase() === category.toLowerCase()) {
         option.selected = true;
@@ -173,6 +171,37 @@ function showCreatePromptModal(category) {
       );
     });
 
+  // Type hinzufügen
+  formContainer.querySelector("#add-type-btn").addEventListener("click", () => {
+    const newTypeInput = formContainer.querySelector("#new-type");
+    const newType = newTypeInput.value.trim();
+    if (
+      newType &&
+      !formContainer.querySelector(`#prompt-types input[value="${newType}"]`)
+    ) {
+      chrome.storage.local.get("types", (data) => {
+        const types = data.types || [];
+        if (!types.includes(newType)) {
+          types.push(newType);
+          chrome.storage.local.set({ types }, () => {
+            const typeContainer = formContainer.querySelector("#prompt-types");
+            const noTypesNotice =
+              formContainer.querySelector("#no-types-notice");
+            const label = document.createElement("label");
+            label.innerHTML = `<input type="checkbox" name="types" value="${newType}" checked> ${newType}`;
+            typeContainer.appendChild(label);
+            newTypeInput.value = "";
+            noTypesNotice.style.display = "none";
+          });
+        } else {
+          alert("Type existiert bereits!");
+        }
+      });
+    } else if (!newType) {
+      alert("Type darf nicht leer sein!");
+    }
+  });
+
   // Tag hinzufügen
   formContainer.querySelector("#add-tag-btn").addEventListener("click", () => {
     const newTagInput = formContainer.querySelector("#new-tag");
@@ -187,10 +216,12 @@ function showCreatePromptModal(category) {
           tags.push(newTag);
           chrome.storage.local.set({ tags }, () => {
             const tagContainer = formContainer.querySelector("#prompt-tags");
+            const noTagsNotice = formContainer.querySelector("#no-tags-notice");
             const label = document.createElement("label");
             label.innerHTML = `<input type="checkbox" name="tags" value="${newTag}" checked> ${newTag}`;
             tagContainer.appendChild(label);
             newTagInput.value = "";
+            noTagsNotice.style.display = "none";
           });
         } else {
           alert("Tag existiert bereits!");
@@ -236,7 +267,9 @@ function showCreatePromptModal(category) {
         .getElementById("prompt-description")
         .value.trim();
       const notes = document.getElementById("prompt-note").value.trim();
-      const type = document.getElementById("prompt-type").value;
+      const types = Array.from(
+        document.querySelectorAll("#prompt-types input[name='types']:checked")
+      ).map((checkbox) => checkbox.value);
       const compatibleModels = Array.from(
         document.querySelectorAll(
           "#prompt-compatible input[name='compatible']:checked"
@@ -266,10 +299,10 @@ function showCreatePromptModal(category) {
         description,
         content,
         notes,
-        type,
-        compatibleModels: compatibleModels,
-        incompatibleModels: incompatibleModels,
-        tags: tags,
+        types,
+        compatibleModels,
+        incompatibleModels,
+        tags,
         isFavorite,
         folderId: folderId || null,
         folderName,
@@ -279,7 +312,7 @@ function showCreatePromptModal(category) {
         lastUsed: null,
         versions: [
           {
-            versionId: generateUUID(),
+            versionId: `${Date.now()}_${generateUUID()}`,
             title,
             description,
             content,
@@ -307,7 +340,7 @@ function showCreatePromptModal(category) {
 function saveNewPrompt(prompt, folderId) {
   console.log("Hier werde ich hinzugefügt");
   if (!prompt.promptId) {
-    prompt.promptId = generateUUID();
+    prompt.promptId = `${Date.now()}_${generateUUID()}`;
   }
 
   chrome.storage.local.get(["prompts", "folders"], (data) => {
@@ -323,14 +356,14 @@ function saveNewPrompt(prompt, folderId) {
       title: prompt.title || "Neuer Prompt",
       description: prompt.description || "",
       content: prompt.content || "",
-      type: prompt.type || "text",
+      types: prompt.types || "text",
       compatibleModels: prompt.compatibleModels || [],
       incompatibleModels: prompt.incompatibleModels || [],
       tags: prompt.tags || [],
       isFavorite: prompt.isFavorite || false,
       folderId: folderId || null,
       createdAt: now,
-      updatedAt: now,
+      updatedAt: null,
       usageCount: 0,
       lastUsed: null,
       isTrash: false,
@@ -338,7 +371,7 @@ function saveNewPrompt(prompt, folderId) {
       notes: "",
       versions: [
         {
-          versionId: generateUUID(),
+          versionId: `${Date.now()}_${generateUUID()}`,
           title: prompt.title || "",
           description: prompt.description || "",
           content: prompt.content || "",
@@ -411,7 +444,7 @@ function saveNewPrompt(prompt, folderId) {
         newPrompt.promptId
       }" name="prompt-checkbox" /></td>
       <td>${escapeHTML(newPrompt.title || "N/A")}</td>
-      <td>${escapeHTML(newPrompt.type || "N/A")}</td>
+      <td>${escapeHTML(newPrompt.types || "N/A")}</td>
       <td>${
         Array.isArray(newPrompt.compatibleModels)
           ? escapeHTML(newPrompt.compatibleModels.join(", "))
@@ -853,7 +886,7 @@ function renamePrompt(prompt, folderId, row) {
         };
 
         updatedPrompt.versions.push({
-          versionId: generateUUID(),
+          versionId: `${Date.now()}_${generateUUID()}`,
           title: newName,
           description: updatedPrompt.description || "",
           content: updatedPrompt.content || "",
@@ -889,7 +922,7 @@ function renamePrompt(prompt, folderId, row) {
 }
 
 function deletePrompt(prompt, folderId, row) {
-  console.log("ID: " + prompt.promptId)
+  console.log("ID: " + prompt.promptId);
   if (!confirm("Möchtest du diese Prompt unwiderruflich löschen?")) return;
 
   const promptId = prompt.promptId;
@@ -951,6 +984,13 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
 
   // --- Formular-HTML --------------------------------------------------------
   sidebarContent.innerHTML = `
+    <style>
+      .no-items-notice {
+        font-style: italic;
+        color: #888;
+        margin-bottom: 10px;
+      }
+    </style>
     <label>Title</label>
     <input type="text" value="${escapeHTML(
       prompt.title || ""
@@ -970,63 +1010,13 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
     )}</textarea>
 
     <label>Type</label>
-    <select id="edit-type">
-      <option value="" ${!prompt.type ? "selected" : ""}>Wähle Typ</option>
-      <option value="textgen" ${
-        prompt.type === "textgen" ? "selected" : ""
-      }>Textgeneration</option>
-      <option value="rewrite" ${
-        prompt.type === "rewrite" ? "selected" : ""
-      }>Umschreiben</option>
-      <option value="summarize" ${
-        prompt.type === "summarize" ? "selected" : ""
-      }>Zusammenfassen</option>
-      <option value="translate" ${
-        prompt.type === "translate" ? "selected" : ""
-      }>Übersetzen</option>
-      <option value="ideation" ${
-        prompt.type === "ideation" ? "selected" : ""
-      }>Ideenfindung</option>
-      <option value="adcopy" ${
-        prompt.type === "adcopy" ? "selected" : ""
-      }>Werbetexten</option>
-      <option value="storytelling" ${
-        prompt.type === "storytelling" ? "selected" : ""
-      }>Storytelling</option>
-      <option value="analyze" ${
-        prompt.type === "analyze" ? "selected" : ""
-      }>Analyse</option>
-      <option value="classify" ${
-        prompt.type === "classify" ? "selected" : ""
-      }>Klassifikation</option>
-      <option value="extract" ${
-        prompt.type === "extract" ? "selected" : ""
-      }>Informationsextraktion</option>
-      <option value="compare" ${
-        prompt.type === "compare" ? "selected" : ""
-      }>Vergleichen / Bewerten</option>
-      <option value="codegen" ${
-        prompt.type === "codegen" ? "selected" : ""
-      }>Codegenerierung</option>
-      <option value="debug" ${
-        prompt.type === "debug" ? "selected" : ""
-      }>Fehleranalyse</option>
-      <option value="refactor" ${
-        prompt.type === "refactor" ? "selected" : ""
-      }>Code-Umschreiben</option>
-      <option value="explain-code" ${
-        prompt.type === "explain-code" ? "selected" : ""
-      }>Code erklären</option>
-      <option value="prompt-engineering" ${
-        prompt.type === "prompt-engineering" ? "selected" : ""
-      }>Prompt Engineering</option>
-      <option value="meta-prompt" ${
-        prompt.type === "meta-prompt" ? "selected" : ""
-      }>Meta-Prompt</option>
-      <option value="assistant" ${
-        prompt.type === "assistant" ? "selected" : ""
-      }>Assistant</option>
-    </select>
+    <div class="checkbox-group" id="edit-types">
+      <div class="no-items-notice" id="no-types-notice">No types available</div>
+    </div>
+    <div class="type-input-group">
+      <input type="text" id="new-type" placeholder="New Type">
+      <button type="button" class="action-btn" id="add-type-btn">Add Type</button>
+    </div>
 
     <label>Compatible Models</label>
     <div class="checkbox-group" id="edit-compatible">
@@ -1085,7 +1075,9 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
     </div>
 
     <label>Tags</label>
-    <div class="checkbox-group" id="edit-tags"></div>
+    <div class="checkbox-group" id="edit-tags">
+      <div class="no-items-notice" id="no-tags-notice">No tags available</div>
+    </div>
 
     <div class="tag-input-group">
       <input type="text" id="new-tag" placeholder="New Tag">
@@ -1108,6 +1100,81 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
     <button class="cancel-btn">Cancel</button>
   `;
 
+  // --- Types laden ----------------------------------------------------------
+  chrome.storage.local.get("types", (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading types:", chrome.runtime.lastError);
+      return;
+    }
+
+    const typeContainer = sidebarContent.querySelector("#edit-types");
+    const noTypesNotice = sidebarContent.querySelector("#no-types-notice");
+    const types = data.types || [];
+    if (types.length > 0) {
+      noTypesNotice.style.display = "none";
+      types.forEach((type) => {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" name="types" value="${escapeHTML(
+          type
+        )}" ${prompt.types?.includes(type) ? "checked" : ""}> ${escapeHTML(
+          type
+        )}`;
+        typeContainer.appendChild(label);
+      });
+    } else {
+      noTypesNotice.style.display = "block";
+    }
+  });
+
+  // Neuer Type hinzufügen
+  sidebarContent
+    .querySelector("#add-type-btn")
+    .addEventListener("click", () => {
+      const newTypeInput = sidebarContent.querySelector("#new-type");
+      const newType = newTypeInput.value.trim();
+
+      if (!newType) {
+        alert("Type cannot be empty!");
+        return;
+      }
+
+      if (
+        sidebarContent.querySelector(
+          `#edit-types input[value="${escapeHTML(newType)}"]`
+        )
+      ) {
+        alert("Type already exists!");
+        return;
+      }
+
+      chrome.storage.local.get("types", (data) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error getting types:", chrome.runtime.lastError);
+          return;
+        }
+
+        const types = data.types || [];
+        types.push(newType);
+        chrome.storage.local.set({ types }, () => {
+          if (chrome.runtime.lastError) {
+            console.error("Error saving types:", chrome.runtime.lastError);
+            return;
+          }
+
+          const typeContainer = sidebarContent.querySelector("#edit-types");
+          const noTypesNotice =
+            sidebarContent.querySelector("#no-types-notice");
+          const label = document.createElement("label");
+          label.innerHTML = `<input type="checkbox" name="types" value="${escapeHTML(
+            newType
+          )}" checked> ${escapeHTML(newType)}`;
+          typeContainer.appendChild(label);
+          newTypeInput.value = "";
+          noTypesNotice.style.display = "none";
+        });
+      });
+    });
+
   // --- Tags laden -----------------------------------------------------------
   chrome.storage.local.get("tags", (data) => {
     if (chrome.runtime.lastError) {
@@ -1116,14 +1183,20 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
     }
 
     const tagContainer = sidebarContent.querySelector("#edit-tags");
+    const noTagsNotice = sidebarContent.querySelector("#no-tags-notice");
     const tags = data.tags || [];
-    tags.forEach((tag) => {
-      const label = document.createElement("label");
-      label.innerHTML = `<input type="checkbox" name="tags" value="${escapeHTML(
-        tag
-      )}" ${prompt.tags?.includes(tag) ? "checked" : ""}> ${escapeHTML(tag)}`;
-      tagContainer.appendChild(label);
-    });
+    if (tags.length > 0) {
+      noTagsNotice.style.display = "none";
+      tags.forEach((tag) => {
+        const label = document.createElement("label");
+        label.innerHTML = `<input type="checkbox" name="tags" value="${escapeHTML(
+          tag
+        )}" ${prompt.tags?.includes(tag) ? "checked" : ""}> ${escapeHTML(tag)}`;
+        tagContainer.appendChild(label);
+      });
+    } else {
+      noTagsNotice.style.display = "block";
+    }
   });
 
   // Neuer Tag hinzufügen
@@ -1160,12 +1233,14 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
         }
 
         const tagContainer = sidebarContent.querySelector("#edit-tags");
+        const noTagsNotice = sidebarContent.querySelector("#no-tags-notice");
         const label = document.createElement("label");
         label.innerHTML = `<input type="checkbox" name="tags" value="${escapeHTML(
           newTag
         )}" checked> ${escapeHTML(newTag)}`;
         tagContainer.appendChild(label);
         newTagInput.value = "";
+        noTagsNotice.style.display = "none";
       });
     });
   });
@@ -1178,7 +1253,7 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
     }
 
     const folderSelect = sidebarContent.querySelector("#edit-folder");
-    folderSelect.innerHTML = ""; // vorher leeren
+    folderSelect.innerHTML = "";
 
     const folders = data.folders || {};
 
@@ -1192,7 +1267,6 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
       }
     });
 
-    // Optional: Möglichkeit, keinen Ordner zu wählen (folderId = null)
     const noneOption = document.createElement("option");
     noneOption.value = "";
     noneOption.textContent = "Kein Ordner";
@@ -1218,18 +1292,21 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
         : "Single Prompt";
 
       // Formulardaten auslesen
+      const types = Array.from(
+        sidebarContent.querySelectorAll(
+          "#edit-types input[name='types']:checked"
+        )
+      ).map((cb) => cb.value);
       const compatibleModels = Array.from(
         sidebarContent.querySelectorAll(
           "#edit-compatible input[name='compatible']:checked"
         )
       ).map((cb) => cb.value);
-
       const incompatibleModels = Array.from(
         sidebarContent.querySelectorAll(
           "#edit-incompatible input[name='incompatible']:checked"
         )
       ).map((cb) => cb.value);
-
       const tags = Array.from(
         sidebarContent.querySelectorAll("#edit-tags input[name='tags']:checked")
       ).map((cb) => cb.value);
@@ -1248,7 +1325,7 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
           sidebarContent.querySelector("#edit-description")?.value.trim() || "",
         content: sidebarContent.querySelector("#edit-content").value.trim(),
         notes: sidebarContent.querySelector("#edit-notes").value.trim(),
-        type: sidebarContent.querySelector("#edit-type").value,
+        types,
         compatibleModels,
         incompatibleModels,
         tags,
@@ -1269,7 +1346,7 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
       if (hasContentChanges) {
         updatedPrompt.versions = updatedPrompt.versions || [];
         updatedPrompt.versions.push({
-          versionId: generateUUID(),
+          versionId: `${Date.now()}_${generateUUID()}`,
           title: updatedPrompt.title,
           description: updatedPrompt.description,
           content: updatedPrompt.content,
@@ -1283,8 +1360,8 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
 
       // Meta-Change-Log
       const metaChanges = {};
-      if ((prompt.type || "") !== updatedPrompt.type) {
-        metaChanges.type = { from: prompt.type || "", to: updatedPrompt.type };
+      if (JSON.stringify(prompt.types || []) !== JSON.stringify(types)) {
+        metaChanges.types = { from: prompt.types || [], to: types };
       }
       if (
         JSON.stringify(prompt.compatibleModels || []) !==
@@ -1338,14 +1415,12 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
 
       // --- Ordner aktualisieren, falls sich folderId geändert hat ---
       if (originalFolderId !== newFolderId) {
-        // Aus altem Ordner entfernen
         if (originalFolderId && folders[originalFolderId]) {
           folders[originalFolderId].promptIds = (
             folders[originalFolderId].promptIds || []
           ).filter((id) => id !== promptId);
         }
 
-        // In neuen Ordner einfügen (sofern gesetzt)
         if (newFolderId) {
           folders[newFolderId].promptIds = folders[newFolderId].promptIds || [];
           if (!folders[newFolderId].promptIds.includes(promptId)) {

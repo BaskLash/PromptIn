@@ -17,6 +17,9 @@ Kompatibel mit:
 - [DeepSeek](https://chat.deepseek.com/)
 - [Deepai](https://deepai.org/chat)
 - [Qwen AI](https://chat.qwen.ai/)
+- [Meta AI](https://www.meta.ai/)
+- [Poe](https://poe.com/)
+- [NotebookLM](https://notebooklm.google.com/)
 
 ## Inhaltsverzeichnis
 

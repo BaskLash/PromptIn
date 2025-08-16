@@ -370,7 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       promptObj.versions.unshift({
-        versionId: generateUUID(),
+        versionId: `${Date.now()}_${generateUUID()}`,
         title,
         description,
         content,

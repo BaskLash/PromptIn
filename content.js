@@ -87,6 +87,12 @@ setInterval(() => {
   ) {
     addQwenAiButton();
   }
+  if (
+    window.location.hostname === "meta.ai" ||
+    (window.location.hostname === "www.meta.ai" && path.startsWith("/prompt/"))
+  ) {
+    addMetaAiButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 inputFieldTrigger();
@@ -99,7 +105,7 @@ async function createNewPrompt(
   closeModal
 ) {
   console.log("So werde ich gespeichert bei PromptSaver");
-  const promptId = `prompt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  const promptId = `${Date.now()}_${generateUUID()}`;
   const hostname = window.location.hostname.toLowerCase();
 
   let compatibleModels;
@@ -110,6 +116,30 @@ async function createNewPrompt(
     compatibleModels = ["Grok"];
   } else if (hostname === "gemini.google.com") {
     compatibleModels = ["Gemini"];
+  } else if (hostname === "claude.ai") {
+    compatibleModels = ["Claude"];
+  } else if (hostname === "blackbox.ai") {
+    compatibleModels = ["Blackbox"];
+  } else if (hostname === "github.com/copilot/") {
+    compatibleModels = ["Copilot"];
+  } else if (hostname === "copilot.microsoft.com") {
+    compatibleModels = ["Microsoft Copilot"];
+  } else if (hostname === "chat.mistral.ai") {
+    compatibleModels = ["Mistral"];
+  } else if (
+    hostname === "duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
+  ) {
+    compatibleModels = ["DuckDuckGo"];
+  } else if (hostname === "perplexity.ai") {
+    compatibleModels = ["Perplexity"];
+  } else if (hostname === "chat.deepseek.com") {
+    compatibleModels = ["DeepSeek"];
+  } else if (hostname === "deepai.org/chat") {
+    compatibleModels = ["Deepai"];
+  } else if (hostname === "chat.qwen.ai") {
+    compatibleModels = ["Qwen AI"];
+  } else if (hostname === "meta.ai") {
+    compatibleModels = ["Meta AI"];
   } else {
     compatibleModels = ["Unknown"];
   }
@@ -145,7 +175,7 @@ async function createNewPrompt(
     deletedAt: null, // Hinzugefügt für Konsistenz
     versions: [
       {
-        versionId: generateUUID(),
+        versionId: `${Date.now()}_${generateUUID()}`,
         title: promptTitle,
         description: promptDescription,
         content: promptContent,
@@ -260,7 +290,7 @@ async function replacePrompt(
 
     // Neue Version anhängen
     const newVersion = {
-      versionId: generateUUID(),
+      versionId: `${Date.now()}_${generateUUID()}`,
       title: promptTitle,
       description: promptDescription,
       content: promptContent,
@@ -339,7 +369,7 @@ async function addPromptToFolder(
   folderId,
   closeModal
 ) {
-  const promptId = `prompt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  const promptId = `${Date.now()}_${generateUUID()}`;
   const currentUrl = window.location.hostname;
   const compatibleModels = currentUrl.includes("chatgpt.com")
     ? ["ChatGPT"]
@@ -388,7 +418,7 @@ async function addPromptToFolder(
       lastUsed: null,
       versions: [
         {
-          versionId: generateUUID(),
+          versionId: `${Date.now()}_${generateUUID()}`,
           title: promptTitle,
           description: promptDescription,
           content: promptContent,
@@ -484,7 +514,7 @@ async function combineWithExistingPrompt(
     const type = existingPrompt.type || "default";
 
     const newVersion = {
-      versionId: generateUUID(),
+      versionId: `${Date.now()}_${generateUUID()}`,
       title: promptTitle,
       description: promptDescription,
       content: combinedText,
@@ -2042,9 +2072,7 @@ async function promptSaver(message) {
       return;
     }
 
-    const newFolderId = `folder_${Date.now()}_${Math.floor(
-      Math.random() * 10000
-    )}`;
+    const newFolderId = `${Date.now()}_${generateUUID()}`;
     const newFolder = {
       name: newFolderName,
       promptIds: [],

@@ -768,7 +768,7 @@ function restoreVersion(folderId, promptIndex, versionId, promptItem) {
     if (isDifferent) {
       // Save current state as a new version only if there's a difference
       prompt.versions.push({
-        versionId: generateUUID(),
+        versionId: `${Date.now()}_${generateUUID()}`,
         title: prompt.title,
         description: prompt.description || "",
         content: prompt.content,
