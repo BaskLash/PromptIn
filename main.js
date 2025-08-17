@@ -1238,6 +1238,18 @@ function handleActionButtonClick(btn, tr) {
   dropdown.dataset.entry = tr.dataset.entry;
   dropdown.dataset.table = tr.closest("table").classList.contains("folder-entry-table") ? "folder" : "main";
 
+  // Update favorite button text based on prompt's isFavorite status
+  chrome.storage.local.get(["prompts"], function (data) {
+    const prompts = data.prompts || {};
+    const prompt = prompts[tr.dataset.promptId];
+    const favoritBtn = dropdown.querySelector(".favorit-btn");
+    if (prompt && prompt.isFavorite) {
+      favoritBtn.textContent = translations[currentLang]?.remove_from_favorites || "Remove from Favorites";
+    } else {
+      favoritBtn.textContent = translations[currentLang]?.add_to_favorites || "Add to Favorites";
+    }
+  });
+
   console.log(`Dropdown opened: promptId=${tr.dataset.promptId}, folderId=${tr.dataset.folderId}, folderName=${tr.dataset.folderName}`);
 }
 
