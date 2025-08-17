@@ -1,9 +1,13 @@
 // Konstanten
 const DISPLAY_KEY = "filterAreaDisplay"; // Speicher-Schlüssel
+let globalPrompts = []; // Globale Variable für Prompts
+let globalRows = []; // Globale Variable für DOM Rows
 
 // DOM-Elemente
 const filterStat = document.getElementById("toggleFilterBtn");
 const filterArea = document.getElementById("filter-container");
+const searchInput = document.getElementById("search-input"); // Assuming ID for search input
+let folderSearchInput = document.getElementById("folder-search"); // Assuming ID for folder search
 
 /* ------------------------------------------------------------------ */
 /* 1) BEIM LADEN: gespeicherten Status holen und anwenden             */
@@ -15,9 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   );
 
   filterArea.style.display = saved;
-  if (saved === "flex") {
-    loadTagsFilter(); // Beim Öffnen direkt nachladen
-  }
+  initializePrompts(); // Initialisierung der Prompts
 });
 
 /* ------------------------------------------------------------------ */
@@ -32,14 +34,15 @@ filterStat.addEventListener("click", async () => {
   await chrome.storage.local.set({ [DISPLAY_KEY]: newDisplay });
 
   if (newDisplay === "flex") {
-    loadTagsFilter();
+    loadTagsFilter(); // Tags-Filter laden
+    loadTypesFilter(); // Types-Filter laden
   }
 });
 
 // Set initial visibility to flex to ensure tags are visible
 filterArea.style.display = "flex";
-loadTagsFilter(); // Load tags immediately on page load
 
+// Filter search functionality for goals
 function filterGoals() {
   const folderList = document.querySelector(".folder-list");
   const goalsList = document.querySelector(".table-container tbody");
@@ -70,7 +73,7 @@ function filterGoals() {
   // Score prompts based on both title and content
   const scoredRows = rows.map((row) => {
     const titleCell = row.getElementsByTagName("td")[1]; // Title column
-    const contentCell = row.getElementsByTagName("td")[2]; // Content column (adjust index if needed)
+    const contentCell = row.getElementsByTagName("td")[2]; // Type column (assuming content is in type for search)
     if (!titleCell || !contentCell)
       return { item: row, distance: Infinity, type: "prompt" };
 
@@ -93,7 +96,7 @@ function filterGoals() {
 
   const scoredCategories = categories.map((category) => {
     const categoryText = category.textContent.toLowerCase().trim();
-    const distance = levenshteinDistance(categoryText, filter);
+    const distance = leveshteinDistance(categoryText, filter);
     return { item: category, distance, type: "category" };
   });
 
@@ -124,18 +127,17 @@ function filterGoals() {
     }
   });
 
-  folderSearchInput = document.querySelector(".folder-search");
   folderSearchInput.style.display =
     folderList.children.length > 5 ? "block" : "none";
 }
 
+// Filter folders
 function filterFolders() {
   const folderList = document.querySelector(".folder-list");
   const filter = folderSearchInput.value.toLowerCase().trim();
   const folders = Array.from(folderList.querySelectorAll("li.folder-item"));
 
   if (!filter) {
-    // No input: Reset to original state
     folders.forEach((folder) => {
       folder.style.display = "";
       folder.classList.remove("highlight");
@@ -144,23 +146,18 @@ function filterFolders() {
     return;
   }
 
-  // Calculate Levenshtein distance for folders
   const scoredFolders = folders.map((folder) => {
-    const folderText = folder.getAttribute("data-folder").toLowerCase().trim(); // Verwende data-folder statt textContent
+    const folderText = folder.getAttribute("data-folder").toLowerCase().trim();
     const distance = levenshteinDistance(folderText, filter);
     return { item: folder, distance };
   });
 
-  // Sort by distance
   scoredFolders.sort((a, b) => a.distance - b.distance);
 
-  // Clear current display
   folders.forEach((folder) => (folder.style.display = "none"));
 
-  // Apply sorted order and display
   scoredFolders.forEach(({ item, distance }, index) => {
     item.style.display = "";
-    // Highlight top 3 results
     if (index < 3 && distance !== Infinity) {
       item.classList.add("highlight");
     } else {
@@ -169,139 +166,17 @@ function filterFolders() {
     folderList.appendChild(item);
   });
 }
-// Responsible for prompts table rendering with prompts
+
+// Responsible for initial table rendering
 function renderPrompts(prompts) {
   const tbody = document.querySelector(".table-container tbody");
-  tbody.innerHTML = "";
-
-  // Sortierstatus verwalten
-  let sortState = {
-    column: "createdAt",
-    direction: "desc",
-  };
-
-  // Filterstatus für Modelle, Tags und Kategorie
-  const compatibleFilters = Array.from(
-    document.querySelectorAll(
-      "#compatible-models-filter input[name='compatible-filter']:checked"
-    )
-  ).map((cb) => cb.value);
-  const incompatibleFilters = Array.from(
-    document.querySelectorAll(
-      "#incompatible-models-filter input[name='incompatible-filter']:checked"
-    )
-  ).map((cb) => cb.value);
-  const tagsFilters = Array.from(
-    document.querySelectorAll("#tags-filter input[name='tags-filter']:checked")
-  ).map((cb) => cb.value);
-  const categoryFilter =
-    document.getElementById("category-filter")?.value || "all";
-
-  // Filter anwenden
-  let filteredPrompts = prompts.filter((prompt) => {
-    const hasCompatible =
-      compatibleFilters.length === 0 ||
-      (Array.isArray(prompt.compatibleModels) &&
-        compatibleFilters.every((model) =>
-          prompt.compatibleModels.includes(model)
-        ));
-    const hasIncompatible =
-      incompatibleFilters.length === 0 ||
-      (Array.isArray(prompt.incompatibleModels) &&
-        incompatibleFilters.every((model) =>
-          prompt.incompatibleModels.includes(model)
-        ));
-    const hasTags =
-      tagsFilters.length === 0 ||
-      (Array.isArray(prompt.tags) &&
-        tagsFilters.every((tag) => prompt.tags.includes(tag)));
-    const matchesCategory =
-      categoryFilter === "all" ||
-      (categoryFilter === "recentlyUsed" &&
-        prompt.lastUsed &&
-        new Date(prompt.lastUsed).getTime() >
-          Date.now() - 7 * 24 * 60 * 60 * 1000) ||
-      (categoryFilter === "rarelyUsed" &&
-        (!prompt.lastUsed ||
-          new Date(prompt.lastUsed).getTime() <
-            Date.now() - 30 * 24 * 60 * 60 * 1000));
-    return hasCompatible && hasIncompatible && hasTags && matchesCategory;
-  });
-
-  // Sortierfunktion
-  function sortPrompts(promptsToSort, column, direction) {
-    const sortedPrompts = [...promptsToSort];
-    sortedPrompts.sort((a, b) => {
-      let valueA, valueB;
-      switch (column) {
-        case "title":
-          valueA = (a.title || "N/A").toLowerCase();
-          valueB = (b.title || "N/A").toLowerCase();
-          return direction === "asc"
-            ? valueA.localeCompare(valueB)
-            : valueB.localeCompare(valueA);
-        case "type":
-          valueA = (a.type || "N/A").toLowerCase();
-          valueB = (b.type || "N/A").toLowerCase();
-          return direction === "asc"
-            ? valueA.localeCompare(valueB)
-            : valueB.localeCompare(valueA);
-        case "compatibleModels":
-          valueA = Array.isArray(a.compatibleModels)
-            ? a.compatibleModels.join(", ").toLowerCase()
-            : "";
-          valueB = Array.isArray(b.compatibleModels)
-            ? b.compatibleModels.join(", ").toLowerCase()
-            : "";
-          return direction === "asc"
-            ? valueA.localeCompare(valueB)
-            : valueB.localeCompare(valueA);
-        case "incompatibleModels":
-          valueA = Array.isArray(a.incompatibleModels)
-            ? a.incompatibleModels.join(", ").toLowerCase()
-            : "";
-          valueB = Array.isArray(b.incompatibleModels)
-            ? b.incompatibleModels.join(", ").toLowerCase()
-            : "";
-          return direction === "asc"
-            ? valueA.localeCompare(valueB)
-            : valueB.localeCompare(valueA);
-        case "tags":
-          valueA = Array.isArray(a.tags) ? a.tags.join(", ").toLowerCase() : "";
-          valueB = Array.isArray(b.tags) ? b.tags.join(", ").toLowerCase() : "";
-          return direction === "asc"
-            ? valueA.localeCompare(valueB)
-            : valueB.localeCompare(valueA);
-        case "category":
-          valueA = (a.folderName || "").toLowerCase();
-          valueB = (b.folderName || "").toLowerCase();
-          return direction === "asc"
-            ? valueA.localeCompare(valueB)
-            : valueB.localeCompare(valueA);
-        case "lastUsed":
-          valueA = a.lastUsed ? new Date(a.lastUsed).getTime() : 0;
-          valueB = b.lastUsed ? new Date(b.lastUsed).getTime() : 0;
-          return direction === "asc" ? valueA - valueB : valueB - valueA;
-        case "createdAt":
-          valueA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          valueB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return direction === "asc" ? valueA - valueB : valueB - valueA;
-        default:
-          return 0;
-      }
-    });
-    return sortedPrompts;
-  }
-
-  // Initiale Sortierung
-  const sortedPrompts = sortPrompts(
-    filteredPrompts,
-    sortState.column,
-    sortState.direction
-  );
+  const table = document.querySelector(".table-container");
+  globalPrompts = prompts; // Update globalPrompts
+  globalRows = []; // Reset globalRows
+  tbody.innerHTML = ""; // Clear table only on initial render
 
   // Render der Prompts
-  sortedPrompts.forEach((prompt, index) => {
+  prompts.forEach((prompt, index) => {
     const row = document.createElement("tr");
     row.dataset.index = index;
     row.dataset.promptId = prompt.id || index;
@@ -310,7 +185,11 @@ function renderPrompts(prompts) {
         prompt.id || index
       }" name="prompt-checkbox" /></td>
       <td>${prompt.title || "N/A"}</td>
-      <td>${prompt.types || "N/A"}</td>
+      <td>${
+        Array.isArray(prompt.types)
+          ? prompt.types.join(", ")
+          : prompt.types || "N/A"
+      }</td>
       <td>${
         Array.isArray(prompt.compatibleModels)
           ? prompt.compatibleModels.join(", ")
@@ -428,7 +307,15 @@ function renderPrompts(prompts) {
     });
 
     tbody.appendChild(row);
+    globalRows.push(row); // Store row in globalRows
   });
+
+  // Load filter options after rendering table
+  loadTagsFilter();
+  loadTypesFilter();
+
+  // Initial sort and filter
+  applyFilterAndSort();
 
   // Event-Listener für Header-Klicks
   const headers = document.querySelectorAll(".table-container th");
@@ -453,12 +340,7 @@ function renderPrompts(prompts) {
         sortState.column = column;
         sortState.direction = "asc";
       }
-      const sortedPrompts = sortPrompts(
-        filteredPrompts,
-        sortState.column,
-        sortState.direction
-      );
-      renderPrompts(prompts); // Original prompts übergeben, um Filter zu behalten
+      applyFilterAndSort();
       headers.forEach(
         (h) => (h.innerHTML = h.innerHTML.replace(/ (↑|↓)$/, ""))
       );
@@ -468,17 +350,17 @@ function renderPrompts(prompts) {
 
   // Event-Listener für Filter-Änderungen
   const filterCheckboxes = document.querySelectorAll(
-    "#compatible-models-filter input, #incompatible-models-filter input, #tags-filter input"
+    "#compatible-models-filter input, #incompatible-models-filter input, #tags-filter input, #types-filter input"
   );
   filterCheckboxes.forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
-      renderPrompts(prompts);
+      applyFilterAndSort();
     });
   });
   const categoryFilterSelect = document.getElementById("category-filter");
   if (categoryFilterSelect) {
     categoryFilterSelect.addEventListener("change", () => {
-      renderPrompts(prompts);
+      applyFilterAndSort();
     });
   }
 
@@ -490,6 +372,178 @@ function renderPrompts(prompts) {
     }
   });
 }
+
+// Sortierstatus verwalten
+let sortState = {
+  column: "createdAt",
+  direction: "desc",
+};
+
+// Neue Funktion für DOM-basierte Filterung und Sortierung
+function applyFilterAndSort() {
+  const tbody = document.querySelector(".table-container tbody");
+  const table = document.querySelector(".table-container");
+
+  // Filterstatus für Modelle, Tags und Kategorie
+  const compatibleFilters = Array.from(
+    document.querySelectorAll(
+      "#compatible-models-filter input[name='compatible-filter']:checked"
+    )
+  ).map((cb) => cb.value);
+  const incompatibleFilters = Array.from(
+    document.querySelectorAll(
+      "#incompatible-models-filter input[name='incompatible-filter']:checked"
+    )
+  ).map((cb) => cb.value);
+  const tagsFilters = Array.from(
+    document.querySelectorAll("#tags-filter input[name='tags-filter']:checked")
+  ).map((cb) => cb.value);
+  const typesFilters = Array.from(
+    document.querySelectorAll(
+      "#types-filter input[name='types-filter']:checked"
+    )
+  ).map((cb) => cb.value);
+  const categoryFilter =
+    document.getElementById("category-filter")?.value || "all";
+
+  // Filter rows based on td values
+  let visibleRows = globalRows.filter((row) => {
+    const tds = row.getElementsByTagName("td");
+    const types = tds[2].textContent
+      .split(", ")
+      .filter((t) => t && t !== "N/A");
+    const compatibleModels = tds[3].textContent.split(", ").filter((m) => m);
+    const incompatibleModels = tds[4].textContent
+      .split(", ")
+      .filter((m) => m && m !== "N/A");
+    const tags = tds[5].textContent.split(", ").filter((t) => t);
+    const folderName = tds[6].textContent;
+    const lastUsed = tds[7].textContent;
+
+    const hasCompatible =
+      compatibleFilters.length === 0 ||
+      compatibleFilters.every((model) => compatibleModels.includes(model));
+    const hasIncompatible =
+      incompatibleFilters.length === 0 ||
+      incompatibleFilters.every((model) => incompatibleModels.includes(model));
+    const hasTags =
+      tagsFilters.length === 0 ||
+      tagsFilters.every((tag) => tags.includes(tag));
+    const hasTypes =
+      typesFilters.length === 0 ||
+      typesFilters.every((type) => types.includes(type));
+    const matchesCategory =
+      categoryFilter === "all" ||
+      (categoryFilter === "recentlyUsed" &&
+        lastUsed !== "N/A" &&
+        new Date(lastUsed.split(".").reverse().join("-")).getTime() >
+          Date.now() - 7 * 24 * 60 * 60 * 1000) ||
+      (categoryFilter === "rarelyUsed" &&
+        (!lastUsed ||
+          lastUsed === "N/A" ||
+          new Date(lastUsed.split(".").reverse().join("-")).getTime() <
+            Date.now() - 30 * 24 * 60 * 60 * 1000));
+
+    return (
+      hasCompatible && hasIncompatible && hasTags && matchesCategory && hasTypes
+    );
+  });
+
+  // Hide table if no rows match
+  if (visibleRows.length === 0) {
+    table.style.display = "none";
+    return;
+  } else {
+    table.style.display = "";
+  }
+
+  // Sort rows based on td values
+  visibleRows.sort((a, b) => {
+    const tdsA = a.getElementsByTagName("td");
+    const tdsB = b.getElementsByTagName("td");
+    let valueA, valueB;
+    switch (sortState.column) {
+      case "title":
+        valueA = (tdsA[1].textContent || "N/A").toLowerCase();
+        valueB = (tdsB[1].textContent || "N/A").toLowerCase();
+        return sortState.direction === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      case "type":
+        valueA = (tdsA[2].textContent || "N/A").toLowerCase();
+        valueB = (tdsB[2].textContent || "N/A").toLowerCase();
+        return sortState.direction === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      case "compatibleModels":
+        valueA = (tdsA[3].textContent || "").toLowerCase();
+        valueB = (tdsB[3].textContent || "").toLowerCase();
+        return sortState.direction === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      case "incompatibleModels":
+        valueA = (tdsA[4].textContent || "").toLowerCase();
+        valueB = (tdsB[4].textContent || "").toLowerCase();
+        return sortState.direction === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      case "tags":
+        valueA = (tdsA[5].textContent || "").toLowerCase();
+        valueB = (tdsB[5].textContent || "").toLowerCase();
+        return sortState.direction === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      case "category":
+        valueA = (tdsA[6].textContent || "").toLowerCase();
+        valueB = (tdsB[6].textContent || "").toLowerCase();
+        return sortState.direction === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      case "lastUsed":
+        valueA =
+          tdsA[7].textContent !== "N/A"
+            ? new Date(
+                tdsA[7].textContent.split(".").reverse().join("-")
+              ).getTime()
+            : 0;
+        valueB =
+          tdsB[7].textContent !== "N/A"
+            ? new Date(
+                tdsB[7].textContent.split(".").reverse().join("-")
+              ).getTime()
+            : 0;
+        return sortState.direction === "asc"
+          ? valueA - valueB
+          : valueB - valueA;
+      case "createdAt":
+        valueA =
+          tdsA[8].textContent !== "N/A"
+            ? new Date(
+                tdsA[8].textContent.split(".").reverse().join("-")
+              ).getTime()
+            : 0;
+        valueB =
+          tdsB[8].textContent !== "N/A"
+            ? new Date(
+                tdsB[8].textContent.split(".").reverse().join("-")
+              ).getTime()
+            : 0;
+        return sortState.direction === "asc"
+          ? valueA - valueB
+          : valueB - valueA;
+      default:
+        return 0;
+    }
+  });
+
+  // Update DOM: hide non-matching rows, show and reorder matching rows
+  globalRows.forEach((row) => (row.style.display = "none"));
+  visibleRows.forEach((row) => {
+    row.style.display = "";
+    tbody.appendChild(row);
+  });
+}
+
 const sidebar = document.getElementById("details-sidebar");
 function showDetailsSidebar(item, folderId) {
   const sidebarContent = sidebar.querySelector(".sidebar-content");
@@ -497,19 +551,9 @@ function showDetailsSidebar(item, folderId) {
   sidebar.classList.add("open");
   document.getElementById("details-sidebar-resizer").style.display = "block";
 
-  // if (!item || !item.promptId) {
-  //   sidebarContent.innerHTML = "<p>Error: Invalid prompt data.</p>";
-  //   return;
-  // }
-
   chrome.storage.local.get(["prompts"], (data) => {
     const allPrompts = data.prompts || {};
     const prompt = allPrompts[item.promptId];
-
-    // if (!prompt) {
-    //   sidebarContent.innerHTML = "<p>Error: Prompt not found.</p>";
-    //   return;
-    // }
 
     const metaChangeLogEntries = (prompt.metaChangeLog || [])
       .map(
@@ -612,7 +656,6 @@ sidebar.querySelector(".close-sidebar").addEventListener("click", () => {
 function initializePrompts() {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryFromUrl = urlParams.get("category");
-  loadTagsFilter(); // Tags-Filter laden
 
   if (categoryFromUrl) {
     handleCategoryClick(decodeURIComponent(categoryFromUrl));
@@ -621,7 +664,7 @@ function initializePrompts() {
       const prompts = data.prompts || {};
       const folders = data.folders || {};
 
-      const allPrompts = Object.values(prompts)
+      globalPrompts = Object.values(prompts)
         .filter((prompt) => {
           const folder = prompt.folderId ? folders[prompt.folderId] : null;
           const isInTrash = folder?.isTrash === true;
@@ -636,7 +679,7 @@ function initializePrompts() {
           };
         });
 
-      renderPrompts(allPrompts);
+      renderPrompts(globalPrompts);
       document.querySelector(".main-header h1").textContent = "All Prompts";
     });
   }
@@ -749,7 +792,6 @@ function handleFolderClick(folderName) {
   chrome.storage.local.get(["prompts", "folders"], function (data) {
     const { prompts = {}, folders = {} } = data;
 
-    // Suche Ordner-ID anhand des Namens (case-insensitive)
     const matchingEntry = Object.entries(folders).find(
       ([, folder]) => folder.name?.toLowerCase() === folderName.toLowerCase()
     );
@@ -780,42 +822,78 @@ function handleFolderClick(folderName) {
 }
 
 function loadTagsFilter() {
-  chrome.storage.local.get("tags", (data) => {
-    const tagsFilter = document.getElementById("tags-filter");
-    if (!tagsFilter) return; // Exit if container is not found
-    tagsFilter.innerHTML = ""; // Clear existing content
+  const tagsFilter = document.getElementById("tags-filter");
+  if (!tagsFilter) return; // Exit if container is not found
+  tagsFilter.innerHTML = ""; // Clear existing content
 
-    const tags = data.tags || []; // Fallback to empty array if no tags
-    if (tags.length === 0) {
-      tagsFilter.innerHTML = "<p>Keine Tags verfügbar</p>";
-      return;
-    }
+  // Alle einzigartigen Tags aus den DOM Rows extrahieren
+  const tags = [
+    ...new Set(
+      globalRows
+        .map((row) => row.getElementsByTagName("td")[5].textContent.split(", "))
+        .flat()
+        .filter((tag) => tag && tag !== "")
+    ),
+  ].sort();
 
-    tags.forEach((tag) => {
-      const label = document.createElement("label");
-      label.className = "tag-checkbox-label";
-      label.innerHTML = `<input type="checkbox" name="tags-filter" value="${escapeHTML(
-        tag
-      )}"> ${escapeHTML(tag)}`;
-      tagsFilter.appendChild(label);
+  if (tags.length === 0) {
+    tagsFilter.innerHTML = "<p>Keine Prompts mit einem Tag</p>";
+    return;
+  }
 
-      // Add event listener to trigger filtering on change
-      const checkbox = label.querySelector("input");
-      checkbox.addEventListener("change", () => {
-        // Fetch all prompts and re-render with updated filters
-        chrome.storage.local.get(null, (data) => {
-          const allPrompts = Object.entries(data)
-            .filter(([, topic]) => topic.prompts && !topic.isTrash)
-            .flatMap(([id, topic]) =>
-              topic.prompts.map((prompt) => ({
-                ...prompt,
-                folderId: id,
-                folderName: topic.name,
-              }))
-            );
-          renderPrompts(allPrompts);
-        });
-      });
+  tags.forEach((tag) => {
+    const label = document.createElement("label");
+    label.className = "tag-checkbox-label";
+    label.innerHTML = `<input type="checkbox" name="tags-filter" value="${escapeHTML(
+      tag
+    )}"> ${escapeHTML(tag)}`;
+    tagsFilter.appendChild(label);
+
+    // Event-Listener für Filter-Änderungen
+    const checkbox = label.querySelector("input");
+    checkbox.addEventListener("change", () => {
+      applyFilterAndSort();
     });
   });
+}
+
+function loadTypesFilter() {
+  const typesFilter = document.getElementById("types-filter");
+  if (!typesFilter) return; // Exit if container is not found
+  typesFilter.innerHTML = ""; // Clear existing content
+
+  // Alle einzigartigen Types aus den DOM Rows extrahieren
+  const types = [
+    ...new Set(
+      globalRows
+        .map((row) => row.getElementsByTagName("td")[2].textContent.split(", "))
+        .flat()
+        .filter((type) => type && type !== "N/A")
+    ),
+  ].sort();
+
+  if (types.length === 0) {
+    typesFilter.innerHTML = "<p>Keine Prompts mit einem Typ</p>";
+    return;
+  }
+
+  types.forEach((type) => {
+    const label = document.createElement("label");
+    label.className = "types-checkbox-label";
+    label.innerHTML = `<input type="checkbox" name="types-filter" value="${escapeHTML(
+      type
+    )}"> ${escapeHTML(type)}`;
+    typesFilter.appendChild(label);
+
+    // Event-Listener für Filter-Änderungen
+    const checkbox = label.querySelector("input");
+    checkbox.addEventListener("change", () => {
+      applyFilterAndSort();
+    });
+  });
+}
+
+// Levenshtein Distance function (assumed to be defined elsewhere)
+function levenshteinDistance(a, b) {
+  // ... existing implementation ...
 }
