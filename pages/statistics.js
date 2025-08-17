@@ -76,6 +76,10 @@ function renderAnalytics(prompts) {
   // const suggestionSection = createSuggestionSection(prompts);
   // container.appendChild(suggestionSection);
 
+  // Prompt usage frequency by model
+  const promptUsageByModel = calculatePromptUsageByModel(prompts);
+  container.appendChild(createPromptUsageByModelSection(promptUsageByModel));
+
   // Change frequency by model
   const modelChangeFrequency = calculateChangeFrequencyByModel(prompts);
   container.appendChild(
@@ -450,7 +454,7 @@ function createModelSection(usageByModel) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Use according to model</h2>
+    <h2>Prompt assignments by model</h2>
     <div class="chart-container" style="height: 300px;">
       <canvas id="modelChart"></canvas>
     </div>
@@ -465,7 +469,7 @@ function createModelSection(usageByModel) {
       labels: labels,
       datasets: [
         {
-          label: "Prompt usage by model",
+          label: "Prompt assignment by model",
           data: data,
           backgroundColor: "#36b9cc",
         },
@@ -573,6 +577,167 @@ function calculatePerformanceTrends(prompts) {
     }
   });
   return trends;
+}
+
+function calculatePromptUsageByModel(prompts) {
+  const modelUsageCounts = {};
+
+  prompts.forEach((prompt) => {
+    if (!prompt.usageCount || !prompt.compatibleModels || !prompt.title) return;
+
+    let models = prompt.compatibleModels;
+    if (typeof models === "string") {
+      models = models
+        .split(",")
+        .map((model) => model.trim())
+        .filter((model) => model);
+    } else if (!Array.isArray(models)) {
+      return;
+    }
+
+    models.forEach((model) => {
+      modelUsageCounts[model] =
+        (modelUsageCounts[model] || 0) + prompt.usageCount;
+    });
+  });
+
+  // Select top 5 models by usage count
+  const sortedModels = Object.entries(modelUsageCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([model]) => model);
+
+  const usageOverTime = {};
+  const allDates = new Set();
+
+  prompts.forEach((prompt) => {
+    if (!prompt.usageCount || !prompt.compatibleModels || !prompt.title) return;
+
+    let models = prompt.compatibleModels;
+    if (typeof models === "string") {
+      models = models
+        .split(",")
+        .map((model) => model.trim())
+        .filter((model) => model);
+    } else if (!Array.isArray(models)) {
+      return;
+    }
+
+    models.forEach((model) => {
+      if (!sortedModels.includes(model)) return;
+      usageOverTime[model] = usageOverTime[model] || {};
+
+      // Use usageHistory if available, otherwise fallback to lastUsed
+      if (prompt.usageHistory && Array.isArray(prompt.usageHistory)) {
+        prompt.usageHistory.forEach((usage) => {
+          const date = new Date(usage.timestamp).toISOString().split("T")[0];
+          usageOverTime[model][date] = (usageOverTime[model][date] || 0) + 1;
+          allDates.add(date);
+        });
+      } else if (prompt.lastUsed && prompt.usageCount) {
+        const date = new Date(prompt.lastUsed).toISOString().split("T")[0];
+        usageOverTime[model][date] =
+          (usageOverTime[model][date] || 0) + prompt.usageCount;
+        allDates.add(date);
+      }
+    });
+  });
+
+  const sortedDates = Array.from(allDates).sort();
+  return {
+    usageOverTime,
+    dates: sortedDates,
+    models: sortedModels,
+  };
+}
+
+function createPromptUsageByModelSection(usageData) {
+  const section = document.createElement("div");
+  section.className = "analytics-section";
+  section.innerHTML = `
+    <h2>Prompt usage frequency by model</h2>
+    <div class="chart-container" style="height: 300px;">
+      <canvas id="promptUsageByModelChart"></canvas>
+    </div>
+  `;
+
+  if (!usageData.dates.length || !usageData.models.length) {
+    section.innerHTML = `<h2>Prompt usage frequency by model</h2><p>No usage data available.</p>`;
+    console.warn("No data available for prompt usage by model chart.");
+    return section;
+  }
+
+  const colors = ["#4e73df", "#1cc88a", "#36b9cc", "#f6c23e", "#e74a3b"];
+  const datasets = usageData.models.map((model, index) => ({
+    label: model,
+    data: usageData.dates.map(
+      (date) => usageData.usageOverTime[model][date] || 0
+    ),
+    backgroundColor: colors[index % colors.length],
+    borderColor: colors[index % colors.length],
+    borderWidth: 1,
+  }));
+
+  const chartConfig = {
+    type: "bar",
+    data: {
+      labels: usageData.dates,
+      datasets: datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: "category",
+          labels: usageData.dates,
+          title: {
+            display: true,
+            text: "Date",
+          },
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Number of uses",
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: true,
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              return `${context.dataset.label}: ${context.raw} uses on ${context.label}`;
+            },
+          },
+        },
+      },
+    },
+  };
+
+  try {
+    const canvas = section.querySelector("#promptUsageByModelChart");
+    if (!canvas) {
+      console.error("Canvas element for promptUsageByModelChart not found.");
+      section.innerHTML = `<h2>Prompt usage frequency by model</h2><p>Error: Chart could not be created.</p>`;
+      return section;
+    }
+    if (typeof Chart === "undefined") {
+      console.error("Chart.js is not loaded.");
+      section.innerHTML = `<h2>Prompt usage frequency by model</h2><p>Error: Chart.js is not available.</p>`;
+      return section;
+    }
+    new Chart(canvas, chartConfig);
+  } catch (error) {
+    console.error("Error initializing the prompt usage by model chart:", error);
+    section.innerHTML = `<h2>Prompt usage frequency by model</h2><p>Error rendering chart: ${error.message}</p>`;
+  }
+
+  return section;
 }
 
 // Predict next step based on historical trends

@@ -403,9 +403,9 @@ function renderPrompts(prompts) {
         } else if (action === "move-to-folder" && prompt.type !== "Workflow") {
           await moveToFolder(prompt, prompt.folderId, row);
         } else if (action === "share") {
-          await sharePrompt(prompt);
+          sharePrompt(prompt);
         } else if (action === "add-to-favorites") {
-          await toggleFavorite(prompt, prompt.folderId, row);
+          toggleFavorite(prompt.promptId);
         } else if (action === "show-versions" && prompt.type !== "Workflow") {
           if (!prompt.promptId) {
             console.error("Prompt ID is missing for showPromptVersions");
@@ -549,7 +549,9 @@ function showDetailsSidebar(item, folderId) {
     <textarea readonly>${prompt.notes || "N/A"}</textarea>
     <label>Type</label>
     <input type="text" value="${
-      Array.isArray(prompt.types) ? prompt.types.join(", ") : prompt.types || "N/A"
+      Array.isArray(prompt.types)
+        ? prompt.types.join(", ")
+        : prompt.types || "N/A"
     }" readonly>
     <label>Compatible Models</label>
     <input type="text" value="${

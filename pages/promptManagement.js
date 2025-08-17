@@ -286,7 +286,6 @@ function showCreatePromptModal(category) {
       const isFavorite = document.getElementById("prompt-favorite").checked;
       const folderId = document.getElementById("prompt-folder").value;
 
-      let folderName = "Single Prompt";
       if (folderId) {
         const selectedOption = document.querySelector(
           `#prompt-folder option[value="${folderId}"]`
@@ -305,7 +304,6 @@ function showCreatePromptModal(category) {
         tags,
         isFavorite,
         folderId: folderId || null,
-        folderName,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         usageCount: 0,
@@ -574,21 +572,62 @@ function moveToFolder(prompt, folderId, row) {
     <select id="target-folder" required>
       <option value="">Kein Ordner</option>
     </select>
+    <label>Neuer Ordner:</label>
+    <input type="text" id="new-folder-name" placeholder="Neuer Ordnername">
+    <button type="button" id="save-folder-btn" class="action-btn secondary-btn">Ordner speichern</button>
     <button type="submit" class="action-btn">Verschieben</button>
   `;
 
+  // Ordner-Liste laden und im Dropdown anzeigen
   chrome.storage.local.get(["folders"], (data) => {
     const folderSelect = form.querySelector("#target-folder");
     const folders = data.folders || {};
 
     Object.entries(folders).forEach(([id, folder]) => {
-      if (!folder.isTrash && id !== folderId) {
+      if (!folder.isTrash) {
         const option = document.createElement("option");
         option.value = id;
         option.textContent = folder.name;
+
+        // Wenn die Prompt schon in diesem Ordner ist → markieren
+        if (prompt.folderId === id) {
+          option.selected = true;
+        }
+
         folderSelect.appendChild(option);
       }
     });
+
+    // Neuen Ordner speichern
+    const saveFolderBtn = form.querySelector("#save-folder-btn");
+    const newFolderInput = form.querySelector("#new-folder-name");
+    saveFolderBtn.onclick = () => {
+      const newFolderName = newFolderInput.value.trim();
+      if (!newFolderName) {
+        alert("Bitte geben Sie einen Ordnernamen ein.");
+        return;
+      }
+
+      const newFolderId = "folder_" + Date.now();
+      folders[newFolderId] = {
+        id: newFolderId,
+        name: newFolderName,
+        promptIds: [],
+        createdAt: Date.now(),
+      };
+
+      // Neuen Ordner im Dropdown hinzufügen und auswählen
+      const newOption = document.createElement("option");
+      newOption.value = newFolderId;
+      newOption.textContent = newFolderName;
+      newOption.selected = true;
+      folderSelect.appendChild(newOption);
+
+      // Ordner speichern
+      chrome.storage.local.set({ folders }, () => {
+        newFolderInput.value = ""; // Eingabefeld leeren
+      });
+    };
   });
 
   form.addEventListener("submit", (e) => {
@@ -604,15 +643,16 @@ function moveToFolder(prompt, folderId, row) {
       if (!existingPrompt) return;
 
       // Aktuellen Ordner aktualisieren (alten promptId entfernen)
-      if (existingPrompt.folderId && folders[existingPrompt.folderId]) {
-        const oldFolder = folders[existingPrompt.folderId];
+      const currentFolderId = existingPrompt.folderId || null;
+      if (currentFolderId && folders[currentFolderId]) {
+        const oldFolder = folders[currentFolderId];
         oldFolder.promptIds = (oldFolder.promptIds || []).filter(
           (id) => id !== promptId
         );
-        folders[existingPrompt.folderId] = oldFolder;
+        folders[currentFolderId] = oldFolder;
       }
 
-      // Neuen Ordner setzen oder standalone
+      // Neuen Ordner setzen oder Standalone
       if (newFolderId && folders[newFolderId]) {
         const newFolder = folders[newFolderId];
         newFolder.promptIds = newFolder.promptIds || [];
@@ -622,11 +662,9 @@ function moveToFolder(prompt, folderId, row) {
         folders[newFolderId] = newFolder;
         existingPrompt.folderId = newFolderId;
       } else {
-        // Kein Zielordner gewählt → Standalone
-        existingPrompt.folderId = null;
+        existingPrompt.folderId = null; // Kein Zielordner → Standalone
       }
 
-      // Prompt aktualisieren
       existingPrompt.updatedAt = Date.now();
       prompts[promptId] = existingPrompt;
 
@@ -656,11 +694,13 @@ function moveToFolder(prompt, folderId, row) {
   modal.appendChild(modalContent);
   document.body.appendChild(modal);
 
+  // Modal schließen
   closeSpan.onclick = () => modal.remove();
   window.onclick = (event) => {
     if (event.target === modal) modal.remove();
   };
 }
+
 function moveToTrash(prompt, folderId, row) {
   if (
     !confirm("Möchtest du diese Prompt wirklich in den Papierkorb verschieben?")

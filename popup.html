@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title data-i18n="title"></title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="pages/promptManagement.js" defer></script>
     <script src="pages/utils.js" defer></script>
     <script src="main.js" defer></script>
   </head>
@@ -163,32 +164,9 @@
           </div>
           <div class="detail-field">
             <label data-i18n="type_label"></label>
-            <select id="entry-type" disabled>
-              <option
-                value=""
-                disabled
-                selected
-                data-i18n="select_type"
-              ></option>
-              <option value="textgen">Textgeneration</option>
-              <option value="rewrite">Umschreiben</option>
-              <option value="summarize">Zusammenfassen</option>
-              <option value="translate">Übersetzen</option>
-              <option value="ideation">Ideenfindung</option>
-              <option value="adcopy">Werbetexten</option>
-              <option value="storytelling">Storytelling</option>
-              <option value="analyze">Analyse</option>
-              <option value="classify">Klassifikation</option>
-              <option value="extract">Informationsextraktion</option>
-              <option value="compare">Vergleichen / Bewerten</option>
-              <option value="codegen">Codegenerierung</option>
-              <option value="debug">Fehleranalyse</option>
-              <option value="refactor">Code-Umschreiben</option>
-              <option value="explain-code">Code erklären</option>
-              <option value="prompt-engineering">Prompt Engineering</option>
-              <option value="meta-prompt">Meta-Prompt</option>
-              <option value="assistant">Assistant</option>
-            </select>
+            <div class="checkbox-group scrollable" id="entry-type">
+              <!-- Dynamisch befüllt -->
+            </div>
           </div>
           <div class="detail-field">
             <label data-i18n="compatible_models_label"></label>
@@ -601,19 +579,15 @@
             <input type="checkbox" id="highlight-toggle" />
             <span class="toggle-slider"></span>
           </label>
-        </div><br>
-        <div class="workflows">
-          Workflows
-        </div><br>
-        <div class="tags">
-          Tag Overview
-        </div><br>
-        <div class="text-anonymizer">
-          Text Anonymizer
-        </div><br>
-        <div class="prompt-analytics">
-          Prompt Analytics
         </div>
+        <br />
+        <div class="workflows">Workflows</div>
+        <br />
+        <div class="tags">Tag Overview</div>
+        <br />
+        <div class="text-anonymizer">Text Anonymizer</div>
+        <br />
+        <div class="prompt-analytics">Prompt Analytics</div>
       </div>
 
       <!-- Einstellungsansicht -->

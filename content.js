@@ -150,7 +150,6 @@ async function createNewPrompt(
   const tags = [];
   const isFavorite = false;
   const folderId = null;
-  const folderName = ""; // Standardwert für folderName
   const notes = "";
   const type = "";
 
@@ -166,7 +165,6 @@ async function createNewPrompt(
     tags,
     isFavorite,
     folderId,
-    folderName,
     createdAt: Date.now(),
     updatedAt: null,
     usageCount: 0,
@@ -195,7 +193,6 @@ async function createNewPrompt(
           tags: { from: [], to: tags },
           isFavorite: { from: false, to: isFavorite },
           folderId: { from: null, to: folderId },
-          folderName: { from: null, to: folderName },
           notes: { from: null, to: notes },
         },
       },
@@ -228,7 +225,7 @@ async function createNewPrompt(
         } else {
           console.log("Neuer Prompt gespeichert:", { promptId });
           // Tabelle aktualisieren
-          updateTable(newPrompt, folderId, folderName, false, folders);
+          updateTable(newPrompt, folderId, false, folders);
           resolve();
         }
       });
@@ -281,10 +278,6 @@ async function replacePrompt(
     const incompatibleModels = oldPrompt.incompatibleModels || [];
     const tags = oldPrompt.tags || [];
     const isFavorite = oldPrompt.isFavorite || false;
-    const folderName =
-      folderId && folders[folderId]
-        ? folders[folderId].name
-        : oldPrompt.folderName;
     const notes = oldPrompt.notes || "";
     const type = oldPrompt.type || "default";
 
@@ -309,7 +302,6 @@ async function replacePrompt(
       tags,
       isFavorite,
       folderId,
-      folderName,
       updatedAt: Date.now(),
       usageCount: oldPrompt.usageCount || 0,
       lastUsed: oldPrompt.lastUsed || null,
@@ -398,7 +390,6 @@ async function addPromptToFolder(
       throw new Error(`Folder ${folderId} does not exist.`);
     }
 
-    const folderName = folders[folderId].name;
 
     const promptObject = {
       title: promptTitle,
@@ -411,7 +402,6 @@ async function addPromptToFolder(
       tags,
       isFavorite,
       folderId,
-      folderName,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       usageCount: 0,
@@ -438,7 +428,6 @@ async function addPromptToFolder(
             tags: { from: [], to: tags },
             isFavorite: { from: false, to: isFavorite },
             folderId: { from: null, to: folderId },
-            folderName: { from: null, to: folderName },
             notes: { from: null, to: notes },
           },
         },
@@ -506,10 +495,6 @@ async function combineWithExistingPrompt(
     const tags = existingPrompt.tags || [];
     const isFavorite = existingPrompt.isFavorite || false;
     const folderId = existingPrompt.folderId || null;
-    const folderName =
-      folderId && folders[folderId]
-        ? folders[folderId].name
-        : existingPrompt.folderName;
     const notes = existingPrompt.notes || "";
     const type = existingPrompt.type || "default";
 
@@ -533,7 +518,6 @@ async function combineWithExistingPrompt(
       tags,
       isFavorite,
       folderId,
-      folderName,
       updatedAt: Date.now(),
       usageCount: existingPrompt.usageCount || 0,
       lastUsed: existingPrompt.lastUsed || null,
@@ -1598,10 +1582,6 @@ async function promptSaver(message) {
         if (prompt.isDeleted) return;
 
         const folderId = prompt.folderId || null;
-        const folderName =
-          folderId && folders[folderId]
-            ? folders[folderId].name || "Ohne Ordner"
-            : "Ohne Ordner";
 
         const similarity = currentPrompt
           ? computeCosineSimilarity(currentPrompt, prompt.content || "")
@@ -1612,7 +1592,6 @@ async function promptSaver(message) {
           folderId,
           title: prompt.title || "Untitled Prompt",
           content: prompt.content || "",
-          folderName,
           createdAt: prompt.createdAt || 0,
           similarity,
         });

@@ -199,6 +199,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const minWidthB = 200;
   const maxWidthB = 800;
 
+  // Funktion zur Anpassung der Resizer-Höhe
+  const updateResizerHeight = () => {
+    const sidebarHeight = sidebarB.scrollHeight; // Gesamte Höhe des Sidebars
+    resizerB.style.height = `${sidebarHeight}px`;
+  };
+
   // Breite setzen
   const resizeSidebarB = () => {
     const windowWidth = window.innerWidth;
@@ -211,6 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "--details-sidebar-width",
       `${newWidth}px`
     );
+    updateResizerHeight(); // Höhe des Resizers bei jeder Breitenänderung aktualisieren
     animationFrameIdB = null;
   };
 
@@ -244,6 +251,24 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("pointerup", onPointerUpB);
     e.preventDefault();
   });
+
+  // Initiale Anpassung der Resizer-Höhe
+  document.addEventListener("DOMContentLoaded", () => {
+    updateResizerHeight();
+
+    // MutationObserver für Änderungen im Sidebar-Inhalt
+    const observer = new MutationObserver(() => {
+      updateResizerHeight();
+    });
+    observer.observe(sidebarB, {
+      childList: true, // Änderungen an direkten Kindern
+      subtree: true, // Änderungen an allen Nachkommen
+      attributes: true, // Änderungen an Attributen (z. B. style)
+    });
+  });
+
+  // Bei Fenstergrößenänderung Resizer-Höhe aktualisieren
+  window.addEventListener("resize", updateResizerHeight);
 
   // Call injectStyles
   injectStyles();
@@ -387,7 +412,7 @@ function loadTags() {
     if (tags.length === 0) {
       const noTags = document.createElement("div");
       noTags.className = "no-tags";
-      noTags.textContent = "No tags available. Create one to get started!";
+      noTags.textContent = "No tags available. Create one to get started! Enter for example: blog-post, email, tweet, press-release, finance, healthcare, marketing, e-commverce, education";
       tagContainer.appendChild(noTags);
       return;
     }
@@ -473,7 +498,7 @@ function loadTypes() {
     if (types.length === 0) {
       const noTypes = document.createElement("div");
       noTypes.className = "no-tags";
-      noTypes.textContent = "No types available. Create one to get started!";
+      noTypes.textContent = "No types available. Create one to get started! Enter for example: textgen, rewrite, summarize, translate, ideation, adcopy, storytelling, analyze, classify, extract, compare, codegen, debug, refactor, explain-code, prompt-engineering, meta-prompt, assistant";
       tagContainer.appendChild(noTypes);
       return;
     }
