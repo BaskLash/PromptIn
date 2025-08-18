@@ -58,21 +58,6 @@ header {
   border-radius: 4px;
 }
 
-#sidebar-resizer {
-  width: 5px;
-  cursor: col-resize;
-  background-color: #ddd;
-  height: calc(100vh - var(--header-height));
-  position: sticky;
-  top: var(--header-height);
-  z-index: 10;
-  transition: background-color 0.2s ease;
-}
-
-#sidebar-resizer:hover {
-  background-color: var(--accent-color);
-}
-
 .container {
   display: flex;
   min-height: calc(100vh - var(--header-height));
@@ -114,7 +99,14 @@ aside nav ul li {
   font-size: 14px;
   color: var(--primary-color);
   cursor: pointer;
+  transition-duration: 0.4s;
 }
+
+aside nav ul li:hover {
+  font-size: 16px;
+  font-weight: bold;
+}
+
 
 aside,
 main {
@@ -414,12 +406,6 @@ table thead {
   background-color: #f0f0f0;
   cursor: pointer;
 }
-.remove-tag-btn {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-}
 /* Container für Tags */
 .tag-container {
   display: flex;
@@ -485,6 +471,19 @@ table thead {
 }
 
 .remove-tag-btn:hover {
+  color: #a71d2a; /* Dunklere Farbe bei Hover */
+}
+.remove-type-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #dc3545; /* Rote Farbe für Lösch-Button */
+}
+.remove-type-btn:hover {
   color: #a71d2a; /* Dunklere Farbe bei Hover */
 }
 .close-modal {
@@ -621,11 +620,11 @@ table thead {
 .table-container th:not(:first-child):not(:last-child) {
   cursor: pointer;
 }
-
 .details-sidebar {
   width: var(--details-sidebar-width, 300px);
 }
-#details-sidebar-resizer {
+
+#sidebar-resizer {
   width: 5px;
   cursor: col-resize;
   background-color: #ddd;
@@ -634,6 +633,21 @@ table thead {
   top: var(--header-height);
   z-index: 10;
   transition: background-color 0.2s ease;
+}
+
+#sidebar-resizer:hover {
+  background-color: var(--accent-color);
+}
+
+#details-sidebar-resizer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: yellow;
+  z-index: 1200;
 }
 
 #details-sidebar-resizer:hover {

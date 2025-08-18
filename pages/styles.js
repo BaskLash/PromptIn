@@ -99,18 +99,17 @@ function injectStyles() {
       background: #f0f0f0;
     }
     .details-sidebar {
-      position: fixed;
-      right: 0;
-      top: 0;
-      width: 350px;
-      height: 100%;
-      background: #fff;
-      border-left: 1px solid #ddd;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
-      transform: translateX(100%);
-      transition: transform 0.3s ease;
-      z-index: 1000;
-      overflow-y: auto;
+     position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: var(--details-sidebar-width, 300px);
+  background: #fff;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  overflow-y: auto;
     }
     .details-sidebar.open {
       transform: translateX(0);

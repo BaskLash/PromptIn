@@ -38,3 +38,93 @@ function parsePromptId(promptId) {
     promptIndex: parseInt(promptId.substring(lastUnderscoreIndex + 1)),
   };
 }
+function savePrompt(
+  promptData,
+  {
+    folderId = null,
+    overwritePromptId = null,
+    onSuccess,
+    showInUI = false,
+  } = {}
+) {
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+    const now = Date.now();
+
+    const id =
+      overwritePromptId ||
+      promptData.promptId ||
+      `${Date.now()}_${generateUUID()}`;
+
+    const existing = prompts[id] || {};
+
+    const newPrompt = {
+      ...existing,
+      promptId: id,
+      title: promptData.title || "Untitled Prompt",
+      description: promptData.description || "",
+      content: promptData.content || "",
+      type: promptData.type || "text",
+      isFavorite: promptData.isFavorite || false,
+      tags: promptData.tags || [],
+      notes: promptData.notes || "",
+      folderId: folderId,
+      createdAt: existing.createdAt || now,
+      updatedAt: now,
+      lastUsed: null,
+      versions: existing.versions || [],
+      metaChangeLog: existing.metaChangeLog || [],
+      performanceHistory: existing.performanceHistory || [],
+    };
+
+    // Neue Version anhängen
+    if (!overwritePromptId || promptData.forceNewVersion) {
+      newPrompt.versions.push({
+        versionId: `${Date.now()}_${generateUUID()}`,
+        title: newPrompt.title,
+        description: newPrompt.description,
+        content: newPrompt.content,
+        timestamp: now,
+      });
+    }
+
+    // Meta-Änderung loggen
+    if (!overwritePromptId) {
+      newPrompt.metaChangeLog.push({
+        timestamp: now,
+        changes: {
+          title: { from: null, to: newPrompt.title },
+          description: { from: null, to: newPrompt.description },
+          content: { from: null, to: newPrompt.content },
+          folderId: { from: null, to: folderId },
+        },
+      });
+    }
+
+    prompts[id] = newPrompt;
+
+    // Ordner aktualisieren
+    if (folderId) {
+      folders[folderId] = folders[folderId] || {
+        name: "Unbenannt",
+        promptIds: [],
+      };
+      if (!folders[folderId].promptIds.includes(id)) {
+        folders[folderId].promptIds.push(id);
+      }
+    }
+
+    chrome.storage.local.set({ prompts, folders }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Fehler beim Speichern:", chrome.runtime.lastError);
+        alert("Fehler beim Speichern.");
+      } else {
+        if (onSuccess) onSuccess(newPrompt);
+        if (showInUI && typeof updateTable === "function") {
+          updateTable(newPrompt, folders);
+        }
+      }
+    });
+  });
+}

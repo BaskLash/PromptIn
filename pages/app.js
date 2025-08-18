@@ -10,12 +10,18 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "tags") {
     switchView("tags-view", { view: "tags" });
     loadTags();
+  } else if (view === "type") {
+    switchView("types-view", { view: "types" });
+    loadTypes();
+  } else if (view === "anonymizer") {
+    switchView("anonymizer-view", { view: "anonymizer" });
+    initializeAnonymizer();
   } else if (view === "analytics") {
     switchView("analytics-view", { view: "analytics" });
     initializeAnalytics();
-  } else if (view === "storage") {
-    switchView("storage-view", { view: "storage" });
-    initializeStorage();
+  } else if (view === "workflows") {
+    switchView("workflow-view", { view: "workflows" });
+    initializeWorkflows();
   } else {
     switchView("prompts-view", { view: "prompts", category: "All Prompts" });
     document.getElementById("prompts-header").textContent = "All Prompts";
@@ -33,7 +39,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // FAQ
   faqBtn.addEventListener("click", () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("pages/faq.html") });
+    const appUrl = chrome.runtime.getURL("/pages/faq.html");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
   });
 
   surveyBtn.addEventListener("click", () => {
@@ -158,66 +177,98 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
   });
 
-  // Details Sidebar Resizer
-  const detailsResizer = document.getElementById("details-sidebar-resizer");
-  const detailsSidebar = document.querySelector(".details-sidebar");
-  let isDetailsResizing = false;
-  let detailsAnimationFrameId = null;
-  let detailsCurrentX = 0;
-
-  const detailsMinWidth = 200;
-  const detailsMaxWidth = 600;
-
-  // Restore saved width from localStorage
   const savedDetailsWidth = localStorage.getItem("detailsSidebarWidth");
   if (savedDetailsWidth) {
-    detailsSidebar.style.width = `${savedDetailsWidth}px`;
+    document.getElementById(
+      "details-sidebar"
+    ).style.width = `${savedDetailsWidth}px`;
     document.documentElement.style.setProperty(
       "--details-sidebar-width",
       `${savedDetailsWidth}px`
     );
   }
 
-  const resizeDetailsSidebar = () => {
+  // Details Sidebar Resizer
+  const resizerB = document.getElementById("details-sidebar-resizer");
+  const sidebarB = document.getElementById("details-sidebar");
+
+  let isResizingB = false;
+  let animationFrameIdB = null;
+  let currentX_B = 0;
+
+  const minWidthB = 200;
+  const maxWidthB = 800;
+
+  // Funktion zur Anpassung der Resizer-Höhe
+  const updateResizerHeight = () => {
+    const sidebarHeight = sidebarB.scrollHeight; // Gesamte Höhe des Sidebars
+    resizerB.style.height = `${sidebarHeight}px`;
+  };
+
+  // Breite setzen
+  const resizeSidebarB = () => {
+    const windowWidth = window.innerWidth;
     const newWidth = Math.min(
-      Math.max(window.innerWidth - detailsCurrentX, detailsMinWidth),
-      detailsMaxWidth
+      Math.max(windowWidth - currentX_B, minWidthB),
+      maxWidthB
     );
-    detailsSidebar.style.width = `${newWidth}px`;
+    sidebarB.style.width = `${newWidth}px`;
     document.documentElement.style.setProperty(
       "--details-sidebar-width",
       `${newWidth}px`
     );
-    detailsAnimationFrameId = null;
+    updateResizerHeight(); // Höhe des Resizers bei jeder Breitenänderung aktualisieren
+    animationFrameIdB = null;
   };
 
-  const onDetailsPointerMove = (e) => {
-    if (!isDetailsResizing) return;
-    detailsCurrentX = e.clientX;
-    if (!detailsAnimationFrameId) {
-      detailsAnimationFrameId = requestAnimationFrame(resizeDetailsSidebar);
+  // Mausbewegung während des Resizings
+  const onPointerMoveB = (e) => {
+    if (!isResizingB) return;
+    currentX_B = e.clientX;
+    if (!animationFrameIdB) {
+      animationFrameIdB = requestAnimationFrame(resizeSidebarB);
     }
   };
 
-  const onDetailsPointerUp = () => {
-    if (!isDetailsResizing) return;
-    isDetailsResizing = false;
+  // Maus loslassen → speichern
+  const onPointerUpB = () => {
+    if (!isResizingB) return;
+    isResizingB = false;
     document.body.style.cursor = "default";
-    document.removeEventListener("pointermove", onDetailsPointerMove);
-    document.removeEventListener("pointerup", onDetailsPointerUp);
+    document.removeEventListener("pointermove", onPointerMoveB);
+    document.removeEventListener("pointerup", onPointerUpB);
 
-    const finalWidth = detailsSidebar.offsetWidth;
-    localStorage.setItem("detailsSidebarWidth", finalWidth.toString());
+    const finalWidthB = sidebarB.offsetWidth;
+    localStorage.setItem("detailsSidebarWidth", finalWidthB.toString());
   };
 
-  detailsResizer.addEventListener("pointerdown", (e) => {
-    isDetailsResizing = true;
-    detailsCurrentX = e.clientX;
+  // Start-Event
+  resizerB.addEventListener("pointerdown", (e) => {
+    isResizingB = true;
+    currentX_B = e.clientX;
     document.body.style.cursor = "col-resize";
-    document.addEventListener("pointermove", onDetailsPointerMove);
-    document.addEventListener("pointerup", onDetailsPointerUp);
+    document.addEventListener("pointermove", onPointerMoveB);
+    document.addEventListener("pointerup", onPointerUpB);
     e.preventDefault();
   });
+
+  // Initiale Anpassung der Resizer-Höhe
+  document.addEventListener("DOMContentLoaded", () => {
+    updateResizerHeight();
+
+    // MutationObserver für Änderungen im Sidebar-Inhalt
+    const observer = new MutationObserver(() => {
+      updateResizerHeight();
+    });
+    observer.observe(sidebarB, {
+      childList: true, // Änderungen an direkten Kindern
+      subtree: true, // Änderungen an allen Nachkommen
+      attributes: true, // Änderungen an Attributen (z. B. style)
+    });
+  });
+
+  // Bei Fenstergrößenänderung Resizer-Höhe aktualisieren
+  window.addEventListener("resize", updateResizerHeight);
 
   // Call injectStyles
   injectStyles();
@@ -233,6 +284,24 @@ document.addEventListener("DOMContentLoaded", () => {
           .querySelector(".tag-name")
           .textContent.toLowerCase();
         box.style.display = tagName.includes(filter) ? "" : "none";
+      });
+    }
+  });
+
+  document.getElementById("addTypeBtn").addEventListener("click", () => {
+    const typeName = prompt("Enter a new type:");
+    if (typeName && typeName.trim()) {
+      const newType = typeName.trim();
+      chrome.storage.local.get("types", (data) => {
+        const types = data.types || [];
+        if (types.includes(newType)) {
+          alert("Type exists already!");
+          return;
+        }
+        types.push(newType);
+        chrome.storage.local.set({ types }, () => {
+          loadTypes();
+        });
       });
     }
   });
@@ -262,12 +331,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (view === "tags") {
         switchView("tags-view", { view: "tags" });
         loadTags();
+      } else if (view === "type") {
+        switchView("types-view", { view: "types" });
+        loadTypes();
+      } else if (view === "anonymizer") {
+        switchView("anonymizer-view", { view: "anonymizer" });
+        initializeAnonymizer();
       } else if (view === "analytics") {
         switchView("analytics-view", { view: "analytics" });
         initializeAnalytics();
-      } else if (view === "storage") {
-        switchView("storage-view", { view: "storage" });
-        initializeStorage();
+      } else if (view === "workflows") {
+        switchView("workflow-view", { view: "workflows" });
+        initializeWorkflows();
       } else if (folder) {
         switchView("prompts-view", { view: "prompts", category: folder });
         document.getElementById("prompts-header").textContent =
@@ -315,144 +390,77 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function loadTags() {
-  chrome.storage.local.get(null, (data) => {
+  chrome.storage.local.get(["tags", "prompts"], (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error loading data:", chrome.runtime.lastError);
       return;
     }
+
     const tags = data.tags || [];
+    const allPrompts = data.prompts || {};
     const tagContainer = document.getElementById("tag-container");
+
     if (!tagContainer) {
       console.error("Tag container not found");
       return;
     }
 
-    // Sammle und aktualisiere Prompts
-    const folderPrompts = Object.entries(data)
-      .filter(
-        ([key, topic]) =>
-          topic.prompts && !topic.isTrash && key.startsWith("folder_")
-      )
-      .flatMap(([key, topic]) => {
-        const updatedPrompts = topic.prompts.map((prompt) => {
-          if (!prompt.id) {
-            prompt.id = `prompt_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
-          }
-          return {
-            ...prompt,
-            storageKey: key,
-            folderId: prompt.folderId || key,
-            tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-          };
-        });
-        // Speichere die aktualisierten Prompts zurück
-        chrome.storage.local.set({
-          [key]: { ...topic, prompts: updatedPrompts },
-        });
-        return updatedPrompts;
-      });
+    // Container leeren
+    tagContainer.innerHTML = "";
 
-    const hiddenFolderPrompts = Object.entries(data)
-      .filter(
-        ([key, topic]) =>
-          topic.prompts && !topic.isTrash && key.startsWith("hidden_folder_")
-      )
-      .flatMap(([key, topic]) => {
-        const updatedPrompts = topic.prompts.map((prompt) => {
-          if (!prompt.id) {
-            prompt.id = `prompt_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
-          }
-          return {
-            ...prompt,
-            storageKey: key,
-            folderId: prompt.folderId || key,
-            tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-          };
-        });
-        chrome.storage.local.set({
-          [key]: { ...topic, prompts: updatedPrompts },
-        });
-        return updatedPrompts;
-      });
-
-    const singlePrompts = Object.entries(data)
-      .filter(
-        ([key, topic]) =>
-          topic.prompts && !topic.isTrash && key.startsWith("single_prompt_")
-      )
-      .flatMap(([key, topic]) => {
-        const updatedPrompts = topic.prompts.map((prompt) => {
-          if (!prompt.id) {
-            prompt.id = `prompt_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
-          }
-          return {
-            ...prompt,
-            storageKey: key,
-            folderId: prompt.folderId || key,
-            tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-          };
-        });
-        chrome.storage.local.set({
-          [key]: { ...topic, prompts: updatedPrompts },
-        });
-        return updatedPrompts;
-      });
-
-    const noFolderPrompts = (data.noFolderPrompts || []).map((prompt) => {
-      if (!prompt.id) {
-        prompt.id = `prompt_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
-      }
-      return {
-        ...prompt,
-        storageKey: "noFolderPrompts",
-        folderId: null,
-        tags: Array.isArray(prompt.tags) ? prompt.tags : [],
-      };
-    });
-    if (data.noFolderPrompts) {
-      chrome.storage.local.set({ noFolderPrompts: noFolderPrompts });
+    // Falls keine Tags vorhanden
+    if (tags.length === 0) {
+      const noTags = document.createElement("div");
+      noTags.className = "no-tags";
+      noTags.textContent = "No tags available. Create one to get started! Enter for example: blog-post, email, tweet, press-release, finance, healthcare, marketing, e-commverce, education";
+      tagContainer.appendChild(noTags);
+      return;
     }
 
-    const prompts = [
-      ...folderPrompts,
-      ...hiddenFolderPrompts,
-      ...singlePrompts,
-      ...noFolderPrompts,
-    ];
-
-    tagContainer.innerHTML = tags
-      .map((tag) => {
-        const promptCount = prompts.filter(
-          (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
-        ).length;
-        return `
-          <div class="tag-box" data-tag="${escapeHTML(tag)}">
-            <span class="tag-name">${escapeHTML(tag)}</span>
-            <span class="prompt-count">${promptCount} Prompt${
-          promptCount !== 1 ? "s" : ""
-        }</span>
-            <button class="delete-tag-btn" data-tag="${escapeHTML(
-              tag
-            )}" title="Tag löschen">×</button>
-          </div>
-        `;
+    // Prompts in Array-Form bringen
+    const promptsArray = Object.entries(allPrompts).map(
+      ([promptId, prompt]) => ({
+        ...prompt,
+        id: promptId,
+        folderId: prompt.folderId || null,
+        tags: Array.isArray(prompt.tags) ? prompt.tags : [],
       })
-      .join("");
+    );
+
+    // Tag-Gitter erstellen
+    const tagGrid = document.createElement("div");
+    tagGrid.className = "tag-grid";
+    tagGrid.style.display = "flex"; // <-- Hinzugefügte Zeile
+
+    tags.forEach((tag) => {
+      const promptCount = promptsArray.filter((prompt) =>
+        prompt.tags.includes(tag)
+      ).length;
+
+      const tagBox = document.createElement("div");
+      tagBox.className = "tag-box";
+      tagBox.dataset.tag = escapeHTML(tag);
+      tagBox.innerHTML = `
+    <span class="tag-name">${escapeHTML(tag)}</span>
+    <span class="prompt-count">${promptCount} Prompt${
+        promptCount !== 1 ? "s" : ""
+      }</span>
+    <button class="delete-tag-btn" data-tag="${escapeHTML(
+      tag
+    )}" title="Tag löschen">×</button>
+  `;
+
+      tagGrid.appendChild(tagBox);
+    });
+
+    tagContainer.appendChild(tagGrid);
 
     // Event-Listener für Tag-Boxen (Modal öffnen)
     document.querySelectorAll(".tag-box").forEach((box) => {
       box.addEventListener("click", (e) => {
         if (!e.target.classList.contains("delete-tag-btn")) {
           const tag = box.dataset.tag;
-          showPromptModal(tag, prompts);
+          showPromptTagModal(tag, promptsArray);
         }
       });
     });
@@ -460,10 +468,188 @@ function loadTags() {
     // Event-Listener für Delete-Tag-Buttons
     document.querySelectorAll(".delete-tag-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
-        e.stopPropagation(); // Verhindert das Öffnen des Modals
+        e.stopPropagation();
         deleteTag(btn.dataset.tag);
       });
     });
+  });
+}
+
+function loadTypes() {
+  chrome.storage.local.get(["types", "prompts"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const types = data.types || [];
+    const allPrompts = data.prompts || {};
+    const tagContainer = document.getElementById("type-container");
+
+    if (!tagContainer) {
+      console.error("Type container not found");
+      return;
+    }
+
+    // Container leeren
+    tagContainer.innerHTML = "";
+
+    // Falls keine Types vorhanden
+    if (types.length === 0) {
+      const noTypes = document.createElement("div");
+      noTypes.className = "no-tags";
+      noTypes.textContent = "No types available. Create one to get started! Enter for example: textgen, rewrite, summarize, translate, ideation, adcopy, storytelling, analyze, classify, extract, compare, codegen, debug, refactor, explain-code, prompt-engineering, meta-prompt, assistant";
+      tagContainer.appendChild(noTypes);
+      return;
+    }
+
+    // Prompts in Array-Form bringen
+    const promptsArray = Object.entries(allPrompts).map(
+      ([promptId, prompt]) => ({
+        ...prompt,
+        id: promptId,
+        folderId: prompt.folderId || null,
+        types: Array.isArray(prompt.types) ? prompt.types : [], // hier korrigiert
+      })
+    );
+
+    // Tag-Gitter erstellen
+    const tagGrid = document.createElement("div");
+    tagGrid.className = "tag-grid";
+    tagGrid.style.display = "flex";
+
+    types.forEach((type) => {
+      const promptCount = promptsArray.filter(
+        (prompt) => prompt.types.includes(type) // ✅ korrekt
+      ).length;
+
+      const tagBox = document.createElement("div");
+      tagBox.className = "tag-box";
+      tagBox.dataset.type = escapeHTML(type); // ✅ konsistent
+      tagBox.innerHTML = `
+        <span class="tag-name">${escapeHTML(type)}</span>
+        <span class="prompt-count">${promptCount} Prompt${
+        promptCount !== 1 ? "s" : ""
+      }</span>
+        <button class="delete-tag-btn" data-type="${escapeHTML(
+          type
+        )}" title="Delete type">×</button>
+      `;
+
+      tagGrid.appendChild(tagBox);
+    });
+
+    tagContainer.appendChild(tagGrid);
+
+    // Event-Listener für Tag-Boxen (Modal öffnen)
+    document.querySelectorAll(".tag-box").forEach((box) => {
+      box.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("delete-tag-btn")) {
+          const type = box.dataset.type;
+          showPromptTypeModal(type, promptsArray);
+        }
+      });
+    });
+
+    // Event-Listener für Delete-Buttons
+    document.querySelectorAll(".delete-tag-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteType(btn.dataset.type);
+      });
+    });
+  });
+}
+
+function deleteType(typeToDelete) {
+  if (!typeToDelete) return;
+
+  chrome.storage.local.get(["types", "prompts"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const types = data.types || [];
+    const prompts = data.prompts || {};
+
+    // 1. Type aus der globalen Type-Liste entfernen
+    const updatedTypes = types.filter((type) => type !== typeToDelete);
+
+    // 2. Type bei allen Prompts löschen
+    const updatedPrompts = {};
+    for (const [promptId, prompt] of Object.entries(prompts)) {
+      if (Array.isArray(prompt.types) && prompt.types.includes(typeToDelete)) {
+        updatedPrompts[promptId] = {
+          ...prompt,
+          types: prompt.types.filter((type) => type !== typeToDelete),
+        };
+      }
+    }
+
+    // 3. Änderungen speichern
+    chrome.storage.local.set(
+      {
+        types: updatedTypes,
+        prompts: { ...prompts, ...updatedPrompts },
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving updated tags:", chrome.runtime.lastError);
+        } else {
+          console.log(
+            `Tag "${typeToDelete}" gelöscht und aus allen Prompts entfernt.`
+          );
+          loadTypes(); // UI neu laden
+        }
+      }
+    );
+  });
+}
+
+function deleteTag(tagToDelete) {
+  if (!tagToDelete) return;
+
+  chrome.storage.local.get(["tags", "prompts"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const tags = data.tags || [];
+    const prompts = data.prompts || {};
+
+    // 1. Tag aus der globalen Tag-Liste entfernen
+    const updatedTags = tags.filter((tag) => tag !== tagToDelete);
+
+    // 2. Tag bei allen Prompts löschen
+    const updatedPrompts = {};
+    for (const [promptId, prompt] of Object.entries(prompts)) {
+      if (Array.isArray(prompt.tags) && prompt.tags.includes(tagToDelete)) {
+        updatedPrompts[promptId] = {
+          ...prompt,
+          tags: prompt.tags.filter((tag) => tag !== tagToDelete),
+        };
+      }
+    }
+
+    // 3. Änderungen speichern
+    chrome.storage.local.set(
+      {
+        tags: updatedTags,
+        prompts: { ...prompts, ...updatedPrompts },
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error saving updated tags:", chrome.runtime.lastError);
+        } else {
+          console.log(
+            `Tag "${tagToDelete}" gelöscht und aus allen Prompts entfernt.`
+          );
+          loadTags(); // UI neu laden
+        }
+      }
+    );
   });
 }
 
@@ -505,7 +691,42 @@ function initializeTags() {
   });
 }
 
-function showPromptModal(tag, prompts) {
+function initializeTypes() {
+  chrome.storage.local.get("types", (data) => {
+    if (!data.types) {
+      const defaultTypes = [
+        //  <!-- Generative Aufgaben -->
+        "textgen",
+        "rewrite",
+        "summarize",
+        "translate",
+        "ideation",
+        "adcopy",
+        "storytelling",
+        // <!-- Analytische Aufgaben -->
+        "analyze",
+        "classify",
+        "extract",
+        "compare",
+        // <!-- Technische Aufgaben -->
+        "codegen",
+        "debug",
+        "refactor",
+        "explain-code",
+        // <!-- Prompt-spezifische Aufgaben -->
+        "prompt-engineering",
+        "meta-prompt",
+        // <!-- Sonstige -->
+        "assistant",
+      ];
+      chrome.storage.local.set({ types: defaultTypes }, () => {
+        console.log("Default types initialized");
+      });
+    }
+  });
+}
+
+function showPromptTagModal(tag) {
   const modal = document.getElementById("promptModal");
   const modalTagName = document.getElementById("modalTagName");
   const modalPromptList = document.getElementById("modalPromptList");
@@ -515,166 +736,313 @@ function showPromptModal(tag, prompts) {
     return;
   }
 
-  modalTagName.textContent = escapeHTML(tag);
-  const filteredPrompts = prompts.filter(
-    (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
-  );
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    const allPrompts = data.prompts || {};
+    const folders = data.folders || {};
 
-  if (filteredPrompts.length === 0) {
-    modalPromptList.innerHTML = "<p>No prompts found for this tag.</p>";
-  } else {
-    modalPromptList.innerHTML = filteredPrompts
-      .map((prompt) => {
-        return `
-          <div class="prompt-item" data-prompt-id="${escapeHTML(
-            prompt.id
-          )}" data-storage-key="${escapeHTML(
-          prompt.storageKey
-        )}" data-folder="${escapeHTML(
-          prompt.folderName || "Kein Ordner"
-        )}" style="cursor: pointer;">
-            <h3>${escapeHTML(prompt.title || "Untitled")}</h3>
-            <p>Category: ${escapeHTML(prompt.folderName || "Kein Ordner")}</p>
-            <p>Created: ${new Date(prompt.createdAt || 0).toLocaleString()}</p>
-            <button class="remove-tag-btn" data-tag="${escapeHTML(
-              tag
-            )}" data-prompt-id="${escapeHTML(
-          prompt.id
-        )}" data-storage-key="${escapeHTML(
-          prompt.storageKey
-        )}" title="Tag von diesem Prompt entfernen">×</button>
-          </div>
-        `;
-      })
-      .join("");
-  }
+    modalTagName.textContent = escapeHTML(tag);
 
-  // Entferne alte Event-Listener für remove-tag-btn
-  const removeTagButtons = document.querySelectorAll(".remove-tag-btn");
-  removeTagButtons.forEach((btn) => {
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
-  });
+    // Alle Prompts filtern, die den Tag enthalten
+    const filteredPrompts = Object.values(allPrompts).filter(
+      (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
+    );
 
-  // Füge neue Event-Listener für remove-tag-btn hinzu
-  document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const tag = btn.dataset.tag;
-      const promptId = btn.dataset.promptId;
-      const storageKey = btn.dataset.storageKey;
-      console.log(
-        `Remove tag button clicked: tag=${tag}, promptId=${promptId}, storageKey=${storageKey}`
-      );
-      if (!promptId) {
-        console.error("Prompt-ID fehlt oder ist undefined!");
-      }
-      removeTagFromPrompt(tag, storageKey, promptId);
+    if (filteredPrompts.length === 0) {
+      modalPromptList.innerHTML = "<p>No prompts found for this tag.</p>";
+    } else {
+      modalPromptList.innerHTML = filteredPrompts
+        .map((prompt) => {
+          const folderName = prompt.folderId
+            ? folders[prompt.folderId]?.name || "Unbekannter Ordner"
+            : "Kein Ordner";
+
+          return `
+            <div class="prompt-item" 
+                 data-prompt-id="${escapeHTML(prompt.promptId)}" 
+                 data-folder-id="${escapeHTML(prompt.folderId || "")}"
+                 style="cursor: pointer;">
+              <h3>${escapeHTML(prompt.title || "Untitled")}</h3>
+              <p>Category: ${escapeHTML(folderName)}</p>
+              <p>Created: ${new Date(
+                prompt.createdAt || 0
+              ).toLocaleString()}</p>
+              <button class="remove-tag-btn" 
+                      data-tag="${escapeHTML(tag)}" 
+                      data-prompt-id="${escapeHTML(prompt.promptId)}" 
+                      title="Tag von diesem Prompt entfernen">×</button>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    // Remove-Type-Button Click Events setzen
+    document.querySelectorAll(".remove-type-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const type = btn.dataset.type;
+        const promptId = btn.dataset.promptId;
+
+        if (!promptId) {
+          console.error("Prompt-ID fehlt oder ist undefined!");
+          return;
+        }
+
+        removeTypeFromPrompt(type, promptId);
+      });
     });
-  });
 
-  // Füge Event-Listener für Klicks auf prompt-item hinzu
-  document.querySelectorAll(".prompt-item").forEach((item) => {
-    item.addEventListener("click", (e) => {
-      if (!e.target.classList.contains("remove-tag-btn")) {
-        const folder = item.dataset.folder;
-        const storageKey = item.dataset.storageKey;
-        console.log(
-          `Prompt item clicked, navigating to folder: ${folder}, storageKey: ${storageKey}`
-        );
-        if (
-          folder === "Kein Ordner" ||
-          storageKey.startsWith("single_prompt_") ||
-          storageKey === "noFolderPrompts"
-        ) {
-          modal.style.display = "none";
+    // Remove-Tag-Button Click Events setzen
+    document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const tag = btn.dataset.tag;
+        const promptId = btn.dataset.promptId;
+
+        if (!promptId) {
+          console.error("Prompt-ID fehlt oder ist undefined!");
+          return;
+        }
+
+        removeTagFromPrompt(tag, promptId);
+      });
+    });
+
+    // Prompt-Item Click Events setzen
+    document.querySelectorAll(".prompt-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        const folderId = item.dataset.folderId;
+        modal.style.display = "none";
+
+        if (!folderId) {
+          // Kein Ordner → Single Prompts Ansicht
           switchView("prompts-view", {
             view: "prompts",
             category: "Single Prompts",
           });
-          // Verwende den übersetzten Text aus der Navigation
-          const singlePromptsNavItem = document.querySelector(
-            '.accordion-content li[data-folder="Single Prompts"]'
-          );
-          document.getElementById("prompts-header").textContent =
-            singlePromptsNavItem
-              ? singlePromptsNavItem.textContent.trim()
-              : "Single Prompts"; // Fallback
           handleCategoryClick("Single Prompts");
         } else {
-          modal.style.display = "none";
-          switchView("prompts-view", { view: "prompts", folder: folder });
-          handleFolderClick(folder);
+          // Ordneransicht
+          switchView("prompts-view", { view: "prompts", folderId });
+          handleFolderClick(folderId);
         }
+      });
+    });
+
+    // Modal schließen
+    const closeModal = document.querySelector(".close-modal");
+    if (closeModal) {
+      closeModal.addEventListener("click", () => {
+        modal.style.display = "none";
+      });
+    }
+
+    modal.style.display = "flex";
+  });
+}
+
+function showPromptTypeModal(type) {
+  const modal = document.getElementById("promptModal");
+  const modalTagName = document.getElementById("modalTagName");
+  const modalPromptList = document.getElementById("modalPromptList");
+
+  if (!modal || !modalTagName || !modalPromptList) {
+    console.error("Modal elements not found");
+    return;
+  }
+
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    const allPrompts = data.prompts || {};
+    const folders = data.folders || {};
+
+    modalTagName.textContent = escapeHTML(type);
+
+    // Alle Prompts filtern, die den Tag enthalten
+    const filteredPrompts = Object.values(allPrompts).filter(
+      (prompt) => Array.isArray(prompt.types) && prompt.types.includes(type)
+    );
+
+    if (filteredPrompts.length === 0) {
+      modalPromptList.innerHTML = "<p>No prompts found for this type.</p>";
+    } else {
+      modalPromptList.innerHTML = filteredPrompts
+        .map((prompt) => {
+          const folderName = prompt.folderId
+            ? folders[prompt.folderId]?.name || "Unbekannter Ordner"
+            : "Kein Ordner";
+
+          return `
+            <div class="prompt-item" 
+                 data-prompt-id="${escapeHTML(prompt.promptId)}" 
+                 data-folder-id="${escapeHTML(prompt.folderId || "")}"
+                 style="cursor: pointer;">
+              <h3>${escapeHTML(prompt.title || "Untitled")}</h3>
+              <p>Category: ${escapeHTML(folderName)}</p>
+              <p>Created: ${new Date(
+                prompt.createdAt || 0
+              ).toLocaleString()}</p>
+              <button class="remove-type-btn" 
+                      data-type="${escapeHTML(type)}" 
+                      data-prompt-id="${escapeHTML(prompt.promptId)}" 
+                      title="Type von diesem Prompt entfernen">×</button>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    // Remove-Type-Button Click Events setzen
+    document.querySelectorAll(".remove-type-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const type = btn.dataset.type;
+        const promptId = btn.dataset.promptId;
+
+        if (!promptId) {
+          console.error("Prompt-ID fehlt oder ist undefined!");
+          return;
+        }
+
+        removeTypeFromPrompt(type, promptId);
+      });
+    });
+
+    // Prompt-Item Click Events setzen
+    document.querySelectorAll(".prompt-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        const folderId = item.dataset.folderId;
+        modal.style.display = "none";
+
+        if (!folderId) {
+          // Kein Ordner → Single Prompts Ansicht
+          switchView("prompts-view", {
+            view: "prompts",
+            category: "Single Prompts",
+          });
+          handleCategoryClick("Single Prompts");
+        } else {
+          // Ordneransicht
+          switchView("prompts-view", { view: "prompts", folderId });
+          handleFolderClick(folderId);
+        }
+      });
+    });
+
+    // Modal schließen
+    const closeModal = document.querySelector(".close-modal");
+    if (closeModal) {
+      closeModal.addEventListener("click", () => {
+        modal.style.display = "none";
+      });
+    }
+
+    modal.style.display = "flex";
+  });
+}
+
+/**
+ * Entfernt einen Tag aus einem Prompt und aktualisiert den Speicher + DOM.
+ */
+function removeTagFromPrompt(tag, promptId) {
+  chrome.storage.local.get(["prompts"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading prompts:", chrome.runtime.lastError);
+      return;
+    }
+
+    const prompts = data.prompts || {};
+
+    if (!prompts[promptId]) {
+      console.error(`Prompt mit ID ${promptId} nicht gefunden`);
+      return;
+    }
+
+    const prompt = prompts[promptId];
+
+    if (!Array.isArray(prompt.tags) || !prompt.tags.includes(tag)) {
+      console.warn(`Tag "${tag}" nicht im Prompt ${promptId} enthalten`);
+      return;
+    }
+
+    // Tag entfernen
+    prompts[promptId] = {
+      ...prompt,
+      tags: prompt.tags.filter((t) => t !== tag),
+    };
+
+    // Änderungen speichern
+    chrome.storage.local.set({ prompts }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Error saving updated prompts:",
+          chrome.runtime.lastError
+        );
+        return;
+      }
+
+      console.log(`Tag "${tag}" wurde aus Prompt ${promptId} entfernt.`);
+
+      // Prompt-Element aus der Tag-Liste entfernen
+      const promptElement = document.querySelector(
+        `#modalPromptList .prompt-item[data-prompt-id="${CSS.escape(
+          promptId
+        )}"]`
+      );
+      if (promptElement) {
+        promptElement.remove();
       }
     });
   });
-
-  // Modal schließen bei Klick auf close-modal
-  const closeModal = document.querySelector(".close-modal");
-  if (closeModal) {
-    closeModal.addEventListener("click", () => {
-      modal.style.display = "none";
-    });
-  }
-
-  modal.style.display = "flex";
 }
 
-function removeTagFromPrompt(tag, storageKey, promptId) {
-  chrome.storage.local.get(storageKey, (data) => {
+function removeTypeFromPrompt(type, promptId) {
+  chrome.storage.local.get(["prompts"], (data) => {
     if (chrome.runtime.lastError) {
-      console.error("Error loading storage key:", chrome.runtime.lastError);
-      return;
-    }
-    let promptsData = data[storageKey];
-    if (!promptsData) {
-      console.error(`Storage key ${storageKey} not found`);
+      console.error("Error loading prompts:", chrome.runtime.lastError);
       return;
     }
 
-    const isFolder = storageKey !== "noFolderPrompts" && promptsData.prompts;
-    const updatedPrompts = (isFolder ? promptsData.prompts : promptsData).map(
-      (prompt) => {
-        if (
-          String(prompt.id) === String(promptId) &&
-          Array.isArray(prompt.tags) &&
-          prompt.tags.includes(tag)
-        ) {
-          return {
-            ...prompt,
-            tags: prompt.tags.filter((t) => t !== tag),
-          };
-        }
-        return prompt;
-      }
-    );
+    const prompts = data.prompts || {};
 
-    const saveData = isFolder
-      ? { [storageKey]: { ...promptsData, prompts: updatedPrompts } }
-      : { [storageKey]: updatedPrompts };
-    chrome.storage.local.set(saveData, () => {
+    if (!prompts[promptId]) {
+      console.error(`Prompt mit ID ${promptId} nicht gefunden`);
+      return;
+    }
+
+    const prompt = prompts[promptId];
+
+    if (!Array.isArray(prompt.types) || !prompt.types.includes(type)) {
+      console.warn(`Type "${type}" nicht im Prompt ${promptId} enthalten`);
+      return;
+    }
+
+    // Type entfernen
+    prompts[promptId] = {
+      ...prompt,
+      types: prompt.types.filter((t) => t !== type),
+    };
+
+    // Änderungen speichern
+    chrome.storage.local.set({ prompts }, () => {
       if (chrome.runtime.lastError) {
-        console.error("Error saving prompts:", chrome.runtime.lastError);
+        console.error(
+          "Error saving updated prompts:",
+          chrome.runtime.lastError
+        );
         return;
       }
-      console.log(`Tag ${tag} removed from prompt ${promptId}`);
-      // DOM direkt aktualisieren
-      const promptItem = document.querySelector(
-        `.prompt-item[data-prompt-id="${escapeHTML(
+
+      console.log(`Type "${type}" wurde aus Prompt ${promptId} entfernt.`);
+
+      // Prompt-Element aus der Tag-Liste entfernen
+      const promptElement = document.querySelector(
+        `#modalPromptList .prompt-item[data-prompt-id="${CSS.escape(
           promptId
-        )}"][data-storage-key="${escapeHTML(storageKey)}"]`
+        )}"]`
       );
-      if (promptItem) {
-        const remainingTags =
-          updatedPrompts.find((p) => String(p.id) === String(promptId))?.tags ||
-          [];
-        if (!remainingTags.includes(tag)) {
-          promptItem.remove(); // Entferne das prompt-item, wenn der Tag nicht mehr vorhanden ist
-        }
+      if (promptElement) {
+        promptElement.remove();
       }
-      // Optional: loadTags(), falls die Tag-Boxen aktualisiert werden sollen
-      loadTags(); // Tags neu laden, um Modal und Tag-Counts zu aktualisieren
     });
   });
 }

@@ -323,6 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("edit-btn").addEventListener("click", () => {
+    console.log("du wirst gerade bearbeitet!");
     const entryTitle = document.getElementById("entry-title");
     const entryDescription = document.getElementById("entry-description");
     const entryContent = document.getElementById("entry-content");
@@ -370,7 +371,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       promptObj.versions.unshift({
-        versionId: generateUUID(),
+        versionId: `${Date.now()}_${generateUUID()}`,
         title,
         description,
         content,

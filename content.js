@@ -87,14 +87,486 @@ setInterval(() => {
   ) {
     addQwenAiButton();
   }
+  if (
+    window.location.hostname === "meta.ai" ||
+    (window.location.hostname === "www.meta.ai" && path.startsWith("/prompt/"))
+  ) {
+    addMetaAiButton();
+  }
 }, 3000); // Alle 3 Sekunden prüfen
 
 inputFieldTrigger();
 
-/**
- * Displays a modal for saving a prompt with a multi-step form, using Shadow DOM for isolation.
- * @param {string} message The initial prompt message to display.
- */
+// Subfunction to handle creating a new prompt
+async function createNewPrompt(
+  promptTitle,
+  promptDescription,
+  promptContent,
+  closeModal
+) {
+  console.log("So werde ich gespeichert bei PromptSaver");
+  const promptId = `${Date.now()}_${generateUUID()}`;
+  const hostname = window.location.hostname.toLowerCase();
+
+  let compatibleModels;
+
+  if (hostname === "chatgpt.com") {
+    compatibleModels = ["ChatGPT"];
+  } else if (hostname === "grok.com") {
+    compatibleModels = ["Grok"];
+  } else if (hostname === "gemini.google.com") {
+    compatibleModels = ["Gemini"];
+  } else if (hostname === "claude.ai") {
+    compatibleModels = ["Claude"];
+  } else if (hostname === "blackbox.ai") {
+    compatibleModels = ["Blackbox"];
+  } else if (hostname === "github.com/copilot/") {
+    compatibleModels = ["Copilot"];
+  } else if (hostname === "copilot.microsoft.com") {
+    compatibleModels = ["Microsoft Copilot"];
+  } else if (hostname === "chat.mistral.ai") {
+    compatibleModels = ["Mistral"];
+  } else if (
+    hostname === "duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
+  ) {
+    compatibleModels = ["DuckDuckGo"];
+  } else if (hostname === "perplexity.ai") {
+    compatibleModels = ["Perplexity"];
+  } else if (hostname === "chat.deepseek.com") {
+    compatibleModels = ["DeepSeek"];
+  } else if (hostname === "deepai.org/chat") {
+    compatibleModels = ["Deepai"];
+  } else if (hostname === "chat.qwen.ai") {
+    compatibleModels = ["Qwen AI"];
+  } else if (hostname === "meta.ai") {
+    compatibleModels = ["Meta AI"];
+  } else {
+    compatibleModels = ["Unknown"];
+  }
+
+  console.log(compatibleModels);
+
+  const incompatibleModels = [];
+  const tags = [];
+  const isFavorite = false;
+  const folderId = null;
+  const notes = "";
+  const type = "";
+
+  const newPrompt = {
+    promptId: promptId,
+    title: promptTitle,
+    description: promptDescription,
+    content: promptContent,
+    notes,
+    type,
+    compatibleModels,
+    incompatibleModels,
+    tags,
+    isFavorite,
+    folderId,
+    createdAt: Date.now(),
+    updatedAt: null,
+    usageCount: 0,
+    lastUsed: null,
+    isTrash: false, // Hinzugefügt für Konsistenz
+    deletedAt: null, // Hinzugefügt für Konsistenz
+    trashedAt: null,
+    versions: [
+      {
+        versionId: `${Date.now()}_${generateUUID()}`,
+        title: promptTitle,
+        description: promptDescription,
+        content: promptContent,
+        timestamp: Date.now(),
+      },
+    ],
+    metaChangeLog: [
+      {
+        timestamp: Date.now(),
+        changes: {
+          title: { from: null, to: promptTitle },
+          description: { from: null, to: promptDescription },
+          content: { from: null, to: promptContent },
+          type: { from: null, to: type },
+          compatibleModels: { from: [], to: compatibleModels },
+          incompatibleModels: { from: [], to: incompatibleModels },
+          tags: { from: [], to: tags },
+          isFavorite: { from: false, to: isFavorite },
+          folderId: { from: null, to: folderId },
+          notes: { from: null, to: notes },
+        },
+      },
+    ],
+    performanceHistory: [],
+  };
+
+  try {
+    // Bestehende Prompts laden
+    const data = await new Promise((resolve, reject) => {
+      chrome.storage.local.get(["prompts", "folders"], (data) => {
+        // Hinzugefügt: "folders" laden, um updateTable zu unterstützen
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+
+    const prompts = data.prompts || {};
+    const folders = data.folders || {}; // Hinzugefügt für updateTable
+    prompts[promptId] = newPrompt;
+
+    // Neuen Prompt speichern
+    await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ prompts }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          console.log("Neuer Prompt gespeichert:", { promptId });
+          // Tabelle aktualisieren
+          updateTable(newPrompt, folderId, false, folders);
+          resolve();
+        }
+      });
+    });
+
+    // Kategorie neu rendern
+    const category = "Single Prompts"; // Standardkategorie für neue Prompts ohne Ordner
+    handleCategoryClick(category);
+
+    alert("Prompt erfolgreich erstellt!");
+    closeModal();
+  } catch (error) {
+    console.error("Fehler beim Erstellen des Prompts:", error);
+    alert("Fehler beim Erstellen des Prompts: " + error.message);
+  }
+}
+
+// Subfunction to handle replacing an existing prompt
+async function replacePrompt(
+  promptTitle,
+  promptDescription,
+  promptContent,
+  folderId,
+  promptId,
+  closeModal
+) {
+  try {
+    const data = await new Promise((resolve, reject) => {
+      chrome.storage.local.get(["prompts", "folders"], (data) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+
+    const { prompts = {}, folders = {} } = data;
+
+    if (!prompts[promptId]) {
+      alert("Prompt nicht gefunden!");
+      return;
+    }
+
+    const oldPrompt = prompts[promptId];
+    const currentUrl = window.location.hostname;
+    const compatibleModels = currentUrl.includes("chatgpt.com")
+      ? ["ChatGPT"]
+      : ["Unknown"];
+    const incompatibleModels = oldPrompt.incompatibleModels || [];
+    const tags = oldPrompt.tags || [];
+    const isFavorite = oldPrompt.isFavorite || false;
+    const notes = oldPrompt.notes || "";
+    const type = oldPrompt.type || "default";
+
+    // Neue Version anhängen
+    const newVersion = {
+      versionId: `${Date.now()}_${generateUUID()}`,
+      title: promptTitle,
+      description: promptDescription,
+      content: promptContent,
+      timestamp: Date.now(),
+    };
+
+    const updatedPrompt = {
+      ...oldPrompt,
+      title: promptTitle,
+      description: promptDescription,
+      content: promptContent,
+      notes,
+      type,
+      compatibleModels,
+      incompatibleModels,
+      tags,
+      isFavorite,
+      folderId,
+      updatedAt: Date.now(),
+      usageCount: oldPrompt.usageCount || 0,
+      lastUsed: oldPrompt.lastUsed || null,
+      versions: [newVersion, ...(oldPrompt.versions || [])],
+      metaChangeLog: [
+        {
+          timestamp: Date.now(),
+          changes: {
+            title: { from: oldPrompt.title, to: promptTitle },
+            description: { from: oldPrompt.description, to: promptDescription },
+            content: { from: oldPrompt.content, to: promptContent },
+            compatibleModels: {
+              from: oldPrompt.compatibleModels || [],
+              to: compatibleModels,
+            },
+          },
+        },
+        ...(oldPrompt.metaChangeLog || []),
+      ],
+      performanceHistory: oldPrompt.performanceHistory || [],
+    };
+
+    prompts[promptId] = updatedPrompt;
+
+    // Optional: Wenn das Prompt der einzige Eintrag in einem Folder ist, kann man den Namen anpassen
+    if (folderId && folders[folderId]) {
+      const folder = folders[folderId];
+      if (folder.promptIds.length === 1) {
+        folder.name = promptTitle;
+      }
+    }
+
+    await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ prompts, folders }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          console.log(`Prompt ${promptId} erfolgreich ersetzt.`);
+          alert("Prompt erfolgreich ersetzt!");
+          resolve();
+        }
+      });
+    });
+
+    closeModal();
+  } catch (error) {
+    console.error("Fehler beim Ersetzen des Prompts:", error);
+    alert("Fehler beim Ersetzen des Prompts.");
+  }
+}
+
+// Subfunction to handle adding a prompt to a folder
+async function addPromptToFolder(
+  promptTitle,
+  promptDescription,
+  promptContent,
+  folderId,
+  closeModal
+) {
+  const promptId = `${Date.now()}_${generateUUID()}`;
+  const currentUrl = window.location.hostname;
+  const compatibleModels = currentUrl.includes("chatgpt.com")
+    ? ["ChatGPT"]
+    : ["Unknown"];
+  const incompatibleModels = [];
+  const tags = [];
+  const isFavorite = false;
+  const notes = "";
+  const type = "default"; // Assuming a default type; adjust as needed
+
+  try {
+    const data = await new Promise((resolve, reject) => {
+      chrome.storage.local.get(["prompts", "folders"], (data) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+
+    if (!folders[folderId]) {
+      throw new Error(`Folder ${folderId} does not exist.`);
+    }
+
+
+    const promptObject = {
+      title: promptTitle,
+      description: promptDescription,
+      content: promptContent,
+      notes,
+      type,
+      compatibleModels,
+      incompatibleModels,
+      tags,
+      isFavorite,
+      folderId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      usageCount: 0,
+      lastUsed: null,
+      versions: [
+        {
+          versionId: `${Date.now()}_${generateUUID()}`,
+          title: promptTitle,
+          description: promptDescription,
+          content: promptContent,
+          timestamp: Date.now(),
+        },
+      ],
+      metaChangeLog: [
+        {
+          timestamp: Date.now(),
+          changes: {
+            title: { from: null, to: promptTitle },
+            description: { from: null, to: promptDescription },
+            content: { from: null, to: promptContent },
+            type: { from: null, to: type },
+            compatibleModels: { from: [], to: compatibleModels },
+            incompatibleModels: { from: [], to: incompatibleModels },
+            tags: { from: [], to: tags },
+            isFavorite: { from: false, to: isFavorite },
+            folderId: { from: null, to: folderId },
+            notes: { from: null, to: notes },
+          },
+        },
+      ],
+      performanceHistory: [],
+    };
+
+    prompts[promptId] = promptObject;
+
+    folders[folderId].promptIds = folders[folderId].promptIds || [];
+    folders[folderId].promptIds.push(promptId);
+
+    await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ prompts, folders }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          console.log(`Prompt ${promptId} added to folder ${folderId}`);
+          alert("Prompt erfolgreich zum Ordner hinzugefügt!");
+          resolve();
+        }
+      });
+    });
+
+    closeModal();
+  } catch (error) {
+    console.error("Error adding prompt to folder:", error);
+    alert("Fehler beim Hinzufügen des Prompts: " + error.message);
+  }
+}
+
+// Subfunction to handle combining with an existing prompt
+async function combineWithExistingPrompt(
+  promptTitle,
+  promptDescription,
+  combinedText,
+  promptId,
+  closeModal
+) {
+  try {
+    const data = await new Promise((resolve, reject) => {
+      chrome.storage.local.get(["prompts", "folders"], (data) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+
+    if (!prompts[promptId]) {
+      alert("Prompt nicht gefunden!");
+      return;
+    }
+
+    const existingPrompt = prompts[promptId];
+    const currentUrl = window.location.hostname;
+    const compatibleModels = currentUrl.includes("chatgpt.com")
+      ? ["ChatGPT"]
+      : ["Unknown"];
+    const incompatibleModels = existingPrompt.incompatibleModels || [];
+    const tags = existingPrompt.tags || [];
+    const isFavorite = existingPrompt.isFavorite || false;
+    const folderId = existingPrompt.folderId || null;
+    const notes = existingPrompt.notes || "";
+    const type = existingPrompt.type || "default";
+
+    const newVersion = {
+      versionId: `${Date.now()}_${generateUUID()}`,
+      title: promptTitle,
+      description: promptDescription,
+      content: combinedText,
+      timestamp: Date.now(),
+    };
+
+    const updatedPrompt = {
+      ...existingPrompt,
+      title: promptTitle,
+      description: promptDescription,
+      content: combinedText,
+      notes,
+      type,
+      compatibleModels,
+      incompatibleModels,
+      tags,
+      isFavorite,
+      folderId,
+      updatedAt: Date.now(),
+      usageCount: existingPrompt.usageCount || 0,
+      lastUsed: existingPrompt.lastUsed || null,
+      versions: [newVersion, ...(existingPrompt.versions || [])],
+      metaChangeLog: [
+        {
+          timestamp: Date.now(),
+          changes: {
+            title: { from: existingPrompt.title, to: promptTitle },
+            description: {
+              from: existingPrompt.description,
+              to: promptDescription,
+            },
+            content: { from: existingPrompt.content, to: combinedText },
+            compatibleModels: {
+              from: existingPrompt.compatibleModels || [],
+              to: compatibleModels,
+            },
+          },
+        },
+        ...(existingPrompt.metaChangeLog || []),
+      ],
+      performanceHistory: existingPrompt.performanceHistory || [],
+    };
+
+    prompts[promptId] = updatedPrompt;
+
+    await new Promise((resolve, reject) => {
+      chrome.storage.local.set({ prompts }, () => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          console.log(
+            `Prompt ${promptId} erfolgreich kombiniert und gespeichert.`
+          );
+          alert("Prompt erfolgreich kombiniert und gespeichert!");
+          resolve();
+        }
+      });
+    });
+
+    closeModal();
+  } catch (error) {
+    console.error("Fehler beim Kombinieren des Prompts:", error);
+    alert("Fehler beim Kombinieren des Prompts.");
+  }
+}
+
 async function promptSaver(message) {
   // Sicherstellen, dass der DOM verfügbar ist
   if (!document.body || !document.head) {
@@ -192,7 +664,6 @@ async function promptSaver(message) {
   checkboxContainer.style.marginTop = "10px";
   checkboxContainer.style.display = "flex";
   checkboxContainer.style.alignItems = "center";
-  // Checkbox-Container nur anzeigen, wenn ein Doppelpunkt im Text vorhanden ist
   checkboxContainer.style.display = message.includes(":") ? "flex" : "none";
 
   const showFullContentCheckbox = document.createElement("input");
@@ -218,7 +689,6 @@ async function promptSaver(message) {
       : originalMessage;
   });
 
-  // Dynamische Anpassung, falls der Benutzer den Text in der Textarea bearbeitet
   promptTextarea.addEventListener("input", (e) => {
     const currentText = e.target.value;
     checkboxContainer.style.display = currentText.includes(":")
@@ -289,7 +759,7 @@ async function promptSaver(message) {
 
   const replaceFolderLabel = document.createElement("label");
   replaceFolderLabel.setAttribute("for", "replaceFolderSelect");
-  replaceFolderLabel.textContent = "Select folder or Category:";
+  replaceFolderLabel.textContent = "Select folder or Category focusing:";
 
   const replaceFolderSelect = document.createElement("select");
   replaceFolderSelect.id = "replaceFolderSelect";
@@ -409,7 +879,6 @@ async function promptSaver(message) {
   newFolderSection.appendChild(createFolderButton);
   addContent.appendChild(newFolderSection);
 
-  // combineContent Block
   const combineContent = document.createElement("div");
   combineContent.id = "combine";
   combineContent.className = "option-content";
@@ -453,14 +922,6 @@ async function promptSaver(message) {
   suggestedPromptsDropdown.appendChild(suggestedDropdownButton);
   suggestedPromptsDropdown.appendChild(suggestedDropdownContent);
 
-  // Event-Listener für Dropdown-Button
-  suggestedDropdownButton.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const currentDisplay = suggestedDropdownContent.style.display;
-    suggestedDropdownContent.style.display =
-      currentDisplay === "block" ? "none" : "block";
-  });
-
   const combinePromptLabel = document.createElement("label");
   combinePromptLabel.setAttribute("for", "combinePromptSelect");
   combinePromptLabel.textContent = "Select existing prompt:";
@@ -495,349 +956,8 @@ async function promptSaver(message) {
   combineContent.appendChild(previewLabel);
   combineContent.appendChild(combinedPromptPreview);
 
-  // Aktualisierte loadCombinePrompts Funktion
-  async function loadCombinePrompts(currentPrompt) {
-    console.log(
-      "loadCombinePrompts gestartet mit currentPrompt:",
-      currentPrompt
-    );
-    try {
-      const data = await new Promise((resolve, reject) => {
-        chrome.storage.local.get(null, (data) => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
-          } else {
-            resolve(data);
-          }
-        });
-      });
-
-      combinePromptSelect.innerHTML =
-        '<option value="">Select a prompt</option>';
-      suggestedDropdownContent.innerHTML = "";
-      suggestedDropdownButton.textContent = "Select a suggested prompt";
-      suggestedPromptsDropdown.style.display = "none";
-      suggestedPromptsLabel.style.display = "none";
-
-      const allPrompts = [];
-      Object.entries(data).forEach(([folderId, topic]) => {
-        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
-          topic.prompts.forEach((prompt, index) => {
-            const similarity = currentPrompt
-              ? computeCosineSimilarity(currentPrompt, prompt.content || "")
-              : 0;
-            allPrompts.push({
-              folderId,
-              index,
-              title: prompt.title || "Untitled Prompt",
-              content: prompt.content || "",
-              folderName: topic.isHidden ? "Single Prompt" : topic.name,
-              createdAt: prompt.createdAt || 0,
-              similarity,
-            });
-          });
-        }
-      });
-
-      console.log("Alle Prompts geladen:", allPrompts.length);
-
-      // Populate combinePromptSelect (alle Prompts)
-      allPrompts
-        .sort((a, b) => b.createdAt - a.createdAt) // Neueste zuerst
-        .forEach((prompt) => {
-          const option = document.createElement("option");
-          option.value = `${prompt.folderId}:${prompt.index}`;
-          option.textContent = `${prompt.title} (${prompt.folderName})`;
-          option.title = prompt.title;
-          combinePromptSelect.appendChild(option);
-        });
-
-      // Populate suggested prompts dropdown (max. 5 neueste oder ähnliche Prompts)
-      if (currentPrompt && currentPrompt.trim() !== "") {
-        const suggestedPrompts = allPrompts
-          .sort((a, b) => {
-            // Priorität 1: Neueste Prompts (createdAt)
-            if (a.createdAt !== b.createdAt) {
-              return b.createdAt - a.createdAt;
-            }
-            // Priorität 2: Ähnlichkeit (falls createdAt gleich)
-            return b.similarity - a.similarity;
-          })
-          .slice(0, 5); // Max. 5 Vorschläge
-
-        console.log("Vorgeschlagene Prompts:", suggestedPrompts);
-
-        if (suggestedPrompts.length > 0) {
-          suggestedPromptsDropdown.style.display = "block";
-          suggestedPromptsLabel.style.display = "block";
-          suggestedPrompts.forEach((prompt) => {
-            const item = document.createElement("div");
-            item.className = "dropdown-item";
-            item.setAttribute(
-              "data-value",
-              `${prompt.folderId}:${prompt.index}`
-            );
-
-            const header = document.createElement("div");
-            header.className = "dropdown-item-header";
-
-            const title = document.createElement("span");
-            title.className = "dropdown-item-title";
-            title.textContent =
-              prompt.title.length > 50
-                ? prompt.title.slice(0, 50) + "..."
-                : prompt.title;
-            title.title = `${prompt.title} (Ähnlichkeit: ${(
-              prompt.similarity * 100
-            ).toFixed(2)}%, Kategorie: ${
-              prompt.folderName
-            }, Erstellt: ${new Date(prompt.createdAt).toLocaleDateString()})`;
-
-            const toggle = document.createElement("span");
-            toggle.className = "dropdown-item-toggle";
-            toggle.textContent = "Inhalt anzeigen";
-
-            header.appendChild(title);
-            header.appendChild(toggle);
-
-            const contentWrapper = document.createElement("div");
-            contentWrapper.className = "dropdown-item-content-wrapper";
-            contentWrapper.style.display = "none";
-
-            const contentLabel = document.createElement("div");
-            contentLabel.className = "dropdown-item-label";
-            contentLabel.textContent = "Prompt-Inhalt:";
-
-            const content = document.createElement("div");
-            content.className = "dropdown-item-content";
-            content.style.marginBottom = "10px";
-            content.style.padding = "10px";
-            content.style.background = "#f8f9fa";
-            content.style.borderRadius = "4px";
-            content.style.fontSize = "13px";
-            content.style.color = "#2c3e50";
-            content.style.whiteSpace = "pre-wrap";
-            content.textContent = prompt.content || "Kein Inhalt verfügbar";
-
-            contentWrapper.appendChild(contentLabel);
-            contentWrapper.appendChild(content);
-
-            item.appendChild(header);
-            item.appendChild(contentWrapper);
-
-            toggle.addEventListener("click", (e) => {
-              e.stopPropagation();
-              const isActive = contentWrapper.style.display === "block";
-              contentWrapper.style.display = isActive ? "none" : "block";
-              toggle.textContent = isActive
-                ? "Inhalt anzeigen"
-                : "Inhalt ausblenden";
-            });
-
-            item.addEventListener("click", () => {
-              combinePromptSelect.value = `${prompt.folderId}:${prompt.index}`;
-              suggestedDropdownButton.textContent = prompt.title;
-              suggestedDropdownContent.style.display = "none";
-              const event = new Event("change");
-              combinePromptSelect.dispatchEvent(event);
-            });
-
-            suggestedDropdownContent.appendChild(item);
-          });
-        } else {
-          suggestedDropdownContent.innerHTML =
-            "<div class='dropdown-item'>Keine ähnlichen Prompts gefunden.</div>";
-          suggestedPromptsDropdown.style.display = "block";
-          suggestedPromptsLabel.style.display = "block";
-        }
-      } else {
-        // Zeige die 5 neuesten Prompts, wenn kein currentPrompt vorhanden ist
-        const recentPrompts = allPrompts
-          .sort((a, b) => b.createdAt - a.createdAt)
-          .slice(0, 5);
-
-        if (recentPrompts.length > 0) {
-          suggestedPromptsDropdown.style.display = "block";
-          suggestedPromptsLabel.style.display = "block";
-          recentPrompts.forEach((prompt) => {
-            const item = document.createElement("div");
-            item.className = "dropdown-item";
-            item.setAttribute(
-              "data-value",
-              `${prompt.folderId}:${prompt.index}`
-            );
-
-            const header = document.createElement("div");
-            header.className = "dropdown-item-header";
-
-            const title = document.createElement("span");
-            title.className = "dropdown-item-title";
-            title.textContent =
-              prompt.title.length > 50
-                ? prompt.title.slice(0, 50) + "..."
-                : prompt.title;
-            title.title = `${prompt.title} (Kategorie: ${
-              prompt.folderName
-            }, Erstellt: ${new Date(prompt.createdAt).toLocaleDateString()})`;
-
-            const toggle = document.createElement("span");
-            toggle.className = "dropdown-item-toggle";
-            toggle.textContent = "Inhalt anzeigen";
-
-            header.appendChild(title);
-            header.appendChild(toggle);
-
-            const contentWrapper = document.createElement("div");
-            contentWrapper.className = "dropdown-item-content-wrapper";
-            contentWrapper.style.display = "none";
-
-            const contentLabel = document.createElement("div");
-            contentLabel.className = "dropdown-item-label";
-            contentLabel.textContent = "Prompt-Inhalt:";
-
-            const content = document.createElement("div");
-            content.className = "dropdown-item-content";
-            content.style.marginBottom = "10px";
-            content.style.padding = "10px";
-            content.style.background = "#f8f9fa";
-            content.style.borderRadius = "4px";
-            content.style.fontSize = "13px";
-            content.style.color = "#2c3e50";
-            content.style.whiteSpace = "pre-wrap";
-            content.textContent = prompt.content || "Kein Inhalt verfügbar";
-
-            contentWrapper.appendChild(contentLabel);
-            contentWrapper.appendChild(content);
-
-            item.appendChild(header);
-            item.appendChild(contentWrapper);
-
-            toggle.addEventListener("click", (e) => {
-              e.stopPropagation();
-              const isActive = contentWrapper.style.display === "block";
-              contentWrapper.style.display = isActive ? "none" : "block";
-              toggle.textContent = isActive
-                ? "Inhalt anzeigen"
-                : "Inhalt ausblenden";
-            });
-
-            item.addEventListener("click", () => {
-              combinePromptSelect.value = `${prompt.folderId}:${prompt.index}`;
-              suggestedDropdownButton.textContent = prompt.title;
-              suggestedDropdownContent.style.display = "none";
-              const event = new Event("change");
-              combinePromptSelect.dispatchEvent(event);
-            });
-
-            suggestedDropdownContent.appendChild(item);
-          });
-        } else {
-          suggestedDropdownContent.innerHTML =
-            "<div class='dropdown-item'>Keine Prompts verfügbar.</div>";
-          suggestedPromptsDropdown.style.display = "block";
-          suggestedPromptsLabel.style.display = "block";
-        }
-      }
-    } catch (error) {
-      console.error("Fehler beim Laden der Combine-Prompts:", error);
-      combinePromptSelect.innerHTML =
-        '<option value="">Fehler beim Laden der Prompts</option>';
-      suggestedDropdownContent.innerHTML =
-        "<div class='dropdown-item'>Fehler beim Laden der Vorschläge.</div>";
-      suggestedPromptsDropdown.style.display = "block";
-      suggestedPromptsLabel.style.display = "block";
-    }
-  }
-
-  // Neue CSS-Regeln für das suggestedPromptsDropdown (in style.textContent einfügen)
-  const additionalStyles = `
-  #suggestedPromptsDropdown .dropdown-button {
-    cursor: pointer;
-    color: #2c3e50 !important;
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #dcdcdc;
-    border-radius: 4px;
-    background: #ffffff !important;
-    text-align: left;
-    font-size: 14px;
-  }
-  #suggestedPromptsDropdown .dropdown-content {
-    display: none;
-    background: #ffffff !important;
-    color: #2c3e50 !important;
-    border: 1px solid #dcdcdc;
-    border-radius: 4px;
-    width: 100%;
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 10003;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    position: absolute;
-    top: calc(100% + 5px);
-    left: 0;
-  }
-  #suggestedPromptsDropdown .dropdown-content[style*="display: block"] {
-    display: block !important;
-  }
-`;
-
-  combineContent.appendChild(combineText);
-  combineContent.appendChild(combinePromptLabel);
-  combineContent.appendChild(combinePromptSelect);
-  combineContent.appendChild(previewLabel);
-  combineContent.appendChild(combinedPromptPreview);
-  optionsSection.appendChild(combineContent);
-
-  createFolderButton.addEventListener("click", async () => {
-    const newFolderName = newFolderInput.value.trim();
-    if (!newFolderName) {
-      alert("Bitte gib einen Ordnernamen ein!");
-      return;
-    }
-
-    const newFolderId = `folder_${Date.now()}_${Math.floor(
-      Math.random() * 10000
-    )}`;
-    const newFolder = {
-      name: newFolderName,
-      prompts: [],
-      isHidden: false,
-      isTrash: false,
-    };
-
-    try {
-      await new Promise((resolve, reject) => {
-        chrome.storage.local.set({ [newFolderId]: newFolder }, () => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
-          } else {
-            console.log("Neuer Ordner erstellt:", newFolder);
-            resolve();
-          }
-        });
-      });
-
-      // Ordnerauswahl aktualisieren
-      const option = document.createElement("option");
-      option.value = newFolderId;
-      option.textContent = newFolderName;
-      option.selected = true;
-      addFolderSelect.appendChild(option);
-      newFolderInput.value = ""; // Eingabefeld leeren
-      alert(`Ordner "${newFolderName}" erfolgreich erstellt!`);
-    } catch (error) {
-      console.error("Fehler beim Erstellen des Ordners:", error);
-      alert("Fehler beim Erstellen des Ordners.");
-    }
-  });
-
   const optionsButtons = document.createElement("div");
   optionsButtons.className = "button-group";
-
-  const backToPromptButton = document.createElement("button");
-  backToPromptButton.textContent = "Back";
-  backToPromptButton.className = "back-button";
 
   const backToPromptEditButton = document.createElement("button");
   backToPromptEditButton.textContent = "Back";
@@ -851,11 +971,11 @@ async function promptSaver(message) {
   optionsButtons.appendChild(saveButton);
 
   optionsSection.appendChild(optionsHeader);
-  optionsSection.appendChild(optionsSwitch); // Dies muss vor den anderen Inhalten stehen
+  optionsSection.appendChild(optionsSwitch);
   optionsSection.appendChild(createContent);
   optionsSection.appendChild(replaceContent);
   optionsSection.appendChild(addContent);
-  optionsSection.appendChild(combineContent); // "Combine"-Inhalt nach optionsSwitch
+  optionsSection.appendChild(combineContent);
   optionsSection.appendChild(optionsButtons);
 
   const modalFooter = document.createElement("div");
@@ -877,16 +997,16 @@ async function promptSaver(message) {
       backdrop-filter: blur(3px);
     }
     .modal-content {
-  background: #fff;
-  margin: 5% auto;
-  padding: 0;
-  width: 90%;
-  max-width: 800px; /* Erhöhe von 600px auf 800px (oder einen anderen Wert) */
-  min-height: 500px; /* Optional: Füge eine Mindesthöhe hinzu */
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-}
+      background: #fff;
+      margin: 5% auto;
+      padding: 0;
+      width: 90%;
+      max-width: 800px;
+      min-height: 500px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+    }
     .modal-header {
       padding: 16px 24px;
       background: linear-gradient(135deg, #1e90ff, #4169e1);
@@ -943,12 +1063,12 @@ async function promptSaver(message) {
     .option-content.active {
       display: block;
     }
-      .new-folder-section {
-  margin-top: 10px;
-}
-.create-folder-button:hover {
-  background: #4169e1 !important;
-}
+    .new-folder-section {
+      margin-top: 10px;
+    }
+    .create-folder-button:hover {
+      background: #4169e1 !important;
+    }
     .modal-body label {
       font-weight: 600;
       margin-top: 16px;
@@ -1059,147 +1179,142 @@ async function promptSaver(message) {
       border-radius: 2px;
       transition: background-color 0.2s;
     }
- .arrow {
-    color: #1e90ff;
-    font-weight: bold;
-    margin: 0 4px;
-  }
-  .dropdown {
-    position: relative;
-    margin-bottom: 12px;
-  }
-  .dropdown-button {
-    cursor: pointer;
-    color: #2c3e50 !important;
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #dcdcdc;
-    border-radius: 4px;
-    background: #ffffff !important;
-    text-align: left;
-    font-size: 14px;
-  }
-    .diff-word.existing {
-  background-color: #b3e5fc;
-  color: black;
-}
-.diff-word.new {
-  background-color: #d4fcbc;
-  color: black;
-}
-.combined-prompt-diff {
-  box-sizing: border-box;
-  overflow-y: auto;
-  max-height: 300px;
-}
-  #combine p,
-#combine label,
-#combine select,
-#combine div {
-  margin-bottom: 12px;
-}
-    .dropdown-content {
-    display: none;
-    background: #ffffff !important;
-    color: #2c3e50 !important;
-    border: 1px solid #dcdcdc;
-    border-radius: 4px;
-    width: 100%;
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 10010; /* Erhöhter z-index für bessere Sichtbarkeit */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    position: absolute;
-    top: calc(100% + 5px);
-    left: 0;
-  }
-  .dropdown-content[style*="display: block"] {
-    display: block !important;
-  }
-  .dropdown-item {
-    padding: 12px;
-    cursor: pointer;
-    border-bottom: 1px solid #eee;
-    background: #ffffff !important;
-    color: #2c3e50 !important;
-  }
-  .dropdown-item:last-child {
-    border-bottom: none;
-  }
-  .dropdown-item:hover {
-    background: #f1f3f5 !important;
-  }
-  .dropdown-item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .dropdown-item-title {
-    font-weight: 600;
-    color: #34495e !important;
-    font-size: 14px;
-  }
-  .dropdown-item-toggle {
-    cursor: pointer;
-    color: #1e90ff !important;
-    font-size: 13px;
-  }
-    .modal-body textarea,
-.combined-prompt-diff,
-.dropdown-content {
-  max-width: 100%; /* Stellt sicher, dass sie die volle Breite des Modals nutzen */
-}
-  .dropdown-item-content {
-    margin-top: 8px;
-    padding: 10px;
-    background: #f8f9fa !important;
-    color: #2c3e50 !important;
-    border-radius: 4px;
-    font-size: 13px;
-    white-space: pre-wrap;
-  }
-  .dropdown-item-content.active {
-    display: block !important;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .fade-in {
-    animation: fadeIn 0.3s ease-in;
-  }
-    .dropdown-item-diff .diff-word.added {
-  background-color: #d4fcbc;
-  color: black;
-}
-.dropdown-item-diff .diff-word.removed {
-  background-color: #fbb6c2;
-  color: black;
-  text-decoration: line-through;
-}
-.dropdown-item-diff .diff-word.common {
-  background-color: #e5e7eb;
-}
-.dropdown-item-diff .diff-word {
-  padding: 2px;
-  margin: 2px;
-  border-radius: 2px;
-}
-.dropdown-item-diff .arrow {
-  color: #1e90ff;
-  font-weight: bold;
-  margin: 0 4px;
-}
-  .dropdown-item-label {
-        font-weight: 600;
-        color: #34495e;
-        font-size: 14px;
-        margin-bottom: 5px;
+    .arrow {
+      color: #1e90ff;
+      font-weight: bold;
+      margin: 0 4px;
     }
-        ${additionalStyles}
+    .dropdown {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .dropdown-button {
+      cursor: pointer;
+      color: #2c3e50 !important;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #dcdcdc;
+      border-radius: 4px;
+      background: #ffffff !important;
+      text-align: left;
+      font-size: 14px;
+    }
+    .diff-word.existing {
+      background-color: #b3e5fc;
+      color: black;
+    }
+    .diff-word.new {
+      background-color: #d4fcbc;
+      color: black;
+    }
+    .combined-prompt-diff {
+      box-sizing: border-box;
+      overflow-y: auto;
+      max-height: 300px;
+    }
+    #combine p,
+    #combine label,
+    #combine select,
+    #combine div {
+      margin-bottom: 12px;
+    }
+    .dropdown-content {
+      display: none;
+      background: #ffffff !important;
+      color: #2c3e50 !important;
+      border: 1px solid #dcdcdc;
+      border-radius: 4px;
+      width: 100%;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 10010;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      position: absolute;
+      top: calc(100% + 5px);
+      left: 0;
+    }
+    .dropdown-content[style*="display: block"] {
+      display: block !important;
+    }
+    .dropdown-item {
+      padding: 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      background: #ffffff !important;
+      color: #2c3e50 !important;
+    }
+    .dropdown-item:last-child {
+      border-bottom: none;
+    }
+    .dropdown-item:hover {
+      background: #f1f3f5 !important;
+    }
+    .dropdown-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dropdown-item-title {
+      font-weight: 600;
+      color: #34495e !important;
+      font-size: 14px;
+    }
+    .dropdown-item-toggle {
+      cursor: pointer;
+      color: #1e90ff !important;
+      font-size: 13px;
+    }
+    .modal-body textarea,
+    .combined-prompt-diff,
+    .dropdown-content {
+      max-width: 100%;
+    }
+    .dropdown-item-content {
+      margin-top: 8px;
+      padding: 10px;
+      background: #f8f9fa !important;
+      color: #2c3e50 !important;
+      border-radius: 4px;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+    .dropdown-item-content.active {
+      display: block !important;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .dropdown-item-diff .diff-word.added {
+      background-color: #d4fcbc;
+      color: black;
+    }
+    .dropdown-item-diff .diff-word.removed {
+      background-color: #fbb6c2;
+      color: black;
+      text-decoration: line-through;
+    }
+    .dropdown-item-diff .diff-word.common {
+      background-color: #e5e7eb;
+    }
+    .dropdown-item-diff .diff-word {
+      padding: 2px;
+      margin: 2px;
+      border-radius: 2px;
+    }
+    .dropdown-item-diff .arrow {
+      color: #1e90ff;
+      font-weight: bold;
+      margin: 0 4px;
+    }
+    .dropdown-item-label {
+      font-weight: 600;
+      color: #34495e;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
   `;
 
-  // Modal zusammenbauen
   modalHeader.appendChild(closeSpan);
   modalHeader.appendChild(headerTitle);
 
@@ -1219,7 +1334,6 @@ async function promptSaver(message) {
 
   modal.appendChild(modalContent);
 
-  // Stile und Modal zum Shadow Root hinzufügen
   try {
     shadowRoot.appendChild(style);
     shadowRoot.appendChild(modal);
@@ -1230,10 +1344,9 @@ async function promptSaver(message) {
     return;
   }
 
-  // Funktion zum Schließen des Modals
   function closeModal() {
     modal.style.display = "none";
-    observer.disconnect(); // Observer stoppen
+    observer.disconnect();
     try {
       document.body.removeChild(shadowHost);
     } catch (error) {
@@ -1241,16 +1354,14 @@ async function promptSaver(message) {
     }
   }
 
-  // Modal asynchron anzeigen
   setTimeout(() => {
     modal.style.display = "block";
     console.log("Modal display set to block");
     if (promptTitleInput) {
-      promptTitleInput.focus(); // Fokus auf das erste Eingabefeld setzen
+      promptTitleInput.focus();
     }
   }, 100);
 
-  // MutationObserver zum Schutz vor DOM-Mutationen
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (modal.style.display !== "block") {
@@ -1261,17 +1372,14 @@ async function promptSaver(message) {
   });
   observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
 
-  // Modal schließen bei Klick auf Schließen-Span
   closeSpan.addEventListener("click", closeModal);
 
-  // Modal schließen bei Escape-Taste
   modal.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeModal();
     }
   });
 
-  // Funktion zur Berechnung der Cosine Similarity
   function computeCosineSimilarity(text1, text2) {
     const words1 = text1
       .toLowerCase()
@@ -1298,16 +1406,13 @@ async function promptSaver(message) {
     return dotProduct / (magnitude1 * magnitude2);
   }
 
-  // Funktion zum Berechnen und Anzeigen der Prompt-Differenz
   function computePromptDiff(currentPrompt, selectedPrompt) {
     const diffOutput = shadowRoot.getElementById("promptDiffOutput");
     diffOutput.innerHTML = "";
 
-    // Split texts into words
     const words1 = selectedPrompt.split(/\s+/).filter((w) => w);
     const words2 = currentPrompt.split(/\s+/).filter((w) => w);
 
-    // Compute diff
     let i = 0,
       j = 0;
     const unifiedDiff = [];
@@ -1352,7 +1457,6 @@ async function promptSaver(message) {
       }
     }
 
-    // Render diff
     let lastWasRemoved = false;
     unifiedDiff.forEach((part, index) => {
       const span = document.createElement("span");
@@ -1380,7 +1484,6 @@ async function promptSaver(message) {
     const words1 = (existingPrompt || "").split(/\s+/).filter((w) => w);
     const words2 = (newPrompt || "").split(/\s+/).filter((w) => w);
 
-    // Markiere Wörter aus dem bestehenden Prompt
     words1.forEach((word) => {
       const span = document.createElement("span");
       span.className = "diff-word existing";
@@ -1388,14 +1491,12 @@ async function promptSaver(message) {
       outputElement.appendChild(span);
     });
 
-    // Füge einen Separator hinzu, falls beide Prompts nicht leer sind
     if (words1.length > 0 && words2.length > 0) {
       const separator = document.createElement("span");
       separator.textContent = " ";
       outputElement.appendChild(separator);
     }
 
-    // Markiere Wörter aus dem neuen Prompt
     words2.forEach((word) => {
       const span = document.createElement("span");
       span.className = "diff-word new";
@@ -1403,7 +1504,6 @@ async function promptSaver(message) {
       outputElement.appendChild(span);
     });
 
-    // Falls das Ergebnis leer ist
     if (words1.length === 0 && words2.length === 0) {
       outputElement.textContent = "The combined prompt will appear here...";
     }
@@ -1413,11 +1513,50 @@ async function promptSaver(message) {
       combinedText || "The combined prompt will appear here...";
   }
 
-  // Ordner für Replace- und Add-Optionen laden
   async function loadFolders() {
     try {
       const data = await new Promise((resolve, reject) => {
-        chrome.storage.local.get(null, (data) => {
+        chrome.storage.local.get(["folders"], (result) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(result.folders || {});
+          }
+        });
+      });
+
+      const folders = Object.entries(data).filter(
+        ([, folder]) => !folder.isHidden && !folder.isTrash
+      );
+
+      // Dropdown zum Ersetzen eines Ordners
+      replaceFolderSelect.innerHTML = `
+      <option value="">Select a folder or category</option>
+      <optgroup label="Categorised Prompts">
+        ${folders
+          .map(
+            ([id, folder]) => `<option value="${id}">${folder.name}</option>`
+          )
+          .join("")}
+      </optgroup>
+    `;
+
+      // Dropdown zum Hinzufügen zu einem Ordner
+      addFolderSelect.innerHTML = `
+      <option value="">Select a folder</option>
+      ${folders
+        .map(([id, folder]) => `<option value="${id}">${folder.name}</option>`)
+        .join("")}
+    `;
+    } catch (error) {
+      console.error("Error fetching folders:", error);
+    }
+  }
+
+  async function loadCombinePrompts(currentPrompt) {
+    try {
+      const data = await new Promise((resolve, reject) => {
+        chrome.storage.local.get(["folders", "prompts"], (data) => {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
           } else {
@@ -1426,48 +1565,162 @@ async function promptSaver(message) {
         });
       });
 
-      // Filter für nicht-versteckte Ordner (Categorised Prompts)
-      const folders = Object.entries(data).filter(
-        ([, topic]) =>
-          topic.prompts &&
-          Array.isArray(topic.prompts) &&
-          !topic.isHidden &&
-          !topic.isTrash
-      );
+      const folders = data.folders || {};
+      const prompts = data.prompts || {};
 
-      // Filter für versteckte Ordner (Single Prompts)
-      const hiddenFolders = Object.entries(data).filter(
-        ([, topic]) =>
-          topic.prompts &&
-          Array.isArray(topic.prompts) &&
-          topic.isHidden &&
-          !topic.isTrash
-      );
+      // Reset der Select- und Vorschlags-UI
+      combinePromptSelect.innerHTML =
+        '<option value="">Select a prompt</option>';
+      suggestedDropdownContent.innerHTML = "";
+      suggestedDropdownButton.textContent = "Select a suggested prompt";
+      suggestedPromptsDropdown.style.display = "none";
+      suggestedPromptsLabel.style.display = "none";
 
-      // Populate replaceFolderSelect mit Ordnern und Single Prompts Option
-      replaceFolderSelect.innerHTML = `
-        <option value="">Select a folder or category</option>
-        <optgroup label="Categorised Prompts">
-          ${folders
-            .map(
-              ([id, topic]) => `<option value="${id}">${topic.name}</option>`
-            )
-            .join("")}
-        </optgroup>
-        <optgroup label="Single Prompts">
-          <option value="single">Single Prompts</option>
-        </optgroup>
-      `;
+      const allPrompts = [];
 
-      // Populate addFolderSelect nur mit nicht-versteckten Ordnern
-      addFolderSelect.innerHTML = `
-        <option value="">Select a folder</option>
-        ${folders
-          .map(([id, topic]) => `<option value="${id}">${topic.name}</option>`)
-          .join("")}
-      `;
+      // Alle Prompts durchgehen
+      Object.entries(prompts).forEach(([promptId, prompt]) => {
+        if (prompt.isDeleted) return;
+
+        const folderId = prompt.folderId || null;
+
+        const similarity = currentPrompt
+          ? computeCosineSimilarity(currentPrompt, prompt.content || "")
+          : 0;
+
+        allPrompts.push({
+          promptId,
+          folderId,
+          title: prompt.title || "Untitled Prompt",
+          content: prompt.content || "",
+          createdAt: prompt.createdAt || 0,
+          similarity,
+        });
+      });
+
+      // Prompts nach Datum sortieren (neueste zuerst)
+      allPrompts
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .forEach((prompt) => {
+          const option = document.createElement("option");
+          option.value = prompt.promptId;
+          option.textContent = `${prompt.title} (${prompt.folderName})`;
+          option.title = prompt.title;
+          combinePromptSelect.appendChild(option);
+        });
+
+      // Funktion zum Anzeigen der Vorschläge
+      const displaySuggestedPrompts = (prompts) => {
+        prompts.forEach((prompt) => {
+          const item = document.createElement("div");
+          item.className = "dropdown-item";
+          item.setAttribute("data-value", prompt.promptId);
+
+          const header = document.createElement("div");
+          header.className = "dropdown-item-header";
+
+          const title = document.createElement("span");
+          title.className = "dropdown-item-title";
+          title.textContent =
+            prompt.title.length > 50
+              ? prompt.title.slice(0, 50) + "..."
+              : prompt.title;
+          title.title = `${prompt.title} (Ähnlichkeit: ${(
+            prompt.similarity * 100
+          ).toFixed(2)}%, Kategorie: ${prompt.folderName}, Erstellt: ${new Date(
+            prompt.createdAt
+          ).toLocaleDateString()})`;
+
+          const toggle = document.createElement("span");
+          toggle.className = "dropdown-item-toggle";
+          toggle.textContent = "Inhalt anzeigen";
+
+          header.appendChild(title);
+          header.appendChild(toggle);
+
+          const contentWrapper = document.createElement("div");
+          contentWrapper.className = "dropdown-item-content-wrapper";
+          contentWrapper.style.display = "none";
+
+          const contentLabel = document.createElement("div");
+          contentLabel.className = "dropdown-item-label";
+          contentLabel.textContent = "Prompt-Inhalt:";
+
+          const content = document.createElement("div");
+          content.className = "dropdown-item-content";
+          content.style.marginBottom = "10px";
+          content.style.padding = "10px";
+          content.style.background = "#f8f9fa";
+          content.style.borderRadius = "4px";
+          content.style.fontSize = "13px";
+          content.style.color = "#2c3e50";
+          content.style.whiteSpace = "pre-wrap";
+          content.textContent = prompt.content || "Kein Inhalt verfügbar";
+
+          contentWrapper.appendChild(contentLabel);
+          contentWrapper.appendChild(content);
+
+          item.appendChild(header);
+          item.appendChild(contentWrapper);
+
+          toggle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isActive = contentWrapper.style.display === "block";
+            contentWrapper.style.display = isActive ? "none" : "block";
+            toggle.textContent = isActive
+              ? "Inhalt anzeigen"
+              : "Inhalt ausblenden";
+          });
+
+          item.addEventListener("click", () => {
+            combinePromptSelect.value = prompt.promptId;
+            suggestedDropdownButton.textContent = prompt.title;
+            suggestedDropdownContent.style.display = "none";
+            const event = new Event("change");
+            combinePromptSelect.dispatchEvent(event);
+          });
+
+          suggestedDropdownContent.appendChild(item);
+        });
+
+        suggestedPromptsDropdown.style.display = "block";
+        suggestedPromptsLabel.style.display = "block";
+      };
+
+      // Relevante Prompts ermitteln
+      const getRelevantPrompts = () => {
+        if (currentPrompt?.trim()) {
+          return allPrompts
+            .sort((a, b) => {
+              if (a.createdAt !== b.createdAt) return b.createdAt - a.createdAt;
+              return b.similarity - a.similarity;
+            })
+            .slice(0, 5);
+        } else {
+          return allPrompts
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, 5);
+        }
+      };
+
+      const relevantPrompts = getRelevantPrompts();
+
+      if (relevantPrompts.length > 0) {
+        displaySuggestedPrompts(relevantPrompts);
+      } else {
+        suggestedDropdownContent.innerHTML =
+          "<div class='dropdown-item'>Keine passenden Prompts gefunden.</div>";
+        suggestedPromptsDropdown.style.display = "block";
+        suggestedPromptsLabel.style.display = "block";
+      }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Fehler beim Laden der Combine-Prompts:", error);
+      combinePromptSelect.innerHTML =
+        '<option value="">Fehler beim Laden der Prompts</option>';
+      suggestedDropdownContent.innerHTML =
+        "<div class='dropdown-item'>Fehler beim Laden der Vorschläge.</div>";
+      suggestedPromptsDropdown.style.display = "block";
+      suggestedPromptsLabel.style.display = "block";
     }
   }
 
@@ -1564,20 +1817,13 @@ async function promptSaver(message) {
     return { diffCount };
   }
 
-  // Funktion zum Laden ähnlicher Prompts
-  // Funktion zum Laden ähnlicher Prompts
   async function loadSimilarPrompts(currentPrompt) {
-    console.log(
-      "loadSimilarPrompts gestartet mit currentPrompt:",
-      currentPrompt
-    );
-    dropdownContent.innerHTML = ""; // Inhalt zurücksetzen
+    dropdownContent.innerHTML = "";
     dropdownButton.textContent = "Select a similar prompt";
-    similarPromptsDropdown.style.display = "none"; // Standardmäßig ausblenden
-    similarPromptsLabel.style.display = "none"; // Standardmäßig ausblenden
+    similarPromptsDropdown.style.display = "none";
+    similarPromptsLabel.style.display = "none";
 
     if (!currentPrompt || currentPrompt.trim() === "") {
-      console.log("Leerer Prompt, Dropdown bleibt leer.");
       dropdownContent.innerHTML =
         "<div class='dropdown-item'>Kein Prompt eingegeben.</div>";
       similarPromptsDropdown.style.display = "block";
@@ -1595,44 +1841,51 @@ async function promptSaver(message) {
           }
         });
       });
-      console.log("Daten aus chrome.storage.local geladen:", data);
 
       const allPrompts = [];
-      Object.entries(data).forEach(([folderId, topic]) => {
-        if (topic.prompts && Array.isArray(topic.prompts) && !topic.isTrash) {
-          topic.prompts.forEach((prompt, index) => {
-            const similarity = computeCosineSimilarity(
-              currentPrompt,
-              prompt.content || ""
-            );
-            const { diffCount } = computePromptDiffForItem(
-              currentPrompt,
-              prompt.content || "",
-              document.createElement("div")
-            );
-            allPrompts.push({
-              folderId,
-              index,
-              title: prompt.title || "Untitled Prompt",
-              description: prompt.description || "Keine Beschreibung verfügbar",
-              content: prompt.content || "",
-              similarity,
-              diffCount,
-              isHidden: topic.isHidden || false,
-              folderName: topic.isHidden ? "Single Prompt" : topic.name,
-            });
-          });
+
+      // Durch alle Prompts iterieren
+      Object.entries(data.prompts || {}).forEach(([promptId, prompt]) => {
+        if (!prompt || !prompt.content) return;
+
+        const similarity = computeCosineSimilarity(
+          currentPrompt,
+          prompt.content
+        );
+
+        // Unterschiede berechnen (wie in Code 2)
+        const { diffCount } = computePromptDiffForItem(
+          currentPrompt,
+          prompt.content || "",
+          document.createElement("div")
+        );
+
+        // Ordnername bestimmen (falls vorhanden)
+        let folderName = "Kein Ordner";
+        if (prompt.folderId && data.folders && data.folders[prompt.folderId]) {
+          folderName =
+            data.folders[prompt.folderId].name || "Unbenannter Ordner";
         }
+
+        allPrompts.push({
+          promptId,
+          title: prompt.title || "Untitled Prompt",
+          description: prompt.description || "Keine Beschreibung verfügbar",
+          content: prompt.content,
+          similarity,
+          diffCount,
+          folderName,
+          folderId: prompt.folderId || null,
+        });
       });
 
       const similarPrompts = allPrompts
         .filter((p) => p.similarity > 0.1)
-        .sort((a, b) => a.diffCount - b.diffCount); // Sortiere nach geringstem Unterschied
+        .sort((a, b) => a.diffCount - b.diffCount); // sortiere wie Code 2 nach Diff
 
-      // Check for identical prompts (diffCount === 0)
+      // Falls identischer Prompt gefunden wird
       const identicalPrompt = similarPrompts.find((p) => p.diffCount === 0);
       if (identicalPrompt) {
-        console.log("Identischer Prompt gefunden:", identicalPrompt.title);
         dropdownContent.innerHTML = `
           <div class='dropdown-item'>
             This prompt already exists:<br>
@@ -1645,7 +1898,6 @@ async function promptSaver(message) {
       }
 
       if (similarPrompts.length === 0) {
-        console.log("Keine ähnlichen Prompts mit Ähnlichkeit > 0.1 gefunden.");
         dropdownContent.innerHTML =
           "<div class='dropdown-item'>Keine ähnlichen Prompts gefunden.</div>";
         similarPromptsDropdown.style.display = "block";
@@ -1653,17 +1905,15 @@ async function promptSaver(message) {
         return;
       }
 
-      console.log("Ähnliche Prompts gefunden:", similarPrompts);
       similarPromptsDropdown.style.display = "block";
       similarPromptsLabel.style.display = "block";
 
-      similarPrompts.forEach((prompt, index) => {
-        // Skip prompts with diffCount === 0 (handled above)
-        if (prompt.diffCount === 0) return;
+      similarPrompts.forEach((prompt) => {
+        if (prompt.diffCount === 0) return; // identische überspringen
 
         const item = document.createElement("div");
         item.className = "dropdown-item";
-        item.setAttribute("data-prompt-index", index);
+        item.setAttribute("data-value", prompt.promptId);
 
         const header = document.createElement("div");
         header.className = "dropdown-item-header";
@@ -1683,11 +1933,11 @@ async function promptSaver(message) {
         header.appendChild(title);
         header.appendChild(toggle);
 
+        // === Angepasster Anzeigebereich (Prompt Content + Differences) ===
         const contentWrapper = document.createElement("div");
         contentWrapper.className = "dropdown-item-content-wrapper";
         contentWrapper.style.display = "none";
 
-        // Prompt-Inhalt mit Label
         const contentLabel = document.createElement("div");
         contentLabel.className = "dropdown-item-label";
         contentLabel.textContent = "Prompt Content:";
@@ -1703,7 +1953,6 @@ async function promptSaver(message) {
         content.style.whiteSpace = "pre-wrap";
         content.textContent = prompt.content || "Kein Inhalt verfügbar";
 
-        // Differenzbereich mit Label
         const diffLabel = document.createElement("div");
         diffLabel.className = "dropdown-item-label";
         diffLabel.textContent = "Differences:";
@@ -1728,6 +1977,7 @@ async function promptSaver(message) {
         contentWrapper.appendChild(diffLabel);
         contentWrapper.appendChild(diffContainer);
         contentWrapper.appendChild(diffSummary);
+        // === Ende angepasster Anzeigebereich ===
 
         item.appendChild(header);
         item.appendChild(contentWrapper);
@@ -1737,12 +1987,6 @@ async function promptSaver(message) {
           const isActive = contentWrapper.style.display === "block";
           contentWrapper.style.display = isActive ? "none" : "block";
           toggle.textContent = isActive ? "Show content" : "Hide content";
-          console.log(
-            "Toggle geklickt für:",
-            prompt.title,
-            "Aktiv:",
-            !isActive
-          );
 
           if (!isActive) {
             const { diffCount } = computePromptDiffForItem(
@@ -1750,7 +1994,8 @@ async function promptSaver(message) {
               prompt.content,
               diffContainer
             );
-            diffSummary.textContent = `Unterschiede: ${diffCount} Wörter`;
+            const wordLabel = diffCount === 1 ? "Wort" : "Wörter";
+            diffSummary.textContent = `Unterschiede: ${diffCount} ${wordLabel}`;
           } else {
             diffContainer.innerHTML = "";
             diffSummary.textContent = "";
@@ -1758,51 +2003,29 @@ async function promptSaver(message) {
         });
 
         item.addEventListener("click", () => {
-          console.log("Prompt ausgewählt:", prompt.title);
-          replaceFolderSelect.value = prompt.isHidden
-            ? "single"
-            : prompt.folderId;
+          replaceFolderSelect.value = prompt.folderId || "";
           replacePromptSelect.disabled = false;
           replacePromptSelect.innerHTML =
             '<option value="">Select a prompt</option>';
 
-          if (prompt.isHidden) {
-            // Für Single Prompts, lade Prompts aus allen versteckten Ordnern
-            chrome.storage.local.get(null, (data) => {
-              let singlePrompts = [];
-              Object.entries(data).forEach(([id, topic]) => {
-                if (topic.isHidden && !topic.isTrash && topic.prompts) {
-                  topic.prompts.forEach((p, i) => {
-                    singlePrompts.push({
-                      folderId: id,
-                      index: i,
-                      title: p.title || "Untitled Prompt",
-                    });
-                  });
-                }
-              });
-              singlePrompts.forEach((p) => {
-                const option = document.createElement("option");
-                option.value = `${p.folderId}:${p.index}`;
-                option.textContent = p.title;
-                if (p.folderId === prompt.folderId && p.index === prompt.index)
-                  option.selected = true;
-                replacePromptSelect.appendChild(option);
-              });
-            });
-          } else {
-            // Für Categorised Prompts, lade Prompts aus dem spezifischen Ordner
-            chrome.storage.local.get(prompt.folderId, (data) => {
-              const topic = data[prompt.folderId];
-              if (topic && topic.prompts) {
-                topic.prompts.forEach((p, i) => {
-                  const option = document.createElement("option");
-                  option.value = i;
-                  option.textContent = p.title || "Untitled Prompt";
-                  if (i === prompt.index) option.selected = true;
-                  replacePromptSelect.appendChild(option);
-                });
-              }
+          if (
+            prompt.folderId &&
+            data.folders &&
+            data.folders[prompt.folderId]
+          ) {
+            const promptOptions = data.folders[prompt.folderId].promptIds.map(
+              (pid) => ({
+                promptId: pid,
+                title: data.prompts[pid]?.title || "Untitled Prompt",
+              })
+            );
+
+            promptOptions.forEach((p) => {
+              const option = document.createElement("option");
+              option.value = p.promptId;
+              option.textContent = p.title;
+              if (p.promptId === prompt.promptId) option.selected = true;
+              replacePromptSelect.appendChild(option);
             });
           }
 
@@ -1813,11 +2036,6 @@ async function promptSaver(message) {
 
         dropdownContent.appendChild(item);
       });
-
-      console.log(
-        "Dropdown-Inhalte erstellt, Anzahl Items:",
-        similarPrompts.length
-      );
     } catch (error) {
       console.error("Fehler beim Laden ähnlicher Prompts:", error);
       dropdownContent.innerHTML =
@@ -1827,92 +2045,111 @@ async function promptSaver(message) {
     }
   }
 
-  // Prompts für ausgewählten Ordner oder Single Prompts in Replace-Option laden
+  createFolderButton.addEventListener("click", async () => {
+    const newFolderName = newFolderInput.value.trim();
+    if (!newFolderName) {
+      alert("Bitte gib einen Ordnernamen ein!");
+      return;
+    }
+
+    const newFolderId = `${Date.now()}_${generateUUID()}`;
+    const newFolder = {
+      name: newFolderName,
+      promptIds: [],
+      isHidden: false,
+      isTrash: false,
+    };
+
+    try {
+      await new Promise((resolve, reject) => {
+        chrome.storage.local.get(["folders"], (data) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+            return;
+          }
+
+          const folders = data.folders || {};
+          folders[newFolderId] = newFolder;
+
+          chrome.storage.local.set({ folders }, () => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              console.log("Neuer Ordner erstellt:", newFolder);
+              resolve();
+            }
+          });
+        });
+      });
+
+      const option = document.createElement("option");
+      option.value = newFolderId;
+      option.textContent = newFolderName;
+      option.selected = true;
+      addFolderSelect.appendChild(option);
+      newFolderInput.value = "";
+      alert(`Ordner "${newFolderName}" erfolgreich erstellt!`);
+    } catch (error) {
+      console.error("Fehler beim Erstellen des Ordners:", error);
+      alert("Fehler beim Erstellen des Ordners.");
+    }
+  });
+
   replaceFolderSelect.addEventListener("change", async (e) => {
     const folderId = replaceFolderSelect.value;
     replacePromptSelect.disabled = !folderId;
     replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
     shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
 
-    if (folderId) {
-      try {
-        if (folderId === "single") {
-          // Lade alle Prompts aus versteckten Ordnern
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(null, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
+    if (!folderId) return;
 
-          let singlePrompts = [];
-          Object.entries(data).forEach(([id, topic]) => {
-            if (topic.isHidden && !topic.isTrash && topic.prompts) {
-              topic.prompts.forEach((prompt, index) => {
-                singlePrompts.push({
-                  folderId: id,
-                  index,
-                  title: prompt.title || "Untitled Prompt",
-                });
-              });
-            }
-          });
-
-          singlePrompts.forEach((prompt) => {
-            const option = document.createElement("option");
-            option.value = `${prompt.folderId}:${prompt.index}`;
-            option.textContent =
-              prompt.title.length > 50
-                ? prompt.title.slice(0, 50) + "..."
-                : prompt.title;
-            option.title = prompt.title;
-            replacePromptSelect.appendChild(option);
-          });
-        } else {
-          // Lade Prompts aus einem spezifischen Ordner
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(folderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
-
-          const topic = data[folderId];
-          if (topic && topic.prompts) {
-            topic.prompts.forEach((prompt, index) => {
-              const option = document.createElement("option");
-              option.value = index;
-              const promptTitle = prompt.title || "Untitled Prompt";
-              option.textContent =
-                promptTitle.length > 50
-                  ? promptTitle.slice(0, 50) + "..."
-                  : promptTitle;
-              option.title = promptTitle;
-              replacePromptSelect.appendChild(option);
-            });
+    try {
+      const data = await new Promise((resolve, reject) => {
+        chrome.storage.local.get(["folders", "prompts"], (data) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(data);
           }
-        }
-      } catch (error) {
-        console.error("Error fetching folder data:", error);
+        });
+      });
+
+      const folders = data.folders || {};
+      const prompts = data.prompts || {};
+      const folder = folders[folderId];
+
+      if (!folder || !Array.isArray(folder.promptIds)) {
+        console.warn(`Folder ${folderId} not found or has no prompts.`);
+        return;
       }
+
+      folder.promptIds.forEach((promptId) => {
+        const prompt = prompts[promptId];
+        if (!prompt) return;
+
+        const option = document.createElement("option");
+        option.value = promptId;
+        const promptTitle = prompt.title || "Untitled Prompt";
+        option.textContent =
+          promptTitle.length > 50
+            ? promptTitle.slice(0, 50) + "..."
+            : promptTitle;
+        option.title = promptTitle;
+        replacePromptSelect.appendChild(option);
+      });
+    } catch (error) {
+      console.error("Error fetching folder or prompt data:", error);
     }
   });
 
   combinePromptSelect.addEventListener("change", async (e) => {
-    const promptValue = combinePromptSelect.value;
+    const promptId = combinePromptSelect.value;
     combinedPromptPreview.innerHTML = "The combined prompt will appear here...";
 
-    if (promptValue !== "") {
+    if (promptId !== "") {
       try {
-        const [folderId, promptIndex] = promptValue.split(":");
         const data = await new Promise((resolve, reject) => {
-          chrome.storage.local.get(folderId, (data) => {
+          chrome.storage.local.get(["prompts"], (data) => {
             if (chrome.runtime.lastError) {
               reject(chrome.runtime.lastError);
             } else {
@@ -1921,9 +2158,11 @@ async function promptSaver(message) {
           });
         });
 
-        const topic = data[folderId];
-        if (topic && topic.prompts && topic.prompts[promptIndex]) {
-          const existingPrompt = topic.prompts[promptIndex].content || "";
+        const prompts = data.prompts || {};
+        const existingPromptObj = prompts[promptId];
+
+        if (existingPromptObj && existingPromptObj.content) {
+          const existingPrompt = existingPromptObj.content;
           const currentPrompt = promptTextarea.value.trim();
           computeCombinedPromptDiff(
             existingPrompt,
@@ -1941,51 +2180,30 @@ async function promptSaver(message) {
     }
   });
 
-  // Event-Listener für Prompt-Auswahl zum Anzeigen der Differenz
   replacePromptSelect.addEventListener("change", async (e) => {
-    const folderId = replaceFolderSelect.value;
-    const promptValue = replacePromptSelect.value;
+    const promptId = replacePromptSelect.value;
 
-    if (folderId && promptValue !== "") {
+    if (promptId !== "") {
       try {
-        if (folderId === "single") {
-          // Für Single Prompts ist der Wert im Format folderId:index
-          const [singleFolderId, promptIndex] = promptValue.split(":");
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(singleFolderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
+        const data = await new Promise((resolve, reject) => {
+          chrome.storage.local.get(["prompts"], (data) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve(data);
+            }
           });
+        });
 
-          const topic = data[singleFolderId];
-          if (topic && topic.prompts && topic.prompts[promptIndex]) {
-            const selectedPrompt = topic.prompts[promptIndex].content;
-            const currentPrompt = promptTextarea.value.trim();
-            computePromptDiff(currentPrompt, selectedPrompt);
-          }
+        const prompts = data.prompts || {};
+        const selectedPrompt = prompts[promptId];
+
+        if (selectedPrompt && selectedPrompt.content) {
+          const currentPrompt = promptTextarea.value.trim();
+          computePromptDiff(currentPrompt, selectedPrompt.content);
         } else {
-          // Für Categorised Prompts
-          const promptIndex = promptValue;
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(folderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
-
-          const topic = data[folderId];
-          if (topic && topic.prompts && topic.prompts[promptIndex]) {
-            const selectedPrompt = topic.prompts[promptIndex].content;
-            const currentPrompt = promptTextarea.value.trim();
-            computePromptDiff(currentPrompt, selectedPrompt);
-          }
+          shadowRoot.getElementById("promptDiffOutput").innerHTML =
+            "Error: Selected prompt not found.";
         }
       } catch (error) {
         console.error("Error fetching prompt data:", error);
@@ -1997,20 +2215,20 @@ async function promptSaver(message) {
     }
   });
 
-  // Dropdown-Interaktion
   dropdownButton.addEventListener("click", (e) => {
-    console.log("Dropdown-Button geklickt");
-    e.stopPropagation(); // Verhindert, dass das Klick-Event das Dropdown sofort wieder schließt
+    e.stopPropagation();
     const currentDisplay = dropdownContent.style.display;
     dropdownContent.style.display =
       currentDisplay === "block" ? "none" : "block";
-    console.log(
-      "Dropdown-Content Display geändert zu:",
-      dropdownContent.style.display
-    );
   });
 
-  // Schließe Dropdowns bei Klick außerhalb
+  suggestedDropdownButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const currentDisplay = suggestedDropdownContent.style.display;
+    suggestedDropdownContent.style.display =
+      currentDisplay === "block" ? "none" : "block";
+  });
+
   document.addEventListener("click", (e) => {
     if (!similarPromptsDropdown.contains(e.target)) {
       dropdownContent.style.display = "none";
@@ -2020,79 +2238,6 @@ async function promptSaver(message) {
     }
   });
 
-  // Prompts für ausgewählten Ordner in Replace-Option laden
-  replaceFolderSelect.addEventListener("change", async (e) => {
-    const folderId = replaceFolderSelect.value;
-    replacePromptSelect.disabled = !folderId;
-    replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
-    shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
-
-    if (folderId) {
-      try {
-        const data = await new Promise((resolve, reject) => {
-          chrome.storage.local.get(folderId, (data) => {
-            if (chrome.runtime.lastError) {
-              reject(chrome.runtime.lastError);
-            } else {
-              resolve(data);
-            }
-          });
-        });
-
-        const topic = data[folderId];
-        if (topic && topic.prompts) {
-          topic.prompts.forEach((prompt, index) => {
-            const option = document.createElement("option");
-            option.value = index;
-            const promptTitle = prompt.title || "Untitled Prompt";
-            option.textContent =
-              promptTitle.length > 50
-                ? promptTitle.slice(0, 50) + "..."
-                : promptTitle;
-            option.title = promptTitle;
-            replacePromptSelect.appendChild(option);
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching folder data:", error);
-      }
-    }
-  });
-
-  // Event-Listener für Prompt-Auswahl zum Anzeigen der Differenz
-  replacePromptSelect.addEventListener("change", async (e) => {
-    const folderId = replaceFolderSelect.value;
-    const promptIndex = replacePromptSelect.value;
-
-    if (folderId && promptIndex !== "") {
-      try {
-        const data = await new Promise((resolve, reject) => {
-          chrome.storage.local.get(folderId, (data) => {
-            if (chrome.runtime.lastError) {
-              reject(chrome.runtime.lastError);
-            } else {
-              resolve(data);
-            }
-          });
-        });
-
-        const topic = data[folderId];
-        if (topic && topic.prompts && topic.prompts[promptIndex]) {
-          const selectedPrompt = topic.prompts[promptIndex].content;
-          const currentPrompt = promptTextarea.value.trim();
-          computePromptDiff(currentPrompt, selectedPrompt);
-        }
-      } catch (error) {
-        console.error("Error fetching prompt data:", error);
-        shadowRoot.getElementById("promptDiffOutput").innerHTML =
-          "Error loading prompt differences.";
-      }
-    } else {
-      shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
-    }
-  });
-
-  // Lade ähnliche Prompts bei Änderung des Prompt-Textes
   function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -2115,7 +2260,6 @@ async function promptSaver(message) {
     }, 500)
   );
 
-  // Schritt-Navigation
   nextToPromptButton.addEventListener("click", (e) => {
     if (promptTitleInput.value.trim() === "") {
       alert("Bitte gib einen Prompt-Titel ein!");
@@ -2127,350 +2271,139 @@ async function promptSaver(message) {
     }
     titleSection.classList.remove("active");
     promptSection.classList.add("active");
+    promptTextarea.focus();
   });
 
-  backToTitleButton.addEventListener("click", (e) => {
+  backToTitleButton.addEventListener("click", () => {
     promptSection.classList.remove("active");
     titleSection.classList.add("active");
+    promptTitleInput.focus();
   });
 
-  nextToOptionsButton.addEventListener("click", async (e) => {
+  nextToOptionsButton.addEventListener("click", () => {
     if (promptTextarea.value.trim() === "") {
-      alert("Bitte gib einen Prompt-Text ein!");
+      alert("Bitte gib einen Prompt-Inhalt ein!");
       return;
     }
-    await loadFolders();
-    const currentPrompt = promptTextarea.value.trim();
-    await loadSimilarPrompts(currentPrompt);
-    await loadCombinePrompts(currentPrompt); // Lade immer, auch ohne currentPrompt
     promptSection.classList.remove("active");
     optionsSection.classList.add("active");
     modalContent.classList.add("options-active");
+    loadFolders();
+    loadCombinePrompts(promptTextarea.value.trim());
+    loadSimilarPrompts(promptTextarea.value.trim());
   });
 
-  backToPromptButton.addEventListener("click", (e) => {
+  backToPromptEditButton.addEventListener("click", () => {
     optionsSection.classList.remove("active");
     promptSection.classList.add("active");
     modalContent.classList.remove("options-active");
+    promptTextarea.focus();
   });
 
-  backToPromptEditButton.addEventListener("click", (e) => {
-    optionsSection.classList.remove("active");
-    promptSection.classList.add("active");
-  });
-
-  // Options-Switcher-Logik mit Event-Delegation
-  optionsSwitch.addEventListener("click", (e) => {
-    if (e.target.tagName === "BUTTON") {
-      const buttons = shadowRoot.querySelectorAll(".options-switch button");
-      const contents = shadowRoot.querySelectorAll(".option-content");
-      buttons.forEach((btn) => {
-        if (btn) btn.classList.remove("active");
-      });
-      contents.forEach((c) => {
-        if (c) c.classList.remove("active");
-      });
-      e.target.classList.add("active");
-      const tabContent = shadowRoot.getElementById(
-        e.target.getAttribute("data-tab")
+  optionsSwitch.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      optionsSwitch
+        .querySelectorAll("button")
+        .forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+      optionsSection
+        .querySelectorAll(".option-content")
+        .forEach((content) => content.classList.remove("active"));
+      const targetContent = optionsSection.querySelector(
+        `#${button.getAttribute("data-tab")}`
       );
-      if (tabContent) {
-        tabContent.classList.add("active");
-      } else {
-        console.warn(
-          "Tab content not found for data-tab:",
-          e.target.getAttribute("data-tab")
-        );
-      }
-    }
+      if (targetContent) targetContent.classList.add("active");
+    });
   });
 
-  // Speicher-Logik mit asynchroner Behandlung
-  saveButton.addEventListener("click", async (e) => {
+  saveButton.addEventListener("click", async () => {
+    const activeOption = optionsSwitch
+      .querySelector("button.active")
+      .getAttribute("data-tab");
     const promptTitle = promptTitleInput.value.trim();
     const promptDescription = promptDescInput.value.trim();
     const promptContent = promptTextarea.value.trim();
-    const activeOption = shadowRoot
-      .querySelector(".options-switch button.active")
-      ?.getAttribute("data-tab");
 
     if (!promptTitle || !promptDescription || !promptContent) {
-      alert("Bitte fülle alle Felder (Titel, Beschreibung, Prompt) aus!");
+      alert(
+        "Bitte fülle alle Felder aus (Titel, Beschreibung, Prompt-Inhalt)!"
+      );
       return;
     }
 
-    if (!activeOption) {
-      alert("Bitte wähle eine Option aus!");
-      return;
-    }
-
-    async function savePrompt() {
-      const promptTitle = promptTitleInput.value.trim();
-      const promptDescription = promptDescInput.value.trim();
-      const promptContent = promptTextarea.value.trim();
-      const activeOption = shadowRoot
-        .querySelector(".options-switch button.active")
-        ?.getAttribute("data-tab");
-
-      if (!promptTitle || !promptDescription || !promptContent) {
-        alert("Bitte fülle alle Felder (Titel, Beschreibung, Prompt) aus!");
-        return;
-      }
-
-      if (!activeOption) {
-        alert("Bitte wähle eine Option aus!");
-        return;
-      }
-
-      // Einfache UUID-Generierungsfunktion
-      function generateUUID() {
-        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-          /[xy]/g,
-          function (c) {
-            const r = (Math.random() * 16) | 0,
-              v = c === "x" ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-          }
+    switch (activeOption) {
+      case "create":
+        await createNewPrompt(
+          promptTitle,
+          promptDescription,
+          promptContent,
+          closeModal
         );
-      }
+        break;
 
-      const promptObject = {
-        title: promptTitle,
-        description: promptDescription,
-        content:
-          activeOption === "combine"
-            ? combinedPromptPreview.value.trim() // Verwende den direkten Wert des textarea
-            : promptContent,
-        createdAt: Date.now(),
-        versions: [
-          {
-            versionId: generateUUID(),
-            title: promptTitle,
-            description: promptDescription,
-            content:
-              activeOption === "combine"
-                ? combinedPromptPreview.value.trim()
-                : promptContent,
-            timestamp: Date.now(),
-          },
-        ],
-      };
-
-      try {
-        if (activeOption === "create") {
-          const hiddenFolderId = `hidden_folder_${Date.now()}_${Math.floor(
-            Math.random() * 10000
-          )}`;
-          const hiddenFolder = {
-            name: promptTitle,
-            prompts: [promptObject],
-            isHidden: true,
-            isTrash: false,
-          };
-
-          await new Promise((resolve, reject) => {
-            chrome.storage.local.set({ [hiddenFolderId]: hiddenFolder }, () => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                console.log(
-                  "Standalone prompt created in hidden folder:",
-                  hiddenFolder
-                );
-                resolve();
-              }
-            });
-          });
-          closeModal();
-        } else if (activeOption === "replace") {
-          const folderId = replaceFolderSelect.value;
-          const promptValue = replacePromptSelect.value;
-
-          if (!folderId || promptValue === "") {
-            alert("Bitte wähle einen Ordner und eine Prompt aus!");
-            return;
-          }
-
-          if (folderId === "single") {
-            const [singleFolderId, promptIndex] = promptValue.split(":");
-            if (!singleFolderId || promptIndex === undefined) {
-              alert("Ungültige Prompt-Auswahl!");
-              return;
-            }
-
-            const data = await new Promise((resolve, reject) => {
-              chrome.storage.local.get(singleFolderId, (data) => {
-                if (chrome.runtime.lastError) {
-                  reject(chrome.runtime.lastError);
-                } else {
-                  resolve(data);
-                }
-              });
-            });
-
-            const topic = data[singleFolderId];
-            if (topic && topic.prompts && topic.prompts[promptIndex]) {
-              topic.prompts[promptIndex] = promptObject;
-              topic.name =
-                topic.prompts.length === 1 ? promptTitle : topic.name;
-
-              await new Promise((resolve, reject) => {
-                chrome.storage.local.set({ [singleFolderId]: topic }, () => {
-                  if (chrome.runtime.lastError) {
-                    reject(chrome.runtime.lastError);
-                  } else {
-                    console.log(
-                      `Prompt in single folder ${singleFolderId} replaced at index ${promptIndex}`
-                    );
-                    resolve();
-                  }
-                });
-              });
-              closeModal();
-            } else {
-              alert("Prompt oder Ordner nicht gefunden!");
-            }
-          } else {
-            const promptIndex = promptValue;
-            const data = await new Promise((resolve, reject) => {
-              chrome.storage.local.get(folderId, (data) => {
-                if (chrome.runtime.lastError) {
-                  reject(chrome.runtime.lastError);
-                } else {
-                  resolve(data);
-                }
-              });
-            });
-
-            const topic = data[folderId];
-            if (topic && topic.prompts && topic.prompts[promptIndex]) {
-              topic.prompts[promptIndex] = promptObject;
-              topic.name =
-                topic.prompts.length === 1 ? promptTitle : topic.name;
-
-              await new Promise((resolve, reject) => {
-                chrome.storage.local.set({ [folderId]: topic }, () => {
-                  if (chrome.runtime.lastError) {
-                    reject(chrome.runtime.lastError);
-                  } else {
-                    console.log(
-                      `Prompt in folder ${folderId} replaced at index ${promptIndex}`
-                    );
-                    resolve();
-                  }
-                });
-              });
-              closeModal();
-            } else {
-              alert("Prompt oder Ordner nicht gefunden!");
-            }
-          }
-        } else if (activeOption === "add") {
-          const folderId = addFolderSelect.value;
-
-          if (!folderId) {
-            alert("Bitte wähle einen Ordner aus oder erstelle einen neuen!");
-            return;
-          }
-
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(folderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
-
-          const topic = data[folderId] || {
-            name: promptTitle,
-            prompts: [],
-            isHidden: false,
-            isTrash: false,
-          };
-          topic.prompts.push(promptObject);
-
-          await new Promise((resolve, reject) => {
-            chrome.storage.local.set({ [folderId]: topic }, () => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                console.log(`Prompt added to folder ${folderId}`);
-                resolve();
-              }
-            });
-          });
-          closeModal();
-        } else if (activeOption === "combine") {
-          const promptValue = combinePromptSelect.value;
-          if (!promptValue) {
-            alert("Bitte wähle einen bestehenden Prompt zum Kombinieren aus!");
-            return;
-          }
-          const combinedText = combinedPromptPreview.value.trim();
-          if (!combinedText) {
-            alert("Die kombinierte Prompt-Vorschau ist leer!");
-            return;
-          }
-
-          const [folderId, promptIndex] = promptValue.split(":");
-          if (!folderId || promptIndex === undefined) {
-            alert("Ungültige Prompt-Auswahl!");
-            return;
-          }
-
-          const data = await new Promise((resolve, reject) => {
-            chrome.storage.local.get(folderId, (data) => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(data);
-              }
-            });
-          });
-
-          const topic = data[folderId];
-          if (topic && topic.prompts && topic.prompts[promptIndex]) {
-            const existingPrompt = topic.prompts[promptIndex];
-            // Nur den content aktualisieren
-            existingPrompt.content = combinedText;
-            // Version hinzufügen mit bestehendem Titel und Beschreibung
-            if (!existingPrompt.versions) {
-              existingPrompt.versions = [];
-            }
-            existingPrompt.versions.push({
-              versionId: generateUUID(),
-              title: existingPrompt.title || "Untitled Prompt",
-              description: existingPrompt.description || "",
-              content: combinedText,
-              timestamp: Date.now(),
-            });
-
-            await new Promise((resolve, reject) => {
-              chrome.storage.local.set({ [folderId]: topic }, () => {
-                if (chrome.runtime.lastError) {
-                  reject(chrome.runtime.lastError);
-                } else {
-                  console.log(
-                    `Combined prompt content updated in folder ${folderId} at index ${promptIndex}`
-                  );
-                  resolve();
-                }
-              });
-            });
-            closeModal();
-          } else {
-            alert("Prompt oder Ordner nicht gefunden!");
-          }
+      case "replace":
+        const folderId = replaceFolderSelect.value;
+        const promptValue = replacePromptSelect.value;
+        if (!folderId || !promptValue) {
+          alert("Bitte wähle einen Ordner und einen Prompt zum Ersetzen aus!");
+          return;
         }
-      } catch (error) {
-        console.error("Error in savePrompt:", error);
-        alert("Fehler beim Speichern des Prompts.");
-      }
-    }
+        await replacePrompt(
+          promptTitle,
+          promptDescription,
+          promptContent,
+          folderId,
+          promptValue,
+          closeModal
+        );
+        break;
 
-    await savePrompt();
+      case "add":
+        const addFolderId = addFolderSelect.value;
+        if (!addFolderId) {
+          alert("Bitte wähle einen Ordner aus oder erstelle einen neuen!");
+          return;
+        }
+        await addPromptToFolder(
+          promptTitle,
+          promptDescription,
+          promptContent,
+          addFolderId,
+          closeModal
+        );
+        break;
+
+      case "combine":
+        const combinePromptValue = combinePromptSelect.value;
+        if (!combinePromptValue) {
+          alert("Bitte wähle einen Prompt zum Kombinieren aus!");
+          return;
+        }
+        const combinedText = combinedPromptPreview.value.trim();
+        if (!combinedText) {
+          alert("Kombinierter Prompt-Inhalt ist leer!");
+          return;
+        }
+        await combineWithExistingPrompt(
+          promptTitle,
+          promptDescription,
+          combinedText,
+          combinePromptValue,
+          closeModal
+        );
+        break;
+
+      default:
+        alert("Ungültige Option ausgewählt!");
+    }
+  });
+}
+
+function generateUUID() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0,
+      v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
   });
 }
 

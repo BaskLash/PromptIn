@@ -1,12 +1,18 @@
-function showPromptVersions(folderId, promptIndex, promptItem) {
-  chrome.storage.local.get(folderId, function (data) {
+function showPromptVersions(promptId) {
+  console.log("ID: " + promptId)
+  chrome.storage.local.get(["prompts"], function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
       return;
     }
 
-    const prompt = data[folderId].prompts[promptIndex];
-    if (!prompt || !prompt.versions) return;
+    const prompt = data.prompts?.[promptId];
+    if (!prompt || !prompt.versions) {
+      console.error(
+        `Prompt with ID ${promptId} not found or no versions available`
+      );
+      return;
+    }
 
     const modal = document.createElement("div");
     modal.className = "modal";
@@ -29,7 +35,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
     const modalBody = document.createElement("div");
     modalBody.className = "modal-body";
 
-    // Custom Diff Section (oben im Modal)
     const customDiffSection = document.createElement("div");
     customDiffSection.className = "custom-diff-section";
     customDiffSection.style.display = "none";
@@ -82,7 +87,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
     customDiffContainer.className = "custom-diff-container";
     customDiffSection.appendChild(customDiffContainer);
 
-    // Timeline (unverändert)
     const timeline = document.createElement("div");
     timeline.className = "version-timeline";
 
@@ -91,7 +95,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       .sort((a, b) => b.timestamp - a.timestamp);
 
     versions.forEach((version, index) => {
-      // Populate dropdowns
       const optionBase = document.createElement("option");
       optionBase.value = version.versionId;
       optionBase.textContent = `Version ${versions.length - index} - ${new Date(
@@ -106,7 +109,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       } - ${new Date(version.timestamp).toLocaleString()}`;
       compareSelect.appendChild(optionCompare);
 
-      // Create version item (unverändert)
       const versionItem = document.createElement("div");
       versionItem.className = "version-item";
       if (index === 0) {
@@ -142,7 +144,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       const versionContent = document.createElement("div");
       versionContent.className = "version-content";
 
-      // Show full content for oldest version
       if (index === versions.length - 1) {
         const titleLabel = document.createElement("label");
         titleLabel.textContent = "Titel:";
@@ -168,7 +169,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         versionContent.appendChild(contentLabel);
         versionContent.appendChild(contentText);
       } else {
-        // Show diffs for all other versions compared to the previous version
         const prevVersion = versions[index + 1];
         const diffWrapper = document.createElement("div");
         diffWrapper.className = "version-diff-wrapper";
@@ -179,7 +179,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         } zu Version ${versions.length - index}`;
         diffWrapper.appendChild(diffTitle);
 
-        // Title diff
         const titleDiffWrapper = document.createElement("div");
         titleDiffWrapper.className = "diff-wrapper";
         const titleHeader = document.createElement("label");
@@ -199,7 +198,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         titleDiffWrapper.appendChild(titleSummary);
         diffWrapper.appendChild(titleDiffWrapper);
 
-        // Description diff
         const descDiffWrapper = document.createElement("div");
         descDiffWrapper.className = "diff-wrapper";
         const descHeader = document.createElement("label");
@@ -219,7 +217,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         descDiffWrapper.appendChild(descSummary);
         diffWrapper.appendChild(descDiffWrapper);
 
-        // Content diff
         const contentDiffWrapper = document.createElement("div");
         contentDiffWrapper.className = "diff-wrapper";
         const contentHeader = document.createElement("label");
@@ -236,7 +233,7 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         contentSummary.className = "diff-summary";
         contentSummary.textContent = `Unterschiede: ${contentDiffCount} Wörter`;
         contentDiffWrapper.appendChild(contentDiffContainer);
-        contentDiffWrapper.appendChild(contentSummary); // KORREKTUR: contentWrapper → contentDiffWrapper
+        contentDiffWrapper.appendChild(contentSummary);
         diffWrapper.appendChild(contentDiffWrapper);
 
         versionContent.appendChild(diffWrapper);
@@ -252,7 +249,7 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         restoreButton.title =
           "Diese Version als aktuelle Version wiederherstellen";
         restoreButton.addEventListener("click", () => {
-          restoreVersion(folderId, promptIndex, version.versionId, promptItem);
+          restoreVersion(promptId, version.versionId);
           modal.style.display = "none";
           document.body.removeChild(modal);
           document.head.removeChild(style);
@@ -280,7 +277,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       timeline.appendChild(versionItem);
     });
 
-    // Handle dropdown changes for custom comparisons
     function updateCustomDiffView() {
       const baseVersionId = baseSelect.value;
       const compareVersionId = compareSelect.value;
@@ -301,7 +297,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       );
       if (!baseVersion || !compareVersion) return;
 
-      // Calculate version numbers
       const baseVersionIndex = versions.findIndex(
         (v) => v.versionId === baseVersionId
       );
@@ -311,12 +306,10 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       );
       const compareVersionNumber = versions.length - compareVersionIndex;
 
-      // Update diff header
       diffHeader.textContent = `Version ${baseVersionNumber} vs. Version ${compareVersionNumber}`;
 
       customDiffContainer.innerHTML = "";
 
-      // Render diff for title
       const titleWrapper = document.createElement("div");
       titleWrapper.className = "diff-wrapper";
       const titleHeader = document.createElement("h4");
@@ -336,7 +329,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       titleWrapper.appendChild(titleSummary);
       customDiffContainer.appendChild(titleWrapper);
 
-      // Render diff for description
       const descWrapper = document.createElement("div");
       descWrapper.className = "diff-wrapper";
       const descHeader = document.createElement("h4");
@@ -356,7 +348,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       descWrapper.appendChild(descSummary);
       customDiffContainer.appendChild(descWrapper);
 
-      // Render diff for content
       const contentWrapper = document.createElement("div");
       contentWrapper.className = "diff-wrapper";
       const contentHeader = document.createElement("h4");
@@ -380,12 +371,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
     baseSelect.addEventListener("change", updateCustomDiffView);
     compareSelect.addEventListener("change", updateCustomDiffView);
 
-    modalHeader.appendChild(closeSpan);
-    modalHeader.appendChild(headerTitle);
-    modalBody.appendChild(customDiffSection);
-    modalBody.appendChild(timeline);
-
-    // Export Dropdown
     const exportContainer = document.createElement("div");
     exportContainer.style.marginTop = "15px";
     exportContainer.style.display = "flex";
@@ -433,12 +418,17 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
       } else if (format === "html") {
         exportVersionHistoryAsHtml(prompt);
       }
-      exportSelect.value = ""; // Reset dropdown
+      exportSelect.value = "";
     });
 
     exportContainer.appendChild(exportLabel);
     exportContainer.appendChild(exportSelect);
     modalBody.appendChild(exportContainer);
+
+    modalHeader.appendChild(closeSpan);
+    modalHeader.appendChild(headerTitle);
+    modalBody.appendChild(customDiffSection);
+    modalBody.appendChild(timeline);
 
     modalContent.appendChild(modalHeader);
     modalContent.appendChild(modalBody);
@@ -458,7 +448,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         background: rgba(0, 0, 0, 0.7);
         backdrop-filter: blur(3px);
       }
-
       .modal-content {
         background: #fff;
         margin: 5% auto;
@@ -469,7 +458,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         overflow: hidden;
       }
-
       .modal-header {
         padding: 16px 24px;
         background: linear-gradient(135deg, #1e90ff, #4169e1);
@@ -478,25 +466,21 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         justify-content: space-between;
         align-items: center;
       }
-
       .modal-header h2 {
         margin: 0;
         font-size: 1.6em;
         font-weight: 600;
       }
-
       .modal-body {
         padding: 24px;
         color: #2c3e50;
         max-height: 70vh;
         overflow-y: auto;
       }
-
       .version-timeline {
         position: relative;
         padding-left: 30px;
       }
-
       .version-item {
         position: relative;
         margin-bottom: 20px;
@@ -507,16 +491,13 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         border-radius: 4px;
         transition: background 0.2s ease;
       }
-
       .version-item.current-version {
         background: #e6f3ff;
         border-left-color: #28a745;
       }
-
       .version-item.current-version::before {
         background: #28a745;
       }
-
       .version-item::before {
         content: '';
         position: absolute;
@@ -528,26 +509,22 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         border-radius: 50%;
         border: 2px solid #fff;
       }
-
       .version-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 12px;
       }
-
       .version-title-wrapper {
         display: flex;
         align-items: center;
         gap: 8px;
       }
-
       .version-header h3 {
         margin: 0;
         font-size: 1.2em;
         color: #1e90ff;
       }
-
       .current-badge {
         background: #28a745;
         color: white;
@@ -556,12 +533,10 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         font-size: 0.8em;
         font-weight: 600;
       }
-
       .version-date {
         font-size: 0.9em;
         color: #666;
       }
-
       .version-content label {
         font-weight: 600;
         margin-top: 12px;
@@ -569,7 +544,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         display: block;
         color: #34495e;
       }
-
       .version-content p {
         margin: 0 0 12px;
         padding: 8px;
@@ -578,13 +552,11 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         word-break: break-word;
         font-size: 0.95em;
       }
-
       .version-actions {
         display: flex;
         gap: 12px;
         margin-top: 12px;
       }
-
       .action-btn {
         padding: 8px 16px;
         background: #1e90ff;
@@ -596,11 +568,9 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         font-weight: 600;
         transition: background 0.2s ease;
       }
-
       .action-btn:hover {
         background: #4169e1;
       }
-
       .close {
         color: white;
         font-size: 28px;
@@ -608,19 +578,16 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         cursor: pointer;
         transition: transform 0.2s ease;
       }
-
       .close:hover,
       .close:focus {
         transform: scale(1.1);
       }
-
       .custom-diff-section {
         margin-bottom: 24px;
         padding: 16px;
         background: #f8f9fa;
         border-radius: 8px;
       }
-
       .diff-header {
         margin: 0 0 12px;
         color: #1e90ff;
@@ -629,7 +596,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         border-bottom: 2px solid #1e90ff;
         padding-bottom: 8px;
       }
-
       .diff-select-wrapper {
         display: flex;
         flex-wrap: wrap;
@@ -637,7 +603,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         margin-bottom: 12px;
         align-items: center;
       }
-
       .diff-select-wrapper label {
         font-weight: 600;
         margin-bottom: 8px;
@@ -645,7 +610,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         color: #34495e;
         flex: 0 0 120px;
       }
-
       .diff-select {
         width: 100%;
         padding: 10px;
@@ -657,7 +621,6 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         flex: 1;
         min-width: 0;
       }
-
       .custom-diff-container {
         max-height: 300px;
         overflow-y: auto;
@@ -666,18 +629,15 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         border: 1px solid #ddd;
         border-radius: 4px;
       }
-
       .diff-wrapper {
         margin-bottom: 16px;
       }
-
       .diff-wrapper h4,
       .version-diff-wrapper h4 {
         margin: 0 0 8px;
         color: #34495e;
         font-size: 1.1em;
       }
-
       .diff-output {
         min-height: 50px;
         padding: 10px;
@@ -687,14 +647,12 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         white-space: pre-wrap;
         line-height: 1.5;
       }
-
       .diff-summary {
         margin-top: 12px;
         font-weight: 600;
         color: #1e90ff;
         font-size: 0.9em;
       }
-
       .version-diff-wrapper {
         margin-top: 12px;
         padding: 12px;
@@ -702,27 +660,21 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
         border: 1px solid #ddd;
         border-radius: 4px;
       }
-
       .diff-word.common {
         color: #2c3e50;
       }
-
       .diff-word.added {
         background: #e6ffed;
         color: #28a745;
       }
-
       .diff-word.removed {
         background: #ffe6e6;
         color: #dc3545;
       }
-
       .arrow {
         color: #1e90ff;
         font-weight: bold;
       }
-
-      /* Responsive Design */
       @media (max-width: 500px) {
         .modal-content {
           width: 95%;
@@ -747,21 +699,21 @@ function showPromptVersions(folderId, promptIndex, promptItem) {
           width: 100%;
           text-align: center;
         }
-          .action-btn select {
-  background: #1e90ff;
-  color: white;
-  font-size: 0.9em;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-.action-btn select:hover {
-  background: #4169e1;
-}
-.action-btn select option {
-  background: #fff;
-  color: #2c3e50;
-}
+        .action-btn select {
+          background: #1e90ff;
+          color: white;
+          font-size: 0.9em;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.2s ease;
+        }
+        .action-btn select:hover {
+          background: #4169e1;
+        }
+        .action-btn select option {
+          background: #fff;
+          color: #2c3e50;
+        }
         .diff-select-wrapper {
           flex-direction: column;
         }
@@ -816,7 +768,7 @@ function restoreVersion(folderId, promptIndex, versionId, promptItem) {
     if (isDifferent) {
       // Save current state as a new version only if there's a difference
       prompt.versions.push({
-        versionId: generateUUID(),
+        versionId: `${Date.now()}_${generateUUID()}`,
         title: prompt.title,
         description: prompt.description || "",
         content: prompt.content,

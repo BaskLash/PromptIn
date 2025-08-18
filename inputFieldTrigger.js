@@ -1,4 +1,258 @@
+// Initialize categories and promptSourceMap
+let categories = {
+  Favorites: [],
+  Workflows: [], // Added Workflows category
+  "All Prompts": [],
+  "Single Prompts": [],
+  "Categorised Prompts": { all: [] },
+};
+
+let promptSourceMap = new Map();
+let currentFocusElement = null;
+let selectedCategoryOrFolder = null;
+let isPasting = false;
+let isEscaped = false;
+// Initialize state variables for slash handling
+let isDropdownTriggered = false;
+let isSlashKeyboardInput = false;
+
+// Function to update dropdown data from Chrome storage
+function updateDropdownData(callback) {
+  chrome.storage.local.get(["prompts", "folders", "workflows"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error(
+        "Error fetching data from Chrome storage:",
+        chrome.runtime.lastError
+      );
+      return;
+    }
+
+    // Mapping of domains to model names
+    const domainToModelMap = {
+      "chatgpt.com": "ChatGPT",
+      "grok.com": "Grok",
+      "gemini.google.com": "Gemini",
+      "claude.ai": "Claude",
+      "blackbox.ai": "BlackBox",
+      "github.com": "GitHub Copilot",
+      "copilot.microsoft.com": "Microsoft Copilot",
+      "chat.mistral.ai": "Mistral",
+      "duckduckgo.com": "DuckDuckGo AI Chat",
+      "perplexity.ai": "Perplexity",
+      "chat.deepseek.com": "DeepSeek",
+      "deepai.org": "DeepAI",
+      "chat.qwen.ai": "Qwen AI",
+    };
+
+    // Function to get current mode based on domain
+    function getCurrentMode() {
+      const currentDomain = window.location.hostname;
+      for (const [domain, model] of Object.entries(domainToModelMap)) {
+        if (currentDomain.includes(domain)) {
+          return model;
+        }
+      }
+      return null; // Fallback if no matching domain is found
+    }
+
+    const currentMode = getCurrentMode();
+
+    categories = {
+      Recommended: [],
+      "Last Used": [],
+      Favorites: [],
+      Workflows: [],
+      "All Prompts": [],
+      "Single Prompts": [],
+      "Categorised Prompts": { all: [] },
+    };
+    promptSourceMap = new Map();
+    const allPrompts = [];
+
+    // Workflows
+    const workflows = data.workflows || {};
+    for (const [workflowId, workflow] of Object.entries(workflows)) {
+      if (!workflow.isTrash) {
+        categories.Workflows.push(workflow.name);
+        promptSourceMap.set(`${workflow.name}_${workflowId}`, {
+          category: "Workflows",
+          workflow,
+          workflowId,
+        });
+      }
+    }
+
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+
+    // Alle Prompts durchgehen
+    let recommended = [];
+    for (const [promptId, prompt] of Object.entries(prompts)) {
+      if (prompt.isTrash) continue;
+
+      const title = prompt.title || "Untitled Prompt";
+      const folderId = prompt.folderId || null;
+      const folder = folderId && folders[folderId]?.name;
+      const lastUsed = prompt.lastUsed || 0;
+
+      const key = `${title}_${promptId}`;
+
+      allPrompts.push({
+        title,
+        prompt,
+        folderId,
+        promptId,
+        lastUsed,
+        folder: folder || null,
+      });
+
+      // Recommended (filtered by compatibleModels)
+      if (
+        currentMode &&
+        Array.isArray(prompt.compatibleModels) &&
+        prompt.compatibleModels.includes(currentMode)
+      ) {
+        recommended.push({
+          title,
+          usageCount: prompt.usageCount || 0,
+          key,
+          folder,
+          prompt,
+          folderId,
+          promptId,
+        });
+        promptSourceMap.set(key, {
+          category: "Recommended",
+          folder,
+          prompt,
+          folderId,
+          promptId,
+        });
+      }
+
+      // All Prompts
+      categories["All Prompts"].push(title);
+      promptSourceMap.set(key, {
+        category: "All Prompts",
+        folder,
+        prompt,
+        folderId,
+        promptId,
+      });
+
+      // Single Prompts (folderId null)
+      if (folderId === null) {
+        categories["Single Prompts"].push(title);
+        promptSourceMap.set(key, {
+          category: "Single Prompts",
+          folder: null,
+          prompt,
+          folderId,
+          promptId,
+        });
+      }
+
+      // Categorised Prompts
+      if (folderId && folder) {
+        if (!categories["Categorised Prompts"][folder]) {
+          categories["Categorised Prompts"][folder] = [];
+        }
+        categories["Categorised Prompts"][folder].push(title);
+        categories["Categorised Prompts"].all.push(`${folder}: ${title}`);
+        promptSourceMap.set(key, {
+          category: "Categorised Prompts",
+          folder,
+          prompt,
+          folderId,
+          promptId,
+        });
+      }
+
+      // Favorites
+      if (prompt.isFavorite) {
+        categories["Favorites"].push(title);
+        promptSourceMap.set(key, {
+          category: "Favorites",
+          folder: folder || null,
+          prompt,
+          folderId,
+          promptId,
+        });
+      }
+    }
+
+    // Sort Recommended by usageCount descending
+    recommended.sort((a, b) => b.usageCount - a.usageCount);
+    categories["Recommended"] = recommended.map((r) => r.title);
+
+    // Sort Last Used
+    allPrompts.sort((a, b) => b.lastUsed - a.lastUsed);
+    categories["Last Used"] = [];
+    allPrompts
+      .slice(0, 10)
+      .forEach(({ title, prompt, folderId, promptId, folder }) => {
+        const key = `${title}_${promptId}`;
+        categories["Last Used"].push(title);
+        promptSourceMap.set(key, {
+          category: "Last Used",
+          folder,
+          prompt,
+          folderId,
+          promptId,
+        });
+      });
+
+    // Alphabetisch sortieren
+    Object.keys(categories).forEach((key) => {
+      if (Array.isArray(categories[key]) && key !== "Last Used") {
+        categories[key] = [...new Set(categories[key])].sort();
+      } else if (key === "Categorised Prompts") {
+        categories[key].all = [...new Set(categories[key].all)].sort();
+        Object.keys(categories[key]).forEach((folder) => {
+          if (folder !== "all") {
+            categories[key][folder] = [
+              ...new Set(categories[key][folder]),
+            ].sort();
+          }
+        });
+      }
+    });
+
+    if (callback) callback();
+  });
+}
+
 function inputFieldTrigger() {
+  // Liste der erlaubten Domains
+  const allowedDomains = [
+    "grok.com",
+    "gemini.google.com",
+    "chatgpt.com",
+    "claude.ai",
+    "blackbox.ai",
+    "github.com/copilot",
+    "copilot.microsoft.com",
+    "chat.mistral.ai",
+    "duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1",
+    "perplexity.ai",
+    "chat.deepseek.com",
+    "deepai.org/chat",
+    "chat.qwen.ai",
+  ];
+
+  const currentDomain = window.location.hostname
+    .toLowerCase()
+    .replace(/^www\./, "");
+
+  if (
+    !allowedDomains.some(
+      (domain) => currentDomain === domain.replace(/^www\./, "")
+    )
+  ) {
+    console.log(`Script nicht aktiv auf: ${currentDomain}`);
+    return;
+  }
+
   // Warte, bis das DOM geladen ist
   document.addEventListener("DOMContentLoaded", () => {
     // Warte zusätzlich 2 Sekunden nach DOM-Laden
@@ -212,187 +466,6 @@ function inputFieldTrigger() {
 `;
       dropdown.appendChild(footerPanel);
 
-      // Initialize categories and promptSourceMap
-      let categories = {
-        Favorites: [],
-        Workflows: [], // Added Workflows category
-        "All Prompts": [],
-        "Single Prompts": [],
-        "Categorised Prompts": { all: [] },
-      };
-
-      let promptSourceMap = new Map();
-      let currentFocusElement = null;
-      let selectedCategoryOrFolder = null;
-      let isPasting = false;
-      let isEscaped = false;
-      // Initialize state variables for slash handling
-      let isDropdownTriggered = false;
-      let isSlashKeyboardInput = false;
-
-      // Function to update dropdown data from Chrome storage
-      function updateDropdownData(callback) {
-        chrome.storage.local.get(null, function (data) {
-          if (chrome.runtime.lastError) {
-            console.error(
-              "Error fetching data from Chrome storage:",
-              chrome.runtime.lastError
-            );
-            return;
-          }
-
-          categories = {
-            "Last Used": [],
-            Favorites: [],
-            Workflows: [],
-            "All Prompts": [],
-            "Single Prompts": [],
-            "Categorised Prompts": { all: [] },
-          };
-          promptSourceMap = new Map();
-
-          const allPrompts = [];
-          // Handle workflows
-          // *** Code below is responsible for populating the Workflows category ***
-          Object.entries(data).forEach(([key, value]) => {
-            if (key.startsWith("workflow_") && !value.isTrash) {
-              categories.Workflows.push(value.name);
-              promptSourceMap.set(value.name + "_" + key, {
-                category: "Workflows",
-                workflow: value,
-                workflowId: key,
-              });
-            }
-          });
-          // *** End of workflow population code ***
-          Object.entries(data).forEach(([id, topic]) => {
-            if (
-              topic.prompts &&
-              Array.isArray(topic.prompts) &&
-              !topic.isTrash
-            ) {
-              topic.prompts.forEach((prompt, index) => {
-                const title =
-                  typeof prompt === "string"
-                    ? prompt.slice(0, 50)
-                    : prompt.title || "Untitled Prompt";
-                const content =
-                  typeof prompt === "string" ? prompt : prompt.content || "";
-
-                // Store for Last Used sorting, including prompts without lastUsed
-                allPrompts.push({
-                  title,
-                  prompt,
-                  folderId: id,
-                  promptIndex: index, // Speichere den Index für spätere Updates
-                  lastUsed: prompt.lastUsed || 0, // Fallback auf 0, wenn kein lastUsed existiert
-                  folder: topic.isHidden ? null : topic.name,
-                });
-
-                // Add to All Prompts
-                categories["All Prompts"].push(title);
-                promptSourceMap.set(title + "_" + id + "_" + index, {
-                  // Eindeutiger Schlüssel
-                  category: "All Prompts",
-                  folder: null,
-                  prompt: prompt,
-                  folderId: id,
-                  promptIndex: index,
-                });
-
-                // Add to Single Prompts if hidden
-                if (topic.isHidden) {
-                  categories["Single Prompts"].push(title);
-                  promptSourceMap.set(title + "_" + id + "_" + index, {
-                    category: "Single Prompts",
-                    folder: null,
-                    prompt: prompt,
-                    folderId: id,
-                    promptIndex: index,
-                  });
-                }
-
-                // Add to Categorised Prompts if not hidden
-                if (!topic.isHidden) {
-                  if (!categories["Categorised Prompts"][topic.name]) {
-                    categories["Categorised Prompts"][topic.name] = [];
-                  }
-                  categories["Categorised Prompts"][topic.name].push(title);
-                  categories["Categorised Prompts"].all.push(
-                    `${topic.name}: ${title}`
-                  );
-                  promptSourceMap.set(title + "_" + id + "_" + index, {
-                    category: "Categorised Prompts",
-                    folder: topic.name,
-                    prompt: prompt,
-                    folderId: id,
-                    promptIndex: index,
-                  });
-                }
-
-                // Add to Favorites if isFavorite is true
-                if (prompt.isFavorite) {
-                  categories["Favorites"].push(title);
-                  promptSourceMap.set(title + "_" + id + "_" + index, {
-                    category: "Favorites",
-                    folder: topic.isHidden ? null : topic.name,
-                    prompt: prompt,
-                    folderId: id,
-                    promptIndex: index,
-                  });
-                }
-              });
-            }
-          });
-
-          // Sort and populate Last Used category (up to 10 prompts)
-          allPrompts.sort((a, b) => b.lastUsed - a.lastUsed); // Sort descending by lastUsed timestamp
-          categories["Last Used"] = [];
-          promptSourceMap.forEach((source, key) => {
-            if (source.category === "Last Used") {
-              promptSourceMap.delete(key); // Clear previous Last Used mappings
-            }
-          });
-          allPrompts
-            .slice(0, 10)
-            .forEach(({ title, prompt, folderId, promptIndex, folder }) => {
-              const key = title + "_" + folderId + "_" + promptIndex;
-              if (!promptSourceMap.has(key)) {
-                console.warn(`Duplicate or missing prompt key: ${key}`);
-                return;
-              }
-              categories["Last Used"].push(title);
-              promptSourceMap.set(key, {
-                category: "Last Used",
-                folder,
-                prompt,
-                folderId,
-                promptIndex,
-              });
-            });
-
-          // Sort other categories alphabetically
-          Object.keys(categories).forEach((key) => {
-            if (Array.isArray(categories[key]) && key !== "Last Used") {
-              categories[key] = [...new Set(categories[key])].sort();
-            } else if (key === "Categorised Prompts") {
-              categories[key].all = [...new Set(categories[key].all)].sort();
-              Object.keys(categories[key]).forEach((folder) => {
-                if (folder !== "all") {
-                  categories[key][folder] = [
-                    ...new Set(categories[key][folder]),
-                  ].sort();
-                }
-              });
-            }
-          });
-
-          if (callback) {
-            callback();
-          }
-        });
-      }
-
       // Function to set focus styling
       function setFocus(element) {
         console.log("Setting focus to:", element?.textContent || "null");
@@ -541,7 +614,14 @@ function inputFieldTrigger() {
                   : source && source.category === "Categorised Prompts"
                   ? `${title} (${source.folder})`
                   : title;
-              contentItem.textContent = displayText;
+              if (categoryOrFolder === "Last Used") {
+                const lastUsedDate = source.prompt.lastUsed
+                  ? new Date(source.prompt.lastUsed).toLocaleString()
+                  : "Never used";
+                contentItem.textContent = `${displayText} - Last used: ${lastUsedDate}`;
+              } else {
+                contentItem.textContent = displayText;
+              }
               contentItem.style.padding = "10px";
               contentItem.style.cursor = "pointer";
               contentItem.style.borderRadius = "4px";
@@ -605,11 +685,8 @@ function inputFieldTrigger() {
                 clearFocus();
 
                 // Nur für reguläre Prompts lastUsed aktualisieren
-                if (
-                  source.category !== "Workflows" &&
-                  source.promptIndex !== undefined
-                ) {
-                  updatePromptLastUsed(source.folderId, source.promptIndex);
+                if (source.category !== "Workflows") {
+                  updatePromptLastUsed(source.promptId);
                 }
               });
 
@@ -876,18 +953,7 @@ function inputFieldTrigger() {
                 dropdown.style.display = "none";
                 clearFocus();
 
-                const promptIndex = await findPromptIndex(
-                  source.folderId,
-                  source.prompt
-                );
-                if (promptIndex !== -1) {
-                  updatePromptLastUsed(source.folderId, promptIndex);
-                } else {
-                  console.error(
-                    "Prompt index not found for folder:",
-                    source.folderId
-                  );
-                }
+                updatePromptLastUsed(source.promptId);
               });
 
               contentPanel.appendChild(contentItem);
@@ -1190,12 +1256,6 @@ function inputFieldTrigger() {
                 renderCategoryNavigation();
                 if (selectedCategoryOrFolder) {
                   renderContentPanel(selectedCategoryOrFolder);
-                  const activeNavItem = navPanel.querySelector(
-                    ".nav-item.active, .folder-item.active"
-                  );
-                  if (activeNavItem) {
-                    setFocus(activeNavItem);
-                  }
                 }
               }
             }
@@ -1758,69 +1818,89 @@ function inputFieldTrigger() {
     }, 2000);
   });
 }
-function updatePromptLastUsed(folderId, promptIndex) {
-  chrome.storage.local.get(folderId, function (data) {
+function updatePromptLastUsed(promptId) {
+  console.log("Ok, we're updating");
+  chrome.storage.local.get("prompts", (data) => {
     if (chrome.runtime.lastError) {
-      console.error("Error fetching data:", chrome.runtime.lastError);
-      return;
-    }
-    const topic = data[folderId];
-    if (!topic || !topic.prompts[promptIndex]) {
-      console.error(
-        `No prompt found at index ${promptIndex} in folder ${folderId}`
-      );
+      console.error("Error fetching prompts:", chrome.runtime.lastError);
       return;
     }
 
-    topic.prompts[promptIndex].lastUsed = Date.now();
-    topic.prompts[promptIndex].usageCount =
-      (topic.prompts[promptIndex].usageCount || 0) + 1;
+    const prompts = data.prompts || {};
+    const prompt = prompts[promptId];
 
-    chrome.storage.local.set({ [folderId]: topic }, function () {
-      if (chrome.runtime.lastError) {
-        console.error("Error updating prompt data:", chrome.runtime.lastError);
-      } else {
-        console.log(
-          `lastUsed and usageCount updated for prompt in ${folderId}`
-        );
-        updateDropdownData(() => {
-          if (dropdown.style.display === "flex") {
-            renderCategoryNavigation();
-            if (selectedCategoryOrFolder) {
-              renderContentPanel(selectedCategoryOrFolder);
+    if (!prompt) {
+      console.error(`No prompt found with ID: ${promptId}`);
+      return;
+    }
+
+    // Update timestamp and usage counter
+    prompt.lastUsed = Date.now();
+    prompt.usageCount = (prompt.usageCount || 0) + 1;
+
+    // Save updated prompt back to storage
+    chrome.storage.local.set(
+      {
+        prompts: {
+          ...prompts,
+          [promptId]: prompt,
+        },
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Error saving updated prompt:",
+            chrome.runtime.lastError
+          );
+        } else {
+          console.log(`lastUsed and usageCount updated for prompt ${promptId}`);
+          updateDropdownData(() => {
+            if (dropdown.style.display === "flex") {
+              renderCategoryNavigation();
+              if (selectedCategoryOrFolder) {
+                renderContentPanel(selectedCategoryOrFolder);
+              }
             }
-          }
-        });
+          });
+        }
       }
-    });
+    );
   });
 }
 function findPromptIndex(folderId, prompt) {
   return new Promise((resolve) => {
-    chrome.storage.local.get(folderId, function (data) {
-      if (
-        chrome.runtime.lastError ||
-        !data[folderId] ||
-        !data[folderId].prompts
-      ) {
-        console.error("Error fetching prompts for folder:", folderId);
+    chrome.storage.local.get(["folders", "prompts"], function (data) {
+      const folders = data.folders || {};
+      const prompts = data.prompts || {};
+      const folder = folders[folderId];
+
+      if (!folder || !Array.isArray(folder.promptIds)) {
+        console.error("Invalid folder or missing promptIds:", folderId);
         resolve(-1);
         return;
       }
-      const prompts = data[folderId].prompts;
-      const index = prompts.findIndex(
-        (p) =>
-          (typeof p === "string" &&
-            typeof prompt === "string" &&
-            p === prompt) ||
-          (typeof p !== "string" &&
-            typeof prompt !== "string" &&
-            p.title === prompt.title &&
-            p.content === prompt.content)
-      );
+
+      const index = folder.promptIds.findIndex((promptId) => {
+        const p = prompts[promptId];
+        if (!p) return false;
+
+        // Match string prompts
+        if (typeof p === "string" && typeof prompt === "string") {
+          return p === prompt;
+        }
+
+        // Match object prompts
+        if (typeof p === "object" && typeof prompt === "object") {
+          return p.title === prompt.title && p.content === prompt.content;
+        }
+
+        return false;
+      });
+
       if (index === -1) {
         console.warn(`Prompt not found in folder ${folderId}:`, prompt);
       }
+
       resolve(index);
     });
   });
@@ -1848,14 +1928,14 @@ function showDynamicVariablesModal(workflowId) {
   }
 
   console.log("Fetching workflow with ID:", workflowId);
-  chrome.storage.local.get(workflowId, async function (data) {
+  chrome.storage.local.get(["workflows", "prompts"], async function (data) {
     if (chrome.runtime.lastError) {
-      console.error("Error fetching workflow:", chrome.runtime.lastError);
+      console.error("Error fetching data:", chrome.runtime.lastError);
       alert("Failed to load workflow. Please try again.");
       return;
     }
 
-    const workflow = data[workflowId];
+    const workflow = data.workflows?.[workflowId];
     if (!workflow || !workflow.name || !Array.isArray(workflow.steps)) {
       console.error("Invalid workflow data for ID:", workflowId, workflow);
       alert("Invalid workflow data. Please check the workflow configuration.");
@@ -1875,44 +1955,23 @@ function showDynamicVariablesModal(workflowId) {
           `Step ${step.title || "unknown"}: Fetching prompt for promptId`,
           step.promptId
         );
-        const parsedId = parsePromptId(step.promptId);
-        if (!parsedId) {
-          console.error(
-            `Invalid promptId format for step ${step.title || "unknown"}:`,
-            step.promptId
+        const prompt = data.prompts?.[step.promptId];
+        if (prompt && prompt.content) {
+          step.effectivePrompt = prompt.content;
+          console.log(
+            `Step ${step.title || "unknown"}: Fetched content for promptId ${
+              step.promptId
+            }`,
+            prompt.content
           );
-          step.effectivePrompt = "Invalid prompt ID";
-          continue;
+        } else {
+          console.error(
+            `No prompt found for promptId ${step.promptId} in step ${
+              step.title || "unknown"
+            }`
+          );
+          step.effectivePrompt = "No prompt defined";
         }
-        const { folderId, promptIndex } = parsedId;
-        step.effectivePrompt = await new Promise((resolve) => {
-          chrome.storage.local.get(folderId, (data) => {
-            if (
-              data[folderId] &&
-              Array.isArray(data[folderId].prompts) &&
-              data[folderId].prompts[promptIndex]
-            ) {
-              const content =
-                data[folderId].prompts[promptIndex].content ||
-                "No prompt defined";
-              console.log(
-                `Step ${
-                  step.title || "unknown"
-                }: Fetched content for promptId ${step.promptId}`,
-                content
-              );
-              resolve(content);
-            } else {
-              console.error(
-                `No prompt found for promptId ${step.promptId} in step ${
-                  step.title || "unknown"
-                }`,
-                data[folderId]
-              );
-              resolve("No prompt defined");
-            }
-          });
-        });
       } else {
         console.warn(
           `Step ${step.title || "unknown"}: No customPrompt or promptId defined`
@@ -1932,22 +1991,24 @@ function showDynamicVariablesModal(workflowId) {
       top: "0",
       width: "100%",
       height: "100%",
-      backgroundColor: "rgba(0,0,0,0.4)",
+      backgroundColor: "rgba(0,0,0,0.5)",
       alignItems: "center",
       justifyContent: "center",
+      animation: "fadeIn 0.3s ease-in",
     });
 
     const modalContent = document.createElement("div");
     modalContent.className = "modal-content";
     Object.assign(modalContent.style, {
-      backgroundColor: "#fefefe",
+      backgroundColor: "white",
       padding: "20px",
-      color: "black",
-      border: "1px solid #888",
-      width: "80%",
+      color: "#333",
+      borderRadius: "12px",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+      width: "90%",
       maxWidth: "80vw",
-      borderRadius: "8px",
-      boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+      maxHeight: "80vh",
+      overflowY: "auto",
       position: "relative",
       display: "flex",
       flexDirection: "column",
@@ -1956,10 +2017,13 @@ function showDynamicVariablesModal(workflowId) {
     const modalHeader = document.createElement("div");
     modalHeader.className = "modal-header";
     modalHeader.style.cssText =
-      "display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;";
-    modalHeader.innerHTML = `<span class="close" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">×</span><h2>Configure Workflow: ${escapeHTML(
-      workflow.name
-    )}</h2>`;
+      "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;";
+    modalHeader.innerHTML = `
+      <h2 style="margin: 0; font-size: 24px; color: #1a1a1a;">Configure Workflow: ${escapeHTML(
+        workflow.name
+      )}</h2>
+      <span class="close" style="cursor: pointer; font-size: 24px; color: #666; transition: color 0.2s ease;">×</span>
+    `;
 
     const modalBody = document.createElement("div");
     modalBody.className = "modal-body";
@@ -1972,8 +2036,8 @@ function showDynamicVariablesModal(workflowId) {
       overflow-x: auto;
       scroll-behavior: smooth;
       padding: 10px;
-      background-color: #e0e0e0;
-      border-radius: 5px;
+      background-color: #f9f9f9;
+      border-radius: 8px;
       margin-bottom: 15px;
     `;
 
@@ -1985,7 +2049,7 @@ function showDynamicVariablesModal(workflowId) {
     scrollLeftBtn.className = "scroll-btn scroll-btn-left";
     scrollLeftBtn.textContent = "←";
     scrollLeftBtn.style.cssText = `
-      background-color: #007bff;
+      background-color: #4a90e2;
       color: white;
       border: none;
       border-radius: 50%;
@@ -1999,7 +2063,12 @@ function showDynamicVariablesModal(workflowId) {
       top: 50%;
       transform: translateY(-50%);
       z-index: 10002;
+      transition: background 0.2s ease;
     `;
+    scrollLeftBtn.onmouseover = () =>
+      (scrollLeftBtn.style.backgroundColor = "#357abd");
+    scrollLeftBtn.onmouseout = () =>
+      (scrollLeftBtn.style.backgroundColor = "#4a90e2");
     scrollLeftBtn.onclick = () => {
       stepsContainer.scrollBy({ left: -220, behavior: "smooth" });
       updateScrollButtons();
@@ -2009,7 +2078,7 @@ function showDynamicVariablesModal(workflowId) {
     scrollRightBtn.className = "scroll-btn scroll-btn-right";
     scrollRightBtn.textContent = "→";
     scrollRightBtn.style.cssText = `
-      background-color: #007bff;
+      background-color: #4a90e2;
       color: white;
       border: none;
       border-radius: 50%;
@@ -2023,7 +2092,12 @@ function showDynamicVariablesModal(workflowId) {
       top: 50%;
       transform: translateY(-50%);
       z-index: 10002;
+      transition: background 0.2s ease;
     `;
+    scrollRightBtn.onmouseover = () =>
+      (scrollRightBtn.style.backgroundColor = "#357abd");
+    scrollRightBtn.onmouseout = () =>
+      (scrollRightBtn.style.backgroundColor = "#4a90e2");
     scrollRightBtn.onclick = () => {
       stepsContainer.scrollBy({ left: 220, behavior: "smooth" });
       updateScrollButtons();
@@ -2035,13 +2109,18 @@ function showDynamicVariablesModal(workflowId) {
     importCycleBtn.textContent = "Import Cycle";
     importCycleBtn.style.cssText = `
       padding: 10px 20px;
-      font-size: 16px;
+      font-size: 14px;
       cursor: pointer;
       background-color: #6c757d;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
+      transition: background 0.2s ease, transform 0.2s ease;
     `;
+    importCycleBtn.onmouseover = () =>
+      (importCycleBtn.style.backgroundColor = "#5a6268");
+    importCycleBtn.onmouseout = () =>
+      (importCycleBtn.style.backgroundColor = "#6c757d");
     importCycleBtn.onclick = () => {
       console.log("Import Cycle clicked");
       // Implement import functionality if needed
@@ -2053,13 +2132,18 @@ function showDynamicVariablesModal(workflowId) {
     exportCycleBtn.textContent = "Export Cycle";
     exportCycleBtn.style.cssText = `
       padding: 10px 20px;
-      font-size: 16px;
+      font-size: 14px;
       cursor: pointer;
-      background-color: #6c757d;
+      background-color: #17a2b8;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
+      transition: background 0.2s ease, transform 0.2s ease;
     `;
+    exportCycleBtn.onmouseover = () =>
+      (exportCycleBtn.style.backgroundColor = "#138496");
+    exportCycleBtn.onmouseout = () =>
+      (exportCycleBtn.style.backgroundColor = "#17a2b8");
     exportCycleBtn.onclick = () => {
       console.log("Export Cycle clicked");
       const exportData = { workflowId, repetitions };
@@ -2085,13 +2169,18 @@ function showDynamicVariablesModal(workflowId) {
     addRepetitionBtn.textContent = "Add Repetition +";
     addRepetitionBtn.style.cssText = `
       padding: 10px 20px;
-      font-size: 16px;
+      font-size: 14px;
       cursor: pointer;
       background-color: #28a745;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
+      transition: background 0.2s ease, transform 0.2s ease;
     `;
+    addRepetitionBtn.onmouseover = () =>
+      (addRepetitionBtn.style.backgroundColor = "#218838");
+    addRepetitionBtn.onmouseout = () =>
+      (addRepetitionBtn.style.backgroundColor = "#28a745");
 
     const sendBtn = document.createElement("button");
     sendBtn.type = "button";
@@ -2099,13 +2188,16 @@ function showDynamicVariablesModal(workflowId) {
     sendBtn.textContent = "Execute Workflow";
     sendBtn.style.cssText = `
       padding: 10px 20px;
-      font-size: 16px;
+      font-size: 14px;
       cursor: pointer;
-      background-color: #007bff;
+      background-color: #4a90e2;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
+      transition: background 0.2s ease, transform 0.2s ease;
     `;
+    sendBtn.onmouseover = () => (sendBtn.style.backgroundColor = "#357abd");
+    sendBtn.onmouseout = () => (sendBtn.style.backgroundColor = "#4a90e2");
 
     buttonsDiv.appendChild(importCycleBtn);
     buttonsDiv.appendChild(exportCycleBtn);
@@ -2164,20 +2256,25 @@ function showDynamicVariablesModal(workflowId) {
             border-radius: 5px;
           }
           .repetition {
-        background-color: white;
-        padding: 15px;
-        border-radius: 5px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        width: 400px;
-        margin-right: 10px;
-        flex-shrink: 0;
-        position: relative;
-        overflow-y: auto; /* Hinzugefügt für vertikalen Scrollbalken */
-        max-height: 500px; /* Optional: Maximale Höhe, um Scrollbalken zu erzwingen */
-      }
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            width: 400px;
+            margin-right: 10px;
+            flex-shrink: 0;
+            position: relative;
+            overflow-y: auto;
+            max-height: 500px;
+            transition: transform 0.2s ease;
+          }
+          .repetition:hover {
+            transform: translateY(-2px);
+          }
           .repetition h3 {
             margin: 0 0 10px;
             font-size: 16px;
+            color: #333;
           }
           .step-group {
             margin-bottom: 15px;
@@ -2187,6 +2284,7 @@ function showDynamicVariablesModal(workflowId) {
           .step-group h4 {
             margin: 0 0 5px;
             font-size: 14px;
+            color: #333;
           }
           .step-group p {
             font-size: 12px;
@@ -2197,16 +2295,23 @@ function showDynamicVariablesModal(workflowId) {
             display: block;
             width: 90%;
             margin: 5px 0;
-            padding: 5px;
+            padding: 8px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+          }
+          .step-group input:focus {
+            border-color: #4a90e2;
+            outline: none;
           }
           .preview {
             margin-top: 10px;
             padding: 10px;
-            background-color: #f8f8f8;
-            border-radius: 4px;
+            background-color: #f0f0f0;
+            border-radius: 6px;
             font-size: 12px;
+            color: #333;
             overflow-y: auto;
             max-height: 150px;
           }
@@ -2222,15 +2327,15 @@ function showDynamicVariablesModal(workflowId) {
             color: white;
             border: none;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 12px;
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10;
-            transition: background-color 0.2s;
+            transition: background-color 0.2s ease;
           }
           .repetition-close-btn:hover {
             background-color: #c82333;
@@ -2244,7 +2349,7 @@ function showDynamicVariablesModal(workflowId) {
 
         const closeBtn = document.createElement("button");
         closeBtn.className = "repetition-close-btn";
-        closeBtn.innerText = "X";
+        closeBtn.innerText = "×";
         closeBtn.dataset.repIndex = repIndex;
         closeBtn.onclick = () => {
           console.log("Deleting repetition, index:", repIndex);
@@ -2266,11 +2371,12 @@ function showDynamicVariablesModal(workflowId) {
         workflow.steps.forEach((step, stepIndex) => {
           const stepDiv = document.createElement("div");
           stepDiv.className = "step-group";
-          stepDiv.innerHTML = `<h4>${escapeHTML(
-            step.title || "Step " + (stepIndex + 1)
-          )}</h4><p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHTML(
-            step.effectivePrompt
-          )}</p>`;
+          stepDiv.innerHTML = `
+            <h4>${escapeHTML(step.title || "Step " + (stepIndex + 1))}</h4>
+            <p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHTML(
+              step.effectivePrompt
+            )}</p>
+          `;
 
           if (hasDynamicVariables(step.effectivePrompt)) {
             const variables = extractVariables(step.effectivePrompt);
@@ -2387,23 +2493,28 @@ function showDynamicVariablesModal(workflowId) {
       }
 
       // Update lastUsed timestamp
-      chrome.storage.local.get(workflowId, (data) => {
+      chrome.storage.local.get(["workflows"], (data) => {
         const updatedWorkflow = {
-          ...data[workflowId],
+          ...data.workflows[workflowId],
           lastUsed: Date.now(),
         };
-        chrome.storage.local.set({ [workflowId]: updatedWorkflow }, () => {
-          if (chrome.runtime.lastError) {
-            console.error("Error updating workflow:", chrome.runtime.lastError);
+        chrome.storage.local.set(
+          { workflows: { ...data.workflows, [workflowId]: updatedWorkflow } },
+          () => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Error updating workflow:",
+                chrome.runtime.lastError
+              );
+            }
+            console.log("Workflow execution completed.");
+            renderWorkflows(); // Assumes renderWorkflows is globally available
           }
-          console.log("Workflow execution completed.");
-          handleCategoryClick("Workflows");
-        });
+        );
       });
     });
 
     async function sendPrompt(prompt) {
-      // Versuche Gemini, ChatGPT, Grok Send-Button zu finden
       const geminiSendButton = document.querySelector(
         "[data-mat-icon-name='send']"
       );
@@ -2412,7 +2523,6 @@ function showDynamicVariablesModal(workflowId) {
       );
       const grokSendButton = document.querySelector("[type='submit']");
 
-      // Aktive Eingabefelder
       const geminiInput = document.querySelector(
         "[role='textbox']:not([readonly]):not([disabled])"
       );
@@ -2431,7 +2541,6 @@ function showDynamicVariablesModal(workflowId) {
 
       await setInputText(activeInput, prompt);
 
-      // Senden
       if (geminiSendButton?.parentNode) {
         geminiSendButton.parentNode.click();
       } else if (chatgptSendButton) {
@@ -2470,10 +2579,8 @@ function showDynamicVariablesModal(workflowId) {
       const stopSelectorGrok = "[data-label='Modell-Antwort stoppen']";
       const grokSendButtonSelector = "[type='submit']";
 
-      // Prüfe, ob einer der Stop-Buttons da ist (Gemini, ChatGPT, Grok)
       let activeStopSelector = null;
 
-      // Warte bis eines der Stop-Elemente erscheint
       while (true) {
         if (document.querySelector(stopSelectorGemini)) {
           activeStopSelector = stopSelectorGemini;
@@ -2490,31 +2597,19 @@ function showDynamicVariablesModal(workflowId) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      // Warte, bis Stop-Button weg ist (für Gemini, ChatGPT, Grok)
       while (document.querySelector(activeStopSelector)) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      // Für Grok: Warte, bis der Submit-Button wieder enabled ist
       if (activeStopSelector === stopSelectorGrok) {
         while (true) {
           const grokSendButton = document.querySelector(grokSendButtonSelector);
           if (grokSendButton && !grokSendButton.disabled) {
-            // Submit-Button ist wieder aktiv → Eingabe kann weitergehen
             break;
           }
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
-    }
-
-    function parsePromptId(promptId) {
-      if (!promptId) return null;
-      const parts = promptId.split("_");
-      const promptIndex = parts.pop();
-      const folderId = parts.join("_");
-      if (!folderId || isNaN(promptIndex)) return null;
-      return { folderId, promptIndex: parseInt(promptIndex) };
     }
 
     function escapeHTML(str) {
@@ -2529,26 +2624,8 @@ function showDynamicVariablesModal(workflowId) {
       scrollRightBtn.remove();
     };
 
-    window.onclick = (event) => {
-      if (event.target === modal) {
-        modal.remove();
-        scrollLeftBtn.remove();
-        scrollRightBtn.remove();
-      }
-    };
-
     renderSteps();
   });
-}
-
-// Ensure parsePromptId is defined globally or included in workflowManagement.js
-function parsePromptId(promptId) {
-  if (!promptId) return null;
-  const parts = promptId.split("_");
-  const promptIndex = parts.pop();
-  const folderId = parts.join("_");
-  if (!folderId || isNaN(promptIndex)) return null;
-  return { folderId, promptIndex: parseInt(promptIndex) };
 }
 
 // Ensure escapeHTML is available
