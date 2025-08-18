@@ -104,6 +104,7 @@ function loadPromptsTable() {
 // Prompt in Detail Mode
 function showPromptDetails(promptId) {
   console.log(`showPromptDetails called with PromptID=${promptId}`);
+
   chrome.storage.local.get(
     ["prompts", "folders", "tags", "types"],
     function (data) {
@@ -119,10 +120,13 @@ function showPromptDetails(promptId) {
       }
 
       const detailOverlay = document.getElementById("detail-overlay");
+      const editBtn = document.getElementById("edit-btn");
       const saveBtnEdit = document.querySelector(".save-btn-edit");
       saveBtnEdit.dataset.promptId = promptId;
 
-      // reusable render function
+      // Track edit mode state internally
+      let isEditMode = false;
+
       function renderView(isEdit = false) {
         const entryTitle = document.getElementById("entry-title");
         const entryDescription = document.getElementById("entry-description");
@@ -144,53 +148,24 @@ function showPromptDetails(promptId) {
         const entryFolder = document.getElementById("entry-folder");
         const detailTitle = document.getElementById("detail-title");
 
+        // Basic content
         detailTitle.textContent = prompt.title;
         entryTitle.value = prompt.title || "";
-
-        // description
         entryDescription.value = prompt.description || "";
-        if (!isEdit && !prompt.description) {
-          entryDescription.style.fontStyle = "italic";
-          entryDescription.style.color = "gray";
-        } else {
-          entryDescription.style.fontStyle = "normal";
-          entryDescription.style.color = "inherit";
-        }
-
         entryContent.value = prompt.content || "";
+        entryNotes.value = prompt.notes || "";
 
-        // favorite
-        const existingNote = document.getElementById("not-favorite-note");
-        if (isEdit) {
-          if (existingNote) existingNote.remove();
-          entryFavorite.checked = !!prompt.isFavorite;
-        } else {
-          if (prompt.isFavorite) {
-            entryFavorite.checked = true;
-            if (existingNote) existingNote.remove();
-          } else {
-            entryFavorite.checked = false;
-            if (!existingNote) {
-              entryFavorite.insertAdjacentHTML(
-                "afterend",
-                `<p id="not-favorite-note" style="font-style: italic; color: gray;">is not favorite.</p>`
-              );
-            }
-          }
-        }
+        // Favorite
+        entryFavorite.checked = !!prompt.isFavorite;
 
-        // types
+        // Types
         const selectedTypes = Array.isArray(prompt.types) ? prompt.types : [];
-        const typeInputGroup = document.getElementById("type-input-group");
-
         if (isEdit) {
-          // Placeholder-Option einfügen
-          const placeholder = `<option value="" selected>${
-            translations[currentLang]?.type_placeholder || "Bitte Typ auswählen"
-          }</option>`;
-
           entryTypes.innerHTML =
-            placeholder +
+            `<option value="" selected>${
+              translations[currentLang]?.type_placeholder ||
+              "Bitte Typ auswählen"
+            }</option>` +
             allTypes
               .map(
                 (t) =>
@@ -199,30 +174,26 @@ function showPromptDetails(promptId) {
                   }>${t}</option>`
               )
               .join("");
-
+          document.getElementById("type-input-group").style.display = "block";
           entryTypes.disabled = false;
-          typeInputGroup.style.display = "block"; // Eingabe + Add-Button sichtbar
         } else {
-          if (!selectedTypes.length) {
-            entryTypes.innerHTML = `<option value="">${
-              translations[currentLang]?.type_placeholder ||
-              "Bitte Typ auswählen"
-            }</option>`;
-          } else {
-            entryTypes.innerHTML = selectedTypes
-              .map((type) => `<option selected disabled>${type}</option>`)
-              .join("");
-          }
-
+          entryTypes.innerHTML = selectedTypes.length
+            ? selectedTypes
+                .map((t) => `<option selected disabled>${t}</option>`)
+                .join("")
+            : `<option value="">${
+                translations[currentLang]?.type_placeholder ||
+                "Bitte Typ auswählen"
+              }</option>`;
+          document.getElementById("type-input-group").style.display = "none";
           entryTypes.disabled = true;
-          typeInputGroup.style.display = "none"; // im Detailmodus ausgeblendet
         }
 
-        // tags
-        const allTags = Object.values(tags);
+        // Tags
         const selectedTags = Array.isArray(prompt.tags) ? prompt.tags : [];
+        const allTagValues = Object.values(tags);
         if (isEdit) {
-          entryTags.innerHTML = allTags
+          entryTags.innerHTML = allTagValues
             .map(
               (tag) =>
                 `<label><input type="checkbox" value="${tag}" ${
@@ -234,17 +205,15 @@ function showPromptDetails(promptId) {
           newTagInput.readOnly = false;
           addTagBtn.disabled = false;
         } else {
-          if (!selectedTags.length) {
-            entryTags.innerHTML = `<p style="font-style: italic; color: gray;">${translations[currentLang]?.this_prompt_no_tags}</p>`;
-          } else {
-            entryTags.innerHTML = selectedTags
-              .map((tag) => `<span class="readonly-pill">${tag}</span>`)
-              .join(" ");
-          }
+          entryTags.innerHTML = selectedTags.length
+            ? selectedTags
+                .map((tag) => `<span class="readonly-pill">${tag}</span>`)
+                .join(" ")
+            : `<p style="font-style: italic; color: gray;">${translations[currentLang]?.this_prompt_no_tags}</p>`;
           tagInputGroup.style.display = "none";
         }
 
-        // models
+        // Compatible / Incompatible models
         const modelList = [
           "Grok",
           "Gemini",
@@ -262,7 +231,6 @@ function showPromptDetails(promptId) {
         ];
         const compatible = prompt.compatibleModels || [];
         const incompatible = prompt.incompatibleModels || [];
-
         if (isEdit) {
           entryCompatible.innerHTML = modelList
             .map(
@@ -293,17 +261,7 @@ function showPromptDetails(promptId) {
             : `<p style="font-style: italic; color: gray;">${translations[currentLang]?.no_match_with_incompatible_modell}</p>`;
         }
 
-        // notes
-        entryNotes.value = prompt.notes || "";
-        if (!isEdit && !prompt.notes) {
-          entryNotes.style.fontStyle = "italic";
-          entryNotes.style.color = "gray";
-        } else {
-          entryNotes.style.fontStyle = "normal";
-          entryNotes.style.color = "inherit";
-        }
-
-        // created / last used / modified
+        // Dates
         entryCreatedAt.value = prompt.createdAt
           ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
           : "Not available";
@@ -314,7 +272,7 @@ function showPromptDetails(promptId) {
           ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
           : "Not available";
 
-        // folder
+        // Folder
         entryFolder.innerHTML =
           '<option value="">Not assigned to any folder</option>';
         Object.entries(folders).forEach(([fid, folder]) => {
@@ -325,7 +283,7 @@ function showPromptDetails(promptId) {
           entryFolder.appendChild(option);
         });
 
-        // toggle readonly / editable
+        // Toggle readonly / editable
         const readonly = !isEdit;
         entryTitle.readOnly = readonly;
         entryDescription.readOnly = readonly;
@@ -334,18 +292,48 @@ function showPromptDetails(promptId) {
         entryFolder.disabled = readonly;
         entryFavorite.disabled = readonly;
 
+        entryCompatible
+          .querySelectorAll("input[type='checkbox']")
+          .forEach((cb) => (cb.disabled = readonly));
+        entryIncompatible
+          .querySelectorAll("input[type='checkbox']")
+          .forEach((cb) => (cb.disabled = readonly));
+        entryTags
+          .querySelectorAll("input[type='checkbox']")
+          .forEach((cb) => (cb.disabled = readonly));
+
         document.querySelector(".detail-actions").style.display = isEdit
           ? "flex"
           : "none";
+
+        // Update edit button text
+        editBtn.textContent = isEdit
+          ? translations[currentLang]?.finish_editing || "Bearbeitung beenden"
+          : translations[currentLang]?.edit || "Edit";
       }
 
-      // initial render as detail view
+      // Initial render in read-only mode
       renderView(false);
       detailOverlay.classList.add("open");
       document.getElementById("plus-btn").style.display = "none";
 
-      // bind edit button toggle
-      document.getElementById("edit-btn").onclick = () => renderView(true);
+      // Bind edit button toggle
+      editBtn.onclick = () => {
+        isEditMode = !isEditMode;
+        renderView(isEditMode);
+      };
+
+      // Optional: reset edit mode when closing or navigating back
+      document.getElementById("back-btn").onclick = () => {
+        isEditMode = false;
+        detailOverlay.classList.remove("open");
+      };
+
+      // Cancel button
+      document.querySelector(".cancel-btn-edit").onclick = () => {
+        isEditMode = false;
+        detailOverlay.classList.remove("open");
+      };
     }
   );
 }
