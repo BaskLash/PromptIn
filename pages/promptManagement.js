@@ -58,9 +58,13 @@ function showCreatePromptModal(category) {
       <label>Notes:</label>
       <textarea id="prompt-note" placeholder="Enter note to prompt"></textarea>
       <label>Types:</label>
-      <div class="checkbox-group" id="prompt-types">
-        <div class="no-items-notice" id="no-types-notice">No types available</div>
-      </div>
+<div class="select-group" id="prompt-types">
+  <div class="no-items-notice" id="no-types-notice">No types available</div>
+  <select id="types-select" style="display:none;">
+    <option value="">-- No type selected --</option>
+  </select>
+</div>
+
       <div class="type-input-group">
         <input type="text" id="new-type" placeholder="New Type">
         <button type="button" class="action-btn" id="add-type-btn">Add new Type</button>
@@ -98,18 +102,27 @@ function showCreatePromptModal(category) {
 
   // Lade verfügbare Types
   chrome.storage.local.get("types", (data) => {
-    const typeContainer = formContainer.querySelector("#prompt-types");
     const noTypesNotice = formContainer.querySelector("#no-types-notice");
+    const select = formContainer.querySelector("#types-select");
     const types = data.types || [];
+
     if (types.length > 0) {
       noTypesNotice.style.display = "none";
+      select.style.display = "block";
+
+      // reset select and add default empty option
+      select.innerHTML = '<option value="">-- No type selected --</option>';
+
       types.forEach((type) => {
-        const label = document.createElement("label");
-        label.innerHTML = `<input type="checkbox" name="types" value="${type}"> ${type}`;
-        typeContainer.appendChild(label);
+        const option = document.createElement("option");
+        option.value = type;
+        option.textContent = type;
+        select.appendChild(option);
       });
     } else {
       noTypesNotice.style.display = "block";
+      select.style.display = "none";
+      select.innerHTML = '<option value="">-- No type selected --</option>'; // keep fallback
     }
   });
 
@@ -173,33 +186,39 @@ function showCreatePromptModal(category) {
 
   // Type hinzufügen
   formContainer.querySelector("#add-type-btn").addEventListener("click", () => {
-    const newTypeInput = formContainer.querySelector("#new-type");
-    const newType = newTypeInput.value.trim();
-    if (
-      newType &&
-      !formContainer.querySelector(`#prompt-types input[value="${newType}"]`)
-    ) {
-      chrome.storage.local.get("types", (data) => {
-        const types = data.types || [];
-        if (!types.includes(newType)) {
-          types.push(newType);
-          chrome.storage.local.set({ types }, () => {
-            const typeContainer = formContainer.querySelector("#prompt-types");
-            const noTypesNotice =
-              formContainer.querySelector("#no-types-notice");
-            const label = document.createElement("label");
-            label.innerHTML = `<input type="checkbox" name="types" value="${newType}" checked> ${newType}`;
-            typeContainer.appendChild(label);
-            newTypeInput.value = "";
-            noTypesNotice.style.display = "none";
-          });
-        } else {
-          alert("Type existiert bereits!");
-        }
+    const input = document.getElementById("new-type");
+    const newType = input.value.trim();
+    if (!newType) return;
+
+    chrome.storage.local.get("types", (data) => {
+      const types = data.types || [];
+
+      // prevent duplicates
+      if (types.includes(newType)) {
+        input.value = "";
+        alert("Your type already exists!");
+        return;
+      }
+
+      types.push(newType);
+
+      // save updated list
+      chrome.storage.local.set({ types }, () => {
+        const noTypesNotice = formContainer.querySelector("#no-types-notice");
+        const select = formContainer.querySelector("#types-select");
+
+        noTypesNotice.style.display = "none";
+        select.style.display = "block";
+
+        // add new option directly
+        const option = document.createElement("option");
+        option.value = newType;
+        option.textContent = newType;
+        select.appendChild(option);
+
+        input.value = "";
       });
-    } else if (!newType) {
-      alert("Type darf nicht leer sein!");
-    }
+    });
   });
 
   // Tag hinzufügen
@@ -267,9 +286,10 @@ function showCreatePromptModal(category) {
         .getElementById("prompt-description")
         .value.trim();
       const notes = document.getElementById("prompt-note").value.trim();
-      const types = Array.from(
-        document.querySelectorAll("#prompt-types input[name='types']:checked")
-      ).map((checkbox) => checkbox.value);
+
+      // Get the selected type from the <select> element
+      const typeSelect = document.getElementById("types-select");
+      const types = typeSelect.value ? [typeSelect.value] : []; // Store as an array for consistency
       const compatibleModels = Array.from(
         document.querySelectorAll(
           "#prompt-compatible input[name='compatible']:checked"
@@ -286,11 +306,12 @@ function showCreatePromptModal(category) {
       const isFavorite = document.getElementById("prompt-favorite").checked;
       const folderId = document.getElementById("prompt-folder").value;
 
+      let folderName = "";
       if (folderId) {
         const selectedOption = document.querySelector(
           `#prompt-folder option[value="${folderId}"]`
         );
-        folderName = selectedOption ? selectedOption.textContent : folderName;
+        folderName = selectedOption ? selectedOption.textContent : "";
       }
 
       const newPrompt = {
@@ -298,7 +319,7 @@ function showCreatePromptModal(category) {
         description,
         content,
         notes,
-        types,
+        types, // Updated to use the selected type
         compatibleModels,
         incompatibleModels,
         tags,
@@ -306,7 +327,7 @@ function showCreatePromptModal(category) {
         folderId: folderId || null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        isTrash: false, // Hinzugefügt für Konsistenz
+        isTrash: false,
         trashedAt: null,
         usageCount: 0,
         lastUsed: null,
@@ -1167,10 +1188,14 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
       prompt.notes || ""
     )}</textarea>
 
-    <label>Type</label>
-    <div class="checkbox-group" id="edit-types">
+    <label>Types:</label>
+    <div class="select-group" id="prompt-types">
       <div class="no-items-notice" id="no-types-notice">No types available</div>
+      <select id="types-select" style="display:none;">
+        <option value="">-- No type selected --</option>
+      </select>
     </div>
+
     <div class="type-input-group">
       <input type="text" id="new-type" placeholder="New Type">
       <button type="button" class="action-btn" id="add-type-btn">Add Type</button>
@@ -1265,22 +1290,31 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
       return;
     }
 
-    const typeContainer = sidebarContent.querySelector("#edit-types");
+    const select = sidebarContent.querySelector("#types-select");
     const noTypesNotice = sidebarContent.querySelector("#no-types-notice");
     const types = data.types || [];
+
     if (types.length > 0) {
       noTypesNotice.style.display = "none";
+      select.style.display = "block";
+      select.innerHTML = '<option value="">-- No type selected --</option>'; // Ensure empty option is included
+
       types.forEach((type) => {
-        const label = document.createElement("label");
-        label.innerHTML = `<input type="checkbox" name="types" value="${escapeHTML(
-          type
-        )}" ${prompt.types?.includes(type) ? "checked" : ""}> ${escapeHTML(
-          type
-        )}`;
-        typeContainer.appendChild(label);
+        const option = document.createElement("option");
+        option.value = escapeHTML(type);
+        option.textContent = escapeHTML(type);
+
+        // Pre-select if this prompt already has the type
+        if (prompt.types?.includes(type)) {
+          option.selected = true;
+        }
+
+        select.appendChild(option);
       });
     } else {
       noTypesNotice.style.display = "block";
+      select.style.display = "none";
+      select.innerHTML = '<option value="">-- No type selected --</option>'; // Keep empty option
     }
   });
 
@@ -1296,15 +1330,6 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
         return;
       }
 
-      if (
-        sidebarContent.querySelector(
-          `#edit-types input[value="${escapeHTML(newType)}"]`
-        )
-      ) {
-        alert("Type already exists!");
-        return;
-      }
-
       chrome.storage.local.get("types", (data) => {
         if (chrome.runtime.lastError) {
           console.error("Error getting types:", chrome.runtime.lastError);
@@ -1312,6 +1337,11 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
         }
 
         const types = data.types || [];
+        if (types.includes(newType)) {
+          alert("Type already exists!");
+          return;
+        }
+
         types.push(newType);
         chrome.storage.local.set({ types }, () => {
           if (chrome.runtime.lastError) {
@@ -1319,16 +1349,17 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
             return;
           }
 
-          const typeContainer = sidebarContent.querySelector("#edit-types");
+          const select = sidebarContent.querySelector("#types-select");
           const noTypesNotice =
             sidebarContent.querySelector("#no-types-notice");
-          const label = document.createElement("label");
-          label.innerHTML = `<input type="checkbox" name="types" value="${escapeHTML(
-            newType
-          )}" checked> ${escapeHTML(newType)}`;
-          typeContainer.appendChild(label);
+          const option = document.createElement("option");
+          option.value = escapeHTML(newType);
+          option.textContent = escapeHTML(newType);
+          option.selected = true; // Auto-select the new type
+          select.appendChild(option);
           newTypeInput.value = "";
           noTypesNotice.style.display = "none";
+          select.style.display = "block";
         });
       });
     });
@@ -1450,11 +1481,8 @@ function editPromptDetails(promptId, prompt, sidebarContent) {
         : "Single Prompt";
 
       // Formulardaten auslesen
-      const types = Array.from(
-        sidebarContent.querySelectorAll(
-          "#edit-types input[name='types']:checked"
-        )
-      ).map((cb) => cb.value);
+      const typeSelect = sidebarContent.querySelector("#types-select");
+      const types = typeSelect.value ? [typeSelect.value] : []; // Store as array for consistency
       const compatibleModels = Array.from(
         sidebarContent.querySelectorAll(
           "#edit-compatible input[name='compatible']:checked"

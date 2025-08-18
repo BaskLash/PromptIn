@@ -101,245 +101,253 @@ function loadPromptsTable() {
   });
 }
 
+// Prompt in Detail Mode
 function showPromptDetails(promptId) {
   console.log(`showPromptDetails called with PromptID=${promptId}`);
-  chrome.storage.local.get(["prompts", "folders", "tags"], function (data) {
-    const prompts = data.prompts || {};
-    const folders = data.folders || {};
-    const tags = data.tags || {};
+  chrome.storage.local.get(
+    ["prompts", "folders", "tags", "types"],
+    function (data) {
+      const prompts = data.prompts || {};
+      const folders = data.folders || {};
+      const tags = data.tags || {};
+      const allTypes = Array.isArray(data.types) ? data.types : [];
 
-    const prompt = prompts[promptId];
-    if (!prompt) {
-      console.error(`Prompt with ID ${promptId} not found!`);
-      return;
-    }
-
-    const detailOverlay = document.getElementById("detail-overlay");
-    const detailTitle = document.getElementById("detail-title");
-    const entryTitle = document.getElementById("entry-title");
-    const entryDescription = document.getElementById("entry-description");
-    const entryContent = document.getElementById("entry-content");
-    const entryType = document.getElementById("entry-type");
-    const entryCompatible = document.getElementById("entry-compatible");
-    const entryIncompatible = document.getElementById("entry-incompatible");
-    const entryTags = document.getElementById("entry-tags");
-    const tagInputGroup = document.getElementById("tag-input-group");
-    const newTagInput = document.getElementById("new-tag");
-    const addTagBtn = document.getElementById("add-tag-btn");
-    const entryFavorite = document.getElementById("entry-favorite");
-    const entryCreatedAt = document.getElementById("entry-created-at");
-    const entryLastUsed = document.getElementById("entry-last-used");
-    const entryLastModified = document.getElementById("entry-last-modified");
-    const entryNotes = document.getElementById("entry-notes");
-    const entryFolder = document.getElementById("entry-folder");
-    const saveBtnEdit = document.querySelector(".save-btn-edit");
-
-    // store promptId for saving later
-    saveBtnEdit.dataset.promptId = promptId;
-
-    detailTitle.textContent = prompt.title;
-    entryTitle.value = prompt.title || "";
-
-    // description handling
-    entryDescription.value = prompt.description || "";
-    if (!prompt.description) {
-      entryDescription.value = "No description provided";
-      entryDescription.style.fontStyle = "italic";
-      entryDescription.style.color = "gray";
-    } else {
-      entryDescription.style.fontStyle = "normal";
-      entryDescription.style.color = "inherit";
-    }
-
-    entryContent.value = prompt.content || "";
-
-    // favorite handling
-    const existingNote = document.getElementById("not-favorite-note");
-    if (prompt.isFavorite) {
-      entryFavorite.checked = true;
-      if (existingNote) existingNote.remove();
-    } else {
-      entryFavorite.checked = false;
-      if (!existingNote) {
-        entryFavorite.insertAdjacentHTML(
-          "afterend",
-          `<p id="not-favorite-note" style="font-style: italic; color: gray;">is not favorite</p>`
-        );
-      }
-    }
-
-    // type handling
-    chrome.storage.local.get(["types"], function (result) {
-      const allTypes = Array.isArray(result.types) ? result.types : [];
-      const entryType = document.getElementById("entry-type");
-
-      const selectedTypes = Array.isArray(prompt.types)
-        ? prompt.types
-        : prompt.types
-        ? [prompt.types]
-        : [];
-
-      if (!selectedTypes.length) {
-        entryType.innerHTML = `<p style="font-style: italic; color: gray;">Es wurde kein Typ definiert</p>`;
+      const prompt = prompts[promptId];
+      if (!prompt) {
+        console.error(`Prompt with ID ${promptId} not found!`);
         return;
       }
 
-      const validTypes = selectedTypes.filter((t) => allTypes.includes(t));
+      const detailOverlay = document.getElementById("detail-overlay");
+      const saveBtnEdit = document.querySelector(".save-btn-edit");
+      saveBtnEdit.dataset.promptId = promptId;
 
-      if (!validTypes.length) {
-        entryType.innerHTML = `<p style="font-style: italic; color: gray;">Es wurde kein Typ definiert</p>`;
-      } else {
-        entryType.innerHTML = validTypes
-          .map(
-            (type) => `
-        <label>
-          <input type="checkbox" name="types" value="${type}" checked disabled>
-          ${type}
-        </label>`
-          )
-          .join("");
+      // reusable render function
+      function renderView(isEdit = false) {
+        const entryTitle = document.getElementById("entry-title");
+        const entryDescription = document.getElementById("entry-description");
+        const entryContent = document.getElementById("entry-content");
+        const entryTypes = document.getElementById("entry-types");
+        const entryCompatible = document.getElementById("entry-compatible");
+        const entryIncompatible = document.getElementById("entry-incompatible");
+        const entryTags = document.getElementById("entry-tags");
+        const tagInputGroup = document.getElementById("tag-input-group");
+        const newTagInput = document.getElementById("new-tag");
+        const addTagBtn = document.getElementById("add-tag-btn");
+        const entryFavorite = document.getElementById("entry-favorite");
+        const entryCreatedAt = document.getElementById("entry-created-at");
+        const entryLastUsed = document.getElementById("entry-last-used");
+        const entryLastModified = document.getElementById(
+          "entry-last-modified"
+        );
+        const entryNotes = document.getElementById("entry-notes");
+        const entryFolder = document.getElementById("entry-folder");
+        const detailTitle = document.getElementById("detail-title");
+
+        detailTitle.textContent = prompt.title;
+        entryTitle.value = prompt.title || "";
+
+        // description
+        entryDescription.value = prompt.description || "";
+        if (!isEdit && !prompt.description) {
+          entryDescription.style.fontStyle = "italic";
+          entryDescription.style.color = "gray";
+        } else {
+          entryDescription.style.fontStyle = "normal";
+          entryDescription.style.color = "inherit";
+        }
+
+        entryContent.value = prompt.content || "";
+
+        // favorite
+        const existingNote = document.getElementById("not-favorite-note");
+        if (isEdit) {
+          if (existingNote) existingNote.remove();
+          entryFavorite.checked = !!prompt.isFavorite;
+        } else {
+          if (prompt.isFavorite) {
+            entryFavorite.checked = true;
+            if (existingNote) existingNote.remove();
+          } else {
+            entryFavorite.checked = false;
+            if (!existingNote) {
+              entryFavorite.insertAdjacentHTML(
+                "afterend",
+                `<p id="not-favorite-note" style="font-style: italic; color: gray;">is not favorite.</p>`
+              );
+            }
+          }
+        }
+
+        // types
+        const selectedTypes = Array.isArray(prompt.types) ? prompt.types : [];
+        const typeInputGroup = document.getElementById("type-input-group");
+
+        if (isEdit) {
+          // Placeholder-Option einfügen
+          const placeholder = `<option value="" selected>${
+            translations[currentLang]?.type_placeholder || "Bitte Typ auswählen"
+          }</option>`;
+
+          entryTypes.innerHTML =
+            placeholder +
+            allTypes
+              .map(
+                (t) =>
+                  `<option value="${t}" ${
+                    selectedTypes.includes(t) ? "selected" : ""
+                  }>${t}</option>`
+              )
+              .join("");
+
+          entryTypes.disabled = false;
+          typeInputGroup.style.display = "block"; // Eingabe + Add-Button sichtbar
+        } else {
+          if (!selectedTypes.length) {
+            entryTypes.innerHTML = `<option value="">${
+              translations[currentLang]?.type_placeholder ||
+              "Bitte Typ auswählen"
+            }</option>`;
+          } else {
+            entryTypes.innerHTML = selectedTypes
+              .map((type) => `<option selected disabled>${type}</option>`)
+              .join("");
+          }
+
+          entryTypes.disabled = true;
+          typeInputGroup.style.display = "none"; // im Detailmodus ausgeblendet
+        }
+
+        // tags
+        const allTags = Object.values(tags);
+        const selectedTags = Array.isArray(prompt.tags) ? prompt.tags : [];
+        if (isEdit) {
+          entryTags.innerHTML = allTags
+            .map(
+              (tag) =>
+                `<label><input type="checkbox" value="${tag}" ${
+                  selectedTags.includes(tag) ? "checked" : ""
+                }> ${tag}</label>`
+            )
+            .join(" ");
+          tagInputGroup.style.display = "block";
+          newTagInput.readOnly = false;
+          addTagBtn.disabled = false;
+        } else {
+          if (!selectedTags.length) {
+            entryTags.innerHTML = `<p style="font-style: italic; color: gray;">${translations[currentLang]?.this_prompt_no_tags}</p>`;
+          } else {
+            entryTags.innerHTML = selectedTags
+              .map((tag) => `<span class="readonly-pill">${tag}</span>`)
+              .join(" ");
+          }
+          tagInputGroup.style.display = "none";
+        }
+
+        // models
+        const modelList = [
+          "Grok",
+          "Gemini",
+          "ChatGPT",
+          "Claude",
+          "BlackBox",
+          "GitHub Copilot",
+          "Microsoft Copilot",
+          "Mistral",
+          "DuckDuckGo",
+          "Perplexity",
+          "DeepSeek",
+          "Deepai",
+          "Qwen AI",
+        ];
+        const compatible = prompt.compatibleModels || [];
+        const incompatible = prompt.incompatibleModels || [];
+
+        if (isEdit) {
+          entryCompatible.innerHTML = modelList
+            .map(
+              (m) =>
+                `<label><input type="checkbox" value="${m}" ${
+                  compatible.includes(m) ? "checked" : ""
+                }> ${m}</label>`
+            )
+            .join(" ");
+          entryIncompatible.innerHTML = modelList
+            .map(
+              (m) =>
+                `<label><input type="checkbox" value="${m}" ${
+                  incompatible.includes(m) ? "checked" : ""
+                }> ${m}</label>`
+            )
+            .join(" ");
+        } else {
+          entryCompatible.innerHTML = compatible.length
+            ? compatible
+                .map((m) => `<span class="readonly-pill">${m}</span>`)
+                .join(" ")
+            : `<p style="font-style: italic; color: gray;">${translations[currentLang]?.no_match_with_compatible_modell}</p>`;
+          entryIncompatible.innerHTML = incompatible.length
+            ? incompatible
+                .map((m) => `<span class="readonly-pill">${m}</span>`)
+                .join(" ")
+            : `<p style="font-style: italic; color: gray;">${translations[currentLang]?.no_match_with_incompatible_modell}</p>`;
+        }
+
+        // notes
+        entryNotes.value = prompt.notes || "";
+        if (!isEdit && !prompt.notes) {
+          entryNotes.style.fontStyle = "italic";
+          entryNotes.style.color = "gray";
+        } else {
+          entryNotes.style.fontStyle = "normal";
+          entryNotes.style.color = "inherit";
+        }
+
+        // created / last used / modified
+        entryCreatedAt.value = prompt.createdAt
+          ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+          : "Not available";
+        entryLastUsed.value = prompt.lastUsed
+          ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+          : "Never used";
+        entryLastModified.value = prompt.updatedAt
+          ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
+          : "Not available";
+
+        // folder
+        entryFolder.innerHTML =
+          '<option value="">Not assigned to any folder</option>';
+        Object.entries(folders).forEach(([fid, folder]) => {
+          const option = document.createElement("option");
+          option.value = fid;
+          option.textContent = folder.name || "Unnamed folder";
+          if (prompt.folderId === fid) option.selected = true;
+          entryFolder.appendChild(option);
+        });
+
+        // toggle readonly / editable
+        const readonly = !isEdit;
+        entryTitle.readOnly = readonly;
+        entryDescription.readOnly = readonly;
+        entryContent.readOnly = readonly;
+        entryNotes.readOnly = readonly;
+        entryFolder.disabled = readonly;
+        entryFavorite.disabled = readonly;
+
+        document.querySelector(".detail-actions").style.display = isEdit
+          ? "flex"
+          : "none";
       }
-    });
 
-    // created / last used / modified handling
-    entryCreatedAt.value = prompt.createdAt
-      ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-      : "Not available";
-    entryLastUsed.value = prompt.lastUsed
-      ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-      : "Never used";
-    entryLastModified.value = prompt.updatedAt
-      ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
-      : "Not available";
+      // initial render as detail view
+      renderView(false);
+      detailOverlay.classList.add("open");
+      document.getElementById("plus-btn").style.display = "none";
 
-    // notes handling
-    entryNotes.value = prompt.notes || "";
-    if (!prompt.notes) {
-      entryNotes.value = "No notes provided";
-      entryNotes.style.fontStyle = "italic";
-      entryNotes.style.color = "gray";
-    } else {
-      entryNotes.style.fontStyle = "normal";
-      entryNotes.style.color = "inherit";
+      // bind edit button toggle
+      document.getElementById("edit-btn").onclick = () => renderView(true);
     }
-
-    // models handling
-    const modelList = [
-      "Grok",
-      "Gemini",
-      "ChatGPT",
-      "Claude",
-      "BlackBox",
-      "GitHub Copilot",
-      "Microsoft Copilot",
-      "Mistral",
-      "DuckDuckGo",
-      "Perplexity",
-      "DeepSeek",
-      "Deepai",
-      "Qwen AI",
-    ];
-
-    const compatible = prompt.compatibleModels || [];
-    const incompatible = prompt.incompatibleModels || [];
-
-    if (!compatible.length) {
-      entryCompatible.innerHTML = `<p style="font-style: italic; color: gray;">is not matched with any compatible models</p>`;
-    } else {
-      entryCompatible.innerHTML = compatible
-        .map(
-          (model) => `
-        <label>
-          <input type="checkbox" name="compatible" value="${model}" checked disabled>
-          ${model}
-        </label>`
-        )
-        .join("");
-    }
-
-    if (!incompatible.length) {
-      entryIncompatible.innerHTML = `<p style="font-style: italic; color: gray;">is not matched with any incompatible models</p>`;
-    } else {
-      entryIncompatible.innerHTML = incompatible
-        .map(
-          (model) => `
-        <label>
-          <input type="checkbox" name="incompatible" value="${model}" checked disabled>
-          ${model}
-        </label>`
-        )
-        .join("");
-    }
-
-    // tags handling
-    const promptTags = Array.isArray(prompt.tags) ? prompt.tags : [];
-
-    if (!promptTags.length) {
-      entryTags.innerHTML = `<p style="font-style: italic; color: gray;">Dieser Prompt hat keine Tags</p>`;
-    } else {
-      entryTags.innerHTML = promptTags
-        .map(
-          (tag) => `
-      <label>
-        <input type="checkbox" name="tags" value="${tag}" checked disabled>
-        ${tag}
-      </label>`
-        )
-        .join("");
-    }
-
-    // folder handling
-    entryFolder.innerHTML =
-      '<option value="" data-i18n="folder_unassigned">Not assigned to any folder</option>';
-    Object.entries(folders).forEach(([folderId, folder]) => {
-      const option = document.createElement("option");
-      option.value = folderId;
-      option.textContent = folder.name || "Unnamed folder";
-      if (prompt.folderId === folderId) {
-        option.selected = true;
-      }
-      entryFolder.appendChild(option);
-    });
-
-    applyTranslations(currentLang);
-
-    // set all fields to read-only initially
-    entryTitle.readOnly = true;
-    entryDescription.readOnly = true;
-    entryContent.readOnly = true;
-    entryType.disabled = true;
-    entryFavorite.disabled = true;
-    entryCreatedAt.readOnly = true;
-    entryLastUsed.readOnly = true;
-    entryLastModified.readOnly = true;
-    entryNotes.readOnly = true;
-    entryFolder.disabled = true;
-    newTagInput.readOnly = true;
-    addTagBtn.disabled = true;
-    tagInputGroup.style.display = "none";
-
-    document.querySelector(".detail-actions").style.display = "none";
-
-    detailOverlay.classList.add("open");
-    document.getElementById("plus-btn").style.display = "none";
-
-    // Behalte den bestehenden navigationState, wenn er bereits eine Kategorie enthält
-    if (navigationState.source === "category") {
-      console.log(
-        `Preserving category in navigationState: ${JSON.stringify(
-          navigationState
-        )}`
-      );
-      document.getElementById("folder-overlay").classList.add("open");
-    } else if (
-      navigationState.source === "folder" &&
-      navigationState.folderId
-    ) {
-      document.getElementById("folder-overlay").classList.add("open");
-    } else {
-      document.getElementById("folder-overlay").classList.remove("open");
-    }
-  });
+  );
 }
 
 function updateSortDropdownSelection(dropdown = sortDropdown) {
@@ -2155,6 +2163,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Change Mode
   editBtn.addEventListener("click", () => {
     const entryCompatible = document.getElementById("entry-compatible");
     const entryIncompatible = document.getElementById("entry-incompatible");
@@ -2162,11 +2171,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const entryDescription = document.getElementById("entry-description");
     const entryContent = document.getElementById("entry-content");
     const entryNotes = document.getElementById("entry-notes");
-    const entryType = document.getElementById("entry-type");
+    const entryTypes = document.getElementById("entry-types");
     const entryFavorite = document.getElementById("entry-favorite");
     const entryFolder = document.getElementById("entry-folder");
     const tagInputGroup = document.getElementById("tag-input-group");
     const newTagInput = document.getElementById("new-tag");
+    const newTypeInput = document.getElementById("new-type");
+    const addTypeBtn = document.getElementById("add-type-btn");
     const addTagBtn = document.getElementById("add-tag-btn");
     const entryTags = document.getElementById("entry-tags");
 
@@ -2178,10 +2189,12 @@ document.addEventListener("DOMContentLoaded", () => {
       entryDescription.readOnly = false;
       entryContent.readOnly = false;
       entryNotes.readOnly = false;
-      entryType.disabled = false;
+      entryTypes.readOnly = false;
       entryFavorite.disabled = false;
       entryFolder.disabled = false;
+      newTypeInput.readonly = false;
       newTagInput.readOnly = false;
+      addTypeBtn.disabled = false;
       addTagBtn.disabled = false;
       tagInputGroup.style.display = "block";
 
@@ -2205,10 +2218,12 @@ document.addEventListener("DOMContentLoaded", () => {
       entryDescription.readOnly = true;
       entryContent.readOnly = true;
       entryNotes.readOnly = true;
-      entryType.disabled = true;
+      entryTypes.readOnly = true;
       entryFavorite.disabled = true;
       entryFolder.disabled = true;
+      newTypeInput.readonly = true;
       newTagInput.readOnly = true;
+      addTypeBtn.disabled = true;
       addTagBtn.disabled = true;
       tagInputGroup.style.display = "none";
 
@@ -2253,7 +2268,12 @@ document.addEventListener("DOMContentLoaded", () => {
       .value.trim();
     const entryContent = document.getElementById("entry-content").value.trim();
     const entryNotes = document.getElementById("entry-notes").value.trim();
-    const entryType = document.getElementById("entry-type").value;
+
+    // ✅ get all selected types from multi-select
+    const entryTypes = Array.from(
+      document.getElementById("edit-types").selectedOptions
+    ).map((opt) => opt.value);
+
     const entryFavorite = document.getElementById("entry-favorite").checked;
     const entryFolder = document.getElementById("entry-folder").value || null;
 
@@ -2280,7 +2300,7 @@ document.addEventListener("DOMContentLoaded", () => {
       description: entryDescription,
       content: entryContent,
       notes: entryNotes,
-      type: entryType,
+      types: entryTypes, // ✅ now saved as array
       favorite: entryFavorite,
       folderId: entryFolder,
       tags,
@@ -2338,7 +2358,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .getElementById("entry-description")
         .value.trim();
       const content = document.getElementById("entry-content").value.trim();
-      const type = document.getElementById("entry-type").value;
+      const type = document.getElementById("entry-types").value;
       const isFavorite = document.getElementById("entry-favorite").checked;
       const folderId = document.getElementById("entry-folder").value;
       const promptId =
@@ -2619,7 +2639,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const entryDescription = document.getElementById("entry-description-add");
     const entryContent = document.getElementById("entry-content-add");
     const entryNotes = document.getElementById("entry-notes-add");
-    const entryType = document.getElementById("entry-type-add");
+    const entryTypes = document.getElementById("entry-types-add");
     const entryTags = document.getElementById("entry-tags-add");
     const tagInputGroup = document.getElementById("tag-input-group");
     const newTagInput = document.getElementById("new-tag_add");
@@ -2633,7 +2653,7 @@ document.addEventListener("DOMContentLoaded", () => {
     entryDescription.value = "";
     entryContent.value = "";
     entryNotes.value = "";
-    entryType.value = "";
+    entryTypes.value = "";
     entryFavorite.checked = false;
     entryFolder.innerHTML = `<option value="">${translations[currentLang]?.folder_select}</option>`;
 
@@ -2650,6 +2670,28 @@ document.addEventListener("DOMContentLoaded", () => {
           <label>
             <input type="checkbox" name="tags" value="${tag}">
             ${tag}
+          </label>
+        `
+          )
+          .join("");
+      }
+      applyTranslations(currentLang); // Übersetzungen nach dem Rendern anwenden
+    });
+
+    // Populate tags
+    chrome.storage.local.get("types", (typeData) => {
+      console.log("Geladene Tags:", typeData.types); // Debugging
+      const storedTypes = Array.isArray(typeData.types) ? typeData.types : [];
+      if (storedTypes.length === 0) {
+        entryTypes.innerHTML =
+          '<p data-i18n="no_tags">Keine Tags vorhanden</p>';
+      } else {
+        entryTypes.innerHTML = storedTypes
+          .map(
+            (type) => `
+          <label>
+            <input type="checkbox" name="types" value="${type}">
+            ${type}
           </label>
         `
           )
@@ -2677,7 +2719,7 @@ document.addEventListener("DOMContentLoaded", () => {
     entryDescription.readOnly = false;
     entryContent.readOnly = false;
     entryNotes.readOnly = false;
-    entryType.disabled = false;
+    entryTypes.disabled = false;
     entryFavorite.disabled = false;
     entryFolder.disabled = false;
     document.querySelector(".detail-actions").style.display = "flex";
@@ -2703,6 +2745,49 @@ document.addEventListener("DOMContentLoaded", () => {
         entryFolderAdd.appendChild(option);
       }
     });
+  });
+
+  document.getElementById("add-type-btn").addEventListener("click", () => {
+    const newTypeInput = document.getElementById("new-type");
+    const newType = newTypeInput.value.trim();
+    const entryTypes = document.getElementById("entry-types");
+
+    // aktuelle Optionen einsammeln
+    const existingTypes = Array.from(entryTypes.options).map(
+      (opt) => opt.value
+    );
+
+    if (newType && !existingTypes.includes(newType)) {
+      // Neue Option erzeugen
+      const option = document.createElement("option");
+      option.value = newType;
+      option.textContent = newType;
+      option.selected = true; // gleich markieren
+      entryTypes.appendChild(option);
+
+      // in chrome.storage.local speichern
+      chrome.storage.local.get("types", (typeData) => {
+        const storedTypes = typeData.types || [];
+        if (!storedTypes.includes(newType)) {
+          storedTypes.push(newType);
+          chrome.storage.local.set({ types: storedTypes }, () => {
+            console.log(`Type "${newType}" saved to chrome.storage.local`);
+          });
+        }
+      });
+
+      // Eingabe zurücksetzen
+      newTypeInput.value = "";
+    } else if (!newType) {
+      alert(
+        translations?.[currentLang]?.type_empty || "Type darf nicht leer sein!"
+      );
+    } else {
+      alert(
+        translations?.[currentLang]?.type_exists ||
+          "Dieser Type existiert bereits!"
+      );
+    }
   });
 
   document.getElementById("add-tag-btn_add").addEventListener("click", () => {
@@ -2743,7 +2828,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .value.trim();
     const content = document.getElementById("entry-content-add").value.trim();
     const notes = document.getElementById("entry-notes-add").value.trim();
-    const type = document.getElementById("entry-type-add").value;
+    const type = document.getElementById("entry-types-add").value;
     const tags = Array.from(
       document
         .getElementById("entry-tags-add")
@@ -2818,7 +2903,7 @@ document.addEventListener("DOMContentLoaded", () => {
           .getElementById("entry-description")
           .value.trim();
         const content = document.getElementById("entry-content").value.trim();
-        const type = document.getElementById("entry-type").value;
+        const type = document.getElementById("entry-types").value;
         const newTag = document.getElementById("new-tag").value.trim();
         const isFavorite = document.getElementById("entry-favorite").checked;
         const folderId = document.getElementById("entry-folder").value;

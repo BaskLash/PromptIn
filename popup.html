@@ -164,8 +164,27 @@
           </div>
           <div class="detail-field">
             <label data-i18n="type_label"></label>
-            <div class="checkbox-group scrollable" id="entry-type">
+            <select id="entry-types" disabled>
               <!-- Dynamisch befüllt -->
+            </select>
+            <div
+              class="type-input-group"
+              id="type-input-group"
+              style="display: none"
+            >
+              <input
+                type="text"
+                id="new-type"
+                data-i18n-placeholder="new_type_placeholder"
+              />
+              <button
+                type="button"
+                class="action-btn"
+                id="add-type-btn"
+                data-i18n="add_type_button"
+              >
+                Add New Type
+              </button>
             </div>
           </div>
           <div class="detail-field">
@@ -177,8 +196,7 @@
                   name="compatible"
                   value="Grok"
                   disabled
-                />
-                Grok</label
+                />Grok</label
               >
               <label
                 ><input
@@ -186,8 +204,7 @@
                   name="compatible"
                   value="Gemini"
                   disabled
-                />
-                Gemini</label
+                />Gemini</label
               >
               <label
                 ><input
@@ -195,8 +212,7 @@
                   name="compatible"
                   value="ChatGPT"
                   disabled
-                />
-                ChatGPT</label
+                />ChatGPT</label
               >
               <label
                 ><input
@@ -204,8 +220,7 @@
                   name="compatible"
                   value="Claude"
                   disabled
-                />
-                Claude</label
+                />Claude</label
               >
               <label
                 ><input
@@ -213,8 +228,7 @@
                   name="compatible"
                   value="BlackBox"
                   disabled
-                />
-                BlackBox</label
+                />BlackBox</label
               >
               <label
                 ><input
@@ -222,8 +236,7 @@
                   name="compatible"
                   value="GitHub Copilot"
                   disabled
-                />
-                GitHub Copilot</label
+                />GitHub Copilot</label
               >
               <label
                 ><input
@@ -231,8 +244,7 @@
                   name="compatible"
                   value="Microsoft Copilot"
                   disabled
-                />
-                Microsoft Copilot</label
+                />Microsoft Copilot</label
               >
               <label
                 ><input
@@ -240,8 +252,7 @@
                   name="compatible"
                   value="Mistral"
                   disabled
-                />
-                Mistral</label
+                />Mistral</label
               >
               <label
                 ><input
@@ -249,8 +260,7 @@
                   name="compatible"
                   value="DuckDuckGo"
                   disabled
-                />
-                DuckDuckGo</label
+                />DuckDuckGo</label
               >
               <label
                 ><input
@@ -258,8 +268,7 @@
                   name="compatible"
                   value="Perplexity"
                   disabled
-                />
-                Perplexity</label
+                />Perplexity</label
               >
               <label
                 ><input
@@ -267,8 +276,7 @@
                   name="compatible"
                   value="DeepSeek"
                   disabled
-                />
-                DeepSeek</label
+                />DeepSeek</label
               >
               <label
                 ><input
@@ -276,8 +284,7 @@
                   name="compatible"
                   value="Deepai"
                   disabled
-                />
-                Deepai</label
+                />Deepai</label
               >
               <label
                 ><input
@@ -285,8 +292,7 @@
                   name="compatible"
                   value="Qwen AI"
                   disabled
-                />
-                Qwen AI</label
+                />Qwen AI</label
               >
             </div>
           </div>
@@ -299,8 +305,7 @@
                   name="incompatible"
                   value="Grok"
                   disabled
-                />
-                Grok</label
+                />Grok</label
               >
               <label
                 ><input
@@ -308,8 +313,7 @@
                   name="incompatible"
                   value="Gemini"
                   disabled
-                />
-                Gemini</label
+                />Gemini</label
               >
               <label
                 ><input
@@ -317,8 +321,7 @@
                   name="incompatible"
                   value="ChatGPT"
                   disabled
-                />
-                ChatGPT</label
+                />ChatGPT</label
               >
               <label
                 ><input
@@ -326,8 +329,7 @@
                   name="incompatible"
                   value="Claude"
                   disabled
-                />
-                Claude</label
+                />Claude</label
               >
               <label
                 ><input
@@ -335,8 +337,7 @@
                   name="incompatible"
                   value="BlackBox"
                   disabled
-                />
-                BlackBox</label
+                />BlackBox</label
               >
               <label
                 ><input
@@ -344,8 +345,7 @@
                   name="incompatible"
                   value="GitHub Copilot"
                   disabled
-                />
-                GitHub Copilot</label
+                />GitHub Copilot</label
               >
               <label
                 ><input
@@ -353,8 +353,7 @@
                   name="incompatible"
                   value="Microsoft Copilot"
                   disabled
-                />
-                Microsoft Copilot</label
+                />Microsoft Copilot</label
               >
               <label
                 ><input
@@ -362,8 +361,7 @@
                   name="incompatible"
                   value="Mistral"
                   disabled
-                />
-                Mistral</label
+                />Mistral</label
               >
               <label
                 ><input
@@ -371,8 +369,7 @@
                   name="incompatible"
                   value="DuckDuckGo"
                   disabled
-                />
-                DuckDuckGo</label
+                />DuckDuckGo</label
               >
               <label
                 ><input
@@ -380,8 +377,7 @@
                   name="incompatible"
                   value="Perplexity"
                   disabled
-                />
-                Perplexity</label
+                />Perplexity</label
               >
               <label
                 ><input
@@ -389,8 +385,7 @@
                   name="incompatible"
                   value="DeepSeek"
                   disabled
-                />
-                DeepSeek</label
+                />DeepSeek</label
               >
               <label
                 ><input
@@ -398,8 +393,7 @@
                   name="incompatible"
                   value="Deepai"
                   disabled
-                />
-                Deepai</label
+                />Deepai</label
               >
               <label
                 ><input
@@ -407,8 +401,7 @@
                   name="incompatible"
                   value="Qwen AI"
                   disabled
-                />
-                Qwen AI</label
+                />Qwen AI</label
               >
             </div>
           </div>
@@ -499,30 +492,24 @@
           </div>
           <div class="detail-field">
             <label data-i18n="type_label"></label>
-            <select id="entry-type-add">
-              <option value="" selected data-i18n="select_type"></option>
-              <option value="textgen" data-i18n="textgen"></option>
-              <option value="rewrite" data-i18n="rewrite"></option>
-              <option value="summarize" data-i18n="summarize"></option>
-              <option value="translate" data-i18n="translate"></option>
-              <option value="ideation" data-i18n="ideation"></option>
-              <option value="adcopy" data-i18n="adcopy"></option>
-              <option value="storytelling" data-i18n="storytelling"></option>
-              <option value="analyze" data-i18n="analyze"></option>
-              <option value="classify" data-i18n="classify"></option>
-              <option value="extract" data-i18n="extract"></option>
-              <option value="compare" data-i18n="compare"></option>
-              <option value="codegen" data-i18n="codegen"></option>
-              <option value="debug" data-i18n="debug"></option>
-              <option value="refactor" data-i18n="refactor"></option>
-              <option value="explain-code" data-i18n="explain-code"></option>
-              <option
-                value="prompt-engineering"
-                data-i18n="prompt-engineering"
-              ></option>
-              <option value="meta-prompt" data-i18n="meta-prompt"></option>
-              <option value="assistant" data-i18n="assistant"></option>
-            </select>
+            <div class="checkbox-group scrollable" id="entry-types-add">
+              <!-- Checkboxes will be dynamically populated -->
+            </div>
+            <div class="type-input-group" id="type-input-group">
+              <input
+                type="text"
+                id="new-type_add"
+                data-i18n-placeholder="new_type_placeholder"
+              />
+              <button
+                type="button"
+                class="action-btn"
+                id="add-type-btn_add"
+                data-i18n="add_type_button"
+              >
+                Add New Type
+              </button>
+            </div>
           </div>
           <div class="detail-field">
             <label data-i18n="tags_label"></label>

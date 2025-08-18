@@ -395,7 +395,7 @@ function applyFilterAndSort() {
   const tbody = document.querySelector(".table-container tbody");
   const table = document.querySelector(".table-container");
 
-  // Filterstatus für Modelle, Tags und Kategorie
+  // Filterstatus für Modelle, Tags, Types und Kategorie
   const compatibleFilters = Array.from(
     document.querySelectorAll(
       "#compatible-models-filter input[name='compatible-filter']:checked"
@@ -409,11 +409,11 @@ function applyFilterAndSort() {
   const tagsFilters = Array.from(
     document.querySelectorAll("#tags-filter input[name='tags-filter']:checked")
   ).map((cb) => cb.value);
-  const typesFilters = Array.from(
-    document.querySelectorAll(
-      "#types-filter input[name='types-filter']:checked"
-    )
-  ).map((cb) => cb.value);
+  // Dynamically get the selected type from the <select> element
+  const typesFilters = (() => {
+    const select = document.getElementById("types-select-filter");
+    return select && select.value ? [select.value] : [];
+  })();
   const categoryFilter =
     document.getElementById("category-filter")?.value || "all";
 
@@ -920,21 +920,38 @@ function loadTypesFilter() {
     return;
   }
 
-  types.forEach((type) => {
-    const label = document.createElement("label");
-    label.className = "types-checkbox-label";
-    label.innerHTML = `<input type="checkbox" name="types-filter" value="${escapeHTML(
-      type
-    )}"> ${escapeHTML(type)}`;
-    typesFilter.appendChild(label);
+  // Create a select element
+  const select = document.createElement("select");
+  select.id = "types-select-filter";
 
-    // Event-Listener für Filter-Änderungen
-    const checkbox = label.querySelector("input");
-    checkbox.addEventListener("change", () => {
-      applyFilterAndSort();
-    });
+  // Add an empty option at the top
+  const emptyOption = document.createElement("option");
+  emptyOption.value = "";
+  emptyOption.textContent = "-- All Types --";
+  select.appendChild(emptyOption);
+
+  // Add options for each type
+  types.forEach((type) => {
+    const option = document.createElement("option");
+    option.value = type;
+    option.textContent = type;
+    select.appendChild(option);
   });
+
+  // Listen for change to apply filter
+  select.addEventListener("change", () => {
+    applyFilterAndSort();
+  });
+
+  typesFilter.appendChild(select);
 }
+
+// --- Replace old code to get selected types ---
+const typesFilters = (() => {
+  const select = document.getElementById("types-select-filter");
+  if (!select || !select.value) return []; // no filter selected
+  return [select.value]; // single selected type in an array to match old format
+})();
 
 // Levenshtein Distance function (assumed to be defined elsewhere)
 function levenshteinDistance(a, b) {
