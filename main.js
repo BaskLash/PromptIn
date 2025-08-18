@@ -157,7 +157,7 @@ function showPromptDetails(promptId) {
     const existingNote = document.getElementById("not-favorite-note");
     if (prompt.isFavorite) {
       entryFavorite.checked = true;
-      if (existingNote) existingNote.remove(); // entfernen falls vorher da
+      if (existingNote) existingNote.remove();
     } else {
       entryFavorite.checked = false;
       if (!existingNote) {
@@ -184,7 +184,6 @@ function showPromptDetails(promptId) {
         return;
       }
 
-      // Nur den/die wirklich gesetzten Typ(en) anzeigen
       const validTypes = selectedTypes.filter((t) => allTypes.includes(t));
 
       if (!validTypes.length) {
@@ -324,7 +323,18 @@ function showPromptDetails(promptId) {
     detailOverlay.classList.add("open");
     document.getElementById("plus-btn").style.display = "none";
 
-    if (navigationState.source === "folder" && navigationState.folderId) {
+    // Behalte den bestehenden navigationState, wenn er bereits eine Kategorie enthält
+    if (navigationState.source === "category") {
+      console.log(
+        `Preserving category in navigationState: ${JSON.stringify(
+          navigationState
+        )}`
+      );
+      document.getElementById("folder-overlay").classList.add("open");
+    } else if (
+      navigationState.source === "folder" &&
+      navigationState.folderId
+    ) {
       document.getElementById("folder-overlay").classList.add("open");
     } else {
       document.getElementById("folder-overlay").classList.remove("open");
@@ -738,7 +748,7 @@ function toggleFolderSortDropdown() {
 
 function attachFolderTableEvents() {
   const rows = document.querySelectorAll(".folder-entry-table tr");
-  console.log(`Found ${rows.length} rows in folder-entry-table`); // Debugging
+  console.log(`Found ${rows.length} rows in folder-entry-table`);
   rows.forEach((row) => {
     const actionBtn = row.querySelector(".action-btn");
     const promptId = row.dataset.promptId;
@@ -753,7 +763,7 @@ function attachFolderTableEvents() {
       `Binding events for row: PromptID=${promptId}, FolderID=${folderId}, Dataset=${JSON.stringify(
         row.dataset
       )}`
-    ); // Debugging
+    );
     if (actionBtn) {
       row.addEventListener("mouseenter", () => {
         hoveredRow = row;
@@ -779,12 +789,18 @@ function attachFolderTableEvents() {
           `Row clicked: PromptID=${promptId}, FolderID=${folderId}, Dataset=${JSON.stringify(
             row.dataset
           )}`
-        ); // Debugging
+        );
         navigationState = {
-          source: "folder",
-          folderId: folderId,
-          category: null,
+          source: navigationState.source === "category" ? "category" : "folder",
+          folderId: navigationState.source === "category" ? null : folderId,
+          category:
+            navigationState.source === "category"
+              ? navigationState.category
+              : null,
         };
+        console.log(
+          `navigationState updated: ${JSON.stringify(navigationState)}`
+        );
         showPromptDetails(promptId);
       }
     });
@@ -807,7 +823,7 @@ function attachMainTableEvents() {
         `Binding events for row: PromptID=${promptId}, Dataset=${JSON.stringify(
           tr.dataset
         )}`
-      ); // Debugging
+      );
       if (btn) {
         tr.addEventListener("mouseenter", () => {
           hoveredRow = tr;
@@ -834,7 +850,17 @@ function attachMainTableEvents() {
               tr.dataset
             )}`
           );
-          navigationState = { source: "main", folderId: null, category: null };
+          navigationState = {
+            source: navigationState.source === "category" ? "category" : "main",
+            folderId: null,
+            category:
+              navigationState.source === "category"
+                ? navigationState.category
+                : null,
+          };
+          console.log(
+            `navigationState updated: ${JSON.stringify(navigationState)}`
+          );
           showPromptDetails(promptId);
         }
       });
@@ -970,9 +996,7 @@ function showCategory(category) {
     const prompts = data.prompts || {};
 
     let allPrompts = [];
-
     console.log("Storage Data:", data); // Debugging
-    console.log("Prompts:", prompts, "Folders:", folders); // Debugging
 
     // Prompts aus Ordnern laden
     Object.entries(folders).forEach(([folderId, folder]) => {
@@ -992,7 +1016,7 @@ function showCategory(category) {
       }
     });
 
-    // Prompts ohne Ordnerzuweisung (folderId === null)
+    // Prompts ohne Ordnerzuweisung
     Object.entries(prompts).forEach(([promptId, prompt]) => {
       if (!prompt.folderId) {
         allPrompts.push({
@@ -1016,23 +1040,19 @@ function showCategory(category) {
         displayName =
           translations[currentLang]?.category_favorites || "Favorites";
         break;
-
       case "category_all_prompts":
         filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.isTrash);
         displayName =
           translations[currentLang]?.category_all_prompts || "All Prompts";
         break;
-
       case "category_single_prompts":
         filteredPrompts = allPrompts.filter(
           ({ prompt }) => !prompt.folderId && !prompt.isTrash
         );
-        console.log("Single Prompts:", filteredPrompts); // Debugging
         displayName =
           translations[currentLang]?.category_single_prompts ||
           "Single Prompts";
         break;
-
       case "category_categorised_prompts":
         filteredPrompts = allPrompts.filter(
           ({ prompt }) => prompt.folderId && !prompt.isTrash
@@ -1041,18 +1061,15 @@ function showCategory(category) {
           translations[currentLang]?.category_categorised_prompts ||
           "Categorised Prompts";
         break;
-
       case "category_dynamic_prompts":
         filteredPrompts = allPrompts.filter(
           ({ prompt }) =>
-            // prüft, ob im prompt.text mindestens ein {{Variable}} vorkommt
             [...prompt.content.matchAll(/\{\{([^}]+)\}\}/g)].length > 0
         );
         displayName =
           translations[currentLang]?.category_dynamic_prompts ||
           "Dynamic Prompts";
         break;
-
       case "category_static_prompts":
         filteredPrompts = allPrompts.filter(
           ({ prompt }) => !/\{\{([^}]+)\}\}/g.test(prompt.content)
@@ -1061,19 +1078,16 @@ function showCategory(category) {
           translations[currentLang]?.category_static_prompts ||
           "Static Prompts";
         break;
-
       case "category_unused_prompts":
         filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.lastUsed);
         displayName =
           translations[currentLang]?.category_unused_prompts ||
           "Unused Prompts";
         break;
-
       case "category_trash":
         filteredPrompts = allPrompts.filter(({ prompt }) => prompt.isTrash);
         displayName = translations[currentLang]?.category_trash || "Trash";
         break;
-
       default:
         filteredPrompts = [];
     }
@@ -1096,8 +1110,12 @@ function showCategory(category) {
       promptsToRender.forEach(({ prompt, folderId, promptId }) => {
         const tr = document.createElement("tr");
         tr.dataset.entry = prompt.title;
-        tr.dataset.folderId = folderId;
+        tr.dataset.folderId = folderId || "";
         tr.dataset.promptId = promptId;
+        tr.dataset.folderName =
+          folderId && folders[folderId]?.name
+            ? folders[folderId].name
+            : "No Folder";
         tr.innerHTML = `
           <td>${prompt.title}</td>
           <td class="action-cell">
@@ -1160,7 +1178,9 @@ function showCategory(category) {
     document.getElementById("side-nav").classList.remove("open");
     document.getElementById("plus-btn").style.display = "none";
 
+    // Setze navigationState korrekt
     navigationState = { source: "category", folderId: null, category };
+    console.log(`navigationState updated: ${JSON.stringify(navigationState)}`);
   });
 }
 
@@ -2116,6 +2136,10 @@ document.addEventListener("DOMContentLoaded", () => {
   backBtn.addEventListener("click", () => {
     document.getElementById("detail-overlay").classList.remove("open");
     document.getElementById("plus-btn").style.display = "flex";
+    console.log(
+      `Back button clicked: navigationState=${JSON.stringify(navigationState)}`
+    );
+
     if (navigationState.source === "folder" && navigationState.folderId) {
       showFolder(navigationState.folderId); // Zurück zur Ordneransicht
     } else if (
