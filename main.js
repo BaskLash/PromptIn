@@ -2253,7 +2253,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // load current prompts from storage
-    const data = await chrome.storage.local.get("prompts");
+    const data = await chrome.storage.local.get(["prompts"]);
     const prompts = data.prompts || {};
 
     if (!prompts[promptId]) {
@@ -2268,12 +2268,11 @@ document.addEventListener("DOMContentLoaded", () => {
       .value.trim();
     const entryContent = document.getElementById("entry-content").value.trim();
     const entryNotes = document.getElementById("entry-notes").value.trim();
-
-    // ✅ get all selected types from multi-select
     const entryTypes = Array.from(
-      document.getElementById("edit-types").selectedOptions
-    ).map((opt) => opt.value);
-
+      document.getElementById("entry-types").selectedOptions
+    )
+      .map((opt) => opt.value)
+      .filter((val) => val && val.trim() !== ""); // Placeholder rausfiltern
     const entryFavorite = document.getElementById("entry-favorite").checked;
     const entryFolder = document.getElementById("entry-folder").value || null;
 
@@ -2300,8 +2299,8 @@ document.addEventListener("DOMContentLoaded", () => {
       description: entryDescription,
       content: entryContent,
       notes: entryNotes,
-      types: entryTypes, // ✅ now saved as array
-      favorite: entryFavorite,
+      types: entryTypes, // Array (leer falls nichts gewählt)
+      isFavorite: entryFavorite, // ✅ wichtig: field isFavorite
       folderId: entryFolder,
       tags,
       compatibleModels,
@@ -2313,9 +2312,11 @@ document.addEventListener("DOMContentLoaded", () => {
       await chrome.storage.local.set({ prompts });
       console.log(`Prompt ${promptId} wurde erfolgreich gespeichert.`);
 
+      // Overlay schließen + UI zurücksetzen
       document.getElementById("detail-overlay").classList.remove("open");
       document.getElementById("plus-btn").style.display = "flex";
 
+      // richtige Ansicht neu laden
       if (navigationState.source === "folder" && navigationState.folderId) {
         showFolder(navigationState.folderId);
       } else if (
