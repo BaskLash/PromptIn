@@ -171,6 +171,7 @@ async function createNewPrompt(
     lastUsed: null,
     isTrash: false, // Hinzugefügt für Konsistenz
     deletedAt: null, // Hinzugefügt für Konsistenz
+    trashedAt: null,
     versions: [
       {
         versionId: `${Date.now()}_${generateUUID()}`,

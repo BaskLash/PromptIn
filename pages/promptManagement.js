@@ -306,6 +306,8 @@ function showCreatePromptModal(category) {
         folderId: folderId || null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        isTrash: false, // Hinzugefügt für Konsistenz
+        trashedAt: null,
         usageCount: 0,
         lastUsed: null,
         versions: [
@@ -365,6 +367,7 @@ function saveNewPrompt(prompt, folderId) {
       usageCount: 0,
       lastUsed: null,
       isTrash: false,
+      trashedAt: null,
       deletedAt: null,
       notes: "",
       versions: [
@@ -734,7 +737,7 @@ function moveToTrash(prompt, folderId, row) {
     targetPrompt.folderName = null;
     targetPrompt.updatedAt = Date.now();
     targetPrompt.isTrash = true;
-    targetPrompt.deletedAt = Date.now();
+    targetPrompt.trashedAt = Date.now();
 
     prompts[promptId] = targetPrompt;
 
@@ -917,19 +920,28 @@ function renamePrompt(prompt, folderId, row) {
     const saveNewName = () => {
       const newName = input.value.trim();
       if (newName && newName !== originalTitle) {
-        // Neue Version anlegen
         const updatedPrompt = {
           ...targetPrompt,
           title: newName,
           updatedAt: Date.now(),
           versions: targetPrompt.versions || [],
+          metaChangeLog: targetPrompt.metaChangeLog || [],
         };
 
+        // Neue Version anlegen
         updatedPrompt.versions.push({
           versionId: `${Date.now()}_${generateUUID()}`,
           title: newName,
           description: updatedPrompt.description || "",
           content: updatedPrompt.content || "",
+          timestamp: Date.now(),
+        });
+
+        // MetaChangeLog-Eintrag hinzufügen
+        updatedPrompt.metaChangeLog.push({
+          type: "rename",
+          oldTitle: originalTitle,
+          newTitle: newName,
           timestamp: Date.now(),
         });
 
@@ -957,6 +969,112 @@ function renamePrompt(prompt, folderId, row) {
     input.addEventListener("blur", saveNewName);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") saveNewName();
+    });
+  });
+}
+
+function trashPrompt(prompt, folderId, row) {
+  const promptId = prompt.promptId;
+  if (!promptId) return;
+
+  if (!confirm("Möchtest du diese Prompt in den Papierkorb verschieben?"))
+    return;
+
+  chrome.storage.local.get(["prompts"], (data) => {
+    const prompts = data.prompts || {};
+    const targetPrompt = prompts[promptId];
+
+    if (!targetPrompt) {
+      console.error("Prompt nicht gefunden:", promptId);
+      return;
+    }
+
+    const now = Date.now();
+
+    // Prompt auf "Trash" setzen (nicht aus Ordner entfernen!)
+    targetPrompt.isTrash = true;
+    targetPrompt.trashedAt = now;
+    targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
+
+    // MetaChangeLog-Eintrag hinzufügen
+    targetPrompt.metaChangeLog.push({
+      type: "trash",
+      trashedAt: now,
+      folderId: targetPrompt.folderId || null,
+      timestamp: now,
+    });
+
+    prompts[promptId] = targetPrompt;
+
+    chrome.storage.local.set({ prompts }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Fehler beim Verschieben in den Papierkorb:",
+          chrome.runtime.lastError
+        );
+        alert("Fehler beim Verschieben in den Papierkorb.");
+      } else {
+        console.log(
+          `Prompt ${promptId} erfolgreich in den Papierkorb verschoben.`
+        );
+        if (row) row.remove();
+
+        const category = document.querySelector(".main-header h1")?.textContent;
+        if (category) handleCategoryClick(category);
+      }
+    });
+  });
+}
+
+function removeFromTrash(prompt, folderId, row) {
+  const promptId = prompt.promptId;
+  if (!promptId) return;
+
+  if (!confirm("Möchtest du diese Prompt aus dem Papierkorb wiederherstellen?"))
+    return;
+
+  chrome.storage.local.get(["prompts"], (data) => {
+    const prompts = data.prompts || {};
+    const targetPrompt = prompts[promptId];
+
+    if (!targetPrompt) {
+      console.error("Prompt nicht gefunden:", promptId);
+      return;
+    }
+
+    const now = Date.now();
+
+    // Prompt aus "Trash" entfernen
+    targetPrompt.isTrash = false;
+    delete targetPrompt.trashedAt; // Optional: trashedAt löschen, da es nicht mehr im Trash ist
+    targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
+
+    // MetaChangeLog-Eintrag hinzufügen
+    targetPrompt.metaChangeLog.push({
+      type: "restore",
+      restoredAt: now,
+      folderId: targetPrompt.folderId || null,
+      timestamp: now,
+    });
+
+    prompts[promptId] = targetPrompt;
+
+    chrome.storage.local.set({ prompts }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Fehler beim Wiederherstellen aus dem Papierkorb:",
+          chrome.runtime.lastError
+        );
+        alert("Fehler beim Wiederherstellen aus dem Papierkorb.");
+      } else {
+        console.log(
+          `Prompt ${promptId} erfolgreich aus dem Papierkorb wiederhergestellt.`
+        );
+        if (row) row.remove();
+
+        const category = document.querySelector(".main-header h1")?.textContent;
+        if (category) handleCategoryClick(category);
+      }
     });
   });
 }

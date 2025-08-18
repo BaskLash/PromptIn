@@ -230,7 +230,11 @@ function renderPrompts(prompts) {
                 : `
                 <div class="dropdown-item" data-action="copy">Copy Prompt</div>
                 <div class="dropdown-item" data-action="export">Export Prompt</div>
-                <div class="dropdown-item" data-action="delete">Delete Prompt</div>
+                <div class="dropdown-item" data-action="${
+                  prompt.isTrash ? "remove-from-trash" : "trash"
+                }">${
+                    prompt.isTrash ? "Remove from Trash" : "Move to Trash"
+                  }</div>
                 <div class="dropdown-item" data-action="rename">Rename</div>
                 <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
                 <div class="dropdown-item" data-action="share">Share</div>
@@ -293,6 +297,13 @@ function renderPrompts(prompts) {
           showPromptVersions(prompt.promptId);
         } else if (action === "export" && prompt.type !== "Workflow") {
           await exportPrompt(prompt, prompt.folderId);
+        } else if (action === "trash" && prompt.type !== "Workflow") {
+          await trashPrompt(prompt, prompt.folderId, row, prompts);
+        } else if (
+          action === "remove-from-trash" &&
+          prompt.type !== "Workflow"
+        ) {
+          await removeFromTrash(prompt, prompt.folderId, row, prompts);
         } else if (action === "delete" && prompt.type !== "Workflow") {
           await deletePrompt(prompt, prompt.folderId, row, prompts);
         }
@@ -556,10 +567,13 @@ function showDetailsSidebar(item, folderId) {
     const prompt = allPrompts[item.promptId];
 
     const metaChangeLogEntries = (prompt.metaChangeLog || [])
-      .map(
-        (entry) => `
-      <div style="margin-bottom: 10px;">
-        <strong>${new Date(entry.timestamp).toLocaleString("de-DE")}</strong>
+      .map((entry) => {
+        const dateStr = new Date(entry.timestamp).toLocaleString("de-DE");
+        let changesHtml = "";
+
+        if (entry.changes && Object.keys(entry.changes).length > 0) {
+          // Klassische Änderungsobjekte
+          changesHtml = `
         <ul>
           ${Object.entries(entry.changes)
             .map(([key, change]) => {
@@ -577,9 +591,36 @@ function showDetailsSidebar(item, folderId) {
             })
             .join("")}
         </ul>
+      `;
+        } else if (entry.type === "trash") {
+          // Trash-Event anzeigen
+          changesHtml = `
+        <ul>
+          <li><strong>isTrash:</strong> Yes</li>
+          <li><strong>Trashed At:</strong> ${new Date(
+            entry.trashedAt
+          ).toLocaleString("de-DE")}</li>
+          <li><strong>Folder ID:</strong> ${entry.folderId || "N/A"}</li>
+        </ul>
+      `;
+        } else if (entry.type === "rename") {
+          changesHtml = `
+        <ul>
+          <li><strong>Old Title:</strong> ${entry.oldTitle || "N/A"}</li>
+          <li><strong>New Title:</strong> ${entry.newTitle || "N/A"}</li>
+        </ul>
+      `;
+        } else {
+          changesHtml = "<p>No metadata changes recorded.</p>";
+        }
+
+        return `
+      <div style="margin-bottom: 10px;">
+        <strong>${dateStr}</strong>
+        ${changesHtml}
       </div>
-    `
-      )
+    `;
+      })
       .join("");
 
     sidebarContent.innerHTML = `
@@ -686,15 +727,15 @@ function initializePrompts() {
 }
 
 function handleCategoryClick(category) {
-  chrome.storage.local.get(["prompts", "folders", "trash"], function (data) {
+  chrome.storage.local.get(["prompts", "folders"], function (data) {
     const prompts = data.prompts || {};
     const folders = data.folders || {};
-    const trashRefs = data.trash || [];
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
+    // Standard-Filter: immer nur nicht-Trash-Prompts
     const getPromptList = (filterFn) => {
       return Object.values(prompts)
-        .filter(filterFn)
+        .filter((p) => !p.isTrash && filterFn(p))
         .map((p) => ({
           ...p,
           folderName: folders[p.folderId]?.name || "Kein Ordner",
@@ -706,10 +747,12 @@ function handleCategoryClick(category) {
     switch (category) {
       case "All Prompts":
         filteredPrompts = getPromptList(() => true);
+        document.getElementById("addItemBtn").style.visibility = "visible";
         break;
 
       case "Favorites":
         filteredPrompts = getPromptList((p) => p.isFavorite);
+        document.getElementById("addItemBtn").style.visibility = "visible";
         break;
 
       case "Single Prompts":
@@ -722,42 +765,42 @@ function handleCategoryClick(category) {
             );
           }
         );
+        document.getElementById("addItemBtn").style.visibility = "visible";
         break;
 
       case "Categorised Prompts":
         filteredPrompts = getPromptList((p) => p.folderId !== null);
+        document.getElementById("addItemBtn").style.visibility = "visible";
         break;
 
       case "Trash":
-        filteredPrompts = trashRefs
-          .map((trashEntry) => {
-            const p = prompts[trashEntry.promptId];
-            if (!p) return null;
-            return {
-              ...p,
-              deletedAt: trashEntry.deletedAt,
-              originalFolderId: trashEntry.originalFolderId,
-              folderName: "Papierkorb",
-            };
-          })
-          .filter(Boolean)
-          .sort((a, b) => b.deletedAt - a.deletedAt);
+        filteredPrompts = Object.values(prompts)
+          .filter((p) => p.isTrash) // Nur Trash-Prompts
+          .sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0))
+          .map((p) => ({
+            ...p,
+            folderName: "Papierkorb",
+          }));
+        document.getElementById("addItemBtn").style.visibility = "hidden";
         break;
 
       case "Dynamic Prompts":
         filteredPrompts = getPromptList((p) => /\{[^}]+\}/.test(p.content));
+        document.getElementById("addItemBtn").style.visibility = "visible";
         break;
 
       case "Static Prompts":
         filteredPrompts = getPromptList(
           (p) => p.content && !/\{[^}]+\}/.test(p.content)
         );
+        document.getElementById("addItemBtn").style.visibility = "visible";
         break;
 
       case "Unused Prompts":
         filteredPrompts = getPromptList(
           (p) => !p.lastUsed || p.lastUsed < thirtyDaysAgo
         );
+        document.getElementById("addItemBtn").style.visibility = "visible";
         break;
 
       default:
@@ -769,7 +812,7 @@ function handleCategoryClick(category) {
           const promptIds = folders[matchingFolderId].promptIds || [];
           filteredPrompts = promptIds
             .map((id) => prompts[id])
-            .filter(Boolean)
+            .filter((p) => p && !p.isTrash) // Hier auch Trash rausfiltern
             .map((p) => ({
               ...p,
               folderName: folders[matchingFolderId].name,
@@ -807,7 +850,7 @@ function handleFolderClick(folderName) {
 
     const filteredPrompts = promptIds
       .map((id) => prompts[id])
-      .filter(Boolean)
+      .filter((p) => p && !p.isTrash) // 🚨 Trash-Prompts hier rausfiltern
       .map((prompt) => ({
         ...prompt,
         folderId,

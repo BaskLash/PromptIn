@@ -454,9 +454,64 @@ dropdown.innerHTML = `
     <button class='share-btn'>Share</button>
     <button class='favorit-btn'>Mark as favorit</button>
     <button class="rename-btn">Rename</button>
-    <button class="delete-btn">Delete</button>
+   <button class="trash-btn">Move to Trash</button>
   `;
 document.body.appendChild(dropdown);
+
+dropdown.querySelector(".trash-btn").addEventListener("click", () => {
+  const folderId = dropdown.dataset.folderId;
+  const promptId = dropdown.dataset.promptId;
+
+  if (
+    !confirm(
+      translations[currentLang]?.confirm_trash ||
+        "Möchtest du diese Prompt in den Papierkorb verschieben?"
+    )
+  ) {
+    return;
+  }
+
+  chrome.storage.local.get(["folders", "prompts"], function (data) {
+    const folders = data.folders || {};
+    const prompts = data.prompts || {};
+
+    if (prompts[promptId]) {
+      const targetPrompt = prompts[promptId];
+      const now = Date.now();
+
+      targetPrompt.isTrash = true;
+      targetPrompt.trashedAt = now;
+      targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
+      targetPrompt.metaChangeLog.push({
+        type: "trash",
+        trashedAt: now,
+        folderId: targetPrompt.folderId || null,
+        timestamp: now,
+      });
+
+      prompts[promptId] = targetPrompt;
+
+      chrome.storage.local.set({ prompts }, () => {
+        loadPromptsTable();
+        if (dropdown.dataset.table === "folder") showFolder(folderId);
+        else document.getElementById("folder-overlay").classList.remove("open");
+      });
+    } else {
+      console.error(`Prompt with ID ${promptId} not found`);
+    }
+  });
+
+  dropdown.style.display = "none";
+  isDropdownOpen = false;
+  if (currentButton) {
+    if (currentButton.closest("tr") === hoveredRow) {
+      keepActionButtonVisible(currentButton);
+    } else {
+      hideActionButton(currentButton);
+    }
+  }
+  currentButton = null;
+});
 
 // Mark prompt as favorite
 dropdown.querySelector(".favorit-btn").addEventListener("click", () => {
@@ -470,7 +525,9 @@ dropdown.querySelector(".favorit-btn").addEventListener("click", () => {
       prompt.isFavorite = !prompt.isFavorite;
       prompt.updatedAt = Date.now();
       chrome.storage.local.set({ prompts }, () => {
-        console.log(`Prompt ${promptId} favorite status updated to ${prompt.isFavorite}`);
+        console.log(
+          `Prompt ${promptId} favorite status updated to ${prompt.isFavorite}`
+        );
         loadPromptsTable();
         if (dropdown.dataset.table === "folder") {
           showFolder(dropdown.dataset.folderId);
@@ -527,19 +584,24 @@ dropdown.querySelector(".share-btn").addEventListener("click", () => {
   chrome.storage.local.get(["prompts"], function (data) {
     const prompt = data.prompts?.[promptId];
     if (prompt) {
-      const textToShare = prompt.content || prompt.title || "Check out this prompt!";
+      const textToShare =
+        prompt.content || prompt.title || "Check out this prompt!";
       if (navigator.share) {
-        navigator.share({
-          title: "Shared Prompt",
-          text: textToShare,
-        }).catch((err) => {
-          console.error("Share failed:", err);
-        });
+        navigator
+          .share({
+            title: "Shared Prompt",
+            text: textToShare,
+          })
+          .catch((err) => {
+            console.error("Share failed:", err);
+          });
       } else {
         const encodedText = encodeURIComponent(textToShare);
         const whatsappUrl = `https://wa.me/?text=${encodedText}`;
         const emailUrl = `mailto:?subject=Shared Prompt&body=${encodedText}`;
-        const choice = confirm("Click OK to share via WhatsApp, Cancel for Email");
+        const choice = confirm(
+          "Click OK to share via WhatsApp, Cancel for Email"
+        );
         if (choice) {
           window.open(whatsappUrl, "_blank");
         } else {
@@ -581,54 +643,6 @@ dropdown.querySelector(".rename-btn").addEventListener("click", () => {
         chrome.storage.local.set({ prompts }, () => {
           loadPromptsTable();
           if (dropdown.dataset.table === "folder") showFolder(folderId);
-        });
-      } else {
-        console.error(`Prompt with ID ${promptId} not found`);
-      }
-    });
-  }
-
-  dropdown.style.display = "none";
-  isDropdownOpen = false;
-  if (currentButton) {
-    if (currentButton.closest("tr") === hoveredRow) {
-      keepActionButtonVisible(currentButton);
-    } else {
-      hideActionButton(currentButton);
-    }
-  }
-  currentButton = null;
-});
-
-// Delete Prompt
-dropdown.querySelector(".delete-btn").addEventListener("click", () => {
-  if (
-    confirm(
-      translations[currentLang]?.confirm_delete || "Prompt wirklich löschen?"
-    )
-  ) {
-    const folderId = dropdown.dataset.folderId;
-    const promptId = dropdown.dataset.promptId;
-
-    chrome.storage.local.get(["folders", "prompts"], function (data) {
-      const folders = data.folders || {};
-      const prompts = data.prompts || {};
-
-      if (prompts[promptId]) {
-        // Remove Prompt-ID from folder
-        if (folders[folderId]) {
-          folders[folderId].promptIds = (
-            folders[folderId].promptIds || []
-          ).filter((id) => id !== promptId);
-        }
-
-        // Remove the actual prompt entry
-        delete prompts[promptId];
-
-        chrome.storage.local.set({ folders, prompts }, () => {
-          loadPromptsTable();
-          if (dropdown.dataset.table === "folder") showFolder(folderId);
-          else document.getElementById("folder-overlay").classList.remove("open");
         });
       } else {
         console.error(`Prompt with ID ${promptId} not found`);
@@ -996,19 +1010,23 @@ function showCategory(category) {
 
     switch (category) {
       case "category_favorites":
-        filteredPrompts = allPrompts.filter(({ prompt }) => prompt.isFavorite);
+        filteredPrompts = allPrompts.filter(
+          ({ prompt }) => prompt.isFavorite && !prompt.isTrash
+        );
         displayName =
           translations[currentLang]?.category_favorites || "Favorites";
         break;
 
       case "category_all_prompts":
-        filteredPrompts = allPrompts.filter(({ isTrash }) => !isTrash);
+        filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.isTrash);
         displayName =
           translations[currentLang]?.category_all_prompts || "All Prompts";
         break;
 
       case "category_single_prompts":
-        filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.folderId);
+        filteredPrompts = allPrompts.filter(
+          ({ prompt }) => !prompt.folderId && !prompt.isTrash
+        );
         console.log("Single Prompts:", filteredPrompts); // Debugging
         displayName =
           translations[currentLang]?.category_single_prompts ||
@@ -1016,7 +1034,9 @@ function showCategory(category) {
         break;
 
       case "category_categorised_prompts":
-        filteredPrompts = allPrompts.filter(({ prompt }) => prompt.folderId);
+        filteredPrompts = allPrompts.filter(
+          ({ prompt }) => prompt.folderId && !prompt.isTrash
+        );
         displayName =
           translations[currentLang]?.category_categorised_prompts ||
           "Categorised Prompts";
@@ -1050,7 +1070,7 @@ function showCategory(category) {
         break;
 
       case "category_trash":
-        filteredPrompts = allPrompts.filter(({ isTrash }) => isTrash);
+        filteredPrompts = allPrompts.filter(({ prompt }) => prompt.isTrash);
         displayName = translations[currentLang]?.category_trash || "Trash";
         break;
 
@@ -1236,7 +1256,11 @@ function handleActionButtonClick(btn, tr) {
   dropdown.dataset.folderId = tr.dataset.folderId || "";
   dropdown.dataset.folderName = tr.dataset.folderName || "";
   dropdown.dataset.entry = tr.dataset.entry;
-  dropdown.dataset.table = tr.closest("table").classList.contains("folder-entry-table") ? "folder" : "main";
+  dropdown.dataset.table = tr
+    .closest("table")
+    .classList.contains("folder-entry-table")
+    ? "folder"
+    : "main";
 
   // Update favorite button text based on prompt's isFavorite status
   chrome.storage.local.get(["prompts"], function (data) {
@@ -1244,14 +1268,161 @@ function handleActionButtonClick(btn, tr) {
     const prompt = prompts[tr.dataset.promptId];
     const favoritBtn = dropdown.querySelector(".favorit-btn");
     if (prompt && prompt.isFavorite) {
-      favoritBtn.textContent = translations[currentLang]?.remove_from_favorites || "Remove from Favorites";
+      favoritBtn.textContent =
+        translations[currentLang]?.remove_from_favorites ||
+        "Remove from Favorites";
     } else {
-      favoritBtn.textContent = translations[currentLang]?.add_to_favorites || "Add to Favorites";
+      favoritBtn.textContent =
+        translations[currentLang]?.add_to_favorites || "Add to Favorites";
+    }
+
+    // Dynamisch trash-btn oder delete-btn anzeigen
+    const trashBtn = dropdown.querySelector(".trash-btn");
+    const existingDeleteBtn = dropdown.querySelector(".delete-btn");
+    if (navigationState.category === "category_trash") {
+      // In Trash-Kategorie: Zeige "Delete Permanently" statt "Move to Trash"
+      if (trashBtn) {
+        const deleteBtn = document.createElement("button");
+        deleteBtn.classList.add("delete-btn");
+        deleteBtn.textContent =
+          translations[currentLang]?.delete_permanently || "Delete Permanently";
+        trashBtn.replaceWith(deleteBtn);
+      }
+    } else {
+      // In anderen Kategorien: Zeige "Move to Trash" statt "Delete Permanently"
+      if (existingDeleteBtn) {
+        const newTrashBtn = document.createElement("button");
+        newTrashBtn.classList.add("trash-btn");
+        newTrashBtn.textContent =
+          translations[currentLang]?.move_to_trash || "Move to Trash";
+        existingDeleteBtn.replaceWith(newTrashBtn);
+        // Erneut den Event-Listener für trash-btn hinzufügen
+        newTrashBtn.addEventListener("click", () => {
+          const folderId = dropdown.dataset.folderId;
+          const promptId = dropdown.dataset.promptId;
+
+          if (
+            !confirm(
+              translations[currentLang]?.confirm_trash ||
+                "Möchtest du diese Prompt in den Papierkorb verschieben?"
+            )
+          ) {
+            return;
+          }
+
+          chrome.storage.local.get(["folders", "prompts"], function (data) {
+            const folders = data.folders || {};
+            const prompts = data.prompts || {};
+
+            if (prompts[promptId]) {
+              const targetPrompt = prompts[promptId];
+              const now = Date.now();
+
+              targetPrompt.isTrash = true;
+              targetPrompt.trashedAt = now;
+              targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
+              targetPrompt.metaChangeLog.push({
+                type: "trash",
+                trashedAt: now,
+                folderId: targetPrompt.folderId || null,
+                timestamp: now,
+              });
+
+              prompts[promptId] = targetPrompt;
+
+              chrome.storage.local.set({ prompts }, () => {
+                loadPromptsTable();
+                if (dropdown.dataset.table === "folder") showFolder(folderId);
+                else
+                  document
+                    .getElementById("folder-overlay")
+                    .classList.remove("open");
+              });
+            } else {
+              console.error(`Prompt with ID ${promptId} not found`);
+            }
+          });
+
+          dropdown.style.display = "none";
+          isDropdownOpen = false;
+          if (currentButton) {
+            if (currentButton.closest("tr") === hoveredRow) {
+              keepActionButtonVisible(currentButton);
+            } else {
+              hideActionButton(currentButton);
+            }
+          }
+          currentButton = null;
+        });
+      }
     }
   });
 
-  console.log(`Dropdown opened: promptId=${tr.dataset.promptId}, folderId=${tr.dataset.folderId}, folderName=${tr.dataset.folderName}`);
+  console.log(
+    `Dropdown opened: promptId=${tr.dataset.promptId}, folderId=${tr.dataset.folderId}, folderName=${tr.dataset.folderName}`
+  );
 }
+
+dropdown.addEventListener("click", (e) => {
+  if (e.target.classList.contains("delete-btn")) {
+    const folderId = dropdown.dataset.folderId;
+    const promptId = dropdown.dataset.promptId;
+
+    if (
+      !confirm(
+        translations[currentLang]?.confirm_delete ||
+          "Möchtest du diesen Prompt endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      )
+    ) {
+      return;
+    }
+
+    chrome.storage.local.get(["folders", "prompts"], function (data) {
+      const folders = data.folders || {};
+      const prompts = data.prompts || {};
+
+      if (prompts[promptId]) {
+        // Entferne Prompt-ID aus dem Ordner
+        if (folders[folderId]) {
+          folders[folderId].promptIds = (
+            folders[folderId].promptIds || []
+          ).filter((id) => id !== promptId);
+        }
+
+        // Entferne den Prompt
+        delete prompts[promptId];
+
+        chrome.storage.local.set({ folders, prompts }, () => {
+          console.log(`Prompt ${promptId} permanently deleted`);
+          // Aktualisiere die Ansicht
+          if (navigationState.category === "category_trash") {
+            showCategory("category_trash");
+          } else {
+            loadPromptsTable();
+            if (dropdown.dataset.table === "folder") showFolder(folderId);
+            else
+              document
+                .getElementById("folder-overlay")
+                .classList.remove("open");
+          }
+        });
+      } else {
+        console.error(`Prompt with ID ${promptId} not found`);
+      }
+    });
+
+    dropdown.style.display = "none";
+    isDropdownOpen = false;
+    if (currentButton) {
+      if (currentButton.closest("tr") === hoveredRow) {
+        keepActionButtonVisible(currentButton);
+      } else {
+        hideActionButton(currentButton);
+      }
+    }
+    currentButton = null;
+  }
+});
 
 function generateUUID() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
