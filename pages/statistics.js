@@ -504,14 +504,11 @@ function createHistorySection(changeHistory) {
           <strong>${new Date(entry.timestamp).toLocaleString("de-DE")}</strong>
           <p>Prompt: ${escapeHTML(entry.promptTitle)}</p>
           <ul>
-            ${Object.entries(entry.changes)
-              .map(
-                ([key, change]) => `
-              <li>${key}: ${change.from} → ${change.to}</li>
-            `
-              )
-              .join("")}
-          </ul>
+  ${Object.entries(entry.changes || {})
+    .map(([key, change]) => `<li>${key}: ${change.from} → ${change.to}</li>`)
+    .join("")}
+</ul>
+
         </div>
       `
         )

@@ -79,25 +79,7 @@ function chatGPTButtonClick(index) {
   );
 
   if (articleElement) {
-    let stage = articleElement.children[1];
-    stage = stage.children[0];
-    // console.log(stage.className);
-    stage = stage.children[0];
-    // console.log(stage.className);
-    stage = stage.children[0];
-    // console.log(stage.className);
-    stage = stage.children[0];
-    // console.log(stage.className);
-    stage = stage.children[0];
-    // console.log(stage.className);
-    stage = stage.children[0];
-    // console.log(stage.className);
-    stage = stage.children[0];
-    // console.log(stage.className);
-    stage = stage.children[0];
-    // console.log(stage.className);
-    // stage = stage.children[0];
-    // console.log(stage.textContent);
+    let stage = articleElement.querySelector(".whitespace-pre-wrap");
     promptSaver(stage.textContent);
   } else {
     console.log(
@@ -210,7 +192,7 @@ function addDuckDuckGoButtonClick(targetIndex) {
 
   // Find the outer container
   container = container?.querySelector(
-    "section[data-np-checked][data-np-watching][data-np-autofill-form-type]"
+    "section.Z25pZbqDDnGMxZx706Ne.U6SIOwl59r4JrXnL_Bic"
   );
 
   if (!container) return;
