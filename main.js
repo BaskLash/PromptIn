@@ -1292,85 +1292,92 @@ function handleActionButtonClick(btn, tr) {
         translations[currentLang]?.add_to_favorites || "Add to Favorites";
     }
 
+    const shareBtn = dropdown.querySelector(".share-btn");
+    shareBtn.textContent = translations[currentLang]?.share || "Share";
+
+    const copyBtn = dropdown.querySelector(".copy-btn");
+    copyBtn.textContent = translations[currentLang]?.copy || "Copy";
+
+    const renameBtn = dropdown.querySelector(".rename-btn");
+    renameBtn.textContent = translations[currentLang]?.rename || "rename";
+
     // Dynamisch trash-btn oder delete-btn anzeigen
     const trashBtn = dropdown.querySelector(".trash-btn");
     const existingDeleteBtn = dropdown.querySelector(".delete-btn");
-    if (navigationState.category === "category_trash") {
-      // In Trash-Kategorie: Zeige "Delete Permanently" statt "Move to Trash"
-      if (trashBtn) {
-        const deleteBtn = document.createElement("button");
-        deleteBtn.classList.add("delete-btn");
-        deleteBtn.textContent =
-          translations[currentLang]?.delete_permanently || "Delete Permanently";
-        trashBtn.replaceWith(deleteBtn);
-      }
-    } else {
-      // In anderen Kategorien: Zeige "Move to Trash" statt "Delete Permanently"
-      if (existingDeleteBtn) {
-        const newTrashBtn = document.createElement("button");
-        newTrashBtn.classList.add("trash-btn");
-        newTrashBtn.textContent =
-          translations[currentLang]?.move_to_trash || "Move to Trash";
-        existingDeleteBtn.replaceWith(newTrashBtn);
-        // Erneut den Event-Listener für trash-btn hinzufügen
-        newTrashBtn.addEventListener("click", () => {
-          const folderId = dropdown.dataset.folderId;
-          const promptId = dropdown.dataset.promptId;
+    // In Trash-Kategorie: Zeige "Delete Permanently" statt "Move to Trash"
+    if (trashBtn) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.classList.add("delete-btn");
+      deleteBtn.textContent =
+        translations[currentLang]?.delete_permanently || "Delete Permanently";
+      trashBtn.replaceWith(deleteBtn);
+    }
 
-          if (
-            !confirm(
-              translations[currentLang]?.confirm_trash ||
-                "Möchtest du diese Prompt in den Papierkorb verschieben?"
-            )
-          ) {
-            return;
+    // In anderen Kategorien: Zeige "Move to Trash" statt "Delete Permanently"
+    if (existingDeleteBtn) {
+      const newTrashBtn = document.createElement("button");
+      newTrashBtn.classList.add("trash-btn");
+      newTrashBtn.textContent =
+        translations[currentLang]?.move_to_trash || "Move to Trash";
+      existingDeleteBtn.replaceWith(newTrashBtn);
+      // Erneut den Event-Listener für trash-btn hinzufügen
+      newTrashBtn.addEventListener("click", () => {
+        const folderId = dropdown.dataset.folderId;
+        const promptId = dropdown.dataset.promptId;
+
+        if (
+          !confirm(
+            translations[currentLang]?.confirm_trash ||
+              "Möchtest du diese Prompt in den Papierkorb verschieben?"
+          )
+        ) {
+          return;
+        }
+
+        chrome.storage.local.get(["folders", "prompts"], function (data) {
+          const folders = data.folders || {};
+          const prompts = data.prompts || {};
+
+          if (prompts[promptId]) {
+            const targetPrompt = prompts[promptId];
+            const now = Date.now();
+
+            targetPrompt.isTrash = true;
+            targetPrompt.trashedAt = now;
+            targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
+            targetPrompt.metaChangeLog.push({
+              type: "trash",
+              trashedAt: now,
+              folderId: targetPrompt.folderId || null,
+              timestamp: now,
+            });
+
+            prompts[promptId] = targetPrompt;
+
+            chrome.storage.local.set({ prompts }, () => {
+              loadPromptsTable();
+              if (dropdown.dataset.table === "folder") showFolder(folderId);
+              else
+                document
+                  .getElementById("folder-overlay")
+                  .classList.remove("open");
+            });
+          } else {
+            console.error(`Prompt with ID ${promptId} not found`);
           }
-
-          chrome.storage.local.get(["folders", "prompts"], function (data) {
-            const folders = data.folders || {};
-            const prompts = data.prompts || {};
-
-            if (prompts[promptId]) {
-              const targetPrompt = prompts[promptId];
-              const now = Date.now();
-
-              targetPrompt.isTrash = true;
-              targetPrompt.trashedAt = now;
-              targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
-              targetPrompt.metaChangeLog.push({
-                type: "trash",
-                trashedAt: now,
-                folderId: targetPrompt.folderId || null,
-                timestamp: now,
-              });
-
-              prompts[promptId] = targetPrompt;
-
-              chrome.storage.local.set({ prompts }, () => {
-                loadPromptsTable();
-                if (dropdown.dataset.table === "folder") showFolder(folderId);
-                else
-                  document
-                    .getElementById("folder-overlay")
-                    .classList.remove("open");
-              });
-            } else {
-              console.error(`Prompt with ID ${promptId} not found`);
-            }
-          });
-
-          dropdown.style.display = "none";
-          isDropdownOpen = false;
-          if (currentButton) {
-            if (currentButton.closest("tr") === hoveredRow) {
-              keepActionButtonVisible(currentButton);
-            } else {
-              hideActionButton(currentButton);
-            }
-          }
-          currentButton = null;
         });
-      }
+
+        dropdown.style.display = "none";
+        isDropdownOpen = false;
+        if (currentButton) {
+          if (currentButton.closest("tr") === hoveredRow) {
+            keepActionButtonVisible(currentButton);
+          } else {
+            hideActionButton(currentButton);
+          }
+        }
+        currentButton = null;
+      });
     }
   });
 
@@ -1907,6 +1914,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.querySelector(".tags").addEventListener("click", () => {
     const appUrl = chrome.runtime.getURL("/pages/app.html?view=tags");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
+  });
+
+  document.querySelector(".types").addEventListener("click", () => {
+    const appUrl = chrome.runtime.getURL("/pages/app.html?view=types");
 
     chrome.tabs.query({ url: appUrl }, function (tabs) {
       if (tabs.length > 0) {

@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "tags") {
     switchView("tags-view", { view: "tags" });
     loadTags();
-  } else if (view === "type") {
+  } else if (view === "types") {
     switchView("types-view", { view: "types" });
     loadTypes();
   } else if (view === "anonymizer") {

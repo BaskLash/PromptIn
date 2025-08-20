@@ -454,7 +454,7 @@ function createModelSection(usageByModel) {
   const section = document.createElement("div");
   section.className = "analytics-section";
   section.innerHTML = `
-    <h2>Prompt assignments by model</h2>
+    <h2>Prompt assignments by model based on use</h2>
     <div class="chart-container" style="height: 300px;">
       <canvas id="modelChart"></canvas>
     </div>
