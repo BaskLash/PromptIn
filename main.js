@@ -2605,6 +2605,10 @@ document.addEventListener("DOMContentLoaded", () => {
       window.open("https://forms.gle/5EM4tPz9b7d1p6iB7", "_blank");
     });
 
+  document.getElementById("discord-link-btn").addEventListener("click", () => {
+    window.open("https://discord.gg/MJ35Q3EcED", "_blank");
+  });
+
   document.getElementById("review-btn").addEventListener("click", () => {
     window.open(
       "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje/reviews",
@@ -2833,7 +2837,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Validierung
     if (!title) {
       alert(
-        translations[currentLang]?.title_required || "Titel ist erforderlich!"
+        translations[currentLang]?.required_title || "Titel ist erforderlich!"
       );
       return;
     }

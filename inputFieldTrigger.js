@@ -223,7 +223,7 @@ function updateDropdownData(callback) {
 }
 
 function inputFieldTrigger() {
-  // Liste der erlaubten Domains
+  // Liste der erlaubten Domains (nur Domains, ohne Pfad)
   const allowedDomains = [
     "grok.com",
     "gemini.google.com",
@@ -233,10 +233,10 @@ function inputFieldTrigger() {
     "github.com/copilot",
     "copilot.microsoft.com",
     "chat.mistral.ai",
-    "duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1",
+    "duckduckgo.com", // hier nur Domain
     "perplexity.ai",
     "chat.deepseek.com",
-    "deepai.org/chat",
+    "deepai.org",
     "chat.qwen.ai",
   ];
 
@@ -249,7 +249,9 @@ function inputFieldTrigger() {
       (domain) => currentDomain === domain.replace(/^www\./, "")
     )
   ) {
-    console.log(`Script nicht aktiv auf: ${currentDomain}`);
+    console.log(
+      `Script nicht aktiv auf: ${currentDomain}${window.location.pathname}`
+    );
     return;
   }
 

@@ -106,7 +106,7 @@ async function createNewPrompt(
 ) {
   console.log("So werde ich gespeichert bei PromptSaver");
   const promptId = `${Date.now()}_${generateUUID()}`;
-  const hostname = window.location.hostname.toLowerCase();
+  const hostname = window.location.hostname.toLowerCase().replace(/^www\./, "");
 
   let compatibleModels;
 
@@ -120,21 +120,19 @@ async function createNewPrompt(
     compatibleModels = ["Claude"];
   } else if (hostname === "blackbox.ai") {
     compatibleModels = ["Blackbox"];
-  } else if (hostname === "github.com/copilot/") {
+  } else if (hostname === "github.com") {
     compatibleModels = ["Copilot"];
   } else if (hostname === "copilot.microsoft.com") {
     compatibleModels = ["Microsoft Copilot"];
   } else if (hostname === "chat.mistral.ai") {
     compatibleModels = ["Mistral"];
-  } else if (
-    hostname === "duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat&duckai=1"
-  ) {
+  } else if (hostname === "duckduckgo.com") {
     compatibleModels = ["DuckDuckGo"];
   } else if (hostname === "perplexity.ai") {
     compatibleModels = ["Perplexity"];
   } else if (hostname === "chat.deepseek.com") {
     compatibleModels = ["DeepSeek"];
-  } else if (hostname === "deepai.org/chat") {
+  } else if (hostname === "deepai.org") {
     compatibleModels = ["Deepai"];
   } else if (hostname === "chat.qwen.ai") {
     compatibleModels = ["Qwen AI"];
@@ -144,7 +142,7 @@ async function createNewPrompt(
     compatibleModels = ["Unknown"];
   }
 
-  console.log(compatibleModels);
+  console.log("compatibleModels:", compatibleModels);
 
   const incompatibleModels = [];
   const tags = [];
@@ -225,18 +223,12 @@ async function createNewPrompt(
           reject(chrome.runtime.lastError);
         } else {
           console.log("Neuer Prompt gespeichert:", { promptId });
-          // Tabelle aktualisieren
-          updateTable(newPrompt, folderId, false, folders);
           resolve();
         }
       });
     });
 
-    // Kategorie neu rendern
-    const category = "Single Prompts"; // Standardkategorie für neue Prompts ohne Ordner
-    handleCategoryClick(category);
-
-    alert("Prompt erfolgreich erstellt!");
+    //alert("Prompt erfolgreich erstellt!");
     closeModal();
   } catch (error) {
     console.error("Fehler beim Erstellen des Prompts:", error);
@@ -390,7 +382,6 @@ async function addPromptToFolder(
     if (!folders[folderId]) {
       throw new Error(`Folder ${folderId} does not exist.`);
     }
-
 
     const promptObject = {
       title: promptTitle,

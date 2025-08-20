@@ -50,24 +50,24 @@ function initializeAnonymizer() {
       </style>
 
       <div class="info-box">
-        🔐 <strong>Hinweis:</strong> Die Verarbeitung erfolgt ausschließlich <strong>lokal</strong> in Ihrem Browser. Keine Daten werden gespeichert oder übertragen.
+        🔐 <strong>Note:</strong> Processing takes place exclusively locally in your browser. No data is stored or transmitted.
       </div>
 
-      <textarea id="inputPrompt" placeholder="Geben Sie Ihren Prompt hier ein..."></textarea>
+      <textarea id="inputPrompt" placeholder="Enter your prompt here..."></textarea>
 
       <div>
-        <button id="btnAnonymizeText">Text anonymisieren</button>
-        <button id="btnAnonymizeSelection">Auswahl anonymisieren</button>
-        <button id="btnUndo">Rückgängig</button>
-        <button id="btnDownload">Exportieren</button>
+        <button id="btnAnonymizeText">Anonymize text</button>
+        <button id="btnAnonymizeSelection">Anonymize selection</button>
+        <button id="btnUndo">Undo</button>
+        <button id="btnDownload">Export</button>
       </div>
 
-      <div class="status" id="statusOutput">Bereit zur Anonymisierung.</div>
+      <div class="status" id="statusOutput">Ready for anonymization.</div>
 
-      <h3>Vorher-Nachher-Vergleich</h3>
+      <h3>before and after comparison</h3>
       <div class="diff-container">
-        <div class="diff-box" id="originalText">Original: (Hier erscheint der Originaltext)</div>
-        <div class="diff-box" id="anonymizedText">Anonymisiert: (Hier erscheint der anonymisierte Text)</div>
+        <div class="diff-box" id="originalText">Original: (The original text appears here)</div>
+        <div class="diff-box" id="anonymizedText">Anonymized: (The anonymized text appears here)</div>
       </div>
     `;
 
