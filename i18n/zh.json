@@ -13,6 +13,7 @@
   "share": "分享",
   "copy": "複製",
   "rename": "重新命名",
+  "restore_prompt": "復原提示",
   "mark_the_prompt_with_mouse_to_save": "用鼠标标记提示并保存。",
   "mark_to_prompt": "标记以保存：",
   "category_favorites": "收藏",

@@ -119,7 +119,7 @@ function addChatGPTButton() {
         );
 
         // Wenn mindestens 6 direkte button-Kinder gefunden wurden
-        if (directButtons.length >= 6) {
+        if (directButtons.length >= 5) {
           // Prüfe, ob bereits ein Button mit der Klasse "save-prompt-button" existiert
           const existingButton = div.querySelector(".save-prompt-button");
           if (existingButton) {

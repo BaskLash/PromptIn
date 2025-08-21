@@ -13,6 +13,7 @@
   "share": "Share",
   "copy": "Copy",
   "rename": "Rename",
+  "restore_prompt": "Restore Prompt",
   "mark_the_prompt_with_mouse_to_save": "Highlight the prompt with the mouse and save it.",
   "mark_to_prompt": "Highlight to save:",
   "category_favorites": "Favorites",

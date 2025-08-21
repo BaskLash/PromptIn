@@ -13,6 +13,7 @@
   "share": "Compartir",
   "copy": "Copiar",
   "rename": "Cambiar nombre",
+  "restore_prompt": "Restablecer aviso",
   "mark_the_prompt_with_mouse_to_save": "Marca el prompt con el ratón y guárdalo.",
   "mark_to_prompt": "Marcar para guardar:",
   "category_favorites": "Favoritos",

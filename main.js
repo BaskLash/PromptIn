@@ -51,6 +51,69 @@ function updateSortButtonText() {
   folderSortBtn.textContent = `${sortByText} (${sortOrderText})`;
 }
 
+function updateDropdownTranslations(dropdown, prompt) {
+  const favoritBtn = dropdown.querySelector(".favorit-btn");
+  favoritBtn.textContent = prompt?.isFavorite
+    ? translations[currentLang]?.remove_from_favorites ||
+      "Remove from Favorites"
+    : translations[currentLang]?.add_to_favorites || "Add to Favorites";
+
+  const shareBtn = dropdown.querySelector(".share-btn");
+  shareBtn.textContent = translations[currentLang]?.share || "Share";
+
+  const copyBtn = dropdown.querySelector(".copy-btn");
+  copyBtn.textContent = translations[currentLang]?.copy || "Copy";
+
+  const renameBtn = dropdown.querySelector(".rename-btn");
+  renameBtn.textContent = translations[currentLang]?.rename || "Rename";
+
+  const restoreBtn = dropdown.querySelector(".restore-btn");
+  if (restoreBtn) {
+    restoreBtn.textContent =
+      translations[currentLang]?.restore_prompt || "Restore Prompt";
+  }
+
+  const trashBtn = dropdown.querySelector(".trash-btn");
+  const deleteBtn = dropdown.querySelector(".delete-btn");
+
+  if (navigationState.category === "category_trash") {
+    if (trashBtn) {
+      const newDeleteBtn = document.createElement("button");
+      newDeleteBtn.classList.add("delete-btn");
+      newDeleteBtn.textContent =
+        translations[currentLang]?.delete_permanently || "Delete Permanently";
+
+      trashBtn.replaceWith(newDeleteBtn);
+    } else if (deleteBtn) {
+      deleteBtn.textContent =
+        translations[currentLang]?.delete_permanently || "Delete Permanently";
+    }
+
+    // Restore sichtbar machen
+    if (restoreBtn) {
+      restoreBtn.style.display = "inline-block";
+      restoreBtn.textContent =
+        translations[currentLang]?.restore_prompt || "Restore Prompt";
+    }
+  } else {
+    // Restore ausblenden
+    if (restoreBtn) {
+      restoreBtn.style.display = "none";
+    }
+
+    if (deleteBtn) {
+      const newTrashBtn = document.createElement("button");
+      newTrashBtn.classList.add("trash-btn");
+      newTrashBtn.textContent =
+        translations[currentLang]?.move_to_trash || "Move to Trash";
+      deleteBtn.replaceWith(newTrashBtn);
+    } else if (trashBtn) {
+      trashBtn.textContent =
+        translations[currentLang]?.move_to_trash || "Move to Trash";
+    }
+  }
+}
+
 // Ensure dataset attributes are set in loadPromptsTable
 function loadPromptsTable() {
   const tableBody = document.querySelector(
@@ -452,72 +515,20 @@ function levenshteinDistance(a, b) {
   return matrix[m][n];
 }
 
-// Action Dropdown
+// Action Dropdown (restore-btn IMMER mit anlegen)
 const dropdown = document.createElement("div");
 dropdown.classList.add("action-dropdown");
 dropdown.innerHTML = `
-    <button class="copy-btn">Copy</button>
-    <button class='share-btn'>Share</button>
-    <button class='favorit-btn'>Mark as favorit</button>
-    <button class="rename-btn">Rename</button>
-   <button class="trash-btn">Move to Trash</button>
-  `;
+  <button class="favorit-btn"></button>
+  <button class="share-btn"></button>
+  <button class="copy-btn"></button>
+  <button class="rename-btn"></button>
+  <button class="${
+    navigationState.category === "category_trash" ? "delete-btn" : "trash-btn"
+  }"></button>
+  <button class="restore-btn"></button>
+`;
 document.body.appendChild(dropdown);
-
-dropdown.querySelector(".trash-btn").addEventListener("click", () => {
-  const folderId = dropdown.dataset.folderId;
-  const promptId = dropdown.dataset.promptId;
-
-  if (
-    !confirm(
-      translations[currentLang]?.confirm_trash ||
-        "Möchtest du diese Prompt in den Papierkorb verschieben?"
-    )
-  ) {
-    return;
-  }
-
-  chrome.storage.local.get(["folders", "prompts"], function (data) {
-    const folders = data.folders || {};
-    const prompts = data.prompts || {};
-
-    if (prompts[promptId]) {
-      const targetPrompt = prompts[promptId];
-      const now = Date.now();
-
-      targetPrompt.isTrash = true;
-      targetPrompt.trashedAt = now;
-      targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
-      targetPrompt.metaChangeLog.push({
-        type: "trash",
-        trashedAt: now,
-        folderId: targetPrompt.folderId || null,
-        timestamp: now,
-      });
-
-      prompts[promptId] = targetPrompt;
-
-      chrome.storage.local.set({ prompts }, () => {
-        loadPromptsTable();
-        if (dropdown.dataset.table === "folder") showFolder(folderId);
-        else document.getElementById("folder-overlay").classList.remove("open");
-      });
-    } else {
-      console.error(`Prompt with ID ${promptId} not found`);
-    }
-  });
-
-  dropdown.style.display = "none";
-  isDropdownOpen = false;
-  if (currentButton) {
-    if (currentButton.closest("tr") === hoveredRow) {
-      keepActionButtonVisible(currentButton);
-    } else {
-      hideActionButton(currentButton);
-    }
-  }
-  currentButton = null;
-});
 
 // Mark prompt as favorite
 dropdown.querySelector(".favorit-btn").addEventListener("click", () => {
@@ -668,10 +679,129 @@ dropdown.querySelector(".rename-btn").addEventListener("click", () => {
   currentButton = null;
 });
 
-function handleActionButtonClick(event) {
-  event.stopPropagation();
-  const folder = event.currentTarget.closest("li.folder-item").dataset.folder;
-  dropdown(event, folder);
+function handleActionButtonClick(btn, tr) {
+  if (btn === currentButton && isDropdownOpen) {
+    dropdown.style.display = "none";
+    isDropdownOpen = false;
+    if (hoveredRow === tr) keepActionButtonVisible(btn);
+    else hideActionButton(btn);
+    currentButton = null;
+    return;
+  }
+
+  if (isDropdownOpen && currentButton && currentButton !== btn) {
+    dropdown.style.display = "none";
+    isDropdownOpen = false;
+    if (currentButton && currentButton.closest("tr") !== hoveredRow) {
+      hideActionButton(currentButton);
+    }
+  }
+
+  currentButton = btn;
+  isDropdownOpen = true;
+
+  // Recreate dropdown HTML based on current category
+  dropdown.innerHTML = `
+    <button class="favorit-btn"></button>
+    <button class="share-btn"></button>
+    <button class="copy-btn"></button>
+    <button class="rename-btn"></button>
+    <button class="${
+      navigationState.category === "category_trash" ? "delete-btn" : "trash-btn"
+    }"></button>
+    <button class='restore-btn'></button>
+    }
+  `;
+
+  const rect = btn.getBoundingClientRect();
+  dropdown.style.display = "flex";
+  dropdown.style.visibility = "hidden";
+  dropdown.style.top = "0px";
+  dropdown.style.left = "0px";
+
+  const dropdownHeight = dropdown.offsetHeight;
+  const enoughSpaceBelow = rect.bottom + dropdownHeight < window.innerHeight;
+
+  if (enoughSpaceBelow) {
+    dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+  } else {
+    dropdown.style.top = `${rect.top + window.scrollY - dropdownHeight}px`;
+  }
+
+  dropdown.style.left = `${rect.left + window.scrollX - 100}px`;
+  dropdown.style.visibility = "visible";
+  keepActionButtonVisible(btn);
+
+  // Set dataset attributes for dropdown
+  dropdown.dataset.promptId = tr.dataset.promptId;
+  dropdown.dataset.folderId = tr.dataset.folderId || "";
+  dropdown.dataset.folderName = tr.dataset.folderName || "";
+  dropdown.dataset.entry = tr.dataset.entry;
+  dropdown.dataset.table = tr
+    .closest("table")
+    .classList.contains("folder-entry-table")
+    ? "folder"
+    : "main";
+
+  // Update dropdown translations
+  chrome.storage.local.get(["prompts"], function (data) {
+    const prompts = data.prompts || {};
+    const prompt = prompts[tr.dataset.promptId];
+
+    // Update all button texts
+    updateDropdownTranslations(dropdown, prompt);
+
+    // Add event listener for delete-btn if in trash category
+    const deleteBtn = dropdown.querySelector(".delete-btn");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", () => {
+        const promptId = dropdown.dataset.promptId;
+        if (
+          !confirm(
+            translations[currentLang]?.confirm_delete ||
+              "Are you sure you want to permanently delete this prompt?"
+          )
+        ) {
+          return;
+        }
+        chrome.storage.local.get(["prompts"], function (data) {
+          const prompts = data.prompts || {};
+          if (prompts[promptId]) {
+            delete prompts[promptId];
+            chrome.storage.local.set({ prompts }, () => {
+              if (navigationState.category === "category_trash") {
+                showCategory("category_trash");
+              } else {
+                loadPromptsTable();
+                if (dropdown.dataset.table === "folder")
+                  showFolder(dropdown.dataset.folderId);
+                else
+                  document
+                    .getElementById("folder-overlay")
+                    .classList.remove("open");
+              }
+              dropdown.style.display = "none";
+              isDropdownOpen = false;
+              if (currentButton) {
+                if (currentButton.closest("tr") === hoveredRow) {
+                  keepActionButtonVisible(currentButton);
+                } else {
+                  hideActionButton(currentButton);
+                }
+              }
+              currentButton = null;
+            });
+          } else {
+            console.error(`Prompt with ID ${promptId} not found`);
+          }
+        });
+      });
+    }
+  });
+
+  console.log(
+    `Dropdown opened: promptId=${tr.dataset.promptId}, folderId=${tr.dataset.folderId}, folderName=${tr.dataset.folderName}`
+  );
 }
 
 // Ordner umbenennen (renameFolder)
@@ -1278,50 +1408,110 @@ function handleActionButtonClick(btn, tr) {
     ? "folder"
     : "main";
 
-  // Update favorite button text based on prompt's isFavorite status
+  // Update dropdown translations
   chrome.storage.local.get(["prompts"], function (data) {
     const prompts = data.prompts || {};
     const prompt = prompts[tr.dataset.promptId];
-    const favoritBtn = dropdown.querySelector(".favorit-btn");
-    if (prompt && prompt.isFavorite) {
-      favoritBtn.textContent =
-        translations[currentLang]?.remove_from_favorites ||
-        "Remove from Favorites";
-    } else {
-      favoritBtn.textContent =
-        translations[currentLang]?.add_to_favorites || "Add to Favorites";
+
+    // Update all button texts
+    updateDropdownTranslations(dropdown, prompt);
+
+    // Add event listener for delete-btn if in trash category
+    const deleteBtn = dropdown.querySelector(".delete-btn");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", () => {
+        const promptId = dropdown.dataset.promptId;
+        if (
+          !confirm(
+            translations[currentLang]?.confirm_delete ||
+              "Are you sure you want to permanently delete this prompt?"
+          )
+        ) {
+          return;
+        }
+        chrome.storage.local.get(["prompts"], function (data) {
+          const prompts = data.prompts || {};
+          if (prompts[promptId]) {
+            delete prompts[promptId];
+            chrome.storage.local.set({ prompts }, () => {
+              loadPromptsTable();
+              dropdown.style.display = "none";
+              isDropdownOpen = false;
+              if (currentButton) {
+                if (currentButton.closest("tr") === hoveredRow) {
+                  keepActionButtonVisible(currentButton);
+                } else {
+                  hideActionButton(currentButton);
+                }
+              }
+              currentButton = null;
+            });
+          } else {
+            console.error(`Prompt with ID ${promptId} not found`);
+          }
+        });
+      });
     }
 
-    const shareBtn = dropdown.querySelector(".share-btn");
-    shareBtn.textContent = translations[currentLang]?.share || "Share";
+    // Add event listener for restore-btn
+    const restoreBtn = dropdown.querySelector(".restore-btn");
+    if (restoreBtn) {
+      console.log("Reestore process enabled");
+      restoreBtn.addEventListener("click", () => {
+        const folderId = dropdown.dataset.folderId;
+        const promptId = dropdown.dataset.promptId;
 
-    const copyBtn = dropdown.querySelector(".copy-btn");
-    copyBtn.textContent = translations[currentLang]?.copy || "Copy";
+        if (
+          !confirm(
+            translations[currentLang]?.confirm_restore ||
+              "Möchtest du diesen Prompt wiederherstellen?"
+          )
+        ) {
+          return;
+        }
 
-    const renameBtn = dropdown.querySelector(".rename-btn");
-    renameBtn.textContent = translations[currentLang]?.rename || "rename";
+        chrome.storage.local.get(["prompts"], function (data) {
+          const prompts = data.prompts || {};
+          if (prompts[promptId]) {
+            const targetPrompt = prompts[promptId];
+            const now = Date.now();
 
-    // Dynamisch trash-btn oder delete-btn anzeigen
+            targetPrompt.isTrash = false;
+            targetPrompt.trashedAt = null;
+            targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
+            targetPrompt.metaChangeLog.push({
+              type: "restore",
+              restoredAt: now,
+              folderId: targetPrompt.folderId || null,
+              timestamp: now,
+            });
+
+            prompts[promptId] = targetPrompt;
+
+            chrome.storage.local.set({ prompts }, () => {
+              showCategory("category_trash"); // Refresh trash view
+              dropdown.style.display = "none";
+              isDropdownOpen = false;
+              if (currentButton) {
+                if (currentButton.closest("tr") === hoveredRow) {
+                  keepActionButtonVisible(currentButton);
+                } else {
+                  hideActionButton(currentButton);
+                }
+              }
+              currentButton = null;
+            });
+          } else {
+            console.error(`Prompt with ID ${promptId} not found`);
+          }
+        });
+      });
+    }
+
+    // Existing event listener for trash-btn
     const trashBtn = dropdown.querySelector(".trash-btn");
-    const existingDeleteBtn = dropdown.querySelector(".delete-btn");
-    // In Trash-Kategorie: Zeige "Delete Permanently" statt "Move to Trash"
     if (trashBtn) {
-      const deleteBtn = document.createElement("button");
-      deleteBtn.classList.add("delete-btn");
-      deleteBtn.textContent =
-        translations[currentLang]?.delete_permanently || "Delete Permanently";
-      trashBtn.replaceWith(deleteBtn);
-    }
-
-    // In anderen Kategorien: Zeige "Move to Trash" statt "Delete Permanently"
-    if (existingDeleteBtn) {
-      const newTrashBtn = document.createElement("button");
-      newTrashBtn.classList.add("trash-btn");
-      newTrashBtn.textContent =
-        translations[currentLang]?.move_to_trash || "Move to Trash";
-      existingDeleteBtn.replaceWith(newTrashBtn);
-      // Erneut den Event-Listener für trash-btn hinzufügen
-      newTrashBtn.addEventListener("click", () => {
+      trashBtn.addEventListener("click", () => {
         const folderId = dropdown.dataset.folderId;
         const promptId = dropdown.dataset.promptId;
 
@@ -2425,7 +2615,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Search Prompts
+  // Search Prompts (mit Fuzzy Matching)
   document
     .getElementById("search-input")
     .addEventListener("input", function () {
@@ -2439,15 +2629,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const prompts = data.prompts || {};
         const folders = data.folders || {};
 
-        const filteredPrompts = Object.entries(prompts)
-          .filter(([, prompt]) => {
-            return (
-              prompt.title.toLowerCase().includes(searchTerm) ||
-              (prompt.description &&
-                prompt.description.toLowerCase().includes(searchTerm)) ||
-              prompt.content.toLowerCase().includes(searchTerm)
-            );
-          })
+        let promptsWithDetails = Object.entries(prompts)
+          .filter(([, prompt]) => !prompt.isTrash) // Exclude trashed prompts
           .map(([promptId, prompt]) => ({
             promptId,
             prompt,
@@ -2456,18 +2639,14 @@ document.addEventListener("DOMContentLoaded", () => {
             isHidden: folders[prompt.folderId]?.isHidden || false,
             isTrash: folders[prompt.folderId]?.isTrash || false,
           }))
-          .filter(({ isTrash }) => !isTrash);
+          .filter(({ isTrash }) => !isTrash); // Exclude prompts in trashed folders
 
-        if (filteredPrompts.length === 0) {
-          tableBody.innerHTML = `<tr><td colspan="2">${
-            translations[currentLang]?.no_prompts_found ||
-            "Keine Prompts gefunden"
-          }</td></tr>`;
-        } else {
-          filteredPrompts.forEach(({ prompt, promptId, folderId }) => {
+        // Falls nichts eingegeben: alle anzeigen
+        if (!searchTerm) {
+          promptsWithDetails.forEach(({ prompt, promptId, folderId }) => {
             const tr = document.createElement("tr");
             tr.dataset.entry = prompt.title;
-            tr.dataset.folderId = folderId;
+            tr.dataset.folderId = folderId || "";
             tr.dataset.promptId = promptId;
             tr.innerHTML = `
             <td>${prompt.title}</td>
@@ -2477,21 +2656,55 @@ document.addEventListener("DOMContentLoaded", () => {
           `;
             tableBody.appendChild(tr);
           });
+          attachMainTableEvents();
+          return;
         }
+
+        // Fuzzy Matching (Levenshtein)
+        const scoredPrompts = promptsWithDetails.map(
+          ({ prompt, promptId, folderId }) => {
+            const titleDistance = levenshteinDistance(
+              prompt.title.toLowerCase(),
+              searchTerm
+            );
+            const descriptionDistance = prompt.description
+              ? levenshteinDistance(
+                  prompt.description.toLowerCase(),
+                  searchTerm
+                )
+              : Infinity;
+            const contentDistance = levenshteinDistance(
+              prompt.content.toLowerCase(),
+              searchTerm
+            );
+            const minDistance = Math.min(
+              titleDistance,
+              descriptionDistance,
+              contentDistance
+            );
+            return { prompt, promptId, folderId, distance: minDistance };
+          }
+        );
+
+        scoredPrompts.sort((a, b) => a.distance - b.distance);
+
+        scoredPrompts.forEach(({ prompt, promptId, folderId }) => {
+          const tr = document.createElement("tr");
+          tr.dataset.entry = prompt.title;
+          tr.dataset.folderId = folderId || "";
+          tr.dataset.promptId = promptId;
+          tr.innerHTML = `
+          <td>${prompt.title}</td>
+          <td class="action-cell">
+            <button class="action-btn">⋮</button>
+          </td>
+        `;
+          tableBody.appendChild(tr);
+        });
 
         attachMainTableEvents();
       });
     });
-
-  // Action Dropdown
-  const dropdown = document.createElement("div");
-  dropdown.classList.add("action-dropdown");
-  dropdown.innerHTML = `
-    <button class="copy-btn">Copy</button>
-    <button class="rename-btn">Rename</button>
-    <button class="delete-btn">Delete</button>
-  `;
-  document.body.appendChild(dropdown);
 
   dropdown.addEventListener("click", (e) => e.stopPropagation());
 

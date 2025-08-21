@@ -13,6 +13,7 @@
   "share": "Partager",
   "copy": "Copier",
   "rename": "Renommer",
+  "restore_prompt": "Restaurer l'invite",
   "mark_the_prompt_with_mouse_to_save": "Sélectionnez le prompt avec la souris et enregistrez-le.",
   "mark_to_prompt": "Sélectionner pour enregistrer :",
   "category_favorites": "Favoris",

@@ -13,6 +13,7 @@
   "share": "共有",
   "copy": "コピー",
   "rename": "名前を変更",
+  "restore_prompt": "復元プロンプト",
   "mark_the_prompt_with_mouse_to_save": "プロンプトをマウスで選択して保存してください。",
   "mark_to_prompt": "保存するためにマーク:",
   "category_favorites": "お気に入り",

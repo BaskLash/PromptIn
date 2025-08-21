@@ -820,64 +820,51 @@ function inputFieldTrigger() {
 
       // Function to render filtered search results
       function renderSearchResults(query) {
+        console.log("Rendering search results for query:", query);
         navPanel.style.display = "none";
         contentPanel.style.width = "100%";
         contentPanel.innerHTML = "";
         clearFocus();
 
         const normalizedQuery = query.trim().toLowerCase();
+        console.log("Normalized query:", normalizedQuery);
 
         const allPrompts = [];
         promptSourceMap.forEach((source, key) => {
+          // Skip workflows, as they don't have a prompt property
+          if (source.workflow) {
+            return; // Continue to next iteration
+          }
+
           const title = key.split("_")[0];
           const content =
             typeof source.prompt === "string"
               ? source.prompt
-              : source.prompt.content || "";
+              : source.prompt?.content || "";
           allPrompts.push({ title, content, source });
         });
+        console.log("All prompts:", allPrompts);
 
-        const scoredPrompts = allPrompts.map(({ title, content, source }) => {
-          const titleLower = title.toLowerCase();
-          const contentLower = content.toLowerCase();
-
-          const titleIncludes = titleLower.includes(normalizedQuery);
-          const contentIncludes = contentLower.includes(normalizedQuery);
-
-          const titleDistance = levenshteinDistance(
-            titleLower,
-            normalizedQuery
-          );
-          const contentDistance = levenshteinDistance(
-            contentLower,
-            normalizedQuery
-          );
-
-          // Bessere Gewichtung: 1. direkte Matches, 2. Distanz-Mix
-          const score =
-            (titleIncludes ? -20 : 0) +
-            (contentIncludes ? -10 : 0) +
-            titleDistance * 1.5 +
-            contentDistance * 0.5;
-
-          return {
+        const scoredPrompts = allPrompts
+          .filter(
+            ({ title, content }) =>
+              title.toLowerCase().includes(normalizedQuery) ||
+              content.toLowerCase().includes(normalizedQuery)
+          )
+          .map(({ title, content, source }) => ({
             title,
             source,
-            score,
             folder: source.folder || source.category || "Uncategorized",
-          };
-        });
+          }));
 
-        scoredPrompts.sort((a, b) => a.score - b.score);
+        console.log("Filtered prompts:", scoredPrompts);
 
         if (scoredPrompts.length === 0) {
-          const noResults = document.createElement("div");
-          noResults.textContent = "No matching prompts found";
-          noResults.style.padding = "10px";
-          noResults.style.color = "#888";
-          contentPanel.appendChild(noResults);
+          console.warn(
+            "No matching prompts found, showing category navigation"
+          );
+          renderCategoryNavigation();
         } else {
-          // Optional: Gruppieren nach Folder/Kategorie
           const grouped = new Map();
           for (const prompt of scoredPrompts) {
             if (!grouped.has(prompt.folder)) grouped.set(prompt.folder, []);
@@ -903,21 +890,11 @@ function inputFieldTrigger() {
               contentItem.tabIndex = 0;
 
               contentItem.addEventListener("mouseover", () => {
-                if (
-                  !currentFocusElement ||
-                  currentFocusElement !== contentItem
-                ) {
-                  contentItem.style.backgroundColor = "#f8f8f8";
-                }
+                contentItem.style.backgroundColor = "#f8f8f8";
               });
 
               contentItem.addEventListener("mouseout", () => {
-                if (
-                  !currentFocusElement ||
-                  currentFocusElement !== contentItem
-                ) {
-                  contentItem.style.backgroundColor = "white";
-                }
+                contentItem.style.backgroundColor = "white";
               });
 
               contentItem.addEventListener("click", async () => {
@@ -927,7 +904,7 @@ function inputFieldTrigger() {
                 const selectedPrompt =
                   typeof source.prompt === "string"
                     ? source.prompt
-                    : source.prompt.content || "";
+                    : source.prompt?.content || "";
 
                 if (slashIndex !== -1) {
                   const textBeforeSlash = currentText
@@ -1432,7 +1409,7 @@ function inputFieldTrigger() {
       const selectorMap = [
         {
           url: "https://chatgpt.com",
-          selector: "[data-testid='composer-trailing-actions']",
+          selector: ".flex.items-center.gap-2",
         }, // ChatGPT
         {
           url: "https://www.perplexity.ai",
