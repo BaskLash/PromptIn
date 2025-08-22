@@ -895,22 +895,44 @@ function exportPrompt(promptId) {
   });
 }
 
-function copyPrompt(prompt, folderId) {
+function copyPrompt(prompt) {
   const textToCopy = prompt.content || prompt.title || "";
   navigator.clipboard
     .writeText(textToCopy)
     .then(() => {
       alert("Prompt copied to clipboard!");
-      // Update lastUsed
-      chrome.storage.local.get(folderId, (data) => {
-        const topic = data[folderId];
-        if (!topic || !topic.prompts) return;
-        const promptIndex = topic.prompts.findIndex(
-          (p) => p.title === prompt.title && p.content === prompt.content
-        );
-        if (promptIndex === -1) return;
-        topic.prompts[promptIndex].lastUsed = Date.now();
-        chrome.storage.local.set({ [folderId]: topic });
+
+      const promptId = prompt.promptId;
+      if (!promptId) return;
+
+      chrome.storage.local.get(["prompts"], (data) => {
+        const prompts = data.prompts || {};
+        const targetPrompt = prompts[promptId];
+        if (!targetPrompt) return;
+
+        const now = Date.now();
+
+        // lastUsed aktualisieren
+        targetPrompt.lastUsed = now;
+
+        // MetaChangeLog-Eintrag hinzufügen
+        targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
+        targetPrompt.metaChangeLog.push({
+          type: "copy",
+          message: `Prompt copied to clipboard`,
+          timestamp: now,
+        });
+
+        // Speichern
+        prompts[promptId] = targetPrompt;
+        chrome.storage.local.set({ prompts }, () => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "Fehler beim Aktualisieren von lastUsed:",
+              chrome.runtime.lastError
+            );
+          }
+        });
       });
     })
     .catch((err) => {
@@ -918,6 +940,7 @@ function copyPrompt(prompt, folderId) {
       alert("Failed to copy prompt.");
     });
 }
+
 function renamePrompt(prompt, folderId, row) {
   const promptId = prompt.promptId;
   if (!promptId) return;

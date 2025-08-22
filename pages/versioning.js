@@ -1,5 +1,5 @@
 function showPromptVersions(promptId) {
-  console.log("ID: " + promptId)
+  console.log("ID: " + promptId);
   chrome.storage.local.get(["prompts"], function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
@@ -243,18 +243,20 @@ function showPromptVersions(promptId) {
       actions.className = "version-actions";
 
       if (versions.length > 1) {
-        const restoreButton = document.createElement("button");
-        restoreButton.textContent = "Wiederherstellen";
-        restoreButton.classList.add("action-btn");
-        restoreButton.title =
-          "Diese Version als aktuelle Version wiederherstellen";
-        restoreButton.addEventListener("click", () => {
-          restoreVersion(promptId, version.versionId);
-          modal.style.display = "none";
-          document.body.removeChild(modal);
-          document.head.removeChild(style);
-        });
-        actions.appendChild(restoreButton);
+        if (index !== 0) {
+          const restoreButton = document.createElement("button");
+          restoreButton.textContent = "Wiederherstellen";
+          restoreButton.classList.add("action-btn");
+          restoreButton.title =
+            "Diese Version als aktuelle Version wiederherstellen";
+          restoreButton.addEventListener("click", () => {
+            restoreVersion(promptId, version.versionId);
+            modal.style.display = "none";
+            document.body.removeChild(modal);
+            document.head.removeChild(style);
+          });
+          actions.appendChild(restoreButton);
+        }
 
         const compareButton = document.createElement("button");
         compareButton.textContent = "Vergleichen";
