@@ -218,6 +218,38 @@ function showPromptDetails(promptId) {
         entryContent.value = prompt.content || "";
         entryNotes.value = prompt.notes || "";
 
+        // Zuerst aufräumen (alte Variablenfelder entfernen, falls vorhanden)
+        const oldLabel = document.getElementById("variables-label");
+        const oldTextarea = document.getElementById("variables-textarea");
+        if (oldLabel) oldLabel.remove();
+        if (oldTextarea) oldTextarea.remove();
+
+        if (/\{\{[^}]+\}\}/.test(prompt.content)) {
+          const matches = prompt.content.match(/\{\{([^}]+)\}\}/g) || [];
+          const variables = matches.map((v) => v.replace(/\{\{|\}\}/g, ""));
+
+          // JSON-Objekt bauen
+          const jsonObj = {};
+          variables.forEach((v) => {
+            jsonObj[v] = "";
+          });
+
+          // Label erzeugen
+          const label = document.createElement("label");
+          label.textContent = "Variables (JSON)";
+          label.id = "variables-label"; // eindeutige ID, damit wir es später entfernen können
+
+          // Textarea erzeugen
+          const textarea = document.createElement("textarea");
+          textarea.readOnly = true;
+          textarea.id = "variables-textarea"; // eindeutige ID
+          textarea.value = JSON.stringify(jsonObj, null, 2);
+
+          // Direkt nach entryContent einfügen (Label zuerst, dann Textarea)
+          entryContent.insertAdjacentElement("afterend", textarea);
+          entryContent.insertAdjacentElement("afterend", label);
+        }
+
         // Favorite
         entryFavorite.checked = !!prompt.isFavorite;
 
@@ -572,10 +604,33 @@ dropdown.querySelector(".copy-btn").addEventListener("click", () => {
   const promptId = dropdown.dataset.promptId;
 
   chrome.storage.local.get(["prompts"], function (data) {
-    const prompt = data.prompts?.[promptId];
+    const prompts = data.prompts || {};
+    const prompt = prompts?.[promptId];
     if (prompt) {
       navigator.clipboard.writeText(prompt.content || prompt.title);
       alert(translations[currentLang]?.copied || "Prompt-Content copied!");
+
+      const now = Date.now();
+      prompt.lastUsed = now;
+      prompt.usageCount = (prompt.usageCount || 0) + 1; // robustes ++
+
+      // optional MetaChangeLog wie im ersten Beispiel
+      prompt.metaChangeLog = prompt.metaChangeLog || [];
+      prompt.metaChangeLog.push({
+        type: "copy",
+        message: `Prompt copied to clipboard`,
+        timestamp: now,
+      });
+
+      prompts[promptId] = prompt;
+      chrome.storage.local.set({ prompts }, () => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "Fehler beim Aktualisieren von lastUsed:",
+            chrome.runtime.lastError
+          );
+        }
+      });
     } else {
       console.error(`Prompt with ID ${promptId} not found`);
     }

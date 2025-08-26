@@ -742,8 +742,11 @@ body.dark-theme .detail-field select:focus {
   margin-top: 20px;
 }
 
+/* Basis-Styling für alle Buttons */
 .save-btn,
+.save-btn-edit,
 .cancel-btn,
+.cancel-btn-edit,
 .save-btn-add,
 .cancel-btn-add {
   padding: 8px 16px;
@@ -753,61 +756,14 @@ body.dark-theme .detail-field select:focus {
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
-.save-btn {
-  background-color: var(--light-btn-bg);
-  color: var(--light-text);
-}
-
-body.dark-theme .save-btn {
-  background-color: var(--dark-btn-bg);
-  color: var(--dark-text);
-}
-
-.save-btn:hover {
-  background-color: var(--light-btn-hover);
-  transform: translateY(-1px);
-}
-
-body.dark-theme .save-btn:hover {
-  background-color: var(--dark-btn-hover);
-}
-
-.save-btn-add {
-  background-color: var(--light-btn-bg);
-  color: var(--light-text);
-}
-
-body.dark-theme .save-btn-add {
-  background-color: var(--dark-btn-bg);
-  color: var(--dark-text);
-}
-
-.save-btn-add:hover {
-  background-color: var(--light-btn-hover);
-  transform: translateY(-1px);
-}
-
-body.dark-theme .save-btn-add:hover {
-  background-color: var(--dark-btn-hover);
-}
-
+/* --- LIGHT THEME --- */
+.save-btn,
+.save-btn-edit,
+.save-btn-add,
+.cancel-btn-edit,
 .cancel-btn-add {
   background-color: var(--light-btn-bg);
   color: var(--light-text);
-}
-
-body.dark-theme .cancel-btn-add {
-  background-color: var(--dark-btn-bg);
-  color: var(--dark-text);
-}
-
-.cancel-btn-add:hover {
-  background-color: var(--light-btn-hover);
-  transform: translateY(-1px);
-}
-
-body.dark-theme .cancel-btn-add:hover {
-  background-color: var(--dark-btn-hover);
 }
 
 .cancel-btn {
@@ -815,14 +771,43 @@ body.dark-theme .cancel-btn-add:hover {
   color: var(--light-text);
 }
 
-body.dark-theme .cancel-btn {
-  background-color: var(--dark-border);
-  color: var(--dark-text);
+/* Hover-Effekte im Light Theme */
+.save-btn:hover,
+.save-btn-edit:hover,
+.save-btn-add:hover,
+.cancel-btn-edit:hover,
+.cancel-btn-add:hover {
+  background-color: var(--light-btn-hover);
+  transform: translateY(-1px);
 }
 
 .cancel-btn:hover {
   background-color: var(--light-hover-bg);
   transform: translateY(-1px);
+}
+
+/* --- DARK THEME --- */
+body.dark-theme .save-btn,
+body.dark-theme .save-btn-edit,
+body.dark-theme .save-btn-add,
+body.dark-theme .cancel-btn-edit,
+body.dark-theme .cancel-btn-add {
+  background-color: var(--dark-btn-bg);
+  color: var(--dark-text);
+}
+
+body.dark-theme .cancel-btn {
+  background-color: var(--dark-border);
+  color: var(--dark-text);
+}
+
+/* Hover-Effekte im Dark Theme */
+body.dark-theme .save-btn:hover,
+body.dark-theme .save-btn-edit:hover,
+body.dark-theme .save-btn-add:hover,
+body.dark-theme .cancel-btn-edit:hover,
+body.dark-theme .cancel-btn-add:hover {
+  background-color: var(--dark-btn-hover);
 }
 
 body.dark-theme .cancel-btn:hover {
@@ -1190,7 +1175,6 @@ body.dark-theme .checkbox-group.scrollable {
     padding: 8px;
   }
 }
-
 
 /* Header */
 #tools-overlay .detail-header {

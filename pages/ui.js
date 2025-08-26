@@ -623,65 +623,101 @@ function showDetailsSidebar(item, folderId) {
       })
       .join("");
 
-    sidebarContent.innerHTML = `
-    <label>Title</label>
-    <input type="text" value="${prompt.title || "N/A"}" readonly>
-    <label>Description</label>
-    <textarea readonly>${prompt.description || "N/A"}</textarea>
-    <label>Content</label>
-    <textarea readonly>${prompt.content || "N/A"}</textarea>
-    <label>Notes</label>
-    <textarea readonly>${prompt.notes || "N/A"}</textarea>
-    <label>Type</label>
-    <input type="text" value="${
-      Array.isArray(prompt.types)
-        ? prompt.types.join(", ")
-        : prompt.types || "N/A"
-    }" readonly>
-    <label>Compatible Models</label>
-    <input type="text" value="${
-      Array.isArray(prompt.compatibleModels)
-        ? prompt.compatibleModels.join(", ")
-        : prompt.compatibleModels || "N/A"
-    }" readonly>
-    <label>Incompatible Models</label>
-    <input type="text" value="${
-      Array.isArray(prompt.incompatibleModels)
-        ? prompt.incompatibleModels.join(", ")
-        : prompt.incompatibleModels || "N/A"
-    }" readonly>
-    <label>Tags</label>
-    <input type="text" value="${
-      Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || "N/A"
-    }" readonly>
-    <label>Folder</label>
-    <input type="text" value="${prompt.folderName || "N/A"}" readonly>
-    <label>Favorite</label>
-    <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
-    <label>Created At</label>
-    <input type="text" value="${
-      prompt.createdAt
-        ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-        : "N/A"
-    }" readonly>
-    <label>Updated At</label>
-    <input type="text" value="${
-      prompt.updatedAt
-        ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
-        : "N/A"
-    }" readonly>
-    <label>Last Used</label>
-    <input type="text" value="${
-      prompt.lastUsed
-        ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-        : "N/A"
-    }" readonly>
-    <label>Metadata Change Log</label>
-    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
-      ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
-    </div>
-    <button class="edit-btn">Edit Prompt</button>
+    let html = `
+  <label>Title</label>
+  <input type="text" value="${prompt.title || "N/A"}" readonly>
+  
+  <label>Description</label>
+  <textarea readonly>${prompt.description || "N/A"}</textarea>
+  
+  <label>Content</label>
+  <textarea readonly>${prompt.content || "N/A"}</textarea>
+`;
+
+    if (/\{\{[^}]+\}\}/.test(prompt.content)) {
+      const matches = prompt.content.match(/\{\{([^}]+)\}\}/g) || [];
+      const variables = matches.map((v) => v.replace(/\{\{|\}\}/g, ""));
+
+      // JSON-Objekt bauen
+      const jsonObj = {};
+      variables.forEach((v) => {
+        jsonObj[v] = "";
+      });
+
+      html += `
+    <label>Variables (JSON)</label>
+    <textarea readonly>${JSON.stringify(jsonObj, null, 2)}</textarea>
   `;
+    }
+
+    // Rest anhängen
+    html += `
+  <label>Notes</label>
+  <textarea readonly>${prompt.notes || "N/A"}</textarea>
+
+  <label>Type</label>
+  <input type="text" value="${
+    Array.isArray(prompt.types)
+      ? prompt.types.join(", ")
+      : prompt.types || "N/A"
+  }" readonly>
+
+  <label>Compatible Models</label>
+  <input type="text" value="${
+    Array.isArray(prompt.compatibleModels)
+      ? prompt.compatibleModels.join(", ")
+      : prompt.compatibleModels || "N/A"
+  }" readonly>
+
+  <label>Incompatible Models</label>
+  <input type="text" value="${
+    Array.isArray(prompt.incompatibleModels)
+      ? prompt.incompatibleModels.join(", ")
+      : prompt.incompatibleModels || "N/A"
+  }" readonly>
+
+  <label>Tags</label>
+  <input type="text" value="${
+    Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || "N/A"
+  }" readonly>
+
+  <label>Folder</label>
+  <input type="text" value="${prompt.folderName || "N/A"}" readonly>
+
+  <label>Favorite</label>
+  <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
+
+  <label>Created At</label>
+  <input type="text" value="${
+    prompt.createdAt
+      ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+      : "N/A"
+  }" readonly>
+
+  <label>Updated At</label>
+  <input type="text" value="${
+    prompt.updatedAt
+      ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
+      : "N/A"
+  }" readonly>
+
+  <label>Last Used</label>
+  <input type="text" value="${
+    prompt.lastUsed
+      ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+      : "N/A"
+  }" readonly>
+
+  <label>Metadata Change Log</label>
+  <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+    ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
+  </div>
+
+  <button class="edit-btn">Edit Prompt</button>
+`;
+
+    // Schließlich ins Sidebar schreiben
+    sidebarContent.innerHTML = html;
 
     sidebarContent.querySelector(".edit-btn").addEventListener("click", () => {
       editPromptDetails(prompt.promptId, prompt, sidebarContent);

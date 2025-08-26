@@ -914,6 +914,7 @@ function copyPrompt(prompt) {
 
         // lastUsed aktualisieren
         targetPrompt.lastUsed = now;
+        targetPrompt.usageCount++;
 
         // MetaChangeLog-Eintrag hinzufügen
         targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
