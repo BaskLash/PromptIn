@@ -167,6 +167,56 @@ function filterFolders() {
   });
 }
 
+// Hilfsfunktionen für Sparkline
+function getUsageLast7Days(usageHistory = []) {
+  const now = Date.now();
+  const days = Array(7).fill(0);
+
+  usageHistory.forEach((entry) => {
+    const ts = entry.timestamp; // Access the timestamp property
+    const diffDays = Math.floor((now - ts) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0 && diffDays < 7) {
+      days[6 - diffDays]++;
+    }
+  });
+
+  return days; // e.g., [0, 2, 3, 1, 5, 2, 0]
+}
+
+function getTrendColor(usage7d) {
+  if (!usage7d.some((val) => val > 0)) return "gray";
+  const trend = usage7d.reduce((sum, val, i) => sum + val * i, 0);
+  return trend >= 0 ? "green" : "red";
+}
+
+function renderSparkline(usage7d, color) {
+  if (!usage7d.some((val) => val > 0)) {
+    return `<span>No usage data</span>`;
+  }
+  const max = Math.max(...usage7d, 1);
+  const points = usage7d.map((val, i) => ({
+    x: (i / (usage7d.length - 1)) * 100,
+    y: 100 - (val / max) * 100,
+  }));
+
+  // Generate Bezier curve path
+  let path = `M${points[0].x},${points[0].y}`;
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const cp1x = prev.x + (curr.x - prev.x) / 2;
+    const cp1y = prev.y;
+    const cp2x = prev.x + (curr.x - prev.x) / 2;
+    const cp2y = curr.y;
+    path += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${curr.x},${curr.y}`;
+  }
+
+  return `
+    <svg viewBox="0 0 100 100" width="80" height="30" preserveAspectRatio="none">
+      <path fill="none" stroke="${color}" stroke-width="2" d="${path}" />
+    </svg>`;
+}
+
 // Responsible for initial table rendering
 function renderPrompts(prompts) {
   const tbody = document.querySelector(".table-container tbody");
@@ -180,76 +230,79 @@ function renderPrompts(prompts) {
     const row = document.createElement("tr");
     row.dataset.index = index;
     row.dataset.promptId = prompt.id || index;
+
+    // Daten für Sparkline berechnen
+    const usage7d = getUsageLast7Days(prompt.usageHistory || []);
+    const trendColor = getTrendColor(usage7d);
+    const sparkline = renderSparkline(usage7d, trendColor);
+
     row.innerHTML = `
-      <td><input type="checkbox" id="prompt-checkbox-${
-        prompt.id || index
-      }" name="prompt-checkbox" /></td>
-      <td>${prompt.title || "N/A"}</td>
-      <td>${
-        Array.isArray(prompt.types)
-          ? prompt.types.join(", ")
-          : prompt.types || "N/A"
-      }</td>
-      <td>${
-        Array.isArray(prompt.compatibleModels)
-          ? prompt.compatibleModels.join(", ")
-          : prompt.compatibleModels || ""
-      }</td>
-      <td>${
-        Array.isArray(prompt.incompatibleModels)
-          ? prompt.incompatibleModels.join(", ")
-          : prompt.incompatibleModels || "N/A"
-      }</td>
-      <td>${
-        Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || ""
-      }</td>
-      <td>${prompt.folderName || ""}</td>
-      <td>${
-        prompt.lastUsed
-          ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
-          : "N/A"
-      }</td>
-      <td>${
-        prompt.createdAt
-          ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-          : "N/A"
-      }</td>
-      <td>
-        <div class="prompt-actions">
-          <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
-          <div class="dropdown-menu">
-            ${
-              prompt.type === "Workflow"
-                ? `
-                <div class="dropdown-item" data-action="execute-workflow">Execute Workflow</div>
-                <div class="dropdown-item" data-action="copy-workflow">Copy Workflow</div>
-                <div class="dropdown-item" data-action="export-workflow">Export Workflow</div>
-                <div class="dropdown-item" data-action="delete-workflow">Delete Workflow</div>
-                <div class="dropdown-item" data-action="rename-workflow">Rename Workflow</div>
-                `
-                : `
-                <div class="dropdown-item" data-action="copy">Copy Prompt</div>
-                <div class="dropdown-item" data-action="export">Export Prompt</div>
-                <div class="dropdown-item" data-action="${
-                  prompt.isTrash ? "remove-from-trash" : "trash"
-                }">${
-                    prompt.isTrash ? "Remove from Trash" : "Move to Trash"
-                  }</div>
-                <div class="dropdown-item" data-action="rename">Rename</div>
-                <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
-                <div class="dropdown-item" data-action="share">Share</div>
-                <div class="dropdown-item" data-action="add-to-favorites">${
-                  prompt.isFavorite
-                    ? "Remove from Favorites"
-                    : "Add to Favorites"
-                }</div>
-                <div class="dropdown-item" data-action="show-versions">Show Versions</div>
-                `
-            }
-          </div>
+    <td><input type="checkbox" id="prompt-checkbox-${
+      prompt.id || index
+    }" name="prompt-checkbox" /></td>
+    <td>${prompt.title || "N/A"}</td>
+    <td>${
+      Array.isArray(prompt.types)
+        ? prompt.types.join(", ")
+        : prompt.types || "N/A"
+    }</td>
+    <td>${
+      Array.isArray(prompt.compatibleModels)
+        ? prompt.compatibleModels.join(", ")
+        : prompt.compatibleModels || ""
+    }</td>
+    <td>${
+      Array.isArray(prompt.incompatibleModels)
+        ? prompt.incompatibleModels.join(", ")
+        : prompt.incompatibleModels || "N/A"
+    }</td>
+    <td>${
+      Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || ""
+    }</td>
+    <td>${prompt.folderName || ""}</td>
+    <td>${sparkline}</td> <!-- Neue Spalte -->
+    <td>${
+      prompt.lastUsed
+        ? new Date(prompt.lastUsed).toLocaleDateString("de-DE")
+        : "N/A"
+    }</td>
+    <td>${
+      prompt.createdAt
+        ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
+        : "N/A"
+    }</td>
+    <td>
+      <div class="prompt-actions">
+        <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
+        <div class="dropdown-menu">
+          ${
+            prompt.type === "Workflow"
+              ? `
+              <div class="dropdown-item" data-action="execute-workflow">Execute Workflow</div>
+              <div class="dropdown-item" data-action="copy-workflow">Copy Workflow</div>
+              <div class="dropdown-item" data-action="export-workflow">Export Workflow</div>
+              <div class="dropdown-item" data-action="delete-workflow">Delete Workflow</div>
+              <div class="dropdown-item" data-action="rename-workflow">Rename Workflow</div>
+              `
+              : `
+              <div class="dropdown-item" data-action="copy">Copy Prompt</div>
+              <div class="dropdown-item" data-action="export">Export Prompt</div>
+              <div class="dropdown-item" data-action="${
+                prompt.isTrash ? "remove-from-trash" : "trash"
+              }">${prompt.isTrash ? "Remove from Trash" : "Move to Trash"}</div>
+              <div class="dropdown-item" data-action="rename">Rename</div>
+              <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
+              <div class="dropdown-item" data-action="share">Share</div>
+              <div class="dropdown-item" data-action="add-to-favorites">${
+                prompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
+              }</div>
+              <div class="dropdown-item" data-action="show-versions">Show Versions</div>
+              `
+          }
         </div>
-      </td>
-    `;
+      </div>
+    </td>
+  `;
 
     const menuBtn = row.querySelector(".menu-btn");
     const dropdown = row.querySelector(".dropdown-menu");

@@ -1817,6 +1817,13 @@ function updatePromptLastUsed(promptId) {
     prompt.lastUsed = Date.now();
     prompt.usageCount = (prompt.usageCount || 0) + 1;
 
+    // Eintrag in usageHistory hinzufügen
+    prompt.usageHistory.push({
+      timestamp: Date.now(),
+      // context: "manual-run", // optional: Quelle oder Art der Nutzung
+      // modelUsed: "gpt-4o-mini", // optional: falls relevant
+    });
+
     // Save updated prompt back to storage
     chrome.storage.local.set(
       {

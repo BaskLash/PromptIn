@@ -72,7 +72,16 @@ function savePrompt(
       folderId: folderId,
       createdAt: existing.createdAt || now,
       updatedAt: now,
+      compatibleModels,
+      incompatibleModels,
+
+      usageCount: 0,
       lastUsed: null,
+      usageHistory: [],
+      isTrash: false,
+      deletedAt: null,
+      trashedAt: null,
+
       versions: existing.versions || [],
       metaChangeLog: existing.metaChangeLog || [],
       performanceHistory: existing.performanceHistory || [],

@@ -382,6 +382,7 @@ function saveNewPrompt(prompt, folderId) {
       incompatibleModels: prompt.incompatibleModels || [],
       tags: prompt.tags || [],
       isFavorite: prompt.isFavorite || false,
+      usageHistory: [], // NEW: store detailed timestamps of each use
       folderId: folderId || null,
       createdAt: now,
       updatedAt: null,
@@ -461,58 +462,62 @@ function saveNewPrompt(prompt, folderId) {
       const row = document.createElement("tr");
       row.dataset.index = newPrompt.promptId;
 
+      // Daten für Sparkline berechnen
+      const usage7d = getUsageLast7Days(newPrompt.usageHistory || []);
+      const trendColor = getTrendColor(usage7d);
+      const sparkline = renderSparkline(usage7d, trendColor);
+
       row.innerHTML = `
-      <td><input type="checkbox" id="prompt-checkbox-${
-        newPrompt.promptId
-      }" name="prompt-checkbox" /></td>
-      <td>${escapeHTML(newPrompt.title || "N/A")}</td>
-      <td>${escapeHTML(newPrompt.types || "N/A")}</td>
-      <td>${
-        Array.isArray(newPrompt.compatibleModels)
-          ? escapeHTML(newPrompt.compatibleModels.join(", "))
-          : escapeHTML(newPrompt.compatibleModels || "")
-      }</td>
-      <td>${
-        Array.isArray(newPrompt.incompatibleModels)
-          ? escapeHTML(newPrompt.incompatibleModels.join(", "))
-          : escapeHTML(newPrompt.incompatibleModels || "N/A")
-      }</td>
-      <td>${
-        Array.isArray(newPrompt.tags)
-          ? escapeHTML(newPrompt.tags.join(", "))
-          : escapeHTML(newPrompt.tags || "")
-      }</td>
-      <td>${escapeHTML(folderName || "")}</td>
-      <td>${
-        newPrompt.lastUsed
-          ? new Date(newPrompt.lastUsed).toLocaleDateString("de-DE")
-          : "N/A"
-      }</td>
-      <td>${
-        newPrompt.createdAt
-          ? new Date(newPrompt.createdAt).toLocaleDateString("de-DE")
-          : "N/A"
-      }</td>
-      <td>
-        <div class="prompt-actions">
-          <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
-          <div class="dropdown-menu">
-            <div class="dropdown-item" data-action="copy">Copy Prompt</div>
-            <div class="dropdown-item" data-action="rename">Rename</div>
-            <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
-            <div class="dropdown-item" data-action="share">Share</div>
-            <div class="dropdown-item" data-action="add-to-favorites">${
-              newPrompt.isFavorite
-                ? "Remove from Favorites"
-                : "Add to Favorites"
-            }</div>
-            <div class="dropdown-item" data-action="show-versions">Show Versions</div>
-            <div class="dropdown-item" data-action="export">Export Prompt</div>
-            <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
-          </div>
+    <td><input type="checkbox" id="prompt-checkbox-${
+      newPrompt.promptId
+    }" name="prompt-checkbox" /></td>
+    <td>${escapeHTML(newPrompt.title || "N/A")}</td>
+    <td>${escapeHTML(newPrompt.types || "N/A")}</td>
+    <td>${
+      Array.isArray(newPrompt.compatibleModels)
+        ? escapeHTML(newPrompt.compatibleModels.join(", "))
+        : escapeHTML(newPrompt.compatibleModels || "")
+    }</td>
+    <td>${
+      Array.isArray(newPrompt.incompatibleModels)
+        ? escapeHTML(newPrompt.incompatibleModels.join(", "))
+        : escapeHTML(newPrompt.incompatibleModels || "N/A")
+    }</td>
+    <td>${
+      Array.isArray(newPrompt.tags)
+        ? escapeHTML(newPrompt.tags.join(", "))
+        : escapeHTML(newPrompt.tags || "")
+    }</td>
+    <td>${escapeHTML(folderName || "")}</td>
+    <td>${sparkline}</td> <!-- Neue Spalte -->
+    <td>${
+      newPrompt.lastUsed
+        ? new Date(newPrompt.lastUsed).toLocaleDateString("de-DE")
+        : "N/A"
+    }</td>
+    <td>${
+      newPrompt.createdAt
+        ? new Date(newPrompt.createdAt).toLocaleDateString("de-DE")
+        : "N/A"
+    }</td>
+    <td>
+      <div class="prompt-actions">
+        <button class="action-btn menu-btn" aria-label="Prompt actions">...</button>
+        <div class="dropdown-menu">
+          <div class="dropdown-item" data-action="copy">Copy Prompt</div>
+          <div class="dropdown-item" data-action="rename">Rename</div>
+          <div class="dropdown-item" data-action="move-to-folder">Move to Folder</div>
+          <div class="dropdown-item" data-action="share">Share</div>
+          <div class="dropdown-item" data-action="add-to-favorites">${
+            newPrompt.isFavorite ? "Remove from Favorites" : "Add to Favorites"
+          }</div>
+          <div class="dropdown-item" data-action="show-versions">Show Versions</div>
+          <div class="dropdown-item" data-action="export">Export Prompt</div>
+          <div class="dropdown-item" data-action="move-to-trash">Move to Trash</div>
         </div>
-      </td>
-    `;
+      </div>
+    </td>
+  `;
 
       // Dropdown Menü
       const menuBtn = row.querySelector(".menu-btn");
@@ -915,6 +920,13 @@ function copyPrompt(prompt) {
         // lastUsed aktualisieren
         targetPrompt.lastUsed = now;
         targetPrompt.usageCount++;
+
+        // Eintrag in usageHistory hinzufügen
+        targetPrompt.usageHistory.push({
+          timestamp: now,
+          //context: "manual-run", // optional: Quelle oder Art der Nutzung
+          // modelUsed: "gpt-4o-mini", // optional: falls relevant
+        });
 
         // MetaChangeLog-Eintrag hinzufügen
         targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];

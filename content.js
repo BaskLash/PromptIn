@@ -165,11 +165,15 @@ async function createNewPrompt(
     folderId,
     createdAt: Date.now(),
     updatedAt: null,
+
     usageCount: 0,
     lastUsed: null,
-    isTrash: false, // Hinzugefügt für Konsistenz
-    deletedAt: null, // Hinzugefügt für Konsistenz
+    usageHistory: [], // NEW: store detailed timestamps of each use
+
+    isTrash: false,
+    deletedAt: null,
     trashedAt: null,
+
     versions: [
       {
         versionId: `${Date.now()}_${generateUUID()}`,
@@ -179,6 +183,7 @@ async function createNewPrompt(
         timestamp: Date.now(),
       },
     ],
+
     metaChangeLog: [
       {
         timestamp: Date.now(),
@@ -196,6 +201,7 @@ async function createNewPrompt(
         },
       },
     ],
+
     performanceHistory: [],
   };
 
