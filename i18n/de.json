@@ -117,6 +117,7 @@
   "sort_by_title": "Titel",
   "sort_by_last_used": "Zuletzt verwendet",
   "sort_by_last_created": "Zuletzt erstellt",
+  "sort_by_most_used": "Meistgenutzt",
   "noPromptsInFolder": "Keine Prompts in diesem Ordner",
   "noPromptsFound": "Keine Prompts gefunden"
 }

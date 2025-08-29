@@ -945,9 +945,8 @@ function loadTypesFilter() {
   const types = [
     ...new Set(
       globalRows
-        .map((row) => row.getElementsByTagName("td")[2].textContent.split(", "))
-        .flat()
-        .filter((type) => type && type !== "N/A")
+        .map((row) => row.getElementsByTagName("td")[2].textContent.trim())
+        .filter((type) => type && type !== "N/A") // Nur echte Werte
     ),
   ].sort();
 
@@ -966,11 +965,11 @@ function loadTypesFilter() {
   emptyOption.textContent = "-- All Types --";
   select.appendChild(emptyOption);
 
-  // Add options for each type
+  // Add options for each real type
   types.forEach((type) => {
     const option = document.createElement("option");
-    option.value = type;
-    option.textContent = type;
+    option.value = escapeHTML(type);
+    option.textContent = escapeHTML(type);
     select.appendChild(option);
   });
 

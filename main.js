@@ -21,6 +21,7 @@ function updateSortButtonText() {
   const sortKeyMap = {
     createdAt: "last_created",
     lastUsed: "last_used",
+    mostUsed: "most_used",
     title: "title",
     ascending: "ascending",
     descending: "descending",
@@ -465,6 +466,10 @@ function sortPrompts(prompts) {
       case "createdAt":
         aValue = a.prompt.createdAt || 0;
         bValue = b.prompt.createdAt || 0;
+        break;
+      case "mostUsed":
+        aValue = a.prompt.usageCount || 0;
+        bValue = b.prompt.usageCount || 0;
         break;
       default:
         aValue = a.prompt.title?.toLowerCase() || "";
