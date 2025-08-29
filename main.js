@@ -19,6 +19,7 @@ let hoveredRow = null;
 // Global Functions
 function updateSortButtonText() {
   const sortKeyMap = {
+    createdAt: "last_created",
     lastUsed: "last_used",
     title: "title",
     ascending: "ascending",
@@ -448,6 +449,7 @@ function updateSortDropdownSelection(dropdown = sortDropdown) {
 }
 
 function sortPrompts(prompts) {
+  console.log("Sortiere Prompts mit sortState:", sortState); // Debugging
   return prompts.sort((a, b) => {
     let aValue, bValue;
 
@@ -459,6 +461,10 @@ function sortPrompts(prompts) {
       case "lastUsed":
         aValue = a.prompt.lastUsed || 0;
         bValue = b.prompt.lastUsed || 0;
+        break;
+      case "createdAt":
+        aValue = a.prompt.createdAt || 0;
+        bValue = b.prompt.createdAt || 0;
         break;
       default:
         aValue = a.prompt.title?.toLowerCase() || "";
