@@ -489,6 +489,13 @@ function handleSortOptionClick(option) {
     sortState.sortBy = option.dataset.sortBy;
   }
 
+  // Save sortState to chrome.storage.local
+  chrome.storage.local.set({ sortOptions: sortState }, () => {
+    console.log(
+      `sortState saved to chrome.storage.local: ${JSON.stringify(sortState)}`
+    );
+  });
+
   console.log(
     `Sort option clicked: Previous state=${JSON.stringify(
       previousSortState
@@ -2073,6 +2080,24 @@ function importDataFromJSON(event) {
 // DOMContentLoaded Event Listener
 document.addEventListener("DOMContentLoaded", () => {
   validateFolderPrompts();
+
+  // Load sortOptions from chrome.storage.local
+  chrome.storage.local.get(["sortOptions"], (result) => {
+    if (result.sortOptions) {
+      sortState = {
+        sortBy: result.sortOptions.sortBy || "title",
+        sortOrder: result.sortOptions.sortOrder || "ascending",
+      };
+      console.log(
+        `Loaded sortState from chrome.storage.local: ${JSON.stringify(
+          sortState
+        )}`
+      );
+      updateSortButtonText(); // Update button text based on loaded sortState
+      updateSortDropdownSelection(); // Update dropdown selection
+    }
+  });
+
   document.getElementById("language-select").addEventListener("change", (e) => {
     currentLang = e.target.value;
     chrome.storage.local.set({ language: currentLang }, () => {
