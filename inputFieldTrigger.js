@@ -1817,11 +1817,12 @@ function updatePromptLastUsed(promptId) {
     prompt.lastUsed = Date.now();
     prompt.usageCount = (prompt.usageCount || 0) + 1;
 
-    // Eintrag in usageHistory hinzufügen
+    // usageHistory initialisieren, falls nicht vorhanden
+    prompt.usageHistory = prompt.usageHistory || [];
     prompt.usageHistory.push({
       timestamp: Date.now(),
-      // context: "manual-run", // optional: Quelle oder Art der Nutzung
-      // modelUsed: "gpt-4o-mini", // optional: falls relevant
+      // context: "manual-run", // optional
+      // modelUsed: "gpt-4o-mini", // optional
     });
 
     // Save updated prompt back to storage

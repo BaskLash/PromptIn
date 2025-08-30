@@ -919,16 +919,19 @@ function copyPrompt(prompt) {
 
         // lastUsed aktualisieren
         targetPrompt.lastUsed = now;
-        targetPrompt.usageCount++;
 
-        // Eintrag in usageHistory hinzufügen
+        // usageCount initialisieren, falls nicht vorhanden
+        targetPrompt.usageCount = (targetPrompt.usageCount || 0) + 1;
+
+        // usageHistory initialisieren, falls nicht vorhanden
+        targetPrompt.usageHistory = targetPrompt.usageHistory || [];
         targetPrompt.usageHistory.push({
           timestamp: now,
-          //context: "manual-run", // optional: Quelle oder Art der Nutzung
-          // modelUsed: "gpt-4o-mini", // optional: falls relevant
+          // context: "manual-run", // optional
+          // modelUsed: "gpt-4o-mini", // optional
         });
 
-        // MetaChangeLog-Eintrag hinzufügen
+        // MetaChangeLog initialisieren, falls nicht vorhanden
         targetPrompt.metaChangeLog = targetPrompt.metaChangeLog || [];
         targetPrompt.metaChangeLog.push({
           type: "copy",

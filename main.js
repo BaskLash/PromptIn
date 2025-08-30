@@ -632,11 +632,12 @@ dropdown.querySelector(".copy-btn").addEventListener("click", () => {
       prompt.lastUsed = now;
       prompt.usageCount = (prompt.usageCount || 0) + 1; // robustes ++
 
-      // Eintrag in usageHistory hinzufügen
+      // usageHistory initialisieren, falls nicht vorhanden
+      prompt.usageHistory = prompt.usageHistory || [];
       prompt.usageHistory.push({
         timestamp: now,
-        // context: "manual-run", // optional: Quelle oder Art der Nutzung
-        // modelUsed: "gpt-4o-mini", // optional: falls relevant
+        // context: "manual-run", // optional
+        // modelUsed: "gpt-4o-mini", // optional
       });
 
       // optional MetaChangeLog wie im ersten Beispiel

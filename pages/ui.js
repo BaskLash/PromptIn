@@ -625,7 +625,6 @@ function showDetailsSidebar(item, folderId) {
         let changesHtml = "";
 
         if (entry.changes && Object.keys(entry.changes).length > 0) {
-          // Klassische Änderungsobjekte
           changesHtml = `
         <ul>
           ${Object.entries(entry.changes)
@@ -646,7 +645,6 @@ function showDetailsSidebar(item, folderId) {
         </ul>
       `;
         } else if (entry.type === "trash") {
-          // Trash-Event anzeigen
           changesHtml = `
         <ul>
           <li><strong>isTrash:</strong> Yes</li>
@@ -691,7 +689,6 @@ function showDetailsSidebar(item, folderId) {
       const matches = prompt.content.match(/\{\{([^}]+)\}\}/g) || [];
       const variables = matches.map((v) => v.replace(/\{\{|\}\}/g, ""));
 
-      // JSON-Objekt bauen
       const jsonObj = {};
       variables.forEach((v) => {
         jsonObj[v] = "";
@@ -703,7 +700,6 @@ function showDetailsSidebar(item, folderId) {
   `;
     }
 
-    // Rest anhängen
     html += `
   <label>Notes</label>
   <textarea readonly>${prompt.notes || "N/A"}</textarea>
@@ -761,6 +757,9 @@ function showDetailsSidebar(item, folderId) {
       : "N/A"
   }" readonly>
 
+  <label>Stats</label>
+  <canvas id="usageChart" style="width:100%; height:200px;"></canvas>
+
   <label>Metadata Change Log</label>
   <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
     ${metaChangeLogEntries || "<p>No metadata changes recorded.</p>"}
@@ -769,8 +768,71 @@ function showDetailsSidebar(item, folderId) {
   <button class="edit-btn">Edit Prompt</button>
 `;
 
-    // Schließlich ins Sidebar schreiben
     sidebarContent.innerHTML = html;
+
+    // Chart.js Daten vorbereiten (letzte 30 Tage)
+    const usageHistory = prompt.usageHistory || [];
+    const now = new Date();
+    const days = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (29 - i));
+      return d;
+    });
+
+    const usagePerDay = days.map((day) => {
+      const start = new Date(day);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(day);
+      end.setHours(23, 59, 59, 999);
+
+      return usageHistory.filter(
+        (entry) =>
+          entry.timestamp >= start.getTime() && entry.timestamp <= end.getTime()
+      ).length;
+    });
+
+    // Chart.js Diagramm erstellen
+    const ctx = document.getElementById("usageChart").getContext("2d");
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: days.map((d) =>
+          d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })
+        ),
+        datasets: [
+          {
+            label: "Usage",
+            data: usagePerDay,
+            borderColor: "#4caf50",
+            backgroundColor: "rgba(76, 175, 80, 0.15)",
+            fill: true,
+            tension: 0.35, // geschmeidige Linie
+            pointRadius: 3,
+            pointBackgroundColor: "#4caf50",
+            pointHoverRadius: 5,
+          },
+        ],
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => ` ${context.parsed.y} uses`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0,
+            },
+          },
+        },
+      },
+    });
 
     sidebarContent.querySelector(".edit-btn").addEventListener("click", () => {
       editPromptDetails(prompt.promptId, prompt, sidebarContent);
