@@ -217,6 +217,33 @@ function renderSparkline(usage7d, color) {
     </svg>`;
 }
 
+function renderPPSScore(usage7d) {
+  if (!usage7d || usage7d.length < 2) {
+    return `<span>N/A</span>`;
+  }
+
+  const prev = usage7d[usage7d.length - 2];
+  const curr = usage7d[usage7d.length - 1];
+
+  if (prev === 0 && curr === 0) {
+    return `<span>0%</span>`;
+  }
+
+  // Logarithmische Skalierung (z. B. log(1 + x) um Null zu vermeiden)
+  const logPrev = Math.log1p(prev); // log1p(x) = log(1 + x)
+  const logCurr = Math.log1p(curr);
+  const diff = logCurr - logPrev;
+  const percentChange = ((diff / (logPrev || 0.1)) * 100).toFixed(1);
+
+  if (diff > 0) {
+    return `<span style="color: green;">+${percentChange}% ▲</span>`;
+  } else if (diff < 0) {
+    return `<span style="color: red;">${percentChange}% ▼</span>`;
+  } else {
+    return `<span>0% ➝</span>`;
+  }
+}
+
 // Responsible for initial table rendering
 function renderPrompts(prompts) {
   const tbody = document.querySelector(".table-container tbody");
@@ -235,6 +262,7 @@ function renderPrompts(prompts) {
     const usage7d = getUsageLast7Days(prompt.usageHistory || []);
     const trendColor = getTrendColor(usage7d);
     const sparkline = renderSparkline(usage7d, trendColor);
+    const ppsScore = renderPPSScore(usage7d);
 
     row.innerHTML = `
     <td><input type="checkbox" id="prompt-checkbox-${
@@ -260,6 +288,7 @@ function renderPrompts(prompts) {
       Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || ""
     }</td>
     <td>${prompt.folderName || ""}</td>
+    <td>${ppsScore}</td> <!-- Für den Prompt Performance Score -->
     <td>${sparkline}</td> <!-- Neue Spalte -->
     <td>${
       prompt.lastUsed
@@ -889,7 +918,7 @@ function handleCategoryClick(category) {
         .filter((p) => !p.isTrash && filterFn(p))
         .map((p) => ({
           ...p,
-          folderName: folders[p.folderId]?.name || "Kein Ordner",
+          folderName: folders[p.folderId]?.name || "No folder",
         }));
     };
 
