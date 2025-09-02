@@ -203,10 +203,13 @@ function initializeBenchmarking() {
       .sort((a, b) => b.change - a.change)
       .slice(0, 3);
 
+    // 🔹 Top Gainers (Heute)
     document.getElementById("topGainers").innerHTML = todayGainers
       .map(
         (p) =>
-          `<li data-prompt="${p.prompt.title}" data-model="${
+          `<li data-prompt="${p.prompt.title}" data-prompt-id="${
+            p.prompt.promptId
+          }" data-model="${
             p.prompt.compatibleModels.join(", ") || "Unbekannt"
           }" data-details="Änderung erkannt"><span class="gain">${
             p.prompt.title
@@ -229,10 +232,14 @@ function initializeBenchmarking() {
       .filter((p) => p.change < 0)
       .sort((a, b) => a.change - b.change)
       .slice(0, 3);
+
+    // 🔹 Top Losers (Heute)
     document.getElementById("topLosers").innerHTML = todayLosers
       .map(
         (p) =>
-          `<li data-prompt="${p.prompt.title}" data-model="${
+          `<li data-prompt="${p.prompt.title}" data-prompt-id="${
+            p.prompt.promptId
+          }" data-model="${
             p.prompt.compatibleModels.join(", ") || "Unbekannt"
           }" data-details="Änderung erkannt"><span class="loss">${
             p.prompt.title
@@ -290,10 +297,13 @@ function initializeBenchmarking() {
       .sort((a, b) => b.change - a.change)
       .slice(0, 3);
 
+    // 🔹 Top Gainers (7 Tage nach letzter Änderung)
     document.getElementById("topGainers7Days").innerHTML = gainers7Days
       .map(
         (p) =>
-          `<li data-prompt="${p.prompt.title}" data-model="${
+          `<li data-prompt="${p.prompt.title}" data-prompt-id="${
+            p.prompt.promptId
+          }" data-model="${
             p.prompt.compatibleModels.join(", ") || "Unbekannt"
           }" data-details="Änderung erkannt"><span class="gain">${
             p.prompt.title
@@ -351,10 +361,13 @@ function initializeBenchmarking() {
       .sort((a, b) => a.change - b.change)
       .slice(0, 3);
 
+    // 🔹 Top Losers (7 Tage nach letzter Änderung)
     document.getElementById("topLosers7Days").innerHTML = losers7Days
       .map(
         (p) =>
-          `<li data-prompt="${p.prompt.title}" data-model="${
+          `<li data-prompt="${p.prompt.title}" data-prompt-id="${
+            p.prompt.promptId
+          }" data-model="${
             p.prompt.compatibleModels.join(", ") || "Unbekannt"
           }" data-details="Änderung erkannt"><span class="loss">${
             p.prompt.title
@@ -418,13 +431,15 @@ function initializeBenchmarking() {
       .filter((p) => p.changePercent < 0)
       .sort((a, b) => a.changePercent - b.changePercent)
       .slice(0, 3);
+
+    // 🔹 Prompts mit geringer Nutzung (Peak-Moment)
     document.getElementById("lowUsagePrompts").innerHTML = lowUsage
       .map((p) => {
         const models = Array.isArray(p.prompt.compatibleModels)
           ? p.prompt.compatibleModels.join(", ")
           : "Unbekannt";
 
-        return `<li data-prompt="${p.prompt.title}" data-model="${models}" data-details="Nutzung gesunken">
+        return `<li data-prompt="${p.prompt.title}" data-prompt-id="${p.prompt.promptId}" data-model="${models}" data-details="Nutzung gesunken">
       ${p.prompt.title}: ${p.changePercent}% 
       (Peak: ${p.peakUsage}, Aktuell: ${p.currentUsage}) (${models})
     </li>`;
@@ -450,6 +465,8 @@ function initializeBenchmarking() {
       }
     }
     similar.sort((a, b) => b.similarity - a.similarity);
+
+    // 🔹 Ähnlichste Prompts
     document.getElementById("similarPrompts").innerHTML = similar
       .slice(0, 3)
       .map((s) => {
@@ -462,7 +479,9 @@ function initializeBenchmarking() {
 
         return `<li 
       data-prompt1="${s.prompt1.title}" 
+      data-prompt-id1="${s.prompt1.promptId}"
       data-prompt2="${s.prompt2.title}" 
+      data-prompt-id2="${s.prompt2.promptId}"
       data-model="${models1}" 
       data-similarity="${Math.round(s.similarity * 100)}%" 
       data-performance1="${s.performance1 > 0 ? "+" : ""}${s.performance1}%" 
@@ -503,9 +522,10 @@ function initializeBenchmarking() {
   function setupModalInteractivity() {
     document.querySelectorAll(".highlight-card li").forEach((item) => {
       item.addEventListener("click", () => {
-        const prompt =
-          item.getAttribute("data-prompt") || item.getAttribute("data-prompt1");
+        const prompt = item.getAttribute("data-prompt");
+        const promptId = item.getAttribute("data-prompt-id"); // NEU
         const prompt2 = item.getAttribute("data-prompt2");
+        const promptId2 = item.getAttribute("data-prompt-id2"); // NEU
         const model = item.getAttribute("data-model");
         const details = item.getAttribute("data-details");
         const similarity = item.getAttribute("data-similarity");
@@ -526,6 +546,16 @@ function initializeBenchmarking() {
         document.getElementById("modalRecommendation").textContent =
           recommendation ? `Empfehlung: ${recommendation}` : "";
         document.getElementById("promptModal").style.display = "flex";
+
+        console.log("Information Data gathered: " + promptId);
+
+        // NEU: promptId an die Statistik-Funktion übergeben
+        if (prompt2) {
+          // Bei zwei Prompts (ähnliche Prompts)
+          showPromptStatistics(promptId, promptId2);
+        } else {
+          showPromptStatistics(promptId);
+        }
       });
     });
   }
@@ -713,24 +743,29 @@ function initializeBenchmarking() {
         }
 
         .modal {
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-color: rgba(0,0,0,0.5);
-          justify-content: center;
-          align-items: center;
-        }
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+}
 
-        .modal-content {
-          background-color: white;
-          padding: 20px;
-          border-radius: 8px;
-          max-width: 500px;
-          width: 90%;
-        }
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 90vw; /* Maximal 90% der Viewport-Breite */
+  max-height: 90vh; /* Maximal 90% der Viewport-Höhe */
+  width: 100%;
+  box-sizing: border-box;
+  overflow-y: auto; /* Vertikales Scrollen erlauben, falls nötig */
+  position: relative;
+}
 
         .modal-content h3 {
           margin-bottom: 15px;
@@ -745,6 +780,117 @@ function initializeBenchmarking() {
           cursor: pointer;
           font-size: 20px;
         }
+          .chart-container {
+  width: 100%;
+  max-width: 100%; /* Verhindert Überlaufen */
+  overflow: hidden; /* Verhindert horizontales Scrollen */
+}
+
+#promptChart {
+  width: 100%;
+  height: 300px; /* Feste Höhe, anpassbar */
+  display: block;
+}
+
+.news-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.news-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  width: 250px;
+  max-width: calc(100% - 24px); /* Verhindert Überlaufen auf kleinen Bildschirmen */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  transition: border 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.news-card.active {
+  border: 2px solid blue;
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.news-source {
+  font-weight: bold;
+  color: #555;
+}
+
+.news-date {
+  font-size: 12px;
+  color: #888;
+}
+
+.news-text {
+  margin: 6px 0;
+}
+
+.news-change.up {
+  color: green;
+  font-weight: bold;
+}
+
+.news-change.down {
+  color: red;
+  font-weight: bold;
+}
+
+.line {
+  fill: none;
+  stroke: green;
+  stroke-width: 2;
+}
+
+.marker {
+  fill: darkgreen;
+  cursor: pointer;
+  transition: r 0.2s ease-in-out;
+}
+
+.marker:hover {
+  r: 9;
+}
+
+.news-logo {
+  cursor: pointer;
+  transition: fill 0.2s ease-in-out;
+}
+
+.news-logo:hover path {
+  fill: blue;
+}
+
+.marker-line {
+  stroke: #999;
+  stroke-dasharray: 4, 4;
+  transition: stroke 0.2s ease-in-out, stroke-width 0.2s ease-in-out;
+}
+
+.highlight {
+  stroke: blue !important;
+  stroke-width: 2 !important;
+  fill: blue !important;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+  }
+  .news-card {
+    width: 100%; /* Volle Breite auf kleinen Bildschirmen */
+  }
+}
 
         @media (max-width: 768px) {
           .highlight-section {
@@ -828,18 +974,24 @@ function initializeBenchmarking() {
         <a href="#" class="export-btn" id="btnDownloadReport">Report herunterladen (CSV)</a>
 
         <div id="promptModal" class="modal">
-          <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h3>Prompt-Details</h3>
-            <p id="modalPrompt"></p>
-            <p id="modalModel"></p>
-            <p id="modalDetails"></p>
-            <p id="modalPerformance"></p>
-            <p id="modalRecommendation"></p>
-            <button class="improve-btn" onclick="improvePrompt()">Prompt verbessern</button>
-            <button class="delete-btn" onclick="deletePrompt()">Prompt löschen</button>
-          </div>
-        </div>
+  <div class="modal-content">
+    <span class="close-btn">&times;</span>
+    <h3>Prompt-Details</h3>
+    <p id="modalPrompt"></p>
+    <p id="modalModel"></p>
+    <p id="modalDetails"></p>
+    <p id="modalPerformance"></p>
+    <p id="modalRecommendation"></p>
+    <button class="improve-btn" onclick="improvePrompt()">Prompt verbessern</button>
+    <button class="delete-btn" onclick="deletePrompt()">Prompt löschen</button>
+
+    <h4>Statistik / Versionsverlauf</h4>
+    <div class="chart-container">
+      <svg id="promptChart"></svg>
+    </div>
+    <div class="news-container" id="promptNews"></div>
+  </div>
+</div>
     `;
 
     // JavaScript-Logik für die Seite
@@ -937,5 +1089,372 @@ function initializeBenchmarking() {
             .textContent.replace("Prompt: ", "");
       alert(`Prompt "${prompt}" wird gelöscht...`);
     };
+  }
+  function showPromptStatistics(promptId) {
+    const svg = document.getElementById("promptChart");
+    const newsContainer = document.getElementById("promptNews");
+
+    // Clear previous content
+    svg.innerHTML = "";
+    newsContainer.innerHTML = "";
+
+    // Retrieve prompts from chrome.storage.local
+    chrome.storage.local.get("prompts", (result) => {
+      const prompts = result.prompts || {};
+      const prompt = prompts[promptId];
+      if (!prompt) {
+        newsContainer.innerHTML = "<p>Kein Prompt gefunden.</p>";
+        console.log("Kein Prompt gefunden für ID:", promptId);
+        return;
+      }
+
+      // Version and usage data
+      const versions = (prompt.versions || []).filter(
+        (v) => typeof v.timestamp === "number" && !isNaN(v.timestamp)
+      );
+      if (!versions.length) {
+        newsContainer.innerHTML = "<p>Keine Versionen verfügbar.</p>";
+        console.log("Keine Versionen verfügbar für Prompt:", prompt);
+        return;
+      }
+
+      // Calculate usage data for the last 30 days (including days with no usage)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Midnight today
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 29); // Including today = 30 days
+
+      // Map raw usageHistory to daily counts
+      const usageMap = {};
+      (prompt.usageHistory || []).forEach((entry) => {
+        if (!entry.timestamp) return;
+        const d = new Date(entry.timestamp);
+        d.setHours(0, 0, 0, 0);
+        const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+        usageMap[key] = (usageMap[key] || 0) + 1;
+      });
+
+      // Generate complete list of the last 30 days
+      const usageData = [];
+      for (
+        let d = new Date(thirtyDaysAgo);
+        d <= today;
+        d.setDate(d.getDate() + 1)
+      ) {
+        const key = d.toISOString().slice(0, 10);
+        usageData.push({
+          date: key,
+          count: usageMap[key] || 0,
+        });
+      }
+
+      const data = usageData.map((e) => e.count);
+      const dates = usageData.map((e) => e.date);
+
+      console.log("Daten für Chart:", data, "Daten:", dates);
+
+      // If all values are 0, abort
+      if (!data.some((val) => val > 0)) {
+        newsContainer.innerHTML =
+          "<p>Keine Nutzungsdaten für die letzten 30 Tage verfügbar.</p>";
+        console.log("Keine Nutzungsdaten für die letzten 30 Tage verfügbar.");
+        return;
+      }
+
+      // Handle single data point by adding a dummy point
+      let adjustedData = data;
+      let adjustedVersions = versions;
+      let adjustedDates = dates;
+      if (data.length === 1) {
+        adjustedData = [0, data[0]];
+        adjustedDates = [
+          new Date(new Date(dates[0]).getTime() - 86400000)
+            .toISOString()
+            .slice(0, 10),
+          dates[0],
+        ];
+        adjustedVersions = [
+          { ...versions[0], timestamp: versions[0].timestamp - 86400000 }, // One day earlier
+          versions[0],
+        ];
+      }
+
+      const width = parseFloat(svg.getAttribute("width")) || 600;
+      const height = parseFloat(svg.getAttribute("height")) || 300;
+      const padding = 40;
+
+      const maxVal = Math.max(...adjustedData, 1);
+      const minVal = 0; // Always start at 0 for usage count
+
+      // Scaling functions
+      const xScale = (i) => {
+        if (adjustedData.length <= 1) return width / 2;
+        return (
+          padding + i * ((width - 2 * padding) / (adjustedData.length - 1))
+        );
+      };
+      const yScale = (val) =>
+        height -
+        padding -
+        ((val - minVal) / (maxVal - minVal || 1)) * (height - 2 * padding);
+
+      // Add Y-axis (Usage Count)
+      const yAxis = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      yAxis.setAttribute("class", "y-axis");
+      const yTicks = Math.min(maxVal, 10); // Limit to 10 ticks for readability
+      for (let i = 0; i <= yTicks; i++) {
+        const val = (i / yTicks) * maxVal;
+        const y = yScale(val);
+        const text = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "text"
+        );
+        text.setAttribute("x", padding - 10);
+        text.setAttribute("y", y + 5);
+        text.setAttribute("text-anchor", "end");
+        text.setAttribute("fill", "#333");
+        text.textContent = Math.round(val);
+        yAxis.appendChild(text);
+
+        // Grid line
+        const line = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "line"
+        );
+        line.setAttribute("x1", padding);
+        line.setAttribute("y1", y);
+        line.setAttribute("x2", width - padding);
+        line.setAttribute("y2", y);
+        line.setAttribute("stroke", "#ccc");
+        line.setAttribute("stroke-width", 1);
+        yAxis.appendChild(line);
+      }
+      // Y-axis label
+      const yLabel = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "text"
+      );
+      yLabel.setAttribute("x", padding - 30);
+      yLabel.setAttribute("y", height / 2);
+      yLabel.setAttribute("text-anchor", "middle");
+      yLabel.setAttribute(
+        "transform",
+        `rotate(-90, ${padding - 30}, ${height / 2})`
+      );
+      yLabel.setAttribute("fill", "#333");
+      yLabel.setAttribute("font-size", "14");
+      yLabel.textContent = "Usage Count";
+      yAxis.appendChild(yLabel);
+      svg.appendChild(yAxis);
+
+      // Add X-axis (Date)
+      const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      xAxis.setAttribute("class", "x-axis");
+      const tickInterval = Math.ceil(adjustedData.length / 6); // Approx 6 ticks
+      for (let i = 0; i < adjustedData.length; i += tickInterval) {
+        const x = xScale(i);
+        const date = new Date(adjustedDates[i]);
+        const text = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "text"
+        );
+        text.setAttribute("x", x);
+        text.setAttribute("y", height - padding + 20);
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("fill", "#333");
+        text.textContent = date.toLocaleDateString("de-DE", {
+          day: "2-digit",
+          month: "2-digit",
+        });
+        xAxis.appendChild(text);
+
+        // Grid line
+        const line = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "line"
+        );
+        line.setAttribute("x1", x);
+        line.setAttribute("y1", height - padding);
+        line.setAttribute("x2", x);
+        line.setAttribute("y2", padding);
+        line.setAttribute("stroke", "#ccc");
+        line.setAttribute("stroke-width", 1);
+        xAxis.appendChild(line);
+      }
+      // X-axis label
+      const xLabel = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "text"
+      );
+      xLabel.setAttribute("x", width / 2);
+      xLabel.setAttribute("y", height - 5);
+      xLabel.setAttribute("text-anchor", "middle");
+      xLabel.setAttribute("fill", "#333");
+      xLabel.setAttribute("font-size", "14");
+      xLabel.textContent = "Date";
+      xAxis.appendChild(xLabel);
+      svg.appendChild(xAxis);
+
+      // Create line path
+      let pathData = "";
+      adjustedData.forEach((val, i) => {
+        const x = xScale(i);
+        const y = yScale(val);
+        if (isNaN(x) || isNaN(y)) {
+          console.warn(`Ungültige Koordinaten bei Index ${i}: x=${x}, y=${y}`);
+          return;
+        }
+        pathData += (i === 0 ? "M" : "L") + x + "," + y;
+      });
+
+      if (pathData) {
+        const path = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "path"
+        );
+        path.setAttribute("d", pathData);
+        path.setAttribute("stroke", "#1e90ff");
+        path.setAttribute("stroke-width", 2);
+        path.setAttribute("fill", "none");
+        svg.appendChild(path);
+      } else {
+        console.warn("Kein gültiger Pfad für die Linie erstellt.");
+      }
+
+      // Events for versions and news (example news event on 2025-08-18)
+      const newsEvents = [
+        { timestamp: new Date("2025-08-18").getTime(), title: "News Event" },
+      ];
+      const events = [
+        ...adjustedVersions.map((v, idx) => ({
+          timestamp: v.timestamp,
+          source: `Version ${idx + 1 - (adjustedData.length - data.length)}`,
+          title: v.title || "Keine Beschreibung verfügbar",
+        })),
+        ...newsEvents.map((n, idx) => ({
+          timestamp: n.timestamp,
+          source: `News ${idx + 1}`,
+          title: n.title,
+        })),
+      ].sort((a, b) => a.timestamp - b.timestamp);
+
+      // Highlight function
+      function highlight(idx, state) {
+        document.querySelectorAll(".news-card").forEach((card) => {
+          card.classList.toggle(
+            "active",
+            state && card.getAttribute("data-index") === String(idx)
+          );
+        });
+        document.querySelectorAll(".marker-line").forEach((l) => {
+          if (l.getAttribute("data-index") === String(idx)) {
+            l.classList.toggle("highlight", state);
+          }
+        });
+        document.querySelectorAll(".marker").forEach((m) => {
+          if (m.getAttribute("data-index") === String(idx)) {
+            m.classList.toggle("highlight", state);
+          }
+        });
+        document.querySelectorAll(".news-logo").forEach((n) => {
+          if (n.getAttribute("data-index") === String(idx)) {
+            n.classList.toggle("highlight", state);
+          }
+        });
+      }
+
+      // Event markers
+      events.forEach((ev, idx) => {
+        const eventDate = new Date(ev.timestamp);
+        eventDate.setHours(0, 0, 0, 0);
+        const dateStr = eventDate.toISOString().slice(0, 10);
+        const dataIndex = adjustedDates.indexOf(dateStr);
+        if (dataIndex === -1) return; // Skip if event date is outside range
+        const x = xScale(dataIndex);
+        const y = yScale(adjustedData[dataIndex] || 0);
+
+        // Dashed line
+        const line = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "line"
+        );
+        line.setAttribute("x1", x);
+        line.setAttribute("y1", height - padding);
+        line.setAttribute("x2", x);
+        line.setAttribute("y2", padding);
+        line.setAttribute("stroke", "#ff4500");
+        line.setAttribute("stroke-width", 2);
+        line.setAttribute("stroke-dasharray", "5,5");
+        line.setAttribute("class", "marker-line");
+        line.setAttribute("data-index", idx);
+        svg.appendChild(line);
+
+        // Invisible hover area
+        const hitLine = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "line"
+        );
+        hitLine.setAttribute("x1", x);
+        hitLine.setAttribute("y1", height - padding);
+        hitLine.setAttribute("x2", x);
+        hitLine.setAttribute("y2", padding);
+        hitLine.setAttribute("stroke", "transparent");
+        hitLine.setAttribute("stroke-width", 12);
+        hitLine.setAttribute("data-index", idx);
+        svg.appendChild(hitLine);
+
+        // Marker (circle)
+        const circle = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle"
+        );
+        circle.setAttribute("cx", x);
+        circle.setAttribute("cy", y);
+        circle.setAttribute("r", 6);
+        circle.setAttribute("fill", "#ff4500");
+        circle.setAttribute("class", "marker");
+        circle.setAttribute("data-index", idx);
+        svg.appendChild(circle);
+
+        // SVG logo
+        const logo = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "svg"
+        );
+        logo.setAttribute("x", x - 12);
+        logo.setAttribute("y", height - padding - 12);
+        logo.setAttribute("width", 24);
+        logo.setAttribute("height", 24);
+        logo.setAttribute("class", "news-logo");
+        logo.setAttribute("data-index", idx);
+        logo.innerHTML = `
+        <path d="M4 4h16v2H4V4zm0 4h16v12H4V8zm2 2h2v8H6v-8zm4 0h8v2h-8v-2zm0 4h8v2h-8v-2zm0 4h4v2h-4v-2z" fill="#555"/>
+      `;
+        svg.appendChild(logo);
+
+        // News card
+        const card = document.createElement("div");
+        card.className = "news-card";
+        card.setAttribute("data-index", idx);
+        card.innerHTML = `
+        <div class="news-source">${
+          ev.source
+        } · <span class="news-date">${eventDate.toLocaleDateString(
+          "de-DE"
+        )}</span></div>
+        <div class="news-text">${ev.title}</div>
+      `;
+        newsContainer.appendChild(card);
+
+        // Hover events
+        [circle, logo, hitLine].forEach((element) => {
+          element.addEventListener("mouseover", () => highlight(idx, true));
+          element.addEventListener("mouseout", () => highlight(idx, false));
+        });
+
+        card.addEventListener("mouseover", () => highlight(idx, true));
+        card.addEventListener("mouseout", () => highlight(idx, false));
+      });
+    });
   }
 }
