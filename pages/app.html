@@ -15,6 +15,7 @@
     <script src="chart.umd.min.js" defer></script>
     <script src="anonymizer.js" defer></script>
     <script src="statistics.js" defer></script>
+    <script src="benchmarking.js" defer></script>
     <script src="app.js" defer></script>
     <title>Dashboard Layout</title>
   </head>
@@ -87,6 +88,7 @@
               <li data-view="anonymizer">Text Anonymizer</li>
               <li data-view="workflows">Workflows</li>
               <li data-view="analytics">Prompt Analytics</li>
+              <li data-view="benchmarking">Prompt Benchmarking</li>
             </ul>
           </section>
         </nav>
@@ -394,6 +396,13 @@
             <h1>Prompt Analytics</h1>
           </div>
           <div id="analytics-container"></div>
+        </div>
+        <!-- Prompt Benchmarking Bereich -->
+         <div id="benchmarking-view" style="display: none">
+          <div class="main-header">
+            <h1>Prompt Benchmarking</h1>
+          </div>
+          <div id="benchmarking-container"></div>
         </div>
         <!-- Overview Bereich -->
         <div id="workflow-view" style="display: none">

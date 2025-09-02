@@ -331,6 +331,7 @@ function showCreatePromptModal(category) {
         trashedAt: null,
         usageCount: 0,
         lastUsed: null,
+        usageHistory: [], // NEW: store detailed timestamps of each use
         versions: [
           {
             versionId: `${Date.now()}_${generateUUID()}`,

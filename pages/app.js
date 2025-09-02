@@ -19,6 +19,9 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "analytics") {
     switchView("analytics-view", { view: "analytics" });
     initializeAnalytics();
+  } else if (view === "benchmarking") {
+    switchView("benchmarking-view", { view: "benchmarking" });
+    initializeBenchmarking();
   } else if (view === "workflows") {
     switchView("workflow-view", { view: "workflows" });
     initializeWorkflows();
@@ -340,6 +343,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (view === "analytics") {
         switchView("analytics-view", { view: "analytics" });
         initializeAnalytics();
+      } else if (view === "benchmarking") {
+        switchView("benchmarking-view", { view: "benchmarking" });
+        initializeBenchmarking();
       } else if (view === "workflows") {
         switchView("workflow-view", { view: "workflows" });
         initializeWorkflows();
@@ -412,7 +418,8 @@ function loadTags() {
     if (tags.length === 0) {
       const noTags = document.createElement("div");
       noTags.className = "no-tags";
-      noTags.textContent = "No tags available. Create one to get started! Enter for example: blog-post, email, tweet, press-release, finance, healthcare, marketing, e-commverce, education";
+      noTags.textContent =
+        "No tags available. Create one to get started! Enter for example: blog-post, email, tweet, press-release, finance, healthcare, marketing, e-commverce, education";
       tagContainer.appendChild(noTags);
       return;
     }
@@ -498,7 +505,8 @@ function loadTypes() {
     if (types.length === 0) {
       const noTypes = document.createElement("div");
       noTypes.className = "no-tags";
-      noTypes.textContent = "No types available. Create one to get started! Enter for example: textgen, rewrite, summarize, translate, ideation, adcopy, storytelling, analyze, classify, extract, compare, codegen, debug, refactor, explain-code, prompt-engineering, meta-prompt, assistant";
+      noTypes.textContent =
+        "No types available. Create one to get started! Enter for example: textgen, rewrite, summarize, translate, ideation, adcopy, storytelling, analyze, classify, extract, compare, codegen, debug, refactor, explain-code, prompt-engineering, meta-prompt, assistant";
       tagContainer.appendChild(noTypes);
       return;
     }

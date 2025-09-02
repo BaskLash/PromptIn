@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="pages/promptManagement.js" defer></script>
     <script src="pages/utils.js" defer></script>
+    <script src="loginSystem.js" defer></script>
     <script src="main.js" defer></script>
   </head>
   <body>
@@ -19,7 +20,9 @@
           <div class="icon" id="tools-icon">🔧</div>
         </div>
         <div class="right-header">
-          <button id="overview-btn" class="fullscreen-btn">↗️ Full screen</button>
+          <button id="overview-btn" class="fullscreen-btn">
+            ↗️ Full screen
+          </button>
           <button id="faq-btn" class="fullscreen-btn">❓</button>
           <div class="user-icon" id="user-icon">👤</div>
         </div>
@@ -583,9 +586,13 @@
         <br />
         <div class="workflows" data-i18n="workflows">Workflows</div>
         <br />
-        <div class="text-anonymizer" data-i18n="text_anonymizer">Text Anonymizer</div>
+        <div class="text-anonymizer" data-i18n="text_anonymizer">
+          Text Anonymizer
+        </div>
         <br />
-        <div class="prompt-analytics" data-i18n="prompt_analytics">Prompt Analytics</div>
+        <div class="prompt-analytics" data-i18n="prompt_analytics">
+          Prompt Analytics
+        </div>
       </div>
 
       <!-- Einstellungsansicht -->
@@ -646,6 +653,91 @@
                 data-i18n="discord-link-btn"
               ></button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User & Login Ansicht -->
+      <div class="detail-overlay" id="user-overlay">
+        <div class="detail-header">
+          <button id="user-back-btn">←</button>
+          <h2 id="user-title">Login</h2>
+        </div>
+
+        <div class="detail-content">
+          <!-- LOGIN FORM -->
+          <form id="login-form" class="user-form">
+            <div class="detail-field">
+              <label>Email</label>
+              <input type="email" required />
+
+              <label>Password</label>
+              <input type="password" required />
+            </div>
+            <button type="submit" class="btn">Login</button>
+            <p class="switch-text">
+              No account? <a href="#" id="show-register">Register</a><br />
+              <a href="#" id="show-reset">Forgot password?</a>
+            </p>
+          </form>
+
+          <!-- REGISTER FORM -->
+          <form id="register-form" class="user-form" style="display: none">
+            <div class="detail-field">
+              <label>Name</label>
+              <input type="text" required />
+
+              <label>Email</label>
+              <input type="email" required />
+
+              <label>Password</label>
+              <input type="password" required />
+
+              <label>Confirm Password</label>
+              <input type="password" required />
+            </div>
+            <button type="submit" class="btn">Register</button>
+            <p class="switch-text">
+              Already have an account? <a href="#" id="show-login">Login</a>
+            </p>
+          </form>
+
+          <!-- RESET PASSWORD FORM -->
+          <form id="reset-form" class="user-form" style="display: none">
+            <div class="detail-field">
+              <label>Email</label>
+              <input type="email" required />
+            </div>
+            <button type="submit" class="btn">Reset Password</button>
+            <p class="switch-text">
+              Remembered? <a href="#" id="show-login-2">Back to Login</a>
+            </p>
+          </form>
+
+          <!-- USER DASHBOARD (nach Login) -->
+          <div id="user-dashboard" style="display: none">
+            <h3>Welcome, <span id="user-email"></span></h3>
+            <p>Your API Token:</p>
+            <textarea
+              id="user-token"
+              readonly
+              style="width: 100%; height: 50px"
+            ></textarea>
+            <button id="copy-token-btn" class="btn">Copy Token</button>
+
+            <h4>Change Password</h4>
+            <input
+              type="password"
+              id="new-password"
+              placeholder="New password"
+            />
+            <button id="change-password-btn" class="btn">
+              Change Password
+            </button>
+
+            <button id="logout-btn" class="btn" style="margin-top: 20px">
+              Logout
+            </button>
           </div>
         </div>
       </div>

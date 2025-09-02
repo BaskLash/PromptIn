@@ -2884,6 +2884,66 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("plus-btn").style.display = "flex";
   });
 
+  // Login & User Overlay
+  const userIcon = document.getElementById("user-icon");
+  const userOverlay = document.getElementById("user-overlay");
+  const userBackBtn = document.getElementById("user-back-btn");
+
+  userIcon.addEventListener("click", () => {
+    userOverlay.classList.add("open");
+    document.getElementById("plus-btn").style.display = "none";
+  });
+
+  userBackBtn.addEventListener("click", () => {
+    userOverlay.classList.remove("open");
+    document.getElementById("plus-btn").style.display = "flex";
+  });
+
+  // Switching between forms
+  const loginForm = document.getElementById("login-form");
+  const registerForm = document.getElementById("register-form");
+  const resetForm = document.getElementById("reset-form");
+  const title = document.getElementById("user-title");
+
+  document.getElementById("show-register").onclick = (e) => {
+    e.preventDefault();
+    loginForm.style.display = "none";
+    resetForm.style.display = "none";
+    registerForm.style.display = "block";
+    title.textContent = "Register";
+  };
+
+  document.getElementById("show-login").onclick = (e) => {
+    e.preventDefault();
+    registerForm.style.display = "none";
+    resetForm.style.display = "none";
+    loginForm.style.display = "block";
+    title.textContent = "Login";
+  };
+
+  document.getElementById("show-reset").onclick = (e) => {
+    e.preventDefault();
+    loginForm.style.display = "none";
+    registerForm.style.display = "none";
+    resetForm.style.display = "block";
+    title.textContent = "Reset Password";
+  };
+
+  document.getElementById("show-login-2").onclick = (e) => {
+    e.preventDefault();
+    resetForm.style.display = "none";
+    registerForm.style.display = "none";
+    loginForm.style.display = "block";
+    title.textContent = "Login";
+  };
+
+  document.getElementById("copy-token-btn").addEventListener("click", () => {
+    const tokenField = document.getElementById("user-token");
+    tokenField.select();
+    document.execCommand("copy");
+    alert("Token copied!");
+  });
+
   // Prompt Import/Export
   document.getElementById("import-prompt-btn").addEventListener("click", () => {
     importInput.click();
