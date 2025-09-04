@@ -419,7 +419,7 @@ function loadTags() {
       const noTags = document.createElement("div");
       noTags.className = "no-tags";
       noTags.textContent =
-        "No tags available. Create one to get started! Enter for example: blog-post, email, tweet, press-release, finance, healthcare, marketing, e-commverce, education";
+        "No tags available. Create one to get started! Enter for example: blog-post, email, tweet, press-release, finance, healthcare, marketing, e-commerce, education";
       tagContainer.appendChild(noTags);
       return;
     }
@@ -431,31 +431,135 @@ function loadTags() {
         id: promptId,
         folderId: prompt.folderId || null,
         tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+        usageHistory: Array.isArray(prompt.usageHistory)
+          ? prompt.usageHistory
+          : [],
       })
     );
 
     // Tag-Gitter erstellen
     const tagGrid = document.createElement("div");
     tagGrid.className = "tag-grid";
-    tagGrid.style.display = "flex"; // <-- Hinzugefügte Zeile
+    tagGrid.style.display = "flex";
+
+    // Tägliche durchschnittliche Nutzung pro Tag berechnen
+    const tagUsageStats = new Map();
+    let maxDailyAverage = 0;
 
     tags.forEach((tag) => {
-      const promptCount = promptsArray.filter((prompt) =>
+      const promptsOfTag = promptsArray.filter((prompt) =>
         prompt.tags.includes(tag)
-      ).length;
+      );
+      let totalDailyAverage = 0;
+      const promptCount = promptsOfTag.length;
 
+      promptsOfTag.forEach((prompt) => {
+        const usageHistory = prompt.usageHistory;
+        if (usageHistory.length === 0) {
+          return; // Keine Nutzung, überspringen
+        }
+
+        // Zeitraum berechnen (in Tagen)
+        const timestamps = usageHistory
+          .map((entry) => entry.timestamp)
+          .filter((ts) => typeof ts === "number" && !isNaN(ts));
+        if (timestamps.length === 0) {
+          return;
+        }
+
+        const earliest = Math.min(...timestamps);
+        const latest = Math.max(...timestamps);
+        const timeSpanDays = (latest - earliest) / (1000 * 60 * 60 * 24) || 1; // Mindestens 1 Tag
+        const dailyAverage = usageHistory.length / timeSpanDays;
+        totalDailyAverage += dailyAverage;
+      });
+
+      // Durchschnittliche tägliche Nutzung für das Tag
+      const tagDailyAverage =
+        promptCount > 0 ? totalDailyAverage / promptCount : 0;
+      tagUsageStats.set(tag, { dailyAverage: tagDailyAverage, promptCount });
+      if (tagDailyAverage > maxDailyAverage) {
+        maxDailyAverage = tagDailyAverage;
+      }
+    });
+
+    // Tag-Boxen erstellen
+    tags.forEach((tag) => {
+      const promptsOfTag = promptsArray.filter((prompt) =>
+        prompt.tags.includes(tag)
+      );
+      const promptCount = promptsOfTag.length;
+
+      // Bestehende Performance-Berechnung
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      let recentUses = 0;
+      let totalUsesBefore = 0;
+
+      promptsOfTag.forEach((prompt) => {
+        if (Array.isArray(prompt.usageHistory)) {
+          prompt.usageHistory.forEach((ts) => {
+            if (ts.timestamp >= sevenDaysAgo) {
+              recentUses++;
+            } else {
+              totalUsesBefore++;
+            }
+          });
+        }
+      });
+
+      let performancePercent = 0;
+      let trendArrow = "→";
+      let colorStyle = "color: gray;";
+
+      if (recentUses > 0 || totalUsesBefore > 0) {
+        const pastAvg = totalUsesBefore / (promptCount || 1);
+        const recentAvg = recentUses / (promptCount || 1);
+
+        if (pastAvg === 0 && recentAvg > 0) {
+          performancePercent = 100;
+          trendArrow = "↑";
+          colorStyle = "color: green;";
+        } else if (pastAvg > 0) {
+          performancePercent = Math.round(
+            ((recentAvg - pastAvg) / pastAvg) * 100
+          );
+          if (performancePercent > 0) {
+            trendArrow = "↑";
+            colorStyle = "color: green;";
+          } else if (performancePercent < 0) {
+            trendArrow = "↓";
+            colorStyle = "color: red;";
+          }
+        }
+      }
+
+      // Neue Statistik: Tägliche durchschnittliche Nutzung und Prozent
+      const stats = tagUsageStats.get(tag) || {
+        dailyAverage: 0,
+        promptCount: 0,
+      };
+      const dailyAverage = stats.dailyAverage.toFixed(4);
+      const percentage =
+        maxDailyAverage > 0
+          ? ((stats.dailyAverage / maxDailyAverage) * 100).toFixed(2)
+          : 0;
+
+      // Tag-Box rendern
       const tagBox = document.createElement("div");
       tagBox.className = "tag-box";
       tagBox.dataset.tag = escapeHTML(tag);
       tagBox.innerHTML = `
-    <span class="tag-name">${escapeHTML(tag)}</span>
-    <span class="prompt-count">${promptCount} Prompt${
+        <span class="tag-name">${escapeHTML(tag)}</span>
+        <span class="prompt-count">${promptCount} Prompt${
         promptCount !== 1 ? "s" : ""
       }</span>
-    <button class="delete-tag-btn" data-tag="${escapeHTML(
-      tag
-    )}" title="Tag löschen">×</button>
-  `;
+        <span class="stats" style="${colorStyle}">
+          Perf: ${performancePercent}% ${trendArrow} | Avg Daily: ${dailyAverage} (${percentage}%)
+        </span>
+        <button class="delete-tag-btn" data-tag="${escapeHTML(
+          tag
+        )}" title="Tag löschen">×</button>
+      `;
 
       tagGrid.appendChild(tagBox);
     });
@@ -517,7 +621,7 @@ function loadTypes() {
         ...prompt,
         id: promptId,
         folderId: prompt.folderId || null,
-        types: Array.isArray(prompt.types) ? prompt.types : [], // hier korrigiert
+        types: Array.isArray(prompt.types) ? prompt.types : [], // jetzt sicher ein Array
       })
     );
 
@@ -527,18 +631,75 @@ function loadTypes() {
     tagGrid.style.display = "flex";
 
     types.forEach((type) => {
-      const promptCount = promptsArray.filter(
-        (prompt) => prompt.types.includes(type) // ✅ korrekt
-      ).length;
+      const promptsOfType = promptsArray.filter((prompt) =>
+        prompt.types.includes(type)
+      );
+      const promptCount = promptsOfType.length;
 
+      // === Performance berechnen ===
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      let recentUses = 0;
+      let totalUsesBefore = 0;
+
+      promptsOfType.forEach((prompt) => {
+        if (Array.isArray(prompt.usageHistory)) {
+          prompt.usageHistory.forEach((ts) => {
+            if (ts >= sevenDaysAgo) {
+              recentUses++;
+            } else {
+              totalUsesBefore++;
+            }
+          });
+        }
+      });
+
+      let performancePercent = 0;
+      let trendArrow = "→";
+      let colorClass = "neutral";
+
+      if (recentUses > 0 || totalUsesBefore > 0) {
+        const pastAvg = totalUsesBefore / (promptsOfType.length || 1);
+        const recentAvg = recentUses / (promptsOfType.length || 1);
+
+        if (pastAvg === 0 && recentAvg > 0) {
+          performancePercent = 100;
+          trendArrow = "↑";
+          colorClass = "green";
+        } else if (pastAvg > 0) {
+          performancePercent = Math.round(
+            ((recentAvg - pastAvg) / pastAvg) * 100
+          );
+          if (performancePercent > 0) {
+            trendArrow = "↑";
+            colorClass = "green";
+          } else if (performancePercent < 0) {
+            trendArrow = "↓";
+            colorClass = "red";
+          }
+        }
+      }
+
+      // === Tag-Box rendern ===
       const tagBox = document.createElement("div");
       tagBox.className = "tag-box";
-      tagBox.dataset.type = escapeHTML(type); // ✅ konsistent
+      tagBox.dataset.type = escapeHTML(type);
+
+      // Inline-Farbe bestimmen
+      let colorStyle = "color: gray;"; // neutral
+      if (colorClass === "green") {
+        colorStyle = "color: green;";
+      } else if (colorClass === "red") {
+        colorStyle = "color: red;";
+      }
+
       tagBox.innerHTML = `
         <span class="tag-name">${escapeHTML(type)}</span>
         <span class="prompt-count">${promptCount} Prompt${
         promptCount !== 1 ? "s" : ""
       }</span>
+        <span class="stats" style="${colorStyle}">
+          ${performancePercent}% ${trendArrow}
+        </span>
         <button class="delete-tag-btn" data-type="${escapeHTML(
           type
         )}" title="Delete type">×</button>
@@ -734,6 +895,14 @@ function initializeTypes() {
   });
 }
 
+// Funktion zum Entfernen von HTML-Sonderzeichen
+function escapeHTML(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Hauptfunktion
 function showPromptTagModal(tag) {
   const modal = document.getElementById("promptModal");
   const modalTagName = document.getElementById("modalTagName");
@@ -751,19 +920,52 @@ function showPromptTagModal(tag) {
     modalTagName.textContent = escapeHTML(tag);
 
     // Alle Prompts filtern, die den Tag enthalten
-    const filteredPrompts = Object.values(allPrompts).filter(
-      (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
-    );
+    const filteredPrompts = Object.values(allPrompts)
+      .filter(
+        (prompt) => Array.isArray(prompt.tags) && prompt.tags.includes(tag)
+      )
+      .map((prompt) => ({
+        ...prompt,
+        usageHistory: Array.isArray(prompt.usageHistory)
+          ? prompt.usageHistory
+          : [],
+      }));
 
-    if (filteredPrompts.length === 0) {
-      modalPromptList.innerHTML = "<p>No prompts found for this tag.</p>";
+    // Tägliche durchschnittliche Nutzung berechnen
+    let maxDailyAverage = 0;
+    const promptStats = filteredPrompts.map((prompt) => {
+      let dailyAverage = 0;
+      if (prompt.usageHistory.length > 0) {
+        const timestamps = prompt.usageHistory
+          .map((entry) => entry.timestamp)
+          .filter((ts) => typeof ts === "number" && !isNaN(ts));
+        if (timestamps.length > 0) {
+          const earliest = Math.min(...timestamps);
+          const latest = Math.max(...timestamps);
+          const timeSpanDays = (latest - earliest) / (1000 * 60 * 60 * 24) || 1; // Mindestens 1 Tag
+          dailyAverage = prompt.usageHistory.length / timeSpanDays;
+        }
+      }
+      if (dailyAverage > maxDailyAverage) {
+        maxDailyAverage = dailyAverage;
+      }
+      return { ...prompt, dailyAverage };
+    });
+
+    // HTML für die Prompt-Liste erstellen
+    let promptListHTML = "";
+    if (promptStats.length === 0) {
+      promptListHTML = "<p>No prompts found for this tag.</p>";
     } else {
-      modalPromptList.innerHTML = filteredPrompts
+      promptListHTML = promptStats
         .map((prompt) => {
           const folderName = prompt.folderId
             ? folders[prompt.folderId]?.name || "Unbekannter Ordner"
             : "Kein Ordner";
-
+          const percentage =
+            maxDailyAverage > 0
+              ? ((prompt.dailyAverage / maxDailyAverage) * 100).toFixed(2)
+              : 0;
           return `
             <div class="prompt-item" 
                  data-prompt-id="${escapeHTML(prompt.promptId)}" 
@@ -774,6 +976,9 @@ function showPromptTagModal(tag) {
               <p>Created: ${new Date(
                 prompt.createdAt || 0
               ).toLocaleString()}</p>
+              <p>Avg Daily Usage: ${prompt.dailyAverage.toFixed(
+                4
+              )} (${percentage}%)</p>
               <button class="remove-tag-btn" 
                       data-tag="${escapeHTML(tag)}" 
                       data-prompt-id="${escapeHTML(prompt.promptId)}" 
@@ -784,21 +989,80 @@ function showPromptTagModal(tag) {
         .join("");
     }
 
-    // Remove-Type-Button Click Events setzen
-    document.querySelectorAll(".remove-type-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const type = btn.dataset.type;
-        const promptId = btn.dataset.promptId;
+    // HTML für das Chart-Container
+    const chartHTML = `
+      <div id="usageChartContainer" style="margin-top: 20px;">
+        <h3>Daily Usage Chart</h3>
+        <canvas id="usageChart" style="max-width: 600px; max-height: 400px;"></canvas>
+      </div>
+    `;
 
-        if (!promptId) {
-          console.error("Prompt-ID fehlt oder ist undefined!");
-          return;
-        }
+    // Gesamtes Modal-Inhalt
+    modalPromptList.innerHTML = promptListHTML + chartHTML;
 
-        removeTypeFromPrompt(type, promptId);
+    // Chart.js-Skript laden (lokal im Projektordner)
+    const script = document.createElement("script");
+    script.src = "chart.umd.min.js";
+    script.onload = () => {
+      const ctx = document.getElementById("usageChart").getContext("2d");
+      if (promptStats.length === 0) {
+        ctx.canvas.parentNode.innerHTML += "<p>No data available</p>";
+        return;
+      }
+
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: promptStats.map((prompt) =>
+            escapeHTML(prompt.title || "Untitled").substring(0, 15)
+          ),
+          datasets: [
+            {
+              label: "Avg Daily Usage",
+              data: promptStats.map((prompt) => prompt.dailyAverage.toFixed(4)),
+              backgroundColor: "rgba(100, 150, 255, 0.6)",
+              borderColor: "rgba(100, 150, 255, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Average Daily Usage",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Prompts",
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              display: true,
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const value = context.raw;
+                  const percentage =
+                    maxDailyAverage > 0
+                      ? ((value / maxDailyAverage) * 100).toFixed(2)
+                      : 0;
+                  return `Usage: ${value} (${percentage}%)`;
+                },
+              },
+            },
+          },
+        },
       });
-    });
+    };
+    document.body.appendChild(script);
 
     // Remove-Tag-Button Click Events setzen
     document.querySelectorAll(".remove-tag-btn").forEach((btn) => {
@@ -818,19 +1082,18 @@ function showPromptTagModal(tag) {
 
     // Prompt-Item Click Events setzen
     document.querySelectorAll(".prompt-item").forEach((item) => {
-      item.addEventListener("click", () => {
+      item.addEventListener("click", (e) => {
+        if (e.target.classList.contains("remove-tag-btn")) return;
         const folderId = item.dataset.folderId;
         modal.style.display = "none";
 
         if (!folderId) {
-          // Kein Ordner → Single Prompts Ansicht
           switchView("prompts-view", {
             view: "prompts",
             category: "Single Prompts",
           });
           handleCategoryClick("Single Prompts");
         } else {
-          // Ordneransicht
           switchView("prompts-view", { view: "prompts", folderId });
           handleFolderClick(folderId);
         }

@@ -64,6 +64,11 @@ function renderAnalytics(prompts) {
   const tagSection = createTagSection(tagUsage);
   container.appendChild(tagSection);
 
+  // Type-Verwendung
+  const typeUsage = calculateTypeUsage(prompts);
+  const typeSection = createTypeSection(typeUsage);
+  container.appendChild(typeSection);
+
   // Änderungshäufigkeit der Top-5-Prompts
   const changeFrequency = calculateChangeFrequency(prompts);
   container.appendChild(createChangeFrequencySection(changeFrequency));
@@ -407,6 +412,17 @@ function calculateTagUsage(prompts) {
   return tagUsage;
 }
 
+function calculateTypeUsage(prompts) {
+  const typeUsage = {};
+  prompts.forEach((prompt) => {
+    if (!prompt.types) return;
+    prompt.types.forEach((type) => {
+      typeUsage[type] = (typeUsage[type] || 0) + 1;
+    });
+  });
+  return typeUsage;
+}
+
 function createUsageSection(usageByTime) {
   const section = document.createElement("div");
   section.className = "analytics-section";
@@ -559,6 +575,49 @@ function createTagSection(tagUsage) {
 
   return section;
 }
+
+function createTypeSection(typeUsage) {
+  const section = document.createElement("div");
+  section.className = "analytics-section";
+  section.innerHTML = `
+    <h2>Type usage</h2>
+    <div class="chart-container" style="height: 300px;">
+      <canvas id="typeChart"></canvas>
+    </div>
+  `;
+
+  const labels = Object.keys(typeUsage);
+  const data = labels.map((key) => typeUsage[key]);
+
+  const chartConfig = {
+    type: "pie",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          data: data,
+          backgroundColor: [
+            "#4e73df",
+            "#1cc88a",
+            "#36b9cc",
+            "#f6c23e",
+            "#e74a3b",
+          ],
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+    },
+  };
+
+  const canvas = section.querySelector("#typeChart");
+  new Chart(canvas, chartConfig);
+
+  return section;
+}
+
 // Analyze performance over time
 function calculatePerformanceTrends(prompts) {
   const trends = {};

@@ -584,7 +584,7 @@ function initializeBenchmarking() {
           deleteBtn.style.display = "inline-block";
         }
 
-        document.getElementById("promptModal").style.display = "flex";
+        document.getElementById("benchmarkModal").style.display = "flex";
 
         console.log("Information Data gathered: " + promptId);
 
@@ -779,7 +779,7 @@ function initializeBenchmarking() {
           background-color: #e74c3c;
         }
 
-        .modal {
+        .modalDashboard {
   display: none;
   position: fixed;
   top: 0;
@@ -789,10 +789,11 @@ function initializeBenchmarking() {
   background-color: rgba(0, 0, 0, 0.5);
   justify-content: center;
   align-items: center;
+  z-index:1000;
   overflow: auto;
 }
 
-.modal-content {
+.modal-contentDashboard {
   background-color: white;
   padding: 20px;
   border-radius: 8px;
@@ -804,11 +805,11 @@ function initializeBenchmarking() {
   position: relative;
 }
 
-        .modal-content h3 {
+        .modal-contentDashboard h3 {
           margin-bottom: 15px;
         }
 
-        .modal-content p {
+        .modal-contentDashboard p {
           margin-bottom: 20px;
         }
 
@@ -921,7 +922,7 @@ function initializeBenchmarking() {
 }
 
 @media (max-width: 768px) {
-  .modal-content {
+  .modal-contentDashboard {
     width: 95%;
   }
   .news-card {
@@ -1010,8 +1011,8 @@ function initializeBenchmarking() {
 
         <a href="#" class="export-btn" id="btnDownloadReport">Report herunterladen (CSV)</a>
 
-        <div id="promptModal" class="modal">
-  <div class="modal-content">
+        <div id="benchmarkModal" class="modalDashboard">
+  <div class="modal-contentDashboard">
     <span class="close-btn">&times;</span>
     <h3>Prompt-Details</h3>
     <p id="modalPrompt"></p>
@@ -1094,7 +1095,7 @@ function initializeBenchmarking() {
 
     if (closeBtn) {
       closeBtn.addEventListener("click", function () {
-        document.getElementById("promptModal").style.display = "none";
+        document.getElementById("benchmarkModal").style.display = "none";
       });
     }
 
@@ -1912,3 +1913,4 @@ function initializeBenchmarking() {
     });
   }
 }
+// TODO: Wenn z.B. erkannt wird, das eine Prompt für ein bestimmtes Kompatibles model sehr häufig verwendet wird, dann soll es unter den compatible Models diesen Eintrag auch automatisch finden

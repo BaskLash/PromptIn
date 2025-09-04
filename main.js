@@ -3002,7 +3002,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   document.getElementById("discord-link-btn").addEventListener("click", () => {
-    window.open("https://discord.gg/MJ35Q3EcED", "_blank");
+    window.open("https://discord.gg/ap8XYrCpSV", "_blank");
   });
 
   document.getElementById("review-btn").addEventListener("click", () => {
