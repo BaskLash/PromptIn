@@ -143,20 +143,22 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("register-form")
     .addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      // Eingaben aus dem Formular holen
       const inputs = e.target.querySelectorAll("input");
       const name = inputs[0].value;
       const email = inputs[1].value;
       const password = inputs[2].value;
       const confirm = inputs[3].value;
 
+      // Clientseitige Passwort-Validierung
       if (password !== confirm) {
-        console.warn("Passwords do not match");
-        alert("Passwords do not match");
+        alert("Passwörter stimmen nicht überein.");
+        showLogin(); // Zeige Login-Formular trotz Fehler
         return;
       }
 
       try {
-        console.log("Attempting registration for:", email);
         const res = await fetch("http://127.0.0.1:8000/api/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -164,44 +166,22 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         const data = await res.json();
-        console.log("Register response:", data);
 
+        // Zeige Login-Formular unabhängig vom Ergebnis
+        showLogin();
+
+        // Erfolgs- oder Fehlermeldung anzeigen
         if (res.ok) {
-          if (!data.access_token || !data.refresh_token || !data.expires_in) {
-            console.error("Invalid register response, missing tokens:", data);
-            alert("Registration failed: Invalid response from server");
-            return;
-          }
-
-          await new Promise((resolve, reject) => {
-            chrome.storage.local.set(
-              {
-                accessToken: data.access_token,
-                refreshToken: data.refresh_token,
-                userEmail: email,
-                tokenExpires: Date.now() + data.expires_in * 1000,
-              },
-              () => {
-                if (chrome.runtime.lastError) {
-                  reject(chrome.runtime.lastError);
-                } else {
-                  resolve();
-                }
-              }
-            );
-          });
-          console.log("Tokens stored successfully:", {
-            email,
-            accessToken: data.access_token,
-          });
-          showDashboard(email, data.access_token);
+          alert(
+            data.message || "Registrierung erfolgreich! Bitte melde dich an."
+          );
         } else {
-          console.error("Registration failed:", data.message);
-          alert(data.message || "Registration failed");
+          alert(data.message || "Registrierung fehlgeschlagen.");
         }
       } catch (err) {
-        console.error("Registration error:", err);
-        alert("Registration failed (network error)");
+        // Nur bei Netzwerkfehlern eine Meldung anzeigen
+        showLogin();
+        // alert("Verbindung zum Server fehlgeschlagen.");
       }
     });
 
@@ -400,6 +380,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function showLogin() {
     console.log("Showing login form with prompts");
     document.getElementById("login-form").style.display = "block";
+    document.getElementById("user-title").textContent = "Login";
     document.getElementById("register-form").style.display = "none";
     document.getElementById("reset-form").style.display = "none";
     document.getElementById("user-dashboard").style.display = "none";
