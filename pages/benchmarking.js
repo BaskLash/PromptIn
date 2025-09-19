@@ -235,18 +235,20 @@ function initializeBenchmarking() {
 
     // 🔹 Top Losers (Heute)
     document.getElementById("topLosers").innerHTML = todayLosers
-      .map(
-        (p) =>
-          `<li data-prompt="${p.prompt.title}" data-prompt-id="${
-            p.prompt.promptId
-          }" data-model="${
-            p.prompt.compatibleModels.join(", ") || "Unbekannt"
-          }" data-details="Änderung erkannt"><span class="loss">${
-            p.prompt.title
-          }: ${p.change}% (${
-            p.prompt.compatibleModels.join(", ") || "Unbekannt"
-          })</span></li>`
-      )
+      .map((p) => {
+        const models = Array.isArray(p.prompt.compatibleModels)
+          ? p.prompt.compatibleModels.join(", ")
+          : "Unbekannt";
+
+        return `<li data-prompt="${p.prompt.title}" 
+                 data-prompt-id="${p.prompt.promptId}" 
+                 data-model="${models}" 
+                 data-details="Änderung erkannt">
+              <span class="loss">
+                ${p.prompt.title}: ${p.change}% (${models})
+              </span>
+            </li>`;
+      })
       .join("");
 
     // 🔹 Funktion: Nutzung nach letzter Änderung berechnen

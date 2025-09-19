@@ -16,6 +16,34 @@ let isEscaped = false;
 let isDropdownTriggered = false;
 let isSlashKeyboardInput = false;
 
+// Mapping of domains to model names (moved to global scope)
+const domainToModelMap = {
+  "chatgpt.com": "ChatGPT",
+  "grok.com": "Grok",
+  "gemini.google.com": "Gemini",
+  "claude.ai": "Claude",
+  "blackbox.ai": "BlackBox",
+  "github.com": "GitHub Copilot",
+  "copilot.microsoft.com": "Microsoft Copilot",
+  "chat.mistral.ai": "Mistral",
+  "duckduckgo.com": "DuckDuckGo AI Chat",
+  "perplexity.ai": "Perplexity",
+  "chat.deepseek.com": "DeepSeek",
+  "deepai.org": "DeepAI",
+  "chat.qwen.ai": "Qwen AI",
+};
+
+// Function to get current mode based on domain
+function getCurrentMode() {
+  const currentDomain = window.location.hostname;
+  for (const [domain, model] of Object.entries(domainToModelMap)) {
+    if (currentDomain.includes(domain)) {
+      return model;
+    }
+  }
+  return null; // Fallback if no matching domain is found
+}
+
 // Function to update dropdown data from Chrome storage
 function updateDropdownData(callback) {
   chrome.storage.local.get(["prompts", "folders", "workflows"], (data) => {
@@ -25,34 +53,6 @@ function updateDropdownData(callback) {
         chrome.runtime.lastError
       );
       return;
-    }
-
-    // Mapping of domains to model names
-    const domainToModelMap = {
-      "chatgpt.com": "ChatGPT",
-      "grok.com": "Grok",
-      "gemini.google.com": "Gemini",
-      "claude.ai": "Claude",
-      "blackbox.ai": "BlackBox",
-      "github.com": "GitHub Copilot",
-      "copilot.microsoft.com": "Microsoft Copilot",
-      "chat.mistral.ai": "Mistral",
-      "duckduckgo.com": "DuckDuckGo AI Chat",
-      "perplexity.ai": "Perplexity",
-      "chat.deepseek.com": "DeepSeek",
-      "deepai.org": "DeepAI",
-      "chat.qwen.ai": "Qwen AI",
-    };
-
-    // Function to get current mode based on domain
-    function getCurrentMode() {
-      const currentDomain = window.location.hostname;
-      for (const [domain, model] of Object.entries(domainToModelMap)) {
-        if (currentDomain.includes(domain)) {
-          return model;
-        }
-      }
-      return null; // Fallback if no matching domain is found
     }
 
     const currentMode = getCurrentMode();
@@ -1405,43 +1405,44 @@ function inputFieldTrigger() {
         tooltip.style.transform = "translateX(-50%)";
         tooltip.style.opacity = "1";
       }
+
       /* Plus Button */
       const selectorMap = [
         {
           url: "https://chatgpt.com",
-          selector: ".flex.items-center.gap-2",
-        }, // ChatGPT
+          selector: "div[data-testid='composer-speech-button-container']", // ChatGPT
+        },
         {
           url: "https://www.perplexity.ai",
           selector: "div.bg-background:nth-child(3)",
-        }, // Perplexity
+        },
         {
           url: "https://github.com/copilot",
           selector: ".ChatInput-module__toolbarRight--PiQJn",
-        }, // GitHub Copilot
+        },
         {
           url: "https://grok.com",
           selector: ".ml-auto.flex.flex-row.items-end.gap-1",
-        }, // Grok
+        },
         {
           url: "https://gemini.google.com",
           selector: ".trailing-actions-wrapper",
-        }, // Gemini
+        },
         {
           url: "https://duckduckgo.com",
           selector: ".VxPe9cw5s4CtJMWgwO3A.PzT4Zd7XtUNtxwg6HUlG",
-        }, // Duckai
+        },
         { url: "https://chat.mistral.ai", selector: ".ms-auto.flex.gap-2" }, // Mistral
         {
           url: "https://claude.ai",
           selector: ".flex.gap-2\\.5.w-full.items-center",
-        }, // Claude
+        },
         { url: "https://www.chat.deepseek.com", selector: ".bf38813a" }, // DeepSeek
         { url: "https://copilot.microsoft.com", selector: ".flex.gap-2" }, // Microsoft Copilot
         {
           url: "https://www.blackbox.ai",
           selector: ".flex.items-center.justify-between.gap-4:nth-child(1)",
-        }, // Blackbox
+        },
         { url: "https://deepai.org", selector: ".button-container" }, // Deepai
         {
           url: "https://qwen.alibaba.com",
@@ -1473,95 +1474,109 @@ function inputFieldTrigger() {
       if (!container) {
         console.error("No suitable container found for the plus button.");
       } else {
-        // Wrapper with shadow root
-        const shadowHost = document.createElement("div");
-        shadowHost.style.display = "inline-block";
-        const shadowRoot = shadowHost.attachShadow({ mode: "closed" });
+        // Find the parent element of the target div
+        const parentElement = container.parentElement;
 
-        // Add styles + button inside shadow DOM
-        shadowRoot.innerHTML = `
-    <style>
-      .plus-button {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: white;
-        color: black;
-        border: none;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 24px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: box-shadow 0.3s ease, transform 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-      }
+        // Create a new button
+        const newButton = document.createElement("button");
+        newButton.textContent = "+"; // Text des Buttons anpassen
+        newButton.className = "custom-button"; // Optional: Klasse für Styling
 
-      .plus-button:hover {
-        background-color: black;
-        color: white;
-      }
+        // Tooltip erstellen
+        const tooltip = document.createElement("div");
+        tooltip.className = "tooltip";
+        tooltip.textContent = "Open the PromptIn Management Menu";
+        tooltip.style.opacity = "0"; // Initial unsichtbar
 
-      .tooltip {
-        position: fixed;
-        background-color: black;
-        color: white;
-        padding: 8px 12px;
-        border-radius: 4px;
-        font-size: 14px;
-        white-space: nowrap;
-        z-index: 10000;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease;
-      }
+        // Stil des Buttons und Tooltips
+        const style = document.createElement("style");
+        style.textContent = `
+    .custom-button {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 24px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: box-shadow 0.3s ease, transform 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
 
-      .tooltip::after {
-        content: '';
-        position: absolute;
-        bottom: -6px;
-        left: 50%;
-        transform: translateX(-50%);
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        border-top: 6px solid black;
-      }
-    </style>
-    <button class="plus-button">+</button>
-    <div class="tooltip">Open the PromptIn Management Menu</div>
+    .custom-button:hover {
+      background-color: black;
+      color: white;
+    }
+
+    .tooltip {
+      position: absolute;
+      background-color: black;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      white-space: nowrap;
+      z-index: 10000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid black;
+    }
   `;
+        document.head.appendChild(style);
 
-        const button = shadowRoot.querySelector(".plus-button");
-        const tooltip = shadowRoot.querySelector(".tooltip");
+        // Button und Tooltip an das Parent-Element anhängen
+        parentElement.appendChild(newButton);
+        parentElement.appendChild(tooltip);
 
-        button.addEventListener("mouseout", () => {
+        // Tooltip-Position anpassen
+        const positionTooltip = () => {
+          const rect = newButton.getBoundingClientRect();
+          tooltip.style.top = `${rect.top - tooltip.offsetHeight - 8}px`;
+          tooltip.style.left = `${
+            rect.left + rect.width / 2 - tooltip.offsetWidth / 2
+          }px`;
+        };
+
+        // Tooltip anzeigen
+        newButton.addEventListener("mouseover", () => {
+          tooltip.style.opacity = "1";
+          positionTooltip();
+        });
+
+        // Tooltip ausblenden
+        newButton.addEventListener("mouseout", () => {
           tooltip.style.opacity = "0";
-          setTimeout(() => {
-            if (tooltip.parentNode === document.body) {
-              document.body.removeChild(tooltip);
-            }
-          }, 200);
         });
 
-        window.addEventListener("scroll", () => {
-          if (tooltip.style.opacity === "1") positionTooltip();
-        });
-        window.addEventListener("resize", () => {
-          if (tooltip.style.opacity === "1") positionTooltip();
-        });
-
-        // Click behavior
-        button.addEventListener("click", (e) => {
+        // Klickverhalten des Buttons
+        newButton.addEventListener("click", (e) => {
           e.preventDefault();
+          // Hier kannst du das Verhalten für das Öffnen und Schließen des PromptIn Management Menüs einbauen
           if (
             typeof dropdown === "undefined" ||
             typeof inputField === "undefined"
           ) {
-            console.error("Dropdown or inputField not defined.");
+            console.error("Dropdown oder InputField nicht definiert.");
             return;
           }
+
           if (dropdown.style.display === "flex") {
             hideDropdown();
             delete dropdown.dataset.openedByButton;
@@ -1580,8 +1595,6 @@ function inputFieldTrigger() {
             tooltip.textContent = "Close the PromptIn Management Menu";
           }
         });
-
-        container.appendChild(shadowHost);
       }
 
       // Periodic check for shortcut and plus button
@@ -1822,7 +1835,7 @@ function updatePromptLastUsed(promptId) {
     prompt.usageHistory.push({
       timestamp: Date.now(),
       // context: "manual-run", // optional
-      // modelUsed: "gpt-4o-mini", // optional
+      modelUsed: getCurrentMode() || "Unknown", // Use the current model
     });
 
     // Save updated prompt back to storage
@@ -1908,6 +1921,8 @@ function setInputText(element, text) {
 
 // Function to show modal for dynamic variables in a workflow
 // Function to execute workflow on sight
+// Function to show modal for dynamic variables in a workflow
+// Function to show modal for dynamic variables in a workflow
 function showDynamicVariablesModal(workflowId) {
   const inputField = document.getElementById("prompt-textarea");
   if (inputField) {
@@ -1915,110 +1930,119 @@ function showDynamicVariablesModal(workflowId) {
   }
 
   console.log("Fetching workflow with ID:", workflowId);
-  chrome.storage.local.get(["workflows", "prompts"], async function (data) {
-    if (chrome.runtime.lastError) {
-      console.error("Error fetching data:", chrome.runtime.lastError);
-      alert("Failed to load workflow. Please try again.");
-      return;
-    }
+  chrome.storage.local.get(
+    ["workflows", "prompts", "variableCache"],
+    async function (data) {
+      if (chrome.runtime.lastError) {
+        console.error("Error fetching data:", chrome.runtime.lastError);
+        alert("Failed to load workflow. Please try again.");
+        return;
+      }
 
-    const workflow = data.workflows?.[workflowId];
-    if (!workflow || !workflow.name || !Array.isArray(workflow.steps)) {
-      console.error("Invalid workflow data for ID:", workflowId, workflow);
-      alert("Invalid workflow data. Please check the workflow configuration.");
-      return;
-    }
+      const workflow = data.workflows?.[workflowId];
+      if (!workflow || !workflow.name || !Array.isArray(workflow.steps)) {
+        console.error("Invalid workflow data for ID:", workflowId, workflow);
+        alert(
+          "Invalid workflow data. Please check the workflow configuration."
+        );
+        return;
+      }
 
-    // Enhance steps with effective prompt content
-    for (const step of workflow.steps) {
-      if (step.useCustomPrompt && step.customPrompt) {
-        console.log(
-          `Step ${step.title || "unknown"}: Using customPrompt`,
-          step.customPrompt
-        );
-        step.effectivePrompt = step.customPrompt;
-      } else if (step.promptId) {
-        console.log(
-          `Step ${step.title || "unknown"}: Fetching prompt for promptId`,
-          step.promptId
-        );
-        const prompt = data.prompts?.[step.promptId];
-        if (prompt && prompt.content) {
-          step.effectivePrompt = prompt.content;
+      // Initialize variable cache if it doesn't exist
+      const variableCache = data.variableCache || {};
+
+      // Enhance steps with effective prompt content
+      for (const step of workflow.steps) {
+        if (step.useCustomPrompt && step.customPrompt) {
           console.log(
-            `Step ${step.title || "unknown"}: Fetched content for promptId ${
-              step.promptId
-            }`,
-            prompt.content
+            `Step ${step.title || "unknown"}: Using customPrompt`,
+            step.customPrompt
           );
+          step.effectivePrompt = step.customPrompt;
+        } else if (step.promptId) {
+          console.log(
+            `Step ${step.title || "unknown"}: Fetching prompt for promptId`,
+            step.promptId
+          );
+          const prompt = data.prompts?.[step.promptId];
+          if (prompt && prompt.content) {
+            step.effectivePrompt = prompt.content;
+            console.log(
+              `Step ${step.title || "unknown"}: Fetched content for promptId ${
+                step.promptId
+              }`,
+              prompt.content
+            );
+          } else {
+            console.error(
+              `No prompt found for promptId ${step.promptId} in step ${
+                step.title || "unknown"
+              }`
+            );
+            step.effectivePrompt = "No prompt defined";
+          }
         } else {
-          console.error(
-            `No prompt found for promptId ${step.promptId} in step ${
+          console.warn(
+            `Step ${
               step.title || "unknown"
-            }`
+            }: No customPrompt or promptId defined`
           );
           step.effectivePrompt = "No prompt defined";
         }
-      } else {
-        console.warn(
-          `Step ${step.title || "unknown"}: No customPrompt or promptId defined`
-        );
-        step.effectivePrompt = "No prompt defined";
       }
-    }
 
-    // Create modal
-    const modal = document.createElement("div");
-    modal.className = "modal";
-    Object.assign(modal.style, {
-      display: "flex",
-      position: "fixed",
-      zIndex: "10001",
-      left: "0",
-      top: "0",
-      width: "100%",
-      height: "100%",
-      backgroundColor: "rgba(0,0,0,0.5)",
-      alignItems: "center",
-      justifyContent: "center",
-      animation: "fadeIn 0.3s ease-in",
-    });
+      // Create modal
+      const modal = document.createElement("div");
+      modal.className = "modal";
+      Object.assign(modal.style, {
+        display: "flex",
+        position: "fixed",
+        zIndex: "10001",
+        left: "0",
+        top: "0",
+        width: "100%",
+        height: "100%",
+        backgroundColor: "rgba(0,0,0,0.5)",
+        alignItems: "center",
+        justifyContent: "center",
+        animation: "fadeIn 0.3s ease-in",
+      });
 
-    const modalContent = document.createElement("div");
-    modalContent.className = "modal-content";
-    Object.assign(modalContent.style, {
-      backgroundColor: "white",
-      padding: "20px",
-      color: "#333",
-      borderRadius: "12px",
-      boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-      width: "90%",
-      maxWidth: "80vw",
-      maxHeight: "80vh",
-      overflowY: "auto",
-      position: "relative",
-      display: "flex",
-      flexDirection: "column",
-    });
+      const modalContent = document.createElement("div");
+      modalContent.className = "modal-content";
+      Object.assign(modalContent.style, {
+        backgroundColor: "white",
+        padding: "20px",
+        color: "#333",
+        borderRadius: "12px",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+        width: "90%",
+        maxWidth: "80vw",
+        maxHeight: "80vh",
+        overflowY: "auto",
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+      });
 
-    const modalHeader = document.createElement("div");
-    modalHeader.className = "modal-header";
-    modalHeader.style.cssText =
-      "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;";
-    modalHeader.innerHTML = `
+      const modalHeader = document.createElement("div");
+      modalHeader.className = "modal-header";
+      modalHeader.style.cssText =
+        "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;";
+      modalHeader.innerHTML = `
       <h2 style="margin: 0; font-size: 24px; color: #1a1a1a;">Configure Workflow: ${escapeHTML(
         workflow.name
       )}</h2>
       <span class="close" style="cursor: pointer; font-size: 24px; color: #666; transition: color 0.2s ease;">×</span>
     `;
 
-    const modalBody = document.createElement("div");
-    modalBody.className = "modal-body";
-    modalBody.style.cssText = "flex: 1; overflow: hidden;";
+      const modalBody = document.createElement("div");
+      modalBody.className = "modal-body";
+      modalBody.style.cssText = "flex: 1; overflow: hidden;";
 
-    const stepsContainer = document.createElement("div");
-    stepsContainer.id = "workflow-steps";
-    stepsContainer.style.cssText = `
+      const stepsContainer = document.createElement("div");
+      stepsContainer.id = "workflow-steps";
+      stepsContainer.style.cssText = `
       display: flex;
       overflow-x: auto;
       scroll-behavior: smooth;
@@ -2028,14 +2052,14 @@ function showDynamicVariablesModal(workflowId) {
       margin-bottom: 15px;
     `;
 
-    const buttonsDiv = document.createElement("div");
-    buttonsDiv.style.cssText =
-      "display: flex; gap: 10px; justify-content: flex-end;";
+      const buttonsDiv = document.createElement("div");
+      buttonsDiv.style.cssText =
+        "display: flex; gap: 10px; justify-content: flex-end;";
 
-    const scrollLeftBtn = document.createElement("button");
-    scrollLeftBtn.className = "scroll-btn scroll-btn-left";
-    scrollLeftBtn.textContent = "←";
-    scrollLeftBtn.style.cssText = `
+      const scrollLeftBtn = document.createElement("button");
+      scrollLeftBtn.className = "scroll-btn scroll-btn-left";
+      scrollLeftBtn.textContent = "←";
+      scrollLeftBtn.style.cssText = `
       background-color: #4a90e2;
       color: white;
       border: none;
@@ -2052,19 +2076,19 @@ function showDynamicVariablesModal(workflowId) {
       z-index: 10002;
       transition: background 0.2s ease;
     `;
-    scrollLeftBtn.onmouseover = () =>
-      (scrollLeftBtn.style.backgroundColor = "#357abd");
-    scrollLeftBtn.onmouseout = () =>
-      (scrollLeftBtn.style.backgroundColor = "#4a90e2");
-    scrollLeftBtn.onclick = () => {
-      stepsContainer.scrollBy({ left: -220, behavior: "smooth" });
-      updateScrollButtons();
-    };
+      scrollLeftBtn.onmouseover = () =>
+        (scrollLeftBtn.style.backgroundColor = "#357abd");
+      scrollLeftBtn.onmouseout = () =>
+        (scrollLeftBtn.style.backgroundColor = "#4a90e2");
+      scrollLeftBtn.onclick = () => {
+        stepsContainer.scrollBy({ left: -220, behavior: "smooth" });
+        updateScrollButtons();
+      };
 
-    const scrollRightBtn = document.createElement("button");
-    scrollRightBtn.className = "scroll-btn scroll-btn-right";
-    scrollRightBtn.textContent = "→";
-    scrollRightBtn.style.cssText = `
+      const scrollRightBtn = document.createElement("button");
+      scrollRightBtn.className = "scroll-btn scroll-btn-right";
+      scrollRightBtn.textContent = "→";
+      scrollRightBtn.style.cssText = `
       background-color: #4a90e2;
       color: white;
       border: none;
@@ -2081,20 +2105,20 @@ function showDynamicVariablesModal(workflowId) {
       z-index: 10002;
       transition: background 0.2s ease;
     `;
-    scrollRightBtn.onmouseover = () =>
-      (scrollRightBtn.style.backgroundColor = "#357abd");
-    scrollRightBtn.onmouseout = () =>
-      (scrollRightBtn.style.backgroundColor = "#4a90e2");
-    scrollRightBtn.onclick = () => {
-      stepsContainer.scrollBy({ left: 220, behavior: "smooth" });
-      updateScrollButtons();
-    };
+      scrollRightBtn.onmouseover = () =>
+        (scrollRightBtn.style.backgroundColor = "#357abd");
+      scrollRightBtn.onmouseout = () =>
+        (scrollRightBtn.style.backgroundColor = "#4a90e2");
+      scrollRightBtn.onclick = () => {
+        stepsContainer.scrollBy({ left: 220, behavior: "smooth" });
+        updateScrollButtons();
+      };
 
-    const importCycleBtn = document.createElement("button");
-    importCycleBtn.type = "button";
-    importCycleBtn.className = "action-btn import-btn";
-    importCycleBtn.textContent = "Import Cycle";
-    importCycleBtn.style.cssText = `
+      const importCycleBtn = document.createElement("button");
+      importCycleBtn.type = "button";
+      importCycleBtn.className = "action-btn import-btn";
+      importCycleBtn.textContent = "Import Cycle";
+      importCycleBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 14px;
       cursor: pointer;
@@ -2104,20 +2128,20 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 6px;
       transition: background 0.2s ease, transform 0.2s ease;
     `;
-    importCycleBtn.onmouseover = () =>
-      (importCycleBtn.style.backgroundColor = "#5a6268");
-    importCycleBtn.onmouseout = () =>
-      (importCycleBtn.style.backgroundColor = "#6c757d");
-    importCycleBtn.onclick = () => {
-      console.log("Import Cycle clicked");
-      // Implement import functionality if needed
-    };
+      importCycleBtn.onmouseover = () =>
+        (importCycleBtn.style.backgroundColor = "#5a6268");
+      importCycleBtn.onmouseout = () =>
+        (importCycleBtn.style.backgroundColor = "#6c757d");
+      importCycleBtn.onclick = () => {
+        console.log("Import Cycle clicked");
+        // Implement import functionality if needed
+      };
 
-    const exportCycleBtn = document.createElement("button");
-    exportCycleBtn.type = "button";
-    exportCycleBtn.className = "action-btn export-btn";
-    exportCycleBtn.textContent = "Export Cycle";
-    exportCycleBtn.style.cssText = `
+      const exportCycleBtn = document.createElement("button");
+      exportCycleBtn.type = "button";
+      exportCycleBtn.className = "action-btn export-btn";
+      exportCycleBtn.textContent = "Export Cycle";
+      exportCycleBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 14px;
       cursor: pointer;
@@ -2127,34 +2151,34 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 6px;
       transition: background 0.2s ease, transform 0.2s ease;
     `;
-    exportCycleBtn.onmouseover = () =>
-      (exportCycleBtn.style.backgroundColor = "#138496");
-    exportCycleBtn.onmouseout = () =>
-      (exportCycleBtn.style.backgroundColor = "#17a2b8");
-    exportCycleBtn.onclick = () => {
-      console.log("Export Cycle clicked");
-      const exportData = { workflowId, repetitions };
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `workflow_${workflow.name.replace(
-        /[^a-z0-9]/gi,
-        "_"
-      )}_${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    };
+      exportCycleBtn.onmouseover = () =>
+        (exportCycleBtn.style.backgroundColor = "#138496");
+      exportCycleBtn.onmouseout = () =>
+        (exportCycleBtn.style.backgroundColor = "#17a2b8");
+      exportCycleBtn.onclick = () => {
+        console.log("Export Cycle clicked");
+        const exportData = { workflowId, repetitions };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `workflow_${workflow.name.replace(
+          /[^a-z0-9]/gi,
+          "_"
+        )}_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      };
 
-    const addRepetitionBtn = document.createElement("button");
-    addRepetitionBtn.type = "button";
-    addRepetitionBtn.className = "action-btn";
-    addRepetitionBtn.textContent = "Add Repetition +";
-    addRepetitionBtn.style.cssText = `
+      const addRepetitionBtn = document.createElement("button");
+      addRepetitionBtn.type = "button";
+      addRepetitionBtn.className = "action-btn";
+      addRepetitionBtn.textContent = "Add Repetition +";
+      addRepetitionBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 14px;
       cursor: pointer;
@@ -2164,16 +2188,16 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 6px;
       transition: background 0.2s ease, transform 0.2s ease;
     `;
-    addRepetitionBtn.onmouseover = () =>
-      (addRepetitionBtn.style.backgroundColor = "#218838");
-    addRepetitionBtn.onmouseout = () =>
-      (addRepetitionBtn.style.backgroundColor = "#28a745");
+      addRepetitionBtn.onmouseover = () =>
+        (addRepetitionBtn.style.backgroundColor = "#218838");
+      addRepetitionBtn.onmouseout = () =>
+        (addRepetitionBtn.style.backgroundColor = "#28a745");
 
-    const sendBtn = document.createElement("button");
-    sendBtn.type = "button";
-    sendBtn.className = "action-btn";
-    sendBtn.textContent = "Execute Workflow";
-    sendBtn.style.cssText = `
+      const sendBtn = document.createElement("button");
+      sendBtn.type = "button";
+      sendBtn.className = "action-btn";
+      sendBtn.textContent = "Execute Workflow";
+      sendBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 14px;
       cursor: pointer;
@@ -2183,57 +2207,82 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 6px;
       transition: background 0.2s ease, transform 0.2s ease;
     `;
-    sendBtn.onmouseover = () => (sendBtn.style.backgroundColor = "#357abd");
-    sendBtn.onmouseout = () => (sendBtn.style.backgroundColor = "#4a90e2");
+      sendBtn.onmouseover = () => (sendBtn.style.backgroundColor = "#357abd");
+      sendBtn.onmouseout = () => (sendBtn.style.backgroundColor = "#4a90e2");
 
-    buttonsDiv.appendChild(importCycleBtn);
-    buttonsDiv.appendChild(exportCycleBtn);
-    buttonsDiv.appendChild(addRepetitionBtn);
-    buttonsDiv.appendChild(sendBtn);
+      buttonsDiv.appendChild(importCycleBtn);
+      buttonsDiv.appendChild(exportCycleBtn);
+      buttonsDiv.appendChild(addRepetitionBtn);
+      buttonsDiv.appendChild(sendBtn);
 
-    modalBody.appendChild(stepsContainer);
-    modalContent.appendChild(modalHeader);
-    modalContent.appendChild(modalBody);
-    modalContent.appendChild(buttonsDiv);
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-    document.body.appendChild(scrollLeftBtn);
-    document.body.appendChild(scrollRightBtn);
+      modalBody.appendChild(stepsContainer);
+      modalContent.appendChild(modalHeader);
+      modalContent.appendChild(modalBody);
+      modalContent.appendChild(buttonsDiv);
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+      document.body.appendChild(scrollLeftBtn);
+      document.body.appendChild(scrollRightBtn);
 
-    const repetitions = [];
+      const repetitions = [];
 
-    function hasDynamicVariables(prompt) {
-      return typeof prompt === "string" && /\{\{[^}]+}\}/.test(prompt);
-    }
+      function hasDynamicVariables(prompt) {
+        return typeof prompt === "string" && /\{\{[^}]+}\}/.test(prompt);
+      }
 
-    function extractVariables(prompt) {
-      if (typeof prompt !== "string") return [];
-      const matches = prompt.match(/\{\{([^}]+)\}\}/g);
-      return matches ? matches.map((m) => m.slice(2, -2)) : [];
-    }
+      function extractVariables(prompt) {
+        if (typeof prompt !== "string") return [];
+        const matches = prompt.match(/\{\{([^}]+)\}\}/g);
+        return matches ? matches.map((m) => m.slice(2, -2)) : [];
+      }
 
-    function initRepetition() {
-      return workflow.steps.map((step) => {
-        const stepData = {};
-        if (hasDynamicVariables(step.effectivePrompt)) {
-          const vars = extractVariables(step.effectivePrompt);
-          vars.forEach((v) => (stepData[v] = ""));
+      function initRepetition() {
+        return workflow.steps.map((step) => {
+          const stepData = {};
+          if (hasDynamicVariables(step.effectivePrompt)) {
+            const vars = extractVariables(step.effectivePrompt);
+            vars.forEach((v) => (stepData[v] = ""));
+          }
+          return stepData;
+        });
+      }
+
+      if (repetitions.length === 0) repetitions.push(initRepetition());
+
+      function updateScrollButtons() {
+        const isOverflowing =
+          stepsContainer.scrollWidth > stepsContainer.clientWidth;
+        scrollLeftBtn.style.display = isOverflowing ? "block" : "none";
+        scrollRightBtn.style.display = isOverflowing ? "block" : "none";
+      }
+
+      function renderVariableSuggestions(input, variable) {
+        const cache = variableCache[variable] || [];
+        let suggestionDiv = input.parentElement.querySelector(".suggestions");
+        if (!suggestionDiv) {
+          suggestionDiv = document.createElement("div");
+          suggestionDiv.className = "suggestions";
+          suggestionDiv.style.cssText =
+            "margin-top:4px; font-size:12px; color:#666; display:flex; gap:4px; flex-wrap:wrap;";
+          input.parentElement.appendChild(suggestionDiv);
         }
-        return stepData;
-      });
-    }
+        suggestionDiv.innerHTML = "";
+        cache.forEach((val) => {
+          const pill = document.createElement("span");
+          pill.textContent = val;
+          pill.style.cssText =
+            "background:#eee; padding:2px 6px; border-radius:4px; cursor:pointer;";
+          pill.onclick = () => {
+            input.value = val;
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new Event("blur", { bubbles: true })); // Trigger blur to save
+          };
+          suggestionDiv.appendChild(pill);
+        });
+      }
 
-    if (repetitions.length === 0) repetitions.push(initRepetition());
-
-    function updateScrollButtons() {
-      const isOverflowing =
-        stepsContainer.scrollWidth > stepsContainer.clientWidth;
-      scrollLeftBtn.style.display = isOverflowing ? "block" : "none";
-      scrollRightBtn.style.display = isOverflowing ? "block" : "none";
-    }
-
-    function renderSteps() {
-      stepsContainer.innerHTML = `
+      function renderSteps() {
+        stepsContainer.innerHTML = `
         <style>
           #workflow-steps::-webkit-scrollbar {
             height: 10px;
@@ -2330,289 +2379,317 @@ function showDynamicVariablesModal(workflowId) {
         </style>
       `;
 
-      repetitions.forEach((repData, repIndex) => {
-        const repDiv = document.createElement("div");
-        repDiv.className = "repetition";
+        repetitions.forEach((repData, repIndex) => {
+          const repDiv = document.createElement("div");
+          repDiv.className = "repetition";
 
-        const closeBtn = document.createElement("button");
-        closeBtn.className = "repetition-close-btn";
-        closeBtn.innerText = "×";
-        closeBtn.dataset.repIndex = repIndex;
-        closeBtn.onclick = () => {
-          console.log("Deleting repetition, index:", repIndex);
-          repetitions.splice(repIndex, 1);
-          renderSteps();
-          if (repetitions.length === 0) {
-            console.log("No repetitions left, closing modal.");
-            modal.remove();
-            scrollLeftBtn.remove();
-            scrollRightBtn.remove();
-          }
-        };
-        repDiv.appendChild(closeBtn);
+          const closeBtn = document.createElement("button");
+          closeBtn.className = "repetition-close-btn";
+          closeBtn.innerText = "×";
+          closeBtn.dataset.repIndex = repIndex;
+          closeBtn.onclick = () => {
+            console.log("Deleting repetition, index:", repIndex);
+            repetitions.splice(repIndex, 1);
+            renderSteps();
+            if (repetitions.length === 0) {
+              console.log("No repetitions left, closing modal.");
+              modal.remove();
+              scrollLeftBtn.remove();
+              scrollRightBtn.remove();
+            }
+          };
+          repDiv.appendChild(closeBtn);
 
-        const executionHeader = document.createElement("h3");
-        executionHeader.textContent = `Execution ${repIndex + 1}`;
-        repDiv.appendChild(executionHeader);
+          const executionHeader = document.createElement("h3");
+          executionHeader.textContent = `Execution ${repIndex + 1}`;
+          repDiv.appendChild(executionHeader);
 
-        workflow.steps.forEach((step, stepIndex) => {
-          const stepDiv = document.createElement("div");
-          stepDiv.className = "step-group";
-          stepDiv.innerHTML = `
+          workflow.steps.forEach((step, stepIndex) => {
+            const stepDiv = document.createElement("div");
+            stepDiv.className = "step-group";
+            stepDiv.innerHTML = `
             <h4>${escapeHTML(step.title || "Step " + (stepIndex + 1))}</h4>
             <p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHTML(
               step.effectivePrompt
             )}</p>
           `;
 
-          if (hasDynamicVariables(step.effectivePrompt)) {
-            const variables = extractVariables(step.effectivePrompt);
-            variables.forEach((variable) => {
-              const input = document.createElement("input");
-              input.type = "text";
-              input.placeholder = `Enter ${variable}`;
-              input.dataset.variable = variable;
-              input.dataset.stepIndex = stepIndex;
-              input.dataset.repIndex = repIndex;
-              input.value =
-                (repData[stepIndex] && repData[stepIndex][variable]) || "";
-              input.addEventListener("input", (e) => {
-                if (!repData[stepIndex]) repData[stepIndex] = {};
-                repData[stepIndex][variable] = e.target.value;
-                updatePreview(stepIndex, repIndex);
+            if (hasDynamicVariables(step.effectivePrompt)) {
+              const variables = extractVariables(step.effectivePrompt);
+              variables.forEach((variable) => {
+                const input = document.createElement("input");
+                input.type = "text";
+                input.placeholder = `Enter ${variable}`;
+                input.dataset.variable = variable;
+                input.dataset.stepIndex = stepIndex;
+                input.dataset.repIndex = repIndex;
+                input.value =
+                  (repData[stepIndex] && repData[stepIndex][variable]) || "";
+                input.addEventListener("input", (e) => {
+                  renderVariableSuggestions(input, variable);
+                  updatePreview(stepIndex, repIndex);
+                });
+                input.addEventListener("blur", (e) => {
+                  const value = e.target.value;
+                  if (!repData[stepIndex]) repData[stepIndex] = {};
+                  repData[stepIndex][variable] = value;
+
+                  // Update variable cache
+                  if (value) {
+                    variableCache[variable] = variableCache[variable] || [];
+                    if (!variableCache[variable].includes(value)) {
+                      variableCache[variable].unshift(value);
+                      if (variableCache[variable].length > 5)
+                        variableCache[variable].pop();
+                      chrome.storage.local.set({ variableCache });
+                    }
+                  }
+                });
+                input.addEventListener("keydown", (e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    input.blur(); // Trigger save on Enter
+                  }
+                });
+                stepDiv.appendChild(input);
+                renderVariableSuggestions(input, variable);
               });
-              stepDiv.appendChild(input);
-            });
 
-            const preview = document.createElement("div");
-            preview.className = "preview";
-            preview.dataset.stepIndex = stepIndex;
-            preview.dataset.repIndex = repIndex;
-            stepDiv.appendChild(preview);
-          } else {
-            const preview = document.createElement("div");
-            preview.className = "preview constant";
-            preview.textContent = step.effectivePrompt;
-            stepDiv.appendChild(preview);
-          }
+              const preview = document.createElement("div");
+              preview.className = "preview";
+              preview.dataset.stepIndex = stepIndex;
+              preview.dataset.repIndex = repIndex;
+              stepDiv.appendChild(preview);
+            } else {
+              const preview = document.createElement("div");
+              preview.className = "preview constant";
+              preview.textContent = step.effectivePrompt;
+              stepDiv.appendChild(preview);
+            }
 
-          repDiv.appendChild(stepDiv);
+            repDiv.appendChild(stepDiv);
+          });
+
+          stepsContainer.appendChild(repDiv);
         });
 
-        stepsContainer.appendChild(repDiv);
-      });
-
-      if (stepsContainer.children.length === 0) {
-        stepsContainer.innerHTML += "<p>No steps found in this workflow.</p>";
-      } else {
-        updateAllPreviews();
-        stepsContainer.scrollLeft = stepsContainer.scrollWidth;
-      }
-      updateScrollButtons();
-    }
-
-    function updatePreview(stepIndex, repIndex) {
-      const step = workflow.steps[stepIndex];
-      if (
-        !step ||
-        !step.effectivePrompt ||
-        !hasDynamicVariables(step.effectivePrompt)
-      )
-        return;
-      let previewText = step.effectivePrompt;
-      const vars = extractVariables(step.effectivePrompt);
-      vars.forEach((variable) => {
-        const val =
-          (repetitions[repIndex][stepIndex] &&
-            repetitions[repIndex][stepIndex][variable]) ||
-          `{${variable}}`;
-        previewText = previewText.replace(`{{${variable}}}`, escapeHTML(val));
-      });
-
-      const previewElement = stepsContainer.querySelector(
-        `.preview[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
-      );
-      if (previewElement) {
-        previewElement.textContent = previewText;
-      }
-    }
-
-    function updateAllPreviews() {
-      workflow.steps.forEach((step, stepIndex) => {
-        if (step.effectivePrompt && hasDynamicVariables(step.effectivePrompt)) {
-          repetitions.forEach((_, repIndex) => {
-            updatePreview(stepIndex, repIndex);
-          });
+        if (stepsContainer.children.length === 0) {
+          stepsContainer.innerHTML += "<p>No steps found in this workflow.</p>";
+        } else {
+          updateAllPreviews();
+          stepsContainer.scrollLeft = stepsContainer.scrollWidth;
         }
-      });
-    }
-
-    addRepetitionBtn.addEventListener("click", () => {
-      repetitions.push(initRepetition());
-      renderSteps();
-    });
-
-    sendBtn.addEventListener("click", async () => {
-      const executions = repetitions.map((repData) =>
-        workflow.steps.map((step, stepIndex) => {
-          if (!step.effectivePrompt) return "";
-          if (!hasDynamicVariables(step.effectivePrompt))
-            return step.effectivePrompt;
-          let promptText = step.effectivePrompt;
-          const vars = extractVariables(step.effectivePrompt);
-          vars.forEach((variable) => {
-            const val =
-              (repData[stepIndex] && repData[stepIndex][variable]) ||
-              `{${variable}}`;
-            promptText = promptText.replace(`{{${variable}}}`, val);
-          });
-          return promptText;
-        })
-      );
-
-      const allPrompts = executions.flat().filter((item) => item);
-      modal.remove();
-      scrollLeftBtn.remove();
-      scrollRightBtn.remove();
-
-      for (const prompt of allPrompts) {
-        await sendPrompt(prompt);
+        updateScrollButtons();
       }
 
-      // Update lastUsed timestamp
-      chrome.storage.local.get(["workflows"], (data) => {
-        const updatedWorkflow = {
-          ...data.workflows[workflowId],
-          lastUsed: Date.now(),
-        };
-        chrome.storage.local.set(
-          { workflows: { ...data.workflows, [workflowId]: updatedWorkflow } },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.error(
-                "Error updating workflow:",
-                chrome.runtime.lastError
-              );
-            }
-            console.log("Workflow execution completed.");
-            renderWorkflows(); // Assumes renderWorkflows is globally available
+      function updatePreview(stepIndex, repIndex) {
+        const step = workflow.steps[stepIndex];
+        if (
+          !step ||
+          !step.effectivePrompt ||
+          !hasDynamicVariables(step.effectivePrompt)
+        )
+          return;
+        let previewText = step.effectivePrompt;
+        const vars = extractVariables(step.effectivePrompt);
+        vars.forEach((variable) => {
+          const val =
+            (repetitions[repIndex][stepIndex] &&
+              repetitions[repIndex][stepIndex][variable]) ||
+            `{${variable}}`;
+          previewText = previewText.replace(`{{${variable}}}`, escapeHTML(val));
+        });
+
+        const previewElement = stepsContainer.querySelector(
+          `.preview[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
+        );
+        if (previewElement) {
+          previewElement.textContent = previewText;
+        }
+      }
+
+      function updateAllPreviews() {
+        workflow.steps.forEach((step, stepIndex) => {
+          if (
+            step.effectivePrompt &&
+            hasDynamicVariables(step.effectivePrompt)
+          ) {
+            repetitions.forEach((_, repIndex) => {
+              updatePreview(stepIndex, repIndex);
+            });
           }
-        );
+        });
+      }
+
+      addRepetitionBtn.addEventListener("click", () => {
+        repetitions.push(initRepetition());
+        renderSteps();
       });
-    });
 
-    async function sendPrompt(prompt) {
-      const geminiSendButton = document.querySelector(
-        "[data-mat-icon-name='send']"
-      );
-      const chatgptSendButton = document.querySelector(
-        "[data-testid='send-button']"
-      );
-      const grokSendButton = document.querySelector("[type='submit']");
-
-      const geminiInput = document.querySelector(
-        "[role='textbox']:not([readonly]):not([disabled])"
-      );
-      const chatgptInput = document.getElementById("prompt-textarea");
-      const grokInput = document.querySelector(
-        "textarea:not([readonly]):not([disabled])"
-      );
-
-      const activeInput = geminiInput || chatgptInput || grokInput;
-
-      if (!activeInput) {
-        console.error("Kein Eingabefeld gefunden.");
-        alert("Kein Eingabefeld gefunden.");
-        return;
-      }
-
-      await setInputText(activeInput, prompt);
-
-      if (geminiSendButton?.parentNode) {
-        geminiSendButton.parentNode.click();
-      } else if (chatgptSendButton) {
-        chatgptSendButton.click();
-      } else if (grokSendButton) {
-        grokSendButton.click();
-      } else {
-        activeInput.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+      sendBtn.addEventListener("click", async () => {
+        const executions = repetitions.map((repData) =>
+          workflow.steps.map((step, stepIndex) => {
+            if (!step.effectivePrompt) return "";
+            if (!hasDynamicVariables(step.effectivePrompt))
+              return step.effectivePrompt;
+            let promptText = step.effectivePrompt;
+            const vars = extractVariables(step.effectivePrompt);
+            vars.forEach((variable) => {
+              const val =
+                (repData[stepIndex] && repData[stepIndex][variable]) ||
+                `{${variable}}`;
+              promptText = promptText.replace(`{{${variable}}}`, val);
+            });
+            return promptText;
+          })
         );
-      }
 
-      await waitForProcessing();
-    }
+        const allPrompts = executions.flat().filter((item) => item);
+        modal.remove();
+        scrollLeftBtn.remove();
+        scrollRightBtn.remove();
 
-    async function setInputText(element, text) {
-      if (
-        element.tagName === "TEXTAREA" ||
-        element instanceof HTMLTextAreaElement
-      ) {
-        element.value = text;
-      } else {
-        element.innerText = text;
-      }
+        for (const prompt of allPrompts) {
+          await sendPrompt(prompt);
+        }
 
-      element.dispatchEvent(new Event("input", { bubbles: true }));
-
-      return new Promise((resolve) => {
-        requestAnimationFrame(() => setTimeout(resolve, 50));
+        // Update lastUsed timestamp
+        chrome.storage.local.get(["workflows"], (data) => {
+          const updatedWorkflow = {
+            ...data.workflows[workflowId],
+            lastUsed: Date.now(),
+          };
+          chrome.storage.local.set(
+            { workflows: { ...data.workflows, [workflowId]: updatedWorkflow } },
+            () => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "Error updating workflow:",
+                  chrome.runtime.lastError
+                );
+              }
+              console.log("Workflow execution completed.");
+              renderWorkflows(); // Assumes renderWorkflows is globally available
+            }
+          );
+        });
       });
-    }
 
-    async function waitForProcessing() {
-      const stopSelectorGemini = "[data-mat-icon-name='stop']";
-      const stopSelectorChatGPT = "[data-testid='stop-button']";
-      const stopSelectorGrok = "[data-label='Modell-Antwort stoppen']";
-      const grokSendButtonSelector = "[type='submit']";
+      async function sendPrompt(prompt) {
+        const geminiSendButton = document.querySelector(
+          "[data-mat-icon-name='send']"
+        );
+        const chatgptSendButton = document.querySelector(
+          "[data-testid='send-button']"
+        );
+        const grokSendButton = document.querySelector("[type='submit']");
 
-      let activeStopSelector = null;
+        const geminiInput = document.querySelector(
+          "[role='textbox']:not([readonly]):not([disabled])"
+        );
+        const chatgptInput = document.getElementById("prompt-textarea");
+        const grokInput = document.querySelector(
+          "textarea:not([readonly]):not([disabled])"
+        );
 
-      while (true) {
-        if (document.querySelector(stopSelectorGemini)) {
-          activeStopSelector = stopSelectorGemini;
-          break;
+        const activeInput = geminiInput || chatgptInput || grokInput;
+
+        if (!activeInput) {
+          console.error("Kein Eingabefeld gefunden.");
+          alert("Kein Eingabefeld gefunden.");
+          return;
         }
-        if (document.querySelector(stopSelectorChatGPT)) {
-          activeStopSelector = stopSelectorChatGPT;
-          break;
+
+        await setInputText(activeInput, prompt);
+
+        if (geminiSendButton?.parentNode) {
+          geminiSendButton.parentNode.click();
+        } else if (chatgptSendButton) {
+          chatgptSendButton.click();
+        } else if (grokSendButton) {
+          grokSendButton.click();
+        } else {
+          activeInput.dispatchEvent(
+            new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+          );
         }
-        if (document.querySelector(stopSelectorGrok)) {
-          activeStopSelector = stopSelectorGrok;
-          break;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        await waitForProcessing();
       }
 
-      while (document.querySelector(activeStopSelector)) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      async function setInputText(element, text) {
+        if (
+          element.tagName === "TEXTAREA" ||
+          element instanceof HTMLTextAreaElement
+        ) {
+          element.value = text;
+        } else {
+          element.innerText = text;
+        }
+
+        element.dispatchEvent(new Event("input", { bubbles: true }));
+
+        return new Promise((resolve) => {
+          requestAnimationFrame(() => setTimeout(resolve, 50));
+        });
       }
 
-      if (activeStopSelector === stopSelectorGrok) {
+      async function waitForProcessing() {
+        const stopSelectorGemini = "[data-mat-icon-name='stop']";
+        const stopSelectorChatGPT = "[data-testid='stop-button']";
+        const stopSelectorGrok = "[data-label='Modell-Antwort stoppen']";
+        const grokSendButtonSelector = "[type='submit']";
+
+        let activeStopSelector = null;
+
         while (true) {
-          const grokSendButton = document.querySelector(grokSendButtonSelector);
-          if (grokSendButton && !grokSendButton.disabled) {
+          if (document.querySelector(stopSelectorGemini)) {
+            activeStopSelector = stopSelectorGemini;
+            break;
+          }
+          if (document.querySelector(stopSelectorChatGPT)) {
+            activeStopSelector = stopSelectorChatGPT;
+            break;
+          }
+          if (document.querySelector(stopSelectorGrok)) {
+            activeStopSelector = stopSelectorGrok;
             break;
           }
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
+
+        while (document.querySelector(activeStopSelector)) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        if (activeStopSelector === stopSelectorGrok) {
+          while (true) {
+            const grokSendButton = document.querySelector(
+              grokSendButtonSelector
+            );
+            if (grokSendButton && !grokSendButton.disabled) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+        }
       }
+
+      function escapeHTML(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      modalHeader.querySelector(".close").onclick = () => {
+        modal.remove();
+        scrollLeftBtn.remove();
+        scrollRightBtn.remove();
+      };
+
+      renderSteps();
     }
-
-    function escapeHTML(str) {
-      const div = document.createElement("div");
-      div.textContent = str;
-      return div.innerHTML;
-    }
-
-    modalHeader.querySelector(".close").onclick = () => {
-      modal.remove();
-      scrollLeftBtn.remove();
-      scrollRightBtn.remove();
-    };
-
-    renderSteps();
-  });
+  );
 }
 
 // Ensure escapeHTML is available

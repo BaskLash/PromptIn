@@ -652,25 +652,24 @@
                 id="discord-link-btn"
                 data-i18n="discord-link-btn"
               ></button>
+              <button id="reddit-link-btn" data-i18n="reddit-link-btn"></button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- User & Login Ansicht -->
+      <!-- User & Login View -->
       <div class="detail-overlay" id="user-overlay">
         <div class="detail-header">
           <button id="user-back-btn">←</button>
           <h2 id="user-title">Login</h2>
         </div>
-
         <div class="detail-content">
           <!-- LOGIN FORM -->
           <form id="login-form" class="user-form">
             <div class="detail-field">
               <label>Email</label>
               <input type="email" required />
-
               <label>Password</label>
               <input type="password" required />
             </div>
@@ -686,13 +685,10 @@
             <div class="detail-field">
               <label>Name</label>
               <input type="text" required />
-
               <label>Email</label>
               <input type="email" required />
-
               <label>Password</label>
               <input type="password" required />
-
               <label>Confirm Password</label>
               <input type="password" required />
             </div>
@@ -714,7 +710,7 @@
             </p>
           </form>
 
-          <!-- USER DASHBOARD (nach Login) -->
+          <!-- USER DASHBOARD -->
           <div id="user-dashboard" style="display: none">
             <h3>Welcome, <span id="user-email"></span></h3>
             <p>Your API Token:</p>
@@ -724,17 +720,37 @@
               style="width: 100%; height: 50px"
             ></textarea>
             <button id="copy-token-btn" class="btn">Copy Token</button>
-
             <h4>Change Password</h4>
-            <input
-              type="password"
-              id="new-password"
-              placeholder="New password"
-            />
-            <button id="change-password-btn" class="btn">
-              Change Password
-            </button>
-
+            <form id="change-password-form" class="user-form">
+              <div class="detail-field">
+                <label for="current-password">Current Password</label>
+                <input
+                  type="password"
+                  id="current-password"
+                  placeholder="Current password"
+                  required
+                />
+                <label for="new-password">New Password</label>
+                <input
+                  type="password"
+                  id="new-password"
+                  placeholder="New password"
+                  required
+                />
+                <label for="new-password-confirmation"
+                  >Confirm New Password</label
+                >
+                <input
+                  type="password"
+                  id="new-password-confirmation"
+                  placeholder="Confirm new password"
+                  required
+                />
+              </div>
+              <button type="submit" id="change-password-btn" class="btn">
+                Change Password
+              </button>
+            </form>
             <button id="logout-btn" class="btn" style="margin-top: 20px">
               Logout
             </button>

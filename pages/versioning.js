@@ -26,11 +26,12 @@ function showPromptVersions(promptId) {
     const closeSpan = document.createElement("span");
     closeSpan.className = "close";
     closeSpan.innerHTML = "×";
-    closeSpan.title = "Modal schließen";
+    closeSpan.title = "Close modal";
 
     const headerTitle = document.createElement("h2");
-    headerTitle.textContent = "Prompt-Versionsverlauf";
-    headerTitle.title = "Zeigt alle gespeicherten Versionen dieses Prompts";
+    headerTitle.textContent = "Prompt version history";
+    headerTitle.style.color = "white";
+    headerTitle.title = "Shows all saved versions of this prompt";
 
     const modalBody = document.createElement("div");
     modalBody.className = "modal-body";
@@ -41,15 +42,15 @@ function showPromptVersions(promptId) {
 
     const diffHeader = document.createElement("h3");
     diffHeader.className = "diff-header";
-    diffHeader.textContent = "Versionsvergleich";
-    diffHeader.title = "Vergleiche zwei Versionen, um Unterschiede zu sehen";
+    diffHeader.textContent = "version comparison";
+    diffHeader.title = "Compare two versions to see differences";
     customDiffSection.appendChild(diffHeader);
 
     const diffSelectWrapper = document.createElement("div");
     diffSelectWrapper.className = "diff-select-wrapper";
 
     const baseSelectLabel = document.createElement("label");
-    baseSelectLabel.textContent = "Basis-Version:";
+    baseSelectLabel.textContent = "Basic version:";
     baseSelectLabel.setAttribute("for", "baseSelect");
     diffSelectWrapper.appendChild(baseSelectLabel);
 
@@ -58,13 +59,13 @@ function showPromptVersions(promptId) {
     baseSelect.className = "diff-select";
     const baseDefaultOption = document.createElement("option");
     baseDefaultOption.value = "";
-    baseDefaultOption.textContent = "Wähle Basis-Version";
+    baseDefaultOption.textContent = "Select basic version";
     baseDefaultOption.disabled = true;
     baseDefaultOption.selected = true;
     baseSelect.appendChild(baseDefaultOption);
 
     const compareSelectLabel = document.createElement("label");
-    compareSelectLabel.textContent = "Vergleichen mit:";
+    compareSelectLabel.textContent = "Compare with:";
     compareSelectLabel.setAttribute("for", "compareSelect");
     diffSelectWrapper.appendChild(compareSelectLabel);
 
@@ -73,7 +74,7 @@ function showPromptVersions(promptId) {
     compareSelect.className = "diff-select";
     const compareDefaultOption = document.createElement("option");
     compareDefaultOption.value = "";
-    compareDefaultOption.textContent = "Wähle Vergleichs-Version";
+    compareDefaultOption.textContent = "Select comparison version";
     compareDefaultOption.disabled = true;
     compareDefaultOption.selected = true;
     compareSelect.appendChild(compareDefaultOption);
@@ -128,15 +129,15 @@ function showPromptVersions(promptId) {
       if (index === 0) {
         const currentBadge = document.createElement("span");
         currentBadge.className = "current-badge";
-        currentBadge.textContent = "Aktuell";
-        currentBadge.title = "Dies ist die aktuelle Version des Prompts";
+        currentBadge.textContent = "Current";
+        currentBadge.title = "This is the current version of the prompt.";
         versionTitleWrapper.appendChild(currentBadge);
       }
 
       const versionDate = document.createElement("span");
       versionDate.className = "version-date";
       versionDate.textContent = new Date(version.timestamp).toLocaleString();
-      versionDate.title = "Erstellungs- oder Änderungsdatum";
+      versionDate.title = "Creation or modification date";
 
       versionHeader.appendChild(versionTitleWrapper);
       versionHeader.appendChild(versionDate);
@@ -146,26 +147,26 @@ function showPromptVersions(promptId) {
 
       if (index === versions.length - 1) {
         const titleLabel = document.createElement("label");
-        titleLabel.textContent = "Titel:";
+        titleLabel.textContent = "Title:";
         const titleText = document.createElement("p");
-        titleText.textContent = version.title || "Ohne Titel";
-        titleText.title = version.title || "Kein Titel angegeben";
+        titleText.textContent = version.title || "Untitled";
+        titleText.title = version.title || "No title specified";
         versionContent.appendChild(titleLabel);
         versionContent.appendChild(titleText);
 
         const descLabel = document.createElement("label");
-        descLabel.textContent = "Beschreibung:";
+        descLabel.textContent = "Description:";
         const descText = document.createElement("p");
-        descText.textContent = version.description || "Keine Beschreibung";
-        descText.title = version.description || "Keine Beschreibung angegeben";
+        descText.textContent = version.description || "No description";
+        descText.title = version.description || "No description provided";
         versionContent.appendChild(descLabel);
         versionContent.appendChild(descText);
 
         const contentLabel = document.createElement("label");
-        contentLabel.textContent = "Inhalt:";
+        contentLabel.textContent = "Contents:";
         const contentText = document.createElement("p");
-        contentText.textContent = version.content || "Kein Inhalt";
-        contentText.title = version.content || "Kein Inhalt angegeben";
+        contentText.textContent = version.content || "No content";
+        contentText.title = version.content || "No content specified";
         versionContent.appendChild(contentLabel);
         versionContent.appendChild(contentText);
       } else {
@@ -174,15 +175,15 @@ function showPromptVersions(promptId) {
         diffWrapper.className = "version-diff-wrapper";
 
         const diffTitle = document.createElement("h4");
-        diffTitle.textContent = `Änderungen von Version ${
+        diffTitle.textContent = `Changes from version ${
           versions.length - (index + 1)
-        } zu Version ${versions.length - index}`;
+        } to version ${versions.length - index}`;
         diffWrapper.appendChild(diffTitle);
 
         const titleDiffWrapper = document.createElement("div");
         titleDiffWrapper.className = "diff-wrapper";
         const titleHeader = document.createElement("label");
-        titleHeader.textContent = "Titel Änderungen:";
+        titleHeader.textContent = "Title changes:";
         titleDiffWrapper.appendChild(titleHeader);
         const titleDiffContainer = document.createElement("div");
         titleDiffContainer.className = "diff-output";
@@ -193,7 +194,7 @@ function showPromptVersions(promptId) {
         );
         const titleSummary = document.createElement("div");
         titleSummary.className = "diff-summary";
-        titleSummary.textContent = `Unterschiede: ${titleDiffCount} Wörter`;
+        titleSummary.textContent = `Differences: ${titleDiffCount} words`;
         titleDiffWrapper.appendChild(titleDiffContainer);
         titleDiffWrapper.appendChild(titleSummary);
         diffWrapper.appendChild(titleDiffWrapper);
@@ -201,7 +202,7 @@ function showPromptVersions(promptId) {
         const descDiffWrapper = document.createElement("div");
         descDiffWrapper.className = "diff-wrapper";
         const descHeader = document.createElement("label");
-        descHeader.textContent = "Beschreibung Änderungen:";
+        descHeader.textContent = "Description Changes:";
         descDiffWrapper.appendChild(descHeader);
         const descDiffContainer = document.createElement("div");
         descDiffContainer.className = "diff-output";
@@ -212,7 +213,7 @@ function showPromptVersions(promptId) {
         );
         const descSummary = document.createElement("div");
         descSummary.className = "diff-summary";
-        descSummary.textContent = `Unterschiede: ${descDiffCount} Wörter`;
+        descSummary.textContent = `Differences: ${descDiffCount} words`;
         descDiffWrapper.appendChild(descDiffContainer);
         descDiffWrapper.appendChild(descSummary);
         diffWrapper.appendChild(descDiffWrapper);
@@ -220,7 +221,7 @@ function showPromptVersions(promptId) {
         const contentDiffWrapper = document.createElement("div");
         contentDiffWrapper.className = "diff-wrapper";
         const contentHeader = document.createElement("label");
-        contentHeader.textContent = "Inhalt Änderungen:";
+        contentHeader.textContent = "Content changes:";
         contentDiffWrapper.appendChild(contentHeader);
         const contentDiffContainer = document.createElement("div");
         contentDiffContainer.className = "diff-output";
@@ -231,7 +232,7 @@ function showPromptVersions(promptId) {
         );
         const contentSummary = document.createElement("div");
         contentSummary.className = "diff-summary";
-        contentSummary.textContent = `Unterschiede: ${contentDiffCount} Wörter`;
+        contentSummary.textContent = `Differences: ${contentDiffCount} words`;
         contentDiffWrapper.appendChild(contentDiffContainer);
         contentDiffWrapper.appendChild(contentSummary);
         diffWrapper.appendChild(contentDiffWrapper);
@@ -245,10 +246,9 @@ function showPromptVersions(promptId) {
       if (versions.length > 1) {
         if (index !== 0) {
           const restoreButton = document.createElement("button");
-          restoreButton.textContent = "Wiederherstellen";
+          restoreButton.textContent = "Restore";
           restoreButton.classList.add("action-btn");
-          restoreButton.title =
-            "Diese Version als aktuelle Version wiederherstellen";
+          restoreButton.title = "Restore this version as the current version";
           restoreButton.addEventListener("click", () => {
             restoreVersion(promptId, version.versionId);
             modal.style.display = "none";
@@ -259,15 +259,15 @@ function showPromptVersions(promptId) {
         }
 
         const compareButton = document.createElement("button");
-        compareButton.textContent = "Vergleichen";
+        compareButton.textContent = "Compare";
         compareButton.classList.add("action-btn");
-        compareButton.title = "Unterschiede zu anderen Versionen anzeigen";
+        compareButton.title = "Show differences from other versions";
         compareButton.addEventListener("click", () => {
           customDiffSection.style.display = "block";
           baseSelect.value = version.versionId;
           compareSelect.value = "";
           customDiffContainer.innerHTML = "";
-          diffHeader.textContent = "Versionsvergleich";
+          diffHeader.textContent = "version comparison";
           modalBody.scrollTop = 0;
         });
         actions.appendChild(compareButton);
@@ -289,7 +289,7 @@ function showPromptVersions(promptId) {
         baseVersionId === compareVersionId
       ) {
         customDiffContainer.innerHTML = "";
-        diffHeader.textContent = "Versionsvergleich";
+        diffHeader.textContent = "version comparison";
         return;
       }
 
@@ -315,7 +315,7 @@ function showPromptVersions(promptId) {
       const titleWrapper = document.createElement("div");
       titleWrapper.className = "diff-wrapper";
       const titleHeader = document.createElement("h4");
-      titleHeader.textContent = "Titel Änderungen";
+      titleHeader.textContent = "Title changes";
       titleWrapper.appendChild(titleHeader);
       const titleDiffContainer = document.createElement("div");
       titleDiffContainer.className = "diff-output";
@@ -326,7 +326,7 @@ function showPromptVersions(promptId) {
       );
       const titleSummary = document.createElement("div");
       titleSummary.className = "diff-summary";
-      titleSummary.textContent = `Unterschiede: ${titleDiffCount} Wörter`;
+      titleSummary.textContent = `Differences: ${titleDiffCount} words`;
       titleWrapper.appendChild(titleDiffContainer);
       titleWrapper.appendChild(titleSummary);
       customDiffContainer.appendChild(titleWrapper);
@@ -334,7 +334,7 @@ function showPromptVersions(promptId) {
       const descWrapper = document.createElement("div");
       descWrapper.className = "diff-wrapper";
       const descHeader = document.createElement("h4");
-      descHeader.textContent = "Beschreibung Änderungen";
+      descHeader.textContent = "Description Changes";
       descWrapper.appendChild(descHeader);
       const descDiffContainer = document.createElement("div");
       descDiffContainer.className = "diff-output";
@@ -345,7 +345,7 @@ function showPromptVersions(promptId) {
       );
       const descSummary = document.createElement("div");
       descSummary.className = "diff-summary";
-      descSummary.textContent = `Unterschiede: ${descDiffCount} Wörter`;
+      descSummary.textContent = `Differences: ${descDiffCount} words`;
       descWrapper.appendChild(descDiffContainer);
       descWrapper.appendChild(descSummary);
       customDiffContainer.appendChild(descWrapper);
@@ -353,7 +353,7 @@ function showPromptVersions(promptId) {
       const contentWrapper = document.createElement("div");
       contentWrapper.className = "diff-wrapper";
       const contentHeader = document.createElement("h4");
-      contentHeader.textContent = "Inhalt Änderungen";
+      contentHeader.textContent = "Content changes";
       contentWrapper.appendChild(contentHeader);
       const contentDiffContainer = document.createElement("div");
       contentDiffContainer.className = "diff-output";
@@ -364,7 +364,7 @@ function showPromptVersions(promptId) {
       );
       const contentSummary = document.createElement("div");
       contentSummary.className = "diff-summary";
-      contentSummary.textContent = `Unterschiede: ${contentDiffCount} Wörter`;
+      contentSummary.textContent = `Differences: ${contentDiffCount} words`;
       contentWrapper.appendChild(contentDiffContainer);
       contentWrapper.appendChild(contentSummary);
       customDiffContainer.appendChild(contentWrapper);
@@ -389,7 +389,7 @@ function showPromptVersions(promptId) {
     exportSelect.style.padding = "8px";
     exportSelect.style.borderRadius = "4px";
     exportSelect.style.border = "1px solid #ddd";
-    exportSelect.title = "Wähle ein Exportformat für den Versionsverlauf";
+    exportSelect.title = "Select an export format for the version history";
 
     const defaultOption = document.createElement("option");
     defaultOption.value = "";

@@ -3005,6 +3005,10 @@ document.addEventListener("DOMContentLoaded", () => {
     window.open("https://discord.gg/ap8XYrCpSV", "_blank");
   });
 
+  document.getElementById("reddit-link-btn").addEventListener("click", () => {
+    window.open("https://www.reddit.com/r/PromptIn/", "_blank");
+  });
+
   document.getElementById("review-btn").addEventListener("click", () => {
     window.open(
       "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje/reviews",
