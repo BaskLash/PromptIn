@@ -1,3 +1,5 @@
+const extpayClient = ExtPay("promptin"); // ExtPay global verfügbar
+
 setInterval(() => {
   // Always in use; That's why on top
   const path = window.location.pathname;
@@ -764,7 +766,9 @@ async function promptSaver(message) {
 
   const similarPromptsLabel = document.createElement("label");
   similarPromptsLabel.setAttribute("for", "similarPromptsDropdown");
-  similarPromptsLabel.textContent = "Similar Prompts:";
+  similarPromptsLabel.textContent = "Advanced Similarity Insights:";
+
+  // Paywall for advanced similaity insights
 
   const similarPromptsDropdown = document.createElement("div");
   similarPromptsDropdown.id = "similarPromptsDropdown";
@@ -880,6 +884,16 @@ async function promptSaver(message) {
   combineContent.id = "combine";
   combineContent.className = "option-content";
 
+  // Create unlock span (hidden by default)
+  const unlockCombine = document.createElement("span");
+  unlockCombine.id = "unlockCombine";
+  unlockCombine.style.cursor = "pointer";
+  unlockCombine.style.fontSize = "20px";
+  unlockCombine.style.marginLeft = "10px";
+  unlockCombine.style.display = "none";
+  unlockCombine.title = "Unlock with Basic Plan";
+  unlockCombine.textContent = "🔒 Unlock with Basic Plan";
+
   const combineText = document.createElement("p");
   combineText.textContent =
     "Select an existing prompt to combine with the new prompt:";
@@ -945,13 +959,65 @@ async function promptSaver(message) {
   combinedPromptPreview.style.whiteSpace = "pre-wrap";
   combinedPromptPreview.placeholder = "The combined prompt will appear here...";
 
-  combineContent.appendChild(combineText);
-  combineContent.appendChild(suggestedPromptsLabel);
-  combineContent.appendChild(suggestedPromptsDropdown);
-  combineContent.appendChild(combinePromptLabel);
-  combineContent.appendChild(combinePromptSelect);
-  combineContent.appendChild(previewLabel);
-  combineContent.appendChild(combinedPromptPreview);
+  combineContent.appendChild(unlockCombine);
+
+  // --- ExtensionPay integration ---
+  extpayClient
+    .getUser()
+    .then((user) => {
+      if (user.paid) {
+        // User has a plan → append content elements
+        if (!combineContent.contains(combineText))
+          combineContent.appendChild(combineText);
+        if (!combineContent.contains(suggestedPromptsLabel))
+          combineContent.appendChild(suggestedPromptsLabel);
+        if (!combineContent.contains(suggestedPromptsDropdown))
+          combineContent.appendChild(suggestedPromptsDropdown);
+        if (!combineContent.contains(combinePromptLabel))
+          combineContent.appendChild(combinePromptLabel);
+        if (!combineContent.contains(combinePromptSelect))
+          combineContent.appendChild(combinePromptSelect);
+        if (!combineContent.contains(previewLabel))
+          combineContent.appendChild(previewLabel);
+        if (!combineContent.contains(combinedPromptPreview))
+          combineContent.appendChild(combinedPromptPreview);
+
+        // Hide unlock span
+        unlockCombine.style.display = "none";
+      } else {
+        // User hasn't paid → remove content elements if they exist
+        if (combineContent.contains(combineText))
+          combineContent.removeChild(combineText);
+        if (combineContent.contains(suggestedPromptsLabel))
+          combineContent.removeChild(suggestedPromptsLabel);
+        if (combineContent.contains(suggestedPromptsDropdown))
+          combineContent.removeChild(suggestedPromptsDropdown);
+        if (combineContent.contains(combinePromptLabel))
+          combineContent.removeChild(combinePromptLabel);
+        if (combineContent.contains(combinePromptSelect))
+          combineContent.removeChild(combinePromptSelect);
+        if (combineContent.contains(previewLabel))
+          combineContent.removeChild(previewLabel);
+        if (combineContent.contains(combinedPromptPreview))
+          combineContent.removeChild(combinedPromptPreview);
+
+        // Show unlock span
+        unlockCombine.style.display = "block";
+        if (!combineContent.contains(unlockCombine))
+          combineContent.appendChild(unlockCombine);
+
+        // Redirect on click
+        unlockCombine.onclick = () => {
+          extpayClient.openPaymentPage("basicmonthly");
+        };
+      }
+    })
+    .catch((err) => {
+      console.error("ExtPay error:", err);
+      alert(
+        "Something went wrong checking your subscription. Please try again."
+      );
+    });
 
   const optionsButtons = document.createElement("div");
   optionsButtons.className = "button-group";
@@ -1896,7 +1962,7 @@ async function promptSaver(message) {
 
       if (similarPrompts.length === 0) {
         dropdownContent.innerHTML =
-          "<div class='dropdown-item'>Keine ähnlichen Prompts gefunden.</div>";
+          "<div class='dropdown-item'>No similar prompts were found.</div>";
         similarPromptsDropdown.style.display = "block";
         similarPromptsLabel.style.display = "block";
         return;
@@ -1991,8 +2057,8 @@ async function promptSaver(message) {
               prompt.content,
               diffContainer
             );
-            const wordLabel = diffCount === 1 ? "Wort" : "Wörter";
-            diffSummary.textContent = `Unterschiede: ${diffCount} ${wordLabel}`;
+            const wordLabel = diffCount === 1 ? "Word" : "Words";
+            diffSummary.textContent = `Differences: ${diffCount} ${wordLabel}`;
           } else {
             diffContainer.innerHTML = "";
             diffSummary.textContent = "";
