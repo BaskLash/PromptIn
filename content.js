@@ -766,7 +766,63 @@ async function promptSaver(message) {
 
   const similarPromptsLabel = document.createElement("label");
   similarPromptsLabel.setAttribute("for", "similarPromptsDropdown");
-  similarPromptsLabel.textContent = "Advanced Similarity Insights:";
+  similarPromptsLabel.textContent = "Similar Prompts:";
+
+  const similarPromptsDropdown = document.createElement("div");
+  similarPromptsDropdown.id = "similarPromptsDropdown";
+  similarPromptsDropdown.className = "dropdown";
+
+  const dropdownButton = document.createElement("button");
+  dropdownButton.className = "dropdown-button";
+  dropdownButton.textContent = "Select a similar prompt";
+  dropdownButton.style.width = "100%";
+  dropdownButton.style.padding = "10px";
+  dropdownButton.style.border = "1px solid #dcdcdc";
+  dropdownButton.style.borderRadius = "4px";
+  dropdownButton.style.background = "#fff";
+  dropdownButton.style.textAlign = "left";
+
+  const dropdownContent = document.createElement("div");
+  dropdownContent.className = "dropdown-content";
+  dropdownContent.style.display = "none";
+  dropdownContent.style.position = "absolute";
+  dropdownContent.style.backgroundColor = "#fff";
+  dropdownContent.style.border = "1px solid #dcdcdc";
+  dropdownContent.style.borderRadius = "4px";
+  dropdownContent.style.width = "100%";
+  dropdownContent.style.maxHeight = "300px";
+  dropdownContent.style.overflowY = "auto";
+  dropdownContent.style.zIndex = "10001";
+  dropdownContent.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
+
+  // --- ExtensionPay integration ---
+  extpayClient.getUser().then((user) => {
+    if (user.paid === "promonthly") {
+      // User has paid
+      similarPromptsDropdown.appendChild(dropdownButton);
+      similarPromptsDropdown.appendChild(dropdownContent);
+    } else {
+      // User hasn't paid
+      const lockedMsg = document.createElement("div");
+      lockedMsg.innerHTML = "🔒 Unlock with Pro Plan";
+      lockedMsg.id = "unlockShell";
+      lockedMsg.style.cursor = "pointer";
+      lockedMsg.style.color = "#666";
+      lockedMsg.style.margin = "6px 0";
+      lockedMsg.style.padding = "10px";
+      lockedMsg.style.border = "1px solid #dcdcdc";
+      lockedMsg.style.borderRadius = "4px";
+      lockedMsg.style.background = "#f9f9f9";
+      lockedMsg.title = "Unlock Advanced Similarity Insights";
+
+      // Redirect beim Klick
+      lockedMsg.addEventListener("click", () => {
+        extpayClient.openPaymentPage("promonthly");
+      });
+
+      similarPromptsDropdown.appendChild(lockedMsg);
+    }
+  });
 
   const replacePromptLabel = document.createElement("label");
   replacePromptLabel.setAttribute("for", "replacePromptSelect");
@@ -788,70 +844,7 @@ async function promptSaver(message) {
 
   replaceContent.appendChild(replaceText);
   replaceContent.appendChild(similarPromptsLabel);
-
-  // Container für das Schloss-Symbol oder Dropdown, um die Reihenfolge zu kontrollieren
-  const similarityInsightsContainer = document.createElement("div");
-  replaceContent.appendChild(similarityInsightsContainer);
-
-  // Paywall für Advanced Similarity Insights
-  extpayClient.getUser().then((user) => {
-    if (user.paid) {
-      // User hat bezahlt → Dropdown erstellen
-      const similarPromptsDropdown = document.createElement("div");
-      similarPromptsDropdown.id = "similarPromptsDropdown";
-      similarPromptsDropdown.className = "dropdown";
-
-      const dropdownButton = document.createElement("button");
-      dropdownButton.className = "dropdown-button";
-      dropdownButton.textContent = "Select a similar prompt";
-      dropdownButton.style.width = "100%";
-      dropdownButton.style.padding = "10px";
-      dropdownButton.style.border = "1px solid #dcdcdc";
-      dropdownButton.style.borderRadius = "4px";
-      dropdownButton.style.background = "#fff";
-      dropdownButton.style.textAlign = "left";
-
-      dropdownButton.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const currentDisplay = dropdownContent.style.display;
-        dropdownContent.style.display =
-          currentDisplay === "block" ? "none" : "block";
-      });
-
-      const dropdownContent = document.createElement("div");
-      dropdownContent.className = "dropdown-content";
-      dropdownContent.style.display = "none";
-      dropdownContent.style.position = "absolute";
-      dropdownContent.style.backgroundColor = "#fff";
-      dropdownContent.style.border = "1px solid #dcdcdc";
-      dropdownContent.style.borderRadius = "4px";
-      dropdownContent.style.width = "100%";
-      dropdownContent.style.maxHeight = "300px";
-      dropdownContent.style.overflowY = "auto";
-      dropdownContent.style.zIndex = "10001";
-      dropdownContent.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
-
-      similarPromptsDropdown.appendChild(dropdownButton);
-      similarPromptsDropdown.appendChild(dropdownContent);
-
-      similarityInsightsContainer.appendChild(similarPromptsDropdown);
-    } else {
-      // User hat NICHT bezahlt → Schloss-Symbol anzeigen
-      const lockedMsg = document.createElement("span");
-      lockedMsg.innerHTML = "🔒 Unlock with Pro Plan";
-      lockedMsg.style.cursor = "pointer";
-      lockedMsg.style.color = "#666";
-      lockedMsg.style.marginLeft = "10px";
-      lockedMsg.title = "Unlock Advanced Similarity Insights";
-
-      lockedMsg.onclick = () => {
-        extpayClient.openPaymentPage("promonthly");
-      };
-
-      similarityInsightsContainer.appendChild(lockedMsg);
-    }
-  });
-
+  replaceContent.appendChild(similarPromptsDropdown);
   replaceContent.appendChild(replaceFolderLabel);
   replaceContent.appendChild(replaceFolderSelect);
   replaceContent.appendChild(replacePromptLabel);
@@ -2309,6 +2302,13 @@ async function promptSaver(message) {
     }
   });
 
+  dropdownButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const currentDisplay = dropdownContent.style.display;
+    dropdownContent.style.display =
+      currentDisplay === "block" ? "none" : "block";
+  });
+
   suggestedDropdownButton.addEventListener("click", (e) => {
     e.stopPropagation();
     const currentDisplay = suggestedDropdownContent.style.display;
@@ -2316,14 +2316,14 @@ async function promptSaver(message) {
       currentDisplay === "block" ? "none" : "block";
   });
 
-  // document.addEventListener("click", (e) => {
-  //   if (!similarPromptsDropdown.contains(e.target)) {
-  //     dropdownContent.style.display = "none";
-  //   }
-  //   if (!suggestedPromptsDropdown.contains(e.target)) {
-  //     suggestedDropdownContent.style.display = "none";
-  //   }
-  // });
+  document.addEventListener("click", (e) => {
+    if (!similarPromptsDropdown.contains(e.target)) {
+      dropdownContent.style.display = "none";
+    }
+    if (!suggestedPromptsDropdown.contains(e.target)) {
+      suggestedDropdownContent.style.display = "none";
+    }
+  });
 
   function debounce(func, wait) {
     let timeout;
