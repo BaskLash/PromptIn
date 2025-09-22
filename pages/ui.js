@@ -717,12 +717,8 @@ function showDetailsSidebar(item, folderId) {
     if (/\{\{[^}]+\}\}/.test(prompt.content)) {
       const matches = prompt.content.match(/\{\{([^}]+)\}\}/g) || [];
       const variables = matches.map((v) => v.replace(/\{\{|\}\}/g, ""));
-
       const jsonObj = {};
-      variables.forEach((v) => {
-        jsonObj[v] = "";
-      });
-
+      variables.forEach((v) => (jsonObj[v] = ""));
       html += `
     <label>Variables (JSON)</label>
     <textarea readonly>${JSON.stringify(jsonObj, null, 2)}</textarea>
@@ -730,55 +726,6 @@ function showDetailsSidebar(item, folderId) {
     }
 
     html += `
-  <label>Notes</label>
-  <textarea readonly>${prompt.notes || "N/A"}</textarea>
-
-  <label>Type</label>
-  <input type="text" value="${
-    Array.isArray(prompt.types)
-      ? prompt.types.join(", ")
-      : prompt.types || "N/A"
-  }" readonly>
-
-  <label>Compatible Models</label>
-  <input type="text" value="${
-    Array.isArray(prompt.compatibleModels)
-      ? prompt.compatibleModels.join(", ")
-      : prompt.compatibleModels || "N/A"
-  }" readonly>
-
-  <label>Incompatible Models</label>
-  <input type="text" value="${
-    Array.isArray(prompt.incompatibleModels)
-      ? prompt.incompatibleModels.join(", ")
-      : prompt.incompatibleModels || "N/A"
-  }" readonly>
-
-  <label>Tags</label>
-  <input type="text" value="${
-    Array.isArray(prompt.tags) ? prompt.tags.join(", ") : prompt.tags || "N/A"
-  }" readonly>
-
-  <label>Folder</label>
-  <input type="text" value="${prompt.folderName || "N/A"}" readonly>
-
-  <label>Favorite</label>
-  <input type="text" value="${prompt.isFavorite ? "Yes" : "No"}" readonly>
-
-  <label>Created At</label>
-  <input type="text" value="${
-    prompt.createdAt
-      ? new Date(prompt.createdAt).toLocaleDateString("de-DE")
-      : "N/A"
-  }" readonly>
-
-  <label>Updated At</label>
-  <input type="text" value="${
-    prompt.updatedAt
-      ? new Date(prompt.updatedAt).toLocaleDateString("de-DE")
-      : "N/A"
-  }" readonly>
-
   <label>Last Used</label>
   <input type="text" value="${
     prompt.lastUsed
@@ -786,8 +733,7 @@ function showDetailsSidebar(item, folderId) {
       : "N/A"
   }" readonly>
 
-  <label>Stats</label>
-  <canvas id="usageChart" style="width:100%; height:200px;"></canvas>
+  <div id="statsContainer"></div> <!-- EINZIGER Stats-Platzhalter -->
 
   <label>Metadata Change Log</label>
   <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
@@ -799,68 +745,89 @@ function showDetailsSidebar(item, folderId) {
 
     sidebarContent.innerHTML = html;
 
-    // Chart.js Daten vorbereiten (letzte 30 Tage)
-    const usageHistory = prompt.usageHistory || [];
-    const now = new Date();
-    const days = Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (29 - i));
-      return d;
-    });
+    // --- ExtensionPay integration: nur hier Stats / Unlock einfügen ---
+    extpayClient.getUser().then((user) => {
+      const statsContainer = sidebarContent.querySelector("#statsContainer");
+      const statsLabel = document.createElement("label");
+      statsLabel.textContent = "Stats";
+      statsContainer.appendChild(statsLabel);
 
-    const usagePerDay = days.map((day) => {
-      const start = new Date(day);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(day);
-      end.setHours(23, 59, 59, 999);
+      if (user.paid) {
+        const usageCanvas = document.createElement("canvas");
+        usageCanvas.id = "usageChart";
+        usageCanvas.style.width = "100%";
+        usageCanvas.style.height = "200px";
+        statsContainer.appendChild(usageCanvas);
 
-      return usageHistory.filter(
-        (entry) =>
-          entry.timestamp >= start.getTime() && entry.timestamp <= end.getTime()
-      ).length;
-    });
+        // Chart.js Daten vorbereiten
+        const usageHistory = prompt.usageHistory || [];
+        const now = new Date();
+        const days = Array.from({ length: 30 }, (_, i) => {
+          const d = new Date(now);
+          d.setDate(d.getDate() - (29 - i));
+          return d;
+        });
 
-    // Chart.js Diagramm erstellen
-    const ctx = document.getElementById("usageChart").getContext("2d");
-    new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: days.map((d) =>
-          d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })
-        ),
-        datasets: [
-          {
-            label: "Usage",
-            data: usagePerDay,
-            borderColor: "#4caf50",
-            backgroundColor: "rgba(76, 175, 80, 0.15)",
-            fill: true,
-            tension: 0.35, // geschmeidige Linie
-            pointRadius: 3,
-            pointBackgroundColor: "#4caf50",
-            pointHoverRadius: 5,
+        const usagePerDay = days.map((day) => {
+          const start = new Date(day);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(day);
+          end.setHours(23, 59, 59, 999);
+          return usageHistory.filter(
+            (entry) =>
+              entry.timestamp >= start.getTime() &&
+              entry.timestamp <= end.getTime()
+          ).length;
+        });
+
+        const ctx = usageCanvas.getContext("2d");
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: days.map((d) =>
+              d.toLocaleDateString("de-DE", {
+                day: "2-digit",
+                month: "2-digit",
+              })
+            ),
+            datasets: [
+              {
+                label: "Usage",
+                data: usagePerDay,
+                borderColor: "#4caf50",
+                backgroundColor: "rgba(76, 175, 80, 0.15)",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+                pointBackgroundColor: "#4caf50",
+                pointHoverRadius: 5,
+              },
+            ],
           },
-        ],
-      },
-      options: {
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (context) => ` ${context.parsed.y} uses`,
+          options: {
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: { label: (ctx) => ` ${ctx.parsed.y} uses` },
+              },
+            },
+            scales: {
+              x: { grid: { display: false } },
+              y: { beginAtZero: true, ticks: { precision: 0 } },
             },
           },
-        },
-        scales: {
-          x: { grid: { display: false } },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              precision: 0,
-            },
-          },
-        },
-      },
+        });
+      } else {
+        const unlockSpan = document.createElement("span");
+        unlockSpan.id = "unlockUsageBar";
+        unlockSpan.textContent = "🔒 Unlock with Basic Plan";
+        unlockSpan.style.cursor = "pointer";
+        unlockSpan.style.fontSize = "20px";
+        unlockSpan.style.marginLeft = "10px";
+        statsContainer.appendChild(unlockSpan);
+
+        unlockSpan.onclick = () => extpayClient.openPaymentPage("basicmonthly");
+      }
     });
 
     sidebarContent.querySelector(".edit-btn").addEventListener("click", () => {
