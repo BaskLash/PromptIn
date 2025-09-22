@@ -72,14 +72,13 @@ function geminiButtonClick(index) {
 }
 
 function chatGPTButtonClick(index) {
-  // Überprüfen, ob der Index eine positive Zahl ist
-  index = index - 1;
   const articleElement = document.querySelector(
     `article[data-testid='conversation-turn-${index}']`
   );
 
   if (articleElement) {
     let stage = articleElement.querySelector(".whitespace-pre-wrap");
+    console.log(stage.textContent);
     promptSaver(stage.textContent);
   } else {
     console.log(

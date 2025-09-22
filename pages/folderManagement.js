@@ -4,7 +4,7 @@ function loadFolders() {
     folderList.innerHTML = ""; // Vorherige Liste löschen
 
     if (!folders || Object.keys(folders).length === 0) {
-      folderList.innerHTML = "<li>Keine Ordner verfügbar</li>";
+      folderList.innerHTML = "<li>No folder available</li>";
       return;
     }
 
@@ -13,7 +13,7 @@ function loadFolders() {
     );
 
     if (visibleFolders.length === 0) {
-      folderList.innerHTML = "<li>Keine Ordner verfügbar</li>";
+      folderList.innerHTML = "<li>No folder available</li>";
       return;
     }
 
@@ -210,17 +210,17 @@ addFolderBtn.addEventListener("click", () => {
   closeSpan.innerHTML = "×";
 
   const headerTitle = document.createElement("h2");
-  headerTitle.textContent = "Neuen Ordner erstellen";
+  headerTitle.textContent = "Create new folder";
 
   const modalBody = document.createElement("div");
   modalBody.className = "modal-body";
 
   const form = document.createElement("form");
   form.innerHTML = `
-    <label>Ordnername:</label>
-    <input type="text" id="new-folder-name" placeholder="Neuer Ordnername" required>
-    <button type="submit" class="action-btn">Erstellen</button>
-    <button type="button" class="cancel-btn">Abbrechen</button>
+    <label>Foldername:</label>
+    <input type="text" id="new-folder-name" placeholder="New foldername" required>
+    <button type="submit" class="action-btn">Create</button>
+    <button type="button" class="cancel-btn">Cancel</button>
   `;
 
   // Event-Listener für das Formular
@@ -229,7 +229,7 @@ addFolderBtn.addEventListener("click", () => {
     const folderName = form.querySelector("#new-folder-name").value.trim();
 
     if (!folderName) {
-      alert("Der Ordnername darf nicht leer sein!");
+      alert("The folder name must not be empty!");
       return;
     }
 

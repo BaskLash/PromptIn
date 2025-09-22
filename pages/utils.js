@@ -72,8 +72,8 @@ function savePrompt(
       folderId: folderId,
       createdAt: existing.createdAt || now,
       updatedAt: now,
-      compatibleModels,
-      incompatibleModels,
+      compatibleModels: promptData.compatibleModels || "",
+      incompatibleModels: promptData.incompatibleModels || "",
 
       usageCount: 0,
       lastUsed: null,

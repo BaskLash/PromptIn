@@ -652,3 +652,32 @@ table thead {
 #details-sidebar-resizer:hover {
   background-color: #b0b0b0;
 }
+/* Stil für gesperrte Menüpunkte */
+#main-menu li.locked {
+  position: relative;
+  color: #aaa;
+  cursor: not-allowed;
+  transition: color 0.2s;
+}
+
+#main-menu li.locked:hover {
+  color: #ff6a00; /* subtile Hover-Farbe */
+}
+
+.pro-badge {
+  margin-left: 8px;
+  background: linear-gradient(45deg, #ff6a00, #ee0979);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 12px;
+  vertical-align: middle;
+  display: inline-block;
+  animation: glow 1.5s infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 5px #ff6a00; }
+  to { box-shadow: 0 0 15px #ee0979; }
+}

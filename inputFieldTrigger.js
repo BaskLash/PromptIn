@@ -1,3 +1,5 @@
+const extPay = ExtPay("promptin"); // ExtPay global verfügbar
+
 // Initialize categories and promptSourceMap
 let categories = {
   Favorites: [],
@@ -280,7 +282,7 @@ function inputFieldTrigger() {
         // Try contenteditable elements (e.g., Perplexity, Claude)
         input = document.querySelector(
           "[contenteditable='true']:not([readonly]):not([disabled])"
-        );
+        ).textContent;
         if (input) return input;
 
         // Try role-based textboxes (e.g., Gemini)
@@ -698,7 +700,31 @@ function inputFieldTrigger() {
         }
       }
 
-      // Function to render category navigation (for / only)
+      // Global variable to track payment status
+      let isRecommendedUnlocked = false;
+
+      // Function to check ExtensionPay payment status
+      function checkPaymentStatus(callback) {
+        try {
+          extPay
+            .getUser()
+            .then((user) => {
+              isRecommendedUnlocked =
+                user.paid || user.trialPeriod.daysLeft > 0;
+              callback();
+            })
+            .catch((err) => {
+              console.error("ExtensionPay error:", err);
+              isRecommendedUnlocked = false;
+              callback();
+            });
+        } catch (err) {
+          console.error("ExtensionPay not initialized:", err);
+          isRecommendedUnlocked = false;
+          callback();
+        }
+      }
+
       function renderCategoryNavigation() {
         navPanel.style.display = "block";
         contentPanel.style.width = "250px";
@@ -707,9 +733,15 @@ function inputFieldTrigger() {
 
         Object.keys(categories).forEach((category) => {
           const navItem = document.createElement("div");
-          navItem.textContent = category;
+          // Add lock symbol for Recommended if not unlocked
+          const lockSymbol =
+            category === "Recommended" && !isRecommendedUnlocked ? " 🔒" : "";
+          navItem.textContent = `${category}${lockSymbol}`;
           navItem.style.padding = "10px";
-          navItem.style.cursor = "pointer";
+          navItem.style.cursor =
+            category === "Recommended" && !isRecommendedUnlocked
+              ? "not-allowed"
+              : "pointer";
           navItem.style.borderRadius = "4px";
           navItem.style.transition =
             "background-color 0.2s ease, font-weight 0.2s ease";
@@ -733,6 +765,10 @@ function inputFieldTrigger() {
           });
 
           navItem.addEventListener("click", () => {
+            if (category === "Recommended" && !isRecommendedUnlocked) {
+              extPay.openPaymentPage("basicmonthly");
+              return;
+            }
             document
               .querySelectorAll(".nav-item, .folder-item")
               .forEach((item) => {
@@ -813,10 +849,21 @@ function inputFieldTrigger() {
         });
 
         const firstNavItem = navPanel.querySelector(".nav-item");
-        if (firstNavItem) {
+        if (
+          firstNavItem &&
+          (!firstNavItem.textContent.includes("Recommended") ||
+            isRecommendedUnlocked)
+        ) {
           firstNavItem.click();
+        } else if (navPanel.querySelectorAll(".nav-item")[1]) {
+          navPanel.querySelectorAll(".nav-item")[1].click(); // Select second item if Recommended is locked
         }
       }
+
+      // Initialize payment status before rendering
+      checkPaymentStatus(() => {
+        renderCategoryNavigation();
+      });
 
       // Function to render filtered search results
       function renderSearchResults(query) {
@@ -1396,6 +1443,7 @@ function inputFieldTrigger() {
           positionDropdown();
         }
       });
+
       function positionTooltip() {
         const buttonRect = button.getBoundingClientRect();
         tooltip.style.left = `${
@@ -1923,6 +1971,8 @@ function setInputText(element, text) {
 // Function to execute workflow on sight
 // Function to show modal for dynamic variables in a workflow
 // Function to show modal for dynamic variables in a workflow
+// Function to show modal for dynamic variables in a workflow
+// Function to execute workflow on sight
 function showDynamicVariablesModal(workflowId) {
   const inputField = document.getElementById("prompt-textarea");
   if (inputField) {
@@ -1930,119 +1980,110 @@ function showDynamicVariablesModal(workflowId) {
   }
 
   console.log("Fetching workflow with ID:", workflowId);
-  chrome.storage.local.get(
-    ["workflows", "prompts", "variableCache"],
-    async function (data) {
-      if (chrome.runtime.lastError) {
-        console.error("Error fetching data:", chrome.runtime.lastError);
-        alert("Failed to load workflow. Please try again.");
-        return;
-      }
+  chrome.storage.local.get(["workflows", "prompts"], async function (data) {
+    if (chrome.runtime.lastError) {
+      console.error("Error fetching data:", chrome.runtime.lastError);
+      alert("Failed to load workflow. Please try again.");
+      return;
+    }
 
-      const workflow = data.workflows?.[workflowId];
-      if (!workflow || !workflow.name || !Array.isArray(workflow.steps)) {
-        console.error("Invalid workflow data for ID:", workflowId, workflow);
-        alert(
-          "Invalid workflow data. Please check the workflow configuration."
+    const workflow = data.workflows?.[workflowId];
+    if (!workflow || !workflow.name || !Array.isArray(workflow.steps)) {
+      console.error("Invalid workflow data for ID:", workflowId, workflow);
+      alert("Invalid workflow data. Please check the workflow configuration.");
+      return;
+    }
+
+    // Enhance steps with effective prompt content
+    for (const step of workflow.steps) {
+      if (step.useCustomPrompt && step.customPrompt) {
+        console.log(
+          `Step ${step.title || "unknown"}: Using customPrompt`,
+          step.customPrompt
         );
-        return;
-      }
-
-      // Initialize variable cache if it doesn't exist
-      const variableCache = data.variableCache || {};
-
-      // Enhance steps with effective prompt content
-      for (const step of workflow.steps) {
-        if (step.useCustomPrompt && step.customPrompt) {
+        step.effectivePrompt = step.customPrompt;
+      } else if (step.promptId) {
+        console.log(
+          `Step ${step.title || "unknown"}: Fetching prompt for promptId`,
+          step.promptId
+        );
+        const prompt = data.prompts?.[step.promptId];
+        if (prompt && prompt.content) {
+          step.effectivePrompt = prompt.content;
           console.log(
-            `Step ${step.title || "unknown"}: Using customPrompt`,
-            step.customPrompt
+            `Step ${step.title || "unknown"}: Fetched content for promptId ${
+              step.promptId
+            }`,
+            prompt.content
           );
-          step.effectivePrompt = step.customPrompt;
-        } else if (step.promptId) {
-          console.log(
-            `Step ${step.title || "unknown"}: Fetching prompt for promptId`,
-            step.promptId
-          );
-          const prompt = data.prompts?.[step.promptId];
-          if (prompt && prompt.content) {
-            step.effectivePrompt = prompt.content;
-            console.log(
-              `Step ${step.title || "unknown"}: Fetched content for promptId ${
-                step.promptId
-              }`,
-              prompt.content
-            );
-          } else {
-            console.error(
-              `No prompt found for promptId ${step.promptId} in step ${
-                step.title || "unknown"
-              }`
-            );
-            step.effectivePrompt = "No prompt defined";
-          }
         } else {
-          console.warn(
-            `Step ${
+          console.error(
+            `No prompt found for promptId ${step.promptId} in step ${
               step.title || "unknown"
-            }: No customPrompt or promptId defined`
+            }`
           );
           step.effectivePrompt = "No prompt defined";
         }
+      } else {
+        console.warn(
+          `Step ${step.title || "unknown"}: No customPrompt or promptId defined`
+        );
+        step.effectivePrompt = "No prompt defined";
       }
+    }
 
-      // Create modal
-      const modal = document.createElement("div");
-      modal.className = "modal";
-      Object.assign(modal.style, {
-        display: "flex",
-        position: "fixed",
-        zIndex: "10001",
-        left: "0",
-        top: "0",
-        width: "100%",
-        height: "100%",
-        backgroundColor: "rgba(0,0,0,0.5)",
-        alignItems: "center",
-        justifyContent: "center",
-        animation: "fadeIn 0.3s ease-in",
-      });
+    // Create modal
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    Object.assign(modal.style, {
+      display: "flex",
+      position: "fixed",
+      zIndex: "10001",
+      left: "0",
+      top: "0",
+      width: "100%",
+      height: "100%",
+      backgroundColor: "rgba(0,0,0,0.5)",
+      alignItems: "center",
+      justifyContent: "center",
+      animation: "fadeIn 0.3s ease-in",
+    });
 
-      const modalContent = document.createElement("div");
-      modalContent.className = "modal-content";
-      Object.assign(modalContent.style, {
-        backgroundColor: "white",
-        padding: "20px",
-        color: "#333",
-        borderRadius: "12px",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-        width: "90%",
-        maxWidth: "80vw",
-        maxHeight: "80vh",
-        overflowY: "auto",
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-      });
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+    Object.assign(modalContent.style, {
+      backgroundColor: "white",
+      padding: "20px",
+      color: "#333",
+      borderRadius: "12px",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+      width: "90%",
+      maxWidth: "80vw",
+      maxHeight: "80vh",
+      overflowY: "auto",
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
+    });
 
-      const modalHeader = document.createElement("div");
-      modalHeader.className = "modal-header";
-      modalHeader.style.cssText =
-        "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;";
-      modalHeader.innerHTML = `
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "modal-header";
+    modalHeader.style.cssText =
+      "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;";
+    modalHeader.innerHTML = `
       <h2 style="margin: 0; font-size: 24px; color: #1a1a1a;">Configure Workflow: ${escapeHTML(
         workflow.name
       )}</h2>
       <span class="close" style="cursor: pointer; font-size: 24px; color: #666; transition: color 0.2s ease;">×</span>
     `;
 
-      const modalBody = document.createElement("div");
-      modalBody.className = "modal-body";
-      modalBody.style.cssText = "flex: 1; overflow: hidden;";
+    const modalBody = document.createElement("div");
+    modalBody.className = "modal-body";
+    modalBody.style.cssText = "flex: 1; overflow: hidden;";
 
-      const stepsContainer = document.createElement("div");
-      stepsContainer.id = "workflow-steps";
-      stepsContainer.style.cssText = `
+    const stepsContainer = document.createElement("div");
+    stepsContainer.id = "workflow-steps";
+    stepsContainer.style.cssText = `
       display: flex;
       overflow-x: auto;
       scroll-behavior: smooth;
@@ -2052,14 +2093,14 @@ function showDynamicVariablesModal(workflowId) {
       margin-bottom: 15px;
     `;
 
-      const buttonsDiv = document.createElement("div");
-      buttonsDiv.style.cssText =
-        "display: flex; gap: 10px; justify-content: flex-end;";
+    const buttonsDiv = document.createElement("div");
+    buttonsDiv.style.cssText =
+      "display: flex; gap: 10px; justify-content: flex-end;";
 
-      const scrollLeftBtn = document.createElement("button");
-      scrollLeftBtn.className = "scroll-btn scroll-btn-left";
-      scrollLeftBtn.textContent = "←";
-      scrollLeftBtn.style.cssText = `
+    const scrollLeftBtn = document.createElement("button");
+    scrollLeftBtn.className = "scroll-btn scroll-btn-left";
+    scrollLeftBtn.textContent = "←";
+    scrollLeftBtn.style.cssText = `
       background-color: #4a90e2;
       color: white;
       border: none;
@@ -2076,19 +2117,19 @@ function showDynamicVariablesModal(workflowId) {
       z-index: 10002;
       transition: background 0.2s ease;
     `;
-      scrollLeftBtn.onmouseover = () =>
-        (scrollLeftBtn.style.backgroundColor = "#357abd");
-      scrollLeftBtn.onmouseout = () =>
-        (scrollLeftBtn.style.backgroundColor = "#4a90e2");
-      scrollLeftBtn.onclick = () => {
-        stepsContainer.scrollBy({ left: -220, behavior: "smooth" });
-        updateScrollButtons();
-      };
+    scrollLeftBtn.onmouseover = () =>
+      (scrollLeftBtn.style.backgroundColor = "#357abd");
+    scrollLeftBtn.onmouseout = () =>
+      (scrollLeftBtn.style.backgroundColor = "#4a90e2");
+    scrollLeftBtn.onclick = () => {
+      stepsContainer.scrollBy({ left: -220, behavior: "smooth" });
+      updateScrollButtons();
+    };
 
-      const scrollRightBtn = document.createElement("button");
-      scrollRightBtn.className = "scroll-btn scroll-btn-right";
-      scrollRightBtn.textContent = "→";
-      scrollRightBtn.style.cssText = `
+    const scrollRightBtn = document.createElement("button");
+    scrollRightBtn.className = "scroll-btn scroll-btn-right";
+    scrollRightBtn.textContent = "→";
+    scrollRightBtn.style.cssText = `
       background-color: #4a90e2;
       color: white;
       border: none;
@@ -2105,20 +2146,20 @@ function showDynamicVariablesModal(workflowId) {
       z-index: 10002;
       transition: background 0.2s ease;
     `;
-      scrollRightBtn.onmouseover = () =>
-        (scrollRightBtn.style.backgroundColor = "#357abd");
-      scrollRightBtn.onmouseout = () =>
-        (scrollRightBtn.style.backgroundColor = "#4a90e2");
-      scrollRightBtn.onclick = () => {
-        stepsContainer.scrollBy({ left: 220, behavior: "smooth" });
-        updateScrollButtons();
-      };
+    scrollRightBtn.onmouseover = () =>
+      (scrollRightBtn.style.backgroundColor = "#357abd");
+    scrollRightBtn.onmouseout = () =>
+      (scrollRightBtn.style.backgroundColor = "#4a90e2");
+    scrollRightBtn.onclick = () => {
+      stepsContainer.scrollBy({ left: 220, behavior: "smooth" });
+      updateScrollButtons();
+    };
 
-      const importCycleBtn = document.createElement("button");
-      importCycleBtn.type = "button";
-      importCycleBtn.className = "action-btn import-btn";
-      importCycleBtn.textContent = "Import Cycle";
-      importCycleBtn.style.cssText = `
+    const importCycleBtn = document.createElement("button");
+    importCycleBtn.type = "button";
+    importCycleBtn.className = "action-btn import-btn";
+    importCycleBtn.textContent = "Import Cycle";
+    importCycleBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 14px;
       cursor: pointer;
@@ -2128,20 +2169,20 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 6px;
       transition: background 0.2s ease, transform 0.2s ease;
     `;
-      importCycleBtn.onmouseover = () =>
-        (importCycleBtn.style.backgroundColor = "#5a6268");
-      importCycleBtn.onmouseout = () =>
-        (importCycleBtn.style.backgroundColor = "#6c757d");
-      importCycleBtn.onclick = () => {
-        console.log("Import Cycle clicked");
-        // Implement import functionality if needed
-      };
+    importCycleBtn.onmouseover = () =>
+      (importCycleBtn.style.backgroundColor = "#5a6268");
+    importCycleBtn.onmouseout = () =>
+      (importCycleBtn.style.backgroundColor = "#6c757d");
+    importCycleBtn.onclick = () => {
+      console.log("Import Cycle clicked");
+      // Implement import functionality if needed
+    };
 
-      const exportCycleBtn = document.createElement("button");
-      exportCycleBtn.type = "button";
-      exportCycleBtn.className = "action-btn export-btn";
-      exportCycleBtn.textContent = "Export Cycle";
-      exportCycleBtn.style.cssText = `
+    const exportCycleBtn = document.createElement("button");
+    exportCycleBtn.type = "button";
+    exportCycleBtn.className = "action-btn export-btn";
+    exportCycleBtn.textContent = "Export Cycle";
+    exportCycleBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 14px;
       cursor: pointer;
@@ -2151,34 +2192,34 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 6px;
       transition: background 0.2s ease, transform 0.2s ease;
     `;
-      exportCycleBtn.onmouseover = () =>
-        (exportCycleBtn.style.backgroundColor = "#138496");
-      exportCycleBtn.onmouseout = () =>
-        (exportCycleBtn.style.backgroundColor = "#17a2b8");
-      exportCycleBtn.onclick = () => {
-        console.log("Export Cycle clicked");
-        const exportData = { workflowId, repetitions };
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `workflow_${workflow.name.replace(
-          /[^a-z0-9]/gi,
-          "_"
-        )}_${Date.now()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      };
+    exportCycleBtn.onmouseover = () =>
+      (exportCycleBtn.style.backgroundColor = "#138496");
+    exportCycleBtn.onmouseout = () =>
+      (exportCycleBtn.style.backgroundColor = "#17a2b8");
+    exportCycleBtn.onclick = () => {
+      console.log("Export Cycle clicked");
+      const exportData = { workflowId, repetitions };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `workflow_${workflow.name.replace(
+        /[^a-z0-9]/gi,
+        "_"
+      )}_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
 
-      const addRepetitionBtn = document.createElement("button");
-      addRepetitionBtn.type = "button";
-      addRepetitionBtn.className = "action-btn";
-      addRepetitionBtn.textContent = "Add Repetition +";
-      addRepetitionBtn.style.cssText = `
+    const addRepetitionBtn = document.createElement("button");
+    addRepetitionBtn.type = "button";
+    addRepetitionBtn.className = "action-btn";
+    addRepetitionBtn.textContent = "Add Repetition +";
+    addRepetitionBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 14px;
       cursor: pointer;
@@ -2188,16 +2229,16 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 6px;
       transition: background 0.2s ease, transform 0.2s ease;
     `;
-      addRepetitionBtn.onmouseover = () =>
-        (addRepetitionBtn.style.backgroundColor = "#218838");
-      addRepetitionBtn.onmouseout = () =>
-        (addRepetitionBtn.style.backgroundColor = "#28a745");
+    addRepetitionBtn.onmouseover = () =>
+      (addRepetitionBtn.style.backgroundColor = "#218838");
+    addRepetitionBtn.onmouseout = () =>
+      (addRepetitionBtn.style.backgroundColor = "#28a745");
 
-      const sendBtn = document.createElement("button");
-      sendBtn.type = "button";
-      sendBtn.className = "action-btn";
-      sendBtn.textContent = "Execute Workflow";
-      sendBtn.style.cssText = `
+    const sendBtn = document.createElement("button");
+    sendBtn.type = "button";
+    sendBtn.className = "action-btn";
+    sendBtn.textContent = "Execute Workflow";
+    sendBtn.style.cssText = `
       padding: 10px 20px;
       font-size: 14px;
       cursor: pointer;
@@ -2207,82 +2248,57 @@ function showDynamicVariablesModal(workflowId) {
       border-radius: 6px;
       transition: background 0.2s ease, transform 0.2s ease;
     `;
-      sendBtn.onmouseover = () => (sendBtn.style.backgroundColor = "#357abd");
-      sendBtn.onmouseout = () => (sendBtn.style.backgroundColor = "#4a90e2");
+    sendBtn.onmouseover = () => (sendBtn.style.backgroundColor = "#357abd");
+    sendBtn.onmouseout = () => (sendBtn.style.backgroundColor = "#4a90e2");
 
-      buttonsDiv.appendChild(importCycleBtn);
-      buttonsDiv.appendChild(exportCycleBtn);
-      buttonsDiv.appendChild(addRepetitionBtn);
-      buttonsDiv.appendChild(sendBtn);
+    buttonsDiv.appendChild(importCycleBtn);
+    buttonsDiv.appendChild(exportCycleBtn);
+    buttonsDiv.appendChild(addRepetitionBtn);
+    buttonsDiv.appendChild(sendBtn);
 
-      modalBody.appendChild(stepsContainer);
-      modalContent.appendChild(modalHeader);
-      modalContent.appendChild(modalBody);
-      modalContent.appendChild(buttonsDiv);
-      modal.appendChild(modalContent);
-      document.body.appendChild(modal);
-      document.body.appendChild(scrollLeftBtn);
-      document.body.appendChild(scrollRightBtn);
+    modalBody.appendChild(stepsContainer);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modalContent.appendChild(buttonsDiv);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    document.body.appendChild(scrollLeftBtn);
+    document.body.appendChild(scrollRightBtn);
 
-      const repetitions = [];
+    const repetitions = [];
 
-      function hasDynamicVariables(prompt) {
-        return typeof prompt === "string" && /\{\{[^}]+}\}/.test(prompt);
-      }
+    function hasDynamicVariables(prompt) {
+      return typeof prompt === "string" && /\{\{[^}]+}\}/.test(prompt);
+    }
 
-      function extractVariables(prompt) {
-        if (typeof prompt !== "string") return [];
-        const matches = prompt.match(/\{\{([^}]+)\}\}/g);
-        return matches ? matches.map((m) => m.slice(2, -2)) : [];
-      }
+    function extractVariables(prompt) {
+      if (typeof prompt !== "string") return [];
+      const matches = prompt.match(/\{\{([^}]+)\}\}/g);
+      return matches ? matches.map((m) => m.slice(2, -2)) : [];
+    }
 
-      function initRepetition() {
-        return workflow.steps.map((step) => {
-          const stepData = {};
-          if (hasDynamicVariables(step.effectivePrompt)) {
-            const vars = extractVariables(step.effectivePrompt);
-            vars.forEach((v) => (stepData[v] = ""));
-          }
-          return stepData;
-        });
-      }
-
-      if (repetitions.length === 0) repetitions.push(initRepetition());
-
-      function updateScrollButtons() {
-        const isOverflowing =
-          stepsContainer.scrollWidth > stepsContainer.clientWidth;
-        scrollLeftBtn.style.display = isOverflowing ? "block" : "none";
-        scrollRightBtn.style.display = isOverflowing ? "block" : "none";
-      }
-
-      function renderVariableSuggestions(input, variable) {
-        const cache = variableCache[variable] || [];
-        let suggestionDiv = input.parentElement.querySelector(".suggestions");
-        if (!suggestionDiv) {
-          suggestionDiv = document.createElement("div");
-          suggestionDiv.className = "suggestions";
-          suggestionDiv.style.cssText =
-            "margin-top:4px; font-size:12px; color:#666; display:flex; gap:4px; flex-wrap:wrap;";
-          input.parentElement.appendChild(suggestionDiv);
+    function initRepetition() {
+      return workflow.steps.map((step) => {
+        const stepData = {};
+        if (hasDynamicVariables(step.effectivePrompt)) {
+          const vars = extractVariables(step.effectivePrompt);
+          vars.forEach((v) => (stepData[v] = ""));
         }
-        suggestionDiv.innerHTML = "";
-        cache.forEach((val) => {
-          const pill = document.createElement("span");
-          pill.textContent = val;
-          pill.style.cssText =
-            "background:#eee; padding:2px 6px; border-radius:4px; cursor:pointer;";
-          pill.onclick = () => {
-            input.value = val;
-            input.dispatchEvent(new Event("input", { bubbles: true }));
-            input.dispatchEvent(new Event("blur", { bubbles: true })); // Trigger blur to save
-          };
-          suggestionDiv.appendChild(pill);
-        });
-      }
+        return stepData;
+      });
+    }
 
-      function renderSteps() {
-        stepsContainer.innerHTML = `
+    if (repetitions.length === 0) repetitions.push(initRepetition());
+
+    function updateScrollButtons() {
+      const isOverflowing =
+        stepsContainer.scrollWidth > stepsContainer.clientWidth;
+      scrollLeftBtn.style.display = isOverflowing ? "block" : "none";
+      scrollRightBtn.style.display = isOverflowing ? "block" : "none";
+    }
+
+    function renderSteps() {
+      stepsContainer.innerHTML = `
         <style>
           #workflow-steps::-webkit-scrollbar {
             height: 10px;
@@ -2379,317 +2395,289 @@ function showDynamicVariablesModal(workflowId) {
         </style>
       `;
 
-        repetitions.forEach((repData, repIndex) => {
-          const repDiv = document.createElement("div");
-          repDiv.className = "repetition";
+      repetitions.forEach((repData, repIndex) => {
+        const repDiv = document.createElement("div");
+        repDiv.className = "repetition";
 
-          const closeBtn = document.createElement("button");
-          closeBtn.className = "repetition-close-btn";
-          closeBtn.innerText = "×";
-          closeBtn.dataset.repIndex = repIndex;
-          closeBtn.onclick = () => {
-            console.log("Deleting repetition, index:", repIndex);
-            repetitions.splice(repIndex, 1);
-            renderSteps();
-            if (repetitions.length === 0) {
-              console.log("No repetitions left, closing modal.");
-              modal.remove();
-              scrollLeftBtn.remove();
-              scrollRightBtn.remove();
-            }
-          };
-          repDiv.appendChild(closeBtn);
+        const closeBtn = document.createElement("button");
+        closeBtn.className = "repetition-close-btn";
+        closeBtn.innerText = "×";
+        closeBtn.dataset.repIndex = repIndex;
+        closeBtn.onclick = () => {
+          console.log("Deleting repetition, index:", repIndex);
+          repetitions.splice(repIndex, 1);
+          renderSteps();
+          if (repetitions.length === 0) {
+            console.log("No repetitions left, closing modal.");
+            modal.remove();
+            scrollLeftBtn.remove();
+            scrollRightBtn.remove();
+          }
+        };
+        repDiv.appendChild(closeBtn);
 
-          const executionHeader = document.createElement("h3");
-          executionHeader.textContent = `Execution ${repIndex + 1}`;
-          repDiv.appendChild(executionHeader);
+        const executionHeader = document.createElement("h3");
+        executionHeader.textContent = `Execution ${repIndex + 1}`;
+        repDiv.appendChild(executionHeader);
 
-          workflow.steps.forEach((step, stepIndex) => {
-            const stepDiv = document.createElement("div");
-            stepDiv.className = "step-group";
-            stepDiv.innerHTML = `
+        workflow.steps.forEach((step, stepIndex) => {
+          const stepDiv = document.createElement("div");
+          stepDiv.className = "step-group";
+          stepDiv.innerHTML = `
             <h4>${escapeHTML(step.title || "Step " + (stepIndex + 1))}</h4>
             <p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHTML(
               step.effectivePrompt
             )}</p>
           `;
 
-            if (hasDynamicVariables(step.effectivePrompt)) {
-              const variables = extractVariables(step.effectivePrompt);
-              variables.forEach((variable) => {
-                const input = document.createElement("input");
-                input.type = "text";
-                input.placeholder = `Enter ${variable}`;
-                input.dataset.variable = variable;
-                input.dataset.stepIndex = stepIndex;
-                input.dataset.repIndex = repIndex;
-                input.value =
-                  (repData[stepIndex] && repData[stepIndex][variable]) || "";
-                input.addEventListener("input", (e) => {
-                  renderVariableSuggestions(input, variable);
-                  updatePreview(stepIndex, repIndex);
-                });
-                input.addEventListener("blur", (e) => {
-                  const value = e.target.value;
-                  if (!repData[stepIndex]) repData[stepIndex] = {};
-                  repData[stepIndex][variable] = value;
-
-                  // Update variable cache
-                  if (value) {
-                    variableCache[variable] = variableCache[variable] || [];
-                    if (!variableCache[variable].includes(value)) {
-                      variableCache[variable].unshift(value);
-                      if (variableCache[variable].length > 5)
-                        variableCache[variable].pop();
-                      chrome.storage.local.set({ variableCache });
-                    }
-                  }
-                });
-                input.addEventListener("keydown", (e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    input.blur(); // Trigger save on Enter
-                  }
-                });
-                stepDiv.appendChild(input);
-                renderVariableSuggestions(input, variable);
+          if (hasDynamicVariables(step.effectivePrompt)) {
+            const variables = extractVariables(step.effectivePrompt);
+            variables.forEach((variable) => {
+              const input = document.createElement("input");
+              input.type = "text";
+              input.placeholder = `Enter ${variable}`;
+              input.dataset.variable = variable;
+              input.dataset.stepIndex = stepIndex;
+              input.dataset.repIndex = repIndex;
+              input.value =
+                (repData[stepIndex] && repData[stepIndex][variable]) || "";
+              input.addEventListener("input", (e) => {
+                if (!repData[stepIndex]) repData[stepIndex] = {};
+                repData[stepIndex][variable] = e.target.value;
+                updatePreview(stepIndex, repIndex);
               });
-
-              const preview = document.createElement("div");
-              preview.className = "preview";
-              preview.dataset.stepIndex = stepIndex;
-              preview.dataset.repIndex = repIndex;
-              stepDiv.appendChild(preview);
-            } else {
-              const preview = document.createElement("div");
-              preview.className = "preview constant";
-              preview.textContent = step.effectivePrompt;
-              stepDiv.appendChild(preview);
-            }
-
-            repDiv.appendChild(stepDiv);
-          });
-
-          stepsContainer.appendChild(repDiv);
-        });
-
-        if (stepsContainer.children.length === 0) {
-          stepsContainer.innerHTML += "<p>No steps found in this workflow.</p>";
-        } else {
-          updateAllPreviews();
-          stepsContainer.scrollLeft = stepsContainer.scrollWidth;
-        }
-        updateScrollButtons();
-      }
-
-      function updatePreview(stepIndex, repIndex) {
-        const step = workflow.steps[stepIndex];
-        if (
-          !step ||
-          !step.effectivePrompt ||
-          !hasDynamicVariables(step.effectivePrompt)
-        )
-          return;
-        let previewText = step.effectivePrompt;
-        const vars = extractVariables(step.effectivePrompt);
-        vars.forEach((variable) => {
-          const val =
-            (repetitions[repIndex][stepIndex] &&
-              repetitions[repIndex][stepIndex][variable]) ||
-            `{${variable}}`;
-          previewText = previewText.replace(`{{${variable}}}`, escapeHTML(val));
-        });
-
-        const previewElement = stepsContainer.querySelector(
-          `.preview[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
-        );
-        if (previewElement) {
-          previewElement.textContent = previewText;
-        }
-      }
-
-      function updateAllPreviews() {
-        workflow.steps.forEach((step, stepIndex) => {
-          if (
-            step.effectivePrompt &&
-            hasDynamicVariables(step.effectivePrompt)
-          ) {
-            repetitions.forEach((_, repIndex) => {
-              updatePreview(stepIndex, repIndex);
+              stepDiv.appendChild(input);
             });
-          }
-        });
-      }
 
-      addRepetitionBtn.addEventListener("click", () => {
-        repetitions.push(initRepetition());
-        renderSteps();
+            const preview = document.createElement("div");
+            preview.className = "preview";
+            preview.dataset.stepIndex = stepIndex;
+            preview.dataset.repIndex = repIndex;
+            stepDiv.appendChild(preview);
+          } else {
+            const preview = document.createElement("div");
+            preview.className = "preview constant";
+            preview.textContent = step.effectivePrompt;
+            stepDiv.appendChild(preview);
+          }
+
+          repDiv.appendChild(stepDiv);
+        });
+
+        stepsContainer.appendChild(repDiv);
       });
 
-      sendBtn.addEventListener("click", async () => {
-        const executions = repetitions.map((repData) =>
-          workflow.steps.map((step, stepIndex) => {
-            if (!step.effectivePrompt) return "";
-            if (!hasDynamicVariables(step.effectivePrompt))
-              return step.effectivePrompt;
-            let promptText = step.effectivePrompt;
-            const vars = extractVariables(step.effectivePrompt);
-            vars.forEach((variable) => {
-              const val =
-                (repData[stepIndex] && repData[stepIndex][variable]) ||
-                `{${variable}}`;
-              promptText = promptText.replace(`{{${variable}}}`, val);
-            });
-            return promptText;
-          })
-        );
-
-        const allPrompts = executions.flat().filter((item) => item);
-        modal.remove();
-        scrollLeftBtn.remove();
-        scrollRightBtn.remove();
-
-        for (const prompt of allPrompts) {
-          await sendPrompt(prompt);
-        }
-
-        // Update lastUsed timestamp
-        chrome.storage.local.get(["workflows"], (data) => {
-          const updatedWorkflow = {
-            ...data.workflows[workflowId],
-            lastUsed: Date.now(),
-          };
-          chrome.storage.local.set(
-            { workflows: { ...data.workflows, [workflowId]: updatedWorkflow } },
-            () => {
-              if (chrome.runtime.lastError) {
-                console.error(
-                  "Error updating workflow:",
-                  chrome.runtime.lastError
-                );
-              }
-              console.log("Workflow execution completed.");
-              renderWorkflows(); // Assumes renderWorkflows is globally available
-            }
-          );
-        });
-      });
-
-      async function sendPrompt(prompt) {
-        const geminiSendButton = document.querySelector(
-          "[data-mat-icon-name='send']"
-        );
-        const chatgptSendButton = document.querySelector(
-          "[data-testid='send-button']"
-        );
-        const grokSendButton = document.querySelector("[type='submit']");
-
-        const geminiInput = document.querySelector(
-          "[role='textbox']:not([readonly]):not([disabled])"
-        );
-        const chatgptInput = document.getElementById("prompt-textarea");
-        const grokInput = document.querySelector(
-          "textarea:not([readonly]):not([disabled])"
-        );
-
-        const activeInput = geminiInput || chatgptInput || grokInput;
-
-        if (!activeInput) {
-          console.error("Kein Eingabefeld gefunden.");
-          alert("Kein Eingabefeld gefunden.");
-          return;
-        }
-
-        await setInputText(activeInput, prompt);
-
-        if (geminiSendButton?.parentNode) {
-          geminiSendButton.parentNode.click();
-        } else if (chatgptSendButton) {
-          chatgptSendButton.click();
-        } else if (grokSendButton) {
-          grokSendButton.click();
-        } else {
-          activeInput.dispatchEvent(
-            new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
-          );
-        }
-
-        await waitForProcessing();
+      if (stepsContainer.children.length === 0) {
+        stepsContainer.innerHTML += "<p>No steps found in this workflow.</p>";
+      } else {
+        updateAllPreviews();
+        stepsContainer.scrollLeft = stepsContainer.scrollWidth;
       }
-
-      async function setInputText(element, text) {
-        if (
-          element.tagName === "TEXTAREA" ||
-          element instanceof HTMLTextAreaElement
-        ) {
-          element.value = text;
-        } else {
-          element.innerText = text;
-        }
-
-        element.dispatchEvent(new Event("input", { bubbles: true }));
-
-        return new Promise((resolve) => {
-          requestAnimationFrame(() => setTimeout(resolve, 50));
-        });
-      }
-
-      async function waitForProcessing() {
-        const stopSelectorGemini = "[data-mat-icon-name='stop']";
-        const stopSelectorChatGPT = "[data-testid='stop-button']";
-        const stopSelectorGrok = "[data-label='Modell-Antwort stoppen']";
-        const grokSendButtonSelector = "[type='submit']";
-
-        let activeStopSelector = null;
-
-        while (true) {
-          if (document.querySelector(stopSelectorGemini)) {
-            activeStopSelector = stopSelectorGemini;
-            break;
-          }
-          if (document.querySelector(stopSelectorChatGPT)) {
-            activeStopSelector = stopSelectorChatGPT;
-            break;
-          }
-          if (document.querySelector(stopSelectorGrok)) {
-            activeStopSelector = stopSelectorGrok;
-            break;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-
-        while (document.querySelector(activeStopSelector)) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-
-        if (activeStopSelector === stopSelectorGrok) {
-          while (true) {
-            const grokSendButton = document.querySelector(
-              grokSendButtonSelector
-            );
-            if (grokSendButton && !grokSendButton.disabled) {
-              break;
-            }
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-        }
-      }
-
-      function escapeHTML(str) {
-        const div = document.createElement("div");
-        div.textContent = str;
-        return div.innerHTML;
-      }
-
-      modalHeader.querySelector(".close").onclick = () => {
-        modal.remove();
-        scrollLeftBtn.remove();
-        scrollRightBtn.remove();
-      };
-
-      renderSteps();
+      updateScrollButtons();
     }
-  );
+
+    function updatePreview(stepIndex, repIndex) {
+      const step = workflow.steps[stepIndex];
+      if (
+        !step ||
+        !step.effectivePrompt ||
+        !hasDynamicVariables(step.effectivePrompt)
+      )
+        return;
+      let previewText = step.effectivePrompt;
+      const vars = extractVariables(step.effectivePrompt);
+      vars.forEach((variable) => {
+        const val =
+          (repetitions[repIndex][stepIndex] &&
+            repetitions[repIndex][stepIndex][variable]) ||
+          `{${variable}}`;
+        previewText = previewText.replace(`{{${variable}}}`, escapeHTML(val));
+      });
+
+      const previewElement = stepsContainer.querySelector(
+        `.preview[data-step-index="${stepIndex}"][data-rep-index="${repIndex}"]`
+      );
+      if (previewElement) {
+        previewElement.textContent = previewText;
+      }
+    }
+
+    function updateAllPreviews() {
+      workflow.steps.forEach((step, stepIndex) => {
+        if (step.effectivePrompt && hasDynamicVariables(step.effectivePrompt)) {
+          repetitions.forEach((_, repIndex) => {
+            updatePreview(stepIndex, repIndex);
+          });
+        }
+      });
+    }
+
+    addRepetitionBtn.addEventListener("click", () => {
+      repetitions.push(initRepetition());
+      renderSteps();
+    });
+
+    sendBtn.addEventListener("click", async () => {
+      const executions = repetitions.map((repData) =>
+        workflow.steps.map((step, stepIndex) => {
+          if (!step.effectivePrompt) return "";
+          if (!hasDynamicVariables(step.effectivePrompt))
+            return step.effectivePrompt;
+          let promptText = step.effectivePrompt;
+          const vars = extractVariables(step.effectivePrompt);
+          vars.forEach((variable) => {
+            const val =
+              (repData[stepIndex] && repData[stepIndex][variable]) ||
+              `{${variable}}`;
+            promptText = promptText.replace(`{{${variable}}}`, val);
+          });
+          return promptText;
+        })
+      );
+
+      const allPrompts = executions.flat().filter((item) => item);
+      modal.remove();
+      scrollLeftBtn.remove();
+      scrollRightBtn.remove();
+
+      for (const prompt of allPrompts) {
+        await sendPrompt(prompt);
+      }
+
+      // Update lastUsed timestamp
+      chrome.storage.local.get(["workflows"], (data) => {
+        const updatedWorkflow = {
+          ...data.workflows[workflowId],
+          lastUsed: Date.now(),
+        };
+        chrome.storage.local.set(
+          { workflows: { ...data.workflows, [workflowId]: updatedWorkflow } },
+          () => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Error updating workflow:",
+                chrome.runtime.lastError
+              );
+            }
+            console.log("Workflow execution completed.");
+            renderWorkflows(); // Assumes renderWorkflows is globally available
+          }
+        );
+      });
+    });
+
+    async function sendPrompt(prompt) {
+      const geminiSendButton = document.querySelector(
+        "[data-mat-icon-name='send']"
+      );
+      const chatgptSendButton = document.querySelector(
+        "[data-testid='send-button']"
+      );
+      const grokSendButton = document.querySelector("[type='submit']");
+
+      const geminiInput = document.querySelector(
+        "[role='textbox']:not([readonly]):not([disabled])"
+      );
+      const chatgptInput = document.getElementById("prompt-textarea");
+      const grokInput = document.querySelector(
+        "textarea:not([readonly]):not([disabled])"
+      );
+
+      const activeInput = geminiInput || chatgptInput || grokInput;
+
+      if (!activeInput) {
+        console.error("Kein Eingabefeld gefunden.");
+        alert("Kein Eingabefeld gefunden.");
+        return;
+      }
+
+      await setInputText(activeInput, prompt);
+
+      if (geminiSendButton?.parentNode) {
+        geminiSendButton.parentNode.click();
+      } else if (chatgptSendButton) {
+        chatgptSendButton.click();
+      } else if (grokSendButton) {
+        grokSendButton.click();
+      } else {
+        activeInput.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+        );
+      }
+
+      await waitForProcessing();
+    }
+
+    async function setInputText(element, text) {
+      if (
+        element.tagName === "TEXTAREA" ||
+        element instanceof HTMLTextAreaElement
+      ) {
+        element.value = text;
+      } else {
+        element.innerText = text;
+      }
+
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => setTimeout(resolve, 50));
+      });
+    }
+
+    async function waitForProcessing() {
+      const stopSelectorGemini = "[data-mat-icon-name='stop']";
+      const stopSelectorChatGPT = "[data-testid='stop-button']";
+      const stopSelectorGrok = "[data-label='Modell-Antwort stoppen']";
+      const grokSendButtonSelector = "[type='submit']";
+
+      let activeStopSelector = null;
+
+      while (true) {
+        if (document.querySelector(stopSelectorGemini)) {
+          activeStopSelector = stopSelectorGemini;
+          break;
+        }
+        if (document.querySelector(stopSelectorChatGPT)) {
+          activeStopSelector = stopSelectorChatGPT;
+          break;
+        }
+        if (document.querySelector(stopSelectorGrok)) {
+          activeStopSelector = stopSelectorGrok;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      while (document.querySelector(activeStopSelector)) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      if (activeStopSelector === stopSelectorGrok) {
+        while (true) {
+          const grokSendButton = document.querySelector(grokSendButtonSelector);
+          if (grokSendButton && !grokSendButton.disabled) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    modalHeader.querySelector(".close").onclick = () => {
+      modal.remove();
+      scrollLeftBtn.remove();
+      scrollRightBtn.remove();
+    };
+
+    renderSteps();
+  });
 }
 
 // Ensure escapeHTML is available

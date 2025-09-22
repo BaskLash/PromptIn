@@ -16,6 +16,88 @@ let isDropdownOpen = false;
 let isMouseOverDropdown = false;
 let hoveredRow = null;
 
+const extPay = ExtPay("promptin"); // ExtPay global verfügbar
+
+// Reference the subscription elements
+const subscriptionElement = document.getElementById("subscription");
+const subscriptionButtons = document.getElementById("subscription-buttons");
+const subscriptionBenefits = document.getElementById("subscription-benefits");
+
+// Function to fetch and display subscription details
+async function displaySubscriptionDetails() {
+  if (!subscriptionElement || !subscriptionButtons || !subscriptionBenefits) {
+    console.error("Subscription elements not found in DOM");
+    return;
+  }
+
+  subscriptionElement.textContent = "Loading...";
+  subscriptionButtons.innerHTML = ""; // Clear previous buttons
+  subscriptionBenefits.innerHTML = ""; // Clear previous benefits
+
+  try {
+    // Fetch the current user's details
+    const user = await extPay.getUser();
+
+    if (user && user.subscription) {
+      const { plan, status, createdAt, expiresAt } = user.subscription;
+
+      // Format the display text
+      const startDate = new Date(createdAt).toLocaleDateString();
+      const endDate = expiresAt
+        ? new Date(expiresAt).toLocaleDateString()
+        : "Never";
+
+      subscriptionElement.textContent = `Plan: ${plan.name} (${plan.amount} ${plan.currency}/mo), Status: ${status}, Started: ${startDate}, Expires: ${endDate}`;
+    } else {
+      // No active subscription
+      subscriptionElement.textContent =
+        "No active subscription. Upgrade to unlock premium features.";
+
+      // Create "Upgrade for Pro!" button
+      const proButton = document.createElement("button");
+      proButton.innerText = "Upgrade for Pro!";
+      proButton.style.marginRight = "10px"; // Add some spacing
+      proButton.addEventListener("click", function () {
+        extPay.openPaymentPage("promonthly"); // Assuming extPay supports plan-specific payment pages
+      });
+      subscriptionButtons.appendChild(proButton);
+
+      // Create "Upgrade for Basic!" button
+      const basicButton = document.createElement("button");
+      basicButton.innerText = "Upgrade for Basic!";
+      basicButton.addEventListener("click", function () {
+        extPay.openPaymentPage("basicmonthly"); // Assuming extPay supports plan-specific payment pages
+      });
+      subscriptionButtons.appendChild(basicButton);
+
+      // Display benefits
+      const benefitsList = document.createElement("ul");
+      benefitsList.style.listStyleType = "disc";
+      benefitsList.style.marginLeft = "20px";
+      const benefits = [
+        "Know which prompts actually perform best",
+        "Spot when a prompt starts losing quality and learn how, when, and why",
+        "Swap weak prompts for stronger ones instantly",
+        "Use the most effective and popular prompts for your specific AI model",
+        "Easily combine your prompts with the best matches — and get smart suggestions even when nothing fits",
+        "Stay on top of how and when your prompts are used",
+        "Get help fast when it really matters",
+        "Be first to try the newest AI features",
+      ];
+
+      benefits.forEach((benefit) => {
+        const li = document.createElement("li");
+        li.textContent = benefit;
+        benefitsList.appendChild(li);
+      });
+      subscriptionBenefits.appendChild(benefitsList);
+    }
+  } catch (error) {
+    console.error("Error fetching subscription:", error);
+    subscriptionElement.textContent = "Error loading subscription details.";
+  }
+}
+
 // Global Functions
 function updateSortButtonText() {
   const sortKeyMap = {
@@ -1739,7 +1821,9 @@ function loadFolders() {
     );
 
     if (visibleFolders.length === 0) {
-      folderList.innerHTML = "<li>No visible folders</li>";
+      folderList.innerHTML = `<li>${
+        translations[currentLang]?.no_visible_folders || "Trash"
+      }</li>`;
     } else {
       visibleFolders.forEach(([folderId, folder]) => {
         const promptCount = (folder.promptIds || []).filter(
@@ -2092,6 +2176,7 @@ function importDataFromJSON(event) {
 
 // DOMContentLoaded Event Listener
 document.addEventListener("DOMContentLoaded", () => {
+  displaySubscriptionDetails();
   validateFolderPrompts();
 
   // Load sortOptions from chrome.storage.local
@@ -2900,49 +2985,49 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Switching between forms
-  const loginForm = document.getElementById("login-form");
-  const registerForm = document.getElementById("register-form");
-  const resetForm = document.getElementById("reset-form");
-  const title = document.getElementById("user-title");
+  // const loginForm = document.getElementById("login-form");
+  // const registerForm = document.getElementById("register-form");
+  // const resetForm = document.getElementById("reset-form");
+  // const title = document.getElementById("user-title");
 
-  document.getElementById("show-register").onclick = (e) => {
-    e.preventDefault();
-    loginForm.style.display = "none";
-    resetForm.style.display = "none";
-    registerForm.style.display = "block";
-    title.textContent = "Register";
-  };
+  // document.getElementById("show-register").onclick = (e) => {
+  //   e.preventDefault();
+  //   loginForm.style.display = "none";
+  //   resetForm.style.display = "none";
+  //   registerForm.style.display = "block";
+  //   title.textContent = "Register";
+  // };
 
-  document.getElementById("show-login").onclick = (e) => {
-    e.preventDefault();
-    registerForm.style.display = "none";
-    resetForm.style.display = "none";
-    loginForm.style.display = "block";
-    title.textContent = "Login";
-  };
+  // document.getElementById("show-login").onclick = (e) => {
+  //   e.preventDefault();
+  //   registerForm.style.display = "none";
+  //   resetForm.style.display = "none";
+  //   loginForm.style.display = "block";
+  //   title.textContent = "Login";
+  // };
 
-  document.getElementById("show-reset").onclick = (e) => {
-    e.preventDefault();
-    loginForm.style.display = "none";
-    registerForm.style.display = "none";
-    resetForm.style.display = "block";
-    title.textContent = "Reset Password";
-  };
+  // document.getElementById("show-reset").onclick = (e) => {
+  //   e.preventDefault();
+  //   loginForm.style.display = "none";
+  //   registerForm.style.display = "none";
+  //   resetForm.style.display = "block";
+  //   title.textContent = "Reset Password";
+  // };
 
-  document.getElementById("show-login-2").onclick = (e) => {
-    e.preventDefault();
-    resetForm.style.display = "none";
-    registerForm.style.display = "none";
-    loginForm.style.display = "block";
-    title.textContent = "Login";
-  };
+  // document.getElementById("show-login-2").onclick = (e) => {
+  //   e.preventDefault();
+  //   resetForm.style.display = "none";
+  //   registerForm.style.display = "none";
+  //   loginForm.style.display = "block";
+  //   title.textContent = "Login";
+  // };
 
-  document.getElementById("copy-token-btn").addEventListener("click", () => {
-    const tokenField = document.getElementById("user-token");
-    tokenField.select();
-    document.execCommand("copy");
-    alert("Token copied!");
-  });
+  // document.getElementById("copy-token-btn").addEventListener("click", () => {
+  //   const tokenField = document.getElementById("user-token");
+  //   tokenField.select();
+  //   document.execCommand("copy");
+  //   alert("Token copied!");
+  // });
 
   // Prompt Import/Export
   document.getElementById("import-prompt-btn").addEventListener("click", () => {
@@ -3215,6 +3300,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".save-btn-add").addEventListener("click", () => {
+    console.log("Save from popup");
     const title = document.getElementById("entry-title-add").value.trim();
     const description = document
       .getElementById("entry-description-add")
@@ -3259,7 +3345,6 @@ document.addEventListener("DOMContentLoaded", () => {
         tags,
         isFavorite,
         notes,
-        // compatibleModels, incompatibleModels, versions, metaChangeLog etc. werden automatisch gesetzt
       },
       {
         folderId: folderId || null,

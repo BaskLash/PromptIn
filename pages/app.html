@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="app.css" />
+    <script src="ExtPay.js" defer></script>
+    <!-- load first -->
     <script src="utils.js" defer></script>
     <script src="styles.js" defer></script>
     <script src="folderManagement.js" defer></script>
@@ -87,8 +89,12 @@
               <li data-view="type">Type Overview</li>
               <li data-view="anonymizer">Text Anonymizer</li>
               <li data-view="workflows">Workflows</li>
-              <li data-view="analytics">Prompt Analytics</li>
-              <li data-view="benchmarking">Prompt Benchmarking</li>
+              <li data-view="analytics" class="locked">
+                Prompt Analytics <span class="pro-badge">🔒 Basic</span>
+              </li>
+              <li data-view="benchmarking" class="locked">
+                Prompt Benchmarking <span class="pro-badge">🔒 Pro</span>
+              </li>
             </ul>
           </section>
         </nav>
@@ -399,7 +405,7 @@
           <div id="analytics-container"></div>
         </div>
         <!-- Prompt Benchmarking Bereich -->
-         <div id="benchmarking-view" style="display: none">
+        <div id="benchmarking-view" style="display: none">
           <div class="main-header">
             <h1>Prompt Benchmarking</h1>
           </div>

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PromptIn: AI Prompt Management System, All in One Prompt Manager",
   "description": "An intelligent tool for managing and optimizing AI prompts for efficient and precise results",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "permissions": ["storage", "unlimitedStorage", "tabs"],
   "icons": {
     "16": "icon/icon16.png",
@@ -19,6 +19,7 @@
     {
       "matches": ["<all_urls>"],
       "js": [
+        "pages/ExtPay.js",
         "inputFieldTrigger.js",
         "addButton.js",
         "addPlatformClickEvent.js",
@@ -30,7 +31,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icon/icon48.png", "i18n/*.json"],
+      "resources": ["icon/icon48.png", "i18n/*.json", "pages/ExtPay.js"],
       "matches": ["<all_urls>"]
     }
   ],

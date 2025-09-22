@@ -619,7 +619,7 @@ async function promptSaver(message) {
   promptTitleInput.type = "text";
   promptTitleInput.id = "promptTitle";
   promptTitleInput.name = "promptTitle";
-  promptTitleInput.placeholder = "Gib einen Titel für deinen Prompt ein";
+  promptTitleInput.placeholder = "Enter a title for your prompt";
 
   const promptDescLabel = document.createElement("label");
   promptDescLabel.setAttribute("for", "promptDescription");
@@ -629,7 +629,7 @@ async function promptSaver(message) {
   promptDescInput.id = "promptDescription";
   promptDescInput.name = "promptDescription";
   promptDescInput.rows = 3;
-  promptDescInput.placeholder = "Gib eine Beschreibung für deinen Prompt ein";
+  promptDescInput.placeholder = "Enter a description for your prompt";
 
   const nextToPromptButton = document.createElement("button");
   nextToPromptButton.textContent = "Next";
@@ -766,7 +766,7 @@ async function promptSaver(message) {
 
   const similarPromptsLabel = document.createElement("label");
   similarPromptsLabel.setAttribute("for", "similarPromptsDropdown");
-  similarPromptsLabel.textContent = "Similar Prompts:";
+  similarPromptsLabel.textContent = "Advanced Similarity Insights:";
 
   const similarPromptsDropdown = document.createElement("div");
   similarPromptsDropdown.id = "similarPromptsDropdown";
@@ -1616,19 +1616,25 @@ async function promptSaver(message) {
         ([, folder]) => !folder.isHidden && !folder.isTrash
       );
 
-      // Dropdown zum Ersetzen eines Ordners
+      // Modified: Added "Categorised Prompts" and "Single Prompts" as static options
+      // Explanation: We now include all folders, "Categorised Prompts", and a new "Single Prompts" option in the dropdown
       replaceFolderSelect.innerHTML = `
       <option value="">Select a folder or category</option>
-      <optgroup label="Categorised Prompts">
+      <optgroup label="Folders">
         ${folders
           .map(
-            ([id, folder]) => `<option value="${id}">${folder.name}</option>`
+            ([id, folder]) =>
+              `<option value="folder:${id}">${folder.name}</option>`
           )
           .join("")}
       </optgroup>
+      <optgroup label="Categories">
+        <option value="categorised">Categorised Prompts</option>
+        <option value="single">Single Prompts</option>
+      </optgroup>
     `;
 
-      // Dropdown zum Hinzufügen zu einem Ordner
+      // Dropdown zum Hinzufügen zu einem Ordner (unchanged for this section)
       addFolderSelect.innerHTML = `
       <option value="">Select a folder</option>
       ${folders
@@ -2183,12 +2189,12 @@ async function promptSaver(message) {
   });
 
   replaceFolderSelect.addEventListener("change", async (e) => {
-    const folderId = replaceFolderSelect.value;
-    replacePromptSelect.disabled = !folderId;
+    const selection = replaceFolderSelect.value;
+    replacePromptSelect.disabled = !selection;
     replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
     shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
 
-    if (!folderId) return;
+    if (!selection) return;
 
     try {
       const data = await new Promise((resolve, reject) => {
@@ -2203,19 +2209,35 @@ async function promptSaver(message) {
 
       const folders = data.folders || {};
       const prompts = data.prompts || {};
-      const folder = folders[folderId];
 
-      if (!folder || !Array.isArray(folder.promptIds)) {
-        console.warn(`Folder ${folderId} not found or has no prompts.`);
-        return;
+      let promptList = [];
+
+      // Modified: Handle different selection types (folder, categorised, single)
+      // Explanation: We now check the selection type and populate prompts accordingly
+      if (selection.startsWith("folder:")) {
+        const folderId = selection.replace("folder:", "");
+        const folder = folders[folderId];
+        if (folder && Array.isArray(folder.promptIds)) {
+          promptList = folder.promptIds
+            .map((promptId) => prompts[promptId])
+            .filter((prompt) => prompt && !prompt.isDeleted);
+        }
+      } else if (selection === "categorised") {
+        // Handle Categorised Prompts
+        promptList = Object.values(prompts).filter(
+          (prompt) => prompt && prompt.isCategorised && !prompt.isDeleted
+        );
+      } else if (selection === "single") {
+        // Handle Single Prompts (prompts not linked to any folder)
+        promptList = Object.values(prompts).filter(
+          (prompt) => prompt && !prompt.folderId && !prompt.isDeleted
+        );
       }
 
-      folder.promptIds.forEach((promptId) => {
-        const prompt = prompts[promptId];
-        if (!prompt) return;
-
+      // Populate the prompt dropdown
+      promptList.forEach((prompt) => {
         const option = document.createElement("option");
-        option.value = promptId;
+        option.value = prompt.promptId;
         const promptTitle = prompt.title || "Untitled Prompt";
         option.textContent =
           promptTitle.length > 50
@@ -2224,8 +2246,13 @@ async function promptSaver(message) {
         option.title = promptTitle;
         replacePromptSelect.appendChild(option);
       });
+
+      // Enable the prompt select if there are prompts available
+      replacePromptSelect.disabled = promptList.length === 0;
     } catch (error) {
       console.error("Error fetching folder or prompt data:", error);
+      replacePromptSelect.innerHTML =
+        '<option value="">Error loading prompts</option>';
     }
   });
 
