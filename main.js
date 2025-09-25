@@ -82,47 +82,202 @@ async function displaySubscriptionDetails() {
       });
       subscriptionElement.appendChild(loginButton);
 
-      // ----------- PRO PLAN CARD -----------
-      const proCard = document.createElement("div");
-      proCard.className = "plan-card pro";
-      proCard.innerHTML = `
-        <h3>PRO Plan</h3>
-        <div class="price">$5 / month</div>
-        <ul>
-          <li>Everything from the basic plan</li>
-          <li>Spot when a prompt starts losing quality and learn how, when, and why</li>
-          <li>Swap weak prompts for stronger ones instantly</li>
-          <li>Replace prompts with stronger alternatives</li>
-          <li>Be first to try the newest AI features</li>
-          <li>Get help fast when it really matters</li>
-          <li>Priority support</li>
-        </ul>
-        <button>Upgrade to PRO</button>
-      `;
-      proCard.querySelector("button").addEventListener("click", () => {
-        extPay.openPaymentPage("promonthly");
-      });
-      subscriptionButtons.appendChild(proCard);
+      // -------- Dropdown für Abo-Auswahl --------
+      const planSelector = document.createElement("select");
+      planSelector.style.margin = "15px 0";
+      planSelector.style.padding = "8px";
+      planSelector.style.borderRadius = "6px";
+      planSelector.style.border = "1px solid #ccc";
+      planSelector.style.fontWeight = "600";
 
-      // ----------- BASIC PLAN CARD -----------
-      const basicCard = document.createElement("div");
-      basicCard.className = "plan-card basic";
-      basicCard.innerHTML = `
-        <h3>Basic Plan</h3>
-        <div class="price">$1 / month</div>
-        <ul>
-          <li>Know which prompts actually perform best</li>
-          <li>Use the most effective and popular prompts for your specific AI model</li>
-          <li>Easily combine your prompts with the best matches — and get smart suggestions even when nothing fits</li>
-          <li>Stay on top of how and when your prompts are used</li>
-          <li>Standard support</li>
-        </ul>
-        <button>Upgrade to BASIC</button>
+      const yearlyOption = document.createElement("option");
+      yearlyOption.value = "yearly";
+      yearlyOption.textContent = "Yearly Plans";
+      yearlyOption.selected = true;
+
+      const monthlyOption = document.createElement("option");
+      monthlyOption.value = "monthly";
+      monthlyOption.textContent = "Monthly Plans";
+
+      planSelector.appendChild(yearlyOption);
+      planSelector.appendChild(monthlyOption);
+
+      subscriptionButtons.appendChild(planSelector);
+
+      // Container für die Cards
+      const plansContainer = document.createElement("div");
+      subscriptionButtons.appendChild(plansContainer);
+
+      // Funktion zum Anzeigen der Pläne
+      function renderPlans(view) {
+        plansContainer.innerHTML = "";
+
+        const plans = {
+          basic: { monthly: 1, monthlyOrig: 3 },
+          pro: { monthly: 5, monthlyOrig: 10 },
+          basicyearly: { yearly: 10, yearlyOrig: 15 },
+          proyearly: { yearly: 50, yearlyOrig: 75 },
+        };
+
+        function formatPrice(planKey, isYearly) {
+          const plan = isYearly ? plans[`${planKey}yearly`] : plans[planKey];
+          const monthlyPlan = plans[planKey];
+
+          const monthly = monthlyPlan.monthly;
+          const monthlyOrig = monthlyPlan.monthlyOrig;
+          const yearly = isYearly ? plan.yearly : monthly * 12;
+          const yearlyOrig = isYearly ? plan.yearlyOrig : monthlyOrig * 12;
+
+          const displayMonthly = isYearly
+            ? (plan.yearly / 12).toFixed(2)
+            : monthly;
+          const displayMonthlyOrig = isYearly
+            ? (plan.yearlyOrig / 12).toFixed(2)
+            : monthlyOrig;
+
+          const savePercent = isYearly
+            ? Math.round(((yearlyOrig - yearly) / yearlyOrig) * 100)
+            : Math.round(((monthlyOrig - monthly) / monthlyOrig) * 100);
+
+          if (isYearly) {
+            return `
+        <div style="display:flex; align-items:center; gap:10px; font-size:1.1em;">
+          <div style="text-decoration:line-through; color:#999;">€${displayMonthlyOrig}/month</div>
+          <div style="font-weight:bold; color:#27ae60;">€${displayMonthly}/month</div>
+          <div style="color:#27ae60; font-weight:bold;">Save ${savePercent}%</div>
+        </div>
+        <div style="font-size:0.8em; color:red;">
+          + 3 Months EXTRA
+        </div>
+        <div style="font-size:0.8em; color:#555;"><s>€${yearlyOrig}</s> €${yearly} for the first 12 months, billed annually + taxes may apply</div>
       `;
-      basicCard.querySelector("button").addEventListener("click", () => {
-        extPay.openPaymentPage("basicmonthly");
+          } else {
+            return `
+        <div style="display:flex; align-items:center; gap:10px; font-size:1.1em;">
+          <div style="text-decoration:line-through; color:#999;">€${monthlyOrig}/month</div>
+          <div style="font-weight:bold; color:#27ae60;">€${monthly}/month</div>
+          <div style="color:#27ae60; font-weight:bold;">Save ${savePercent}%</div>
+        </div>
+        <div style="font-size:0.8em; color:#555;">Billed monthly, taxes may apply</div>
+      `;
+          }
+        }
+
+        const order = view === "yearly" ? ["pro", "basic"] : ["pro", "basic"];
+
+        order.forEach((planKey) => {
+          const isYearly = view === "yearly";
+
+          const card = document.createElement("div");
+          card.className = `plan-card ${planKey}`;
+          card.style.position = "relative";
+          card.style.border = "1px solid #ddd";
+          card.style.borderRadius = "10px";
+          card.style.padding = "20px";
+          card.style.boxShadow = "0 4px 8px rgba(0,0,0,0.05)";
+          card.style.backgroundColor = "#fff";
+
+          // Most popular badge
+          if (isYearly && planKey === "pro") {
+            const badge = document.createElement("div");
+            badge.textContent = "Most Popular";
+            badge.style.color = "#fff";
+            badge.style.backgroundColor = "#e67e22";
+            badge.style.padding = "5px 10px";
+            badge.style.borderRadius = "5px";
+            badge.style.position = "absolute";
+            badge.style.top = "15px";
+            badge.style.right = "15px";
+            badge.style.fontWeight = "bold";
+            card.appendChild(badge);
+            card.style.border = "2px solid #e67e22";
+          }
+
+          // Plan header
+          const header = document.createElement("h3");
+          header.innerHTML = `${planKey.toUpperCase()} Plan`;
+          card.appendChild(header);
+
+          // Price
+          const priceDiv = document.createElement("div");
+          priceDiv.className = "price";
+          priceDiv.innerHTML = formatPrice(planKey, isYearly);
+          card.appendChild(priceDiv);
+
+          // Benefits with green checkmarks
+          const ul = document.createElement("ul");
+          ul.style.listStyle = "none";
+          ul.style.padding = "0";
+          ul.style.marginTop = "10px";
+          const benefits =
+            planKey === "basic"
+              ? [
+                  "Know which prompts actually perform best",
+                  "Use the most effective and popular prompts for your specific AI model",
+                  "Easily combine your prompts with the best matches — and get smart suggestions even when nothing fits",
+                  "Stay on top of how and when your prompts are used",
+                  "Standard support",
+                ]
+              : [
+                  "Everything from the basic plan",
+                  "Spot when a prompt starts losing quality and learn how, when, and why",
+                  "Swap weak prompts for stronger ones instantly",
+                  "Replace prompts with stronger alternatives",
+                  "Be first to try the newest AI features",
+                  "Priority support",
+                ];
+
+          benefits.forEach((b) => {
+            const li = document.createElement("li");
+            li.innerHTML = `<span style="color:#27ae60; font-weight:bold;">✔</span> ${b}`;
+            li.style.marginBottom = "5px";
+            ul.appendChild(li);
+          });
+
+          card.appendChild(ul);
+
+          // 30-Tage Geld-zurück-Banner
+          const refundBanner = document.createElement("div");
+          refundBanner.style.display = "flex";
+          refundBanner.style.alignItems = "center";
+          refundBanner.style.gap = "8px";
+          refundBanner.style.marginTop = "15px";
+          refundBanner.style.padding = "8px";
+          refundBanner.style.backgroundColor = "#eafaf1";
+          refundBanner.style.border = "1px solid #27ae60";
+          refundBanner.style.borderRadius = "6px";
+          refundBanner.innerHTML = `<span style="color:#27ae60; font-weight:bold;">💰</span> 30-day money-back guarantee, no questions asked`;
+          card.appendChild(refundBanner);
+
+          // Upgrade Button
+          const button = document.createElement("button");
+          button.textContent = `Upgrade to ${planKey.toUpperCase()}`;
+          button.style.marginTop = "15px";
+          button.style.padding = "10px 15px";
+          button.style.border = "none";
+          button.style.borderRadius = "6px";
+          button.style.backgroundColor =
+            planKey === "pro" ? "#e67e22" : "#27ae60";
+          button.style.color = "#fff";
+          button.style.cursor = "pointer";
+          button.addEventListener("click", () => {
+            extPay.openPaymentPage(
+              `${planKey}${isYearly ? "yearly" : "monthly"}`
+            );
+          });
+
+          card.appendChild(button);
+          plansContainer.appendChild(card);
+        });
+      }
+
+      // Default = yearly
+      renderPlans("yearly");
+
+      // Listener für Auswahl
+      planSelector.addEventListener("change", (e) => {
+        renderPlans(e.target.value);
       });
-      subscriptionButtons.appendChild(basicCard);
     }
   } catch (error) {
     console.error("Error fetching subscription:", error);

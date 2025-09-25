@@ -271,6 +271,34 @@ body.dark-theme .user-icon {
   color: #27ae60;
 }
 
+/* Highlight yearly plans */
+#user-overlay .plan-card.highlight {
+  border: 3px solid #4a90e2;
+  background: #f0f8ff;
+  position: relative;
+}
+
+#user-overlay .plan-card.highlight::before {
+  content: "Recommended";
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  background: #4a90e2;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+#user-overlay .plan-card .deal {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e67e22;
+  margin-bottom: 8px;
+}
+
+
 /* Search Field */
 .search-field {
   width: 100%;
