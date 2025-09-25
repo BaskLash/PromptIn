@@ -23,7 +23,6 @@ const subscriptionElement = document.getElementById("subscription");
 const subscriptionButtons = document.getElementById("subscription-buttons");
 const subscriptionBenefits = document.getElementById("subscription-benefits");
 
-// Function to fetch and display subscription details
 async function displaySubscriptionDetails() {
   if (!subscriptionElement || !subscriptionButtons || !subscriptionBenefits) {
     console.error("Subscription elements not found in DOM");
@@ -31,66 +30,99 @@ async function displaySubscriptionDetails() {
   }
 
   subscriptionElement.textContent = "Loading...";
-  subscriptionButtons.innerHTML = ""; // Clear previous buttons
-  subscriptionBenefits.innerHTML = ""; // Clear previous benefits
+  subscriptionButtons.innerHTML = "";
+  subscriptionBenefits.innerHTML = "";
 
   try {
-    // Fetch the current user's details
     const user = await extPay.getUser();
 
+    // -------------------- FALL 1: Benutzer ist eingeloggt & hat Abo --------------------
     if (user && user.subscription) {
       const { plan, status, createdAt, expiresAt } = user.subscription;
 
-      // Format the display text
       const startDate = new Date(createdAt).toLocaleDateString();
       const endDate = expiresAt
         ? new Date(expiresAt).toLocaleDateString()
         : "Never";
 
-      subscriptionElement.textContent = `Plan: ${plan.name} (${plan.amount} ${plan.currency}/mo), Status: ${status}, Started: ${startDate}, Expires: ${endDate}`;
+      subscriptionElement.innerHTML = `
+        <strong>Current Plan:</strong> ${plan.name} (${plan.amount} ${plan.currency}/mo)<br/>
+        <strong>Status:</strong> ${status}<br/>
+        <strong>Started:</strong> ${startDate}<br/>
+        <strong>Expires:</strong> ${endDate}<br/>
+      `;
+
+      // Button zum Wechseln des Plans
+      const switchButton = document.createElement("button");
+      if (plan.id === "basicmonthly") {
+        switchButton.innerText = "Switch to PRO Plan";
+        switchButton.addEventListener("click", () => {
+          extPay.openPaymentPage("promonthly");
+        });
+      } else if (plan.id === "promonthly") {
+        switchButton.innerText = "Switch to BASIC Plan";
+        switchButton.addEventListener("click", () => {
+          extPay.openPaymentPage("basicmonthly");
+        });
+      }
+      subscriptionButtons.appendChild(switchButton);
     } else {
-      // No active subscription
-      subscriptionElement.textContent =
-        "No active subscription. Upgrade to unlock premium features.";
+      // -------------------- FALL 2: Nicht eingeloggt oder kein Abo --------------------
+      subscriptionElement.innerHTML = `
+        No active subscription. Upgrade or log in to your existing account.
+        <br/>
+      `;
 
-      // Create "Upgrade for Pro!" button
-      const proButton = document.createElement("button");
-      proButton.innerText = "Upgrade for Pro!";
-      proButton.style.marginRight = "10px"; // Add some spacing
-      proButton.addEventListener("click", function () {
-        extPay.openPaymentPage("promonthly"); // Assuming extPay supports plan-specific payment pages
+      // Login button
+      const loginButton = document.createElement("button");
+      loginButton.innerText = "Log in";
+      loginButton.style.marginTop = "8px";
+      loginButton.addEventListener("click", function () {
+        extPay.openLoginPage();
       });
-      subscriptionButtons.appendChild(proButton);
+      subscriptionElement.appendChild(loginButton);
 
-      // Create "Upgrade for Basic!" button
-      const basicButton = document.createElement("button");
-      basicButton.innerText = "Upgrade for Basic!";
-      basicButton.addEventListener("click", function () {
-        extPay.openPaymentPage("basicmonthly"); // Assuming extPay supports plan-specific payment pages
+      // ----------- PRO PLAN CARD -----------
+      const proCard = document.createElement("div");
+      proCard.className = "plan-card pro";
+      proCard.innerHTML = `
+        <h3>PRO Plan</h3>
+        <div class="price">$5 / month</div>
+        <ul>
+          <li>Everything from the basic plan</li>
+          <li>Spot when a prompt starts losing quality and learn how, when, and why</li>
+          <li>Swap weak prompts for stronger ones instantly</li>
+          <li>Replace prompts with stronger alternatives</li>
+          <li>Be first to try the newest AI features</li>
+          <li>Get help fast when it really matters</li>
+          <li>Priority support</li>
+        </ul>
+        <button>Upgrade to PRO</button>
+      `;
+      proCard.querySelector("button").addEventListener("click", () => {
+        extPay.openPaymentPage("promonthly");
       });
-      subscriptionButtons.appendChild(basicButton);
+      subscriptionButtons.appendChild(proCard);
 
-      // Display benefits
-      const benefitsList = document.createElement("ul");
-      benefitsList.style.listStyleType = "disc";
-      benefitsList.style.marginLeft = "20px";
-      const benefits = [
-        "Know which prompts actually perform best",
-        "Spot when a prompt starts losing quality and learn how, when, and why",
-        "Swap weak prompts for stronger ones instantly",
-        "Use the most effective and popular prompts for your specific AI model",
-        "Easily combine your prompts with the best matches — and get smart suggestions even when nothing fits",
-        "Stay on top of how and when your prompts are used",
-        "Get help fast when it really matters",
-        "Be first to try the newest AI features",
-      ];
-
-      benefits.forEach((benefit) => {
-        const li = document.createElement("li");
-        li.textContent = benefit;
-        benefitsList.appendChild(li);
+      // ----------- BASIC PLAN CARD -----------
+      const basicCard = document.createElement("div");
+      basicCard.className = "plan-card basic";
+      basicCard.innerHTML = `
+        <h3>Basic Plan</h3>
+        <div class="price">$1 / month</div>
+        <ul>
+          <li>Know which prompts actually perform best</li>
+          <li>Use the most effective and popular prompts for your specific AI model</li>
+          <li>Easily combine your prompts with the best matches — and get smart suggestions even when nothing fits</li>
+          <li>Stay on top of how and when your prompts are used</li>
+          <li>Standard support</li>
+        </ul>
+        <button>Upgrade to BASIC</button>
+      `;
+      basicCard.querySelector("button").addEventListener("click", () => {
+        extPay.openPaymentPage("basicmonthly");
       });
-      subscriptionBenefits.appendChild(benefitsList);
+      subscriptionButtons.appendChild(basicCard);
     }
   } catch (error) {
     console.error("Error fetching subscription:", error);
@@ -815,11 +847,12 @@ dropdown.querySelector(".rename-btn").addEventListener("click", () => {
   );
 
   if (newName) {
-    chrome.storage.local.get(["prompts"], function (data) {
+    chrome.storage.local.get(["prompts"], (data) => {
       const prompts = data.prompts || {};
-      if (prompts[promptId]) {
-        prompts[promptId].title = newName;
-        prompts[promptId].updatedAt = Date.now();
+      const prompt = prompts[promptId];
+      if (prompt) {
+        prompt.title = newName;
+        prompt.updatedAt = Date.now();
         chrome.storage.local.set({ prompts }, () => {
           loadPromptsTable();
           if (dropdown.dataset.table === "folder") showFolder(folderId);
@@ -2892,37 +2925,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   dropdown.addEventListener("click", (e) => e.stopPropagation());
 
-  dropdown.querySelector(".rename-btn").addEventListener("click", () => {
-    const folderId = dropdown.dataset.folderId;
-    const promptId = dropdown.dataset.promptId; // promptIndex → promptId
-    const newName = prompt(
-      translations[currentLang]?.rename_prompt || "New prompt title:",
-      dropdown.dataset.entry
-    );
-    if (newName) {
-      chrome.storage.local.get(["prompts"], (data) => {
-        const prompt = data.prompts?.[promptId];
-        if (prompt) {
-          prompt.title = newName;
-          chrome.storage.local.set({ prompts: data.prompts }, () => {
-            loadPromptsTable();
-            if (dropdown.dataset.table === "folder") showFolder(folderId);
-          });
-        }
-      });
-    }
-    dropdown.style.display = "none";
-    isDropdownOpen = false;
-    if (currentButton) {
-      if (currentButton.closest("tr") === hoveredRow) {
-        keepActionButtonVisible(currentButton);
-      } else {
-        hideActionButton(currentButton);
-      }
-    }
-    currentButton = null;
-  });
-
   dropdown.addEventListener("mouseenter", () => {
     isMouseOverDropdown = true;
     if (currentButton) keepActionButtonVisible(currentButton);
@@ -2967,6 +2969,40 @@ document.addEventListener("DOMContentLoaded", () => {
   settingsBackBtn.addEventListener("click", () => {
     settingsOverlay.classList.remove("open");
     document.getElementById("plus-btn").style.display = "flex";
+  });
+
+  // Share Icon Click Event
+  const shareIcon = document.getElementById("share-icon");
+  shareIcon.addEventListener("click", () => {
+    const extensionLink =
+      "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje";
+
+    // Falls Browser die Web Share API unterstützt (meist mobil)
+    if (navigator.share) {
+      navigator
+        .share({
+          title: "PromptIn – AI Prompt Manager",
+          text: "Schau dir diese Extension an:",
+          url: extensionLink,
+        })
+        .catch((err) => {
+          console.error("Share failed:", err);
+        });
+    } else {
+      // Fallback: WhatsApp oder Email
+      const encodedText = encodeURIComponent(
+        `Schau dir diese Extension an: ${extensionLink}`
+      );
+      const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+      const emailUrl = `mailto:?subject=PromptIn Extension&body=${encodedText}`;
+
+      const choice = confirm("OK für WhatsApp teilen, Abbrechen für E-Mail");
+      if (choice) {
+        window.open(whatsappUrl, "_blank");
+      } else {
+        window.open(emailUrl, "_blank");
+      }
+    }
   });
 
   // Login & User Overlay

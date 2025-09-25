@@ -1052,7 +1052,7 @@ async function promptSaver(message) {
 
   const saveButton = document.createElement("button");
   saveButton.className = "save-button";
-  saveButton.textContent = "Speichern";
+  saveButton.textContent = "Save";
 
   optionsButtons.appendChild(backToPromptEditButton);
   optionsButtons.appendChild(saveButton);
@@ -2611,12 +2611,12 @@ function createIcon(x, y, selectedText) {
   icon.className = "text-marker-icon";
   icon.style.left = `${x + 10}px`;
   icon.style.top = `${y + 10}px`;
-  icon.title = "Klicke hier, um den markierten Text zu speichern";
+  icon.title = "Click here to save the selected text";
 
   // Dein eigenes Icon-Bild
   const img = document.createElement("img");
   img.src = chrome.runtime.getURL("icon/icon48.png");
-  img.alt = "Speichern";
+  img.alt = "Save";
   img.onerror = () => {
     console.error("Bild konnte nicht geladen werden: ", img.src);
   };

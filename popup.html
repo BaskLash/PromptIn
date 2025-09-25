@@ -18,14 +18,57 @@
           <div class="burger-menu" id="burger-menu">☰</div>
           <div class="icon" id="settings-icon">⚙</div>
           <div class="icon" id="tools-icon">🔧</div>
+          <div
+            class="icon"
+            id="share-icon"
+            title="Save someone time with PromptIn"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="8.59" y1="10.49" x2="15.42" y2="6.51" />
+            </svg>
+          </div>
         </div>
+
         <div class="right-header">
           <button id="overview-btn" class="fullscreen-btn">
             ↗️ Full screen
           </button>
           <button id="faq-btn" class="fullscreen-btn">❓</button>
-          <div class="user-icon" id="user-icon">👤</div>
+
+          <!-- Replaced emoji with inline SVG -->
+          <div class="user-icon" id="user-icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+              <polyline points="10 17 15 12 10 7" />
+              <line x1="15" y1="12" x2="3" y2="12" />
+            </svg>
+          </div>
         </div>
+
         <div class="search-field">
           <input
             type="text"
@@ -662,10 +705,11 @@
       <div class="detail-overlay" id="user-overlay">
         <div class="detail-header">
           <button id="user-back-btn">←</button>
-          <h2 id="user-title">Plan</h2>
+          <h2 id="user-title">Account</h2>
         </div>
         <p id="subscription">Loading...</p>
         <div id="subscription-buttons" style="margin-top: 10px"></div>
+        <div id="subscription-login" style="margin-top: 10px"></div>
         <div id="subscription-benefits" style="margin-top: 10px"></div>
       </div>
 

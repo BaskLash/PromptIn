@@ -20,6 +20,11 @@ Kompatibel mit:
 - [Meta AI](https://www.meta.ai/)
 - [Poe](https://poe.com/)
 - [NotebookLM](https://notebooklm.google.com/)
+- [Apertus AI](https://publicai.co/)
+- [Google AI Studio](https://aistudio.google.com/)
+- [Lovable AI](https://lovable.dev/)
+- [Cursor AI](https://cursor.com/)
+- [Lumo](https://lumo.proton.me/guest)
 
 ## Inhaltsverzeichnis
 
