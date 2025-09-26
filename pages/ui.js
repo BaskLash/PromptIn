@@ -979,6 +979,7 @@ function handleCategoryClick(category) {
 }
 
 function handleFolderClick(folderName) {
+  console.log("open folder")
   chrome.storage.local.get(["prompts", "folders"], function (data) {
     const { prompts = {}, folders = {} } = data;
 
@@ -1027,7 +1028,7 @@ function loadTagsFilter() {
   ].sort();
 
   if (tags.length === 0) {
-    tagsFilter.innerHTML = "<p>Keine Prompts mit einem Tag</p>";
+    tagsFilter.innerHTML = "<p>No prompts with a tag</p>";
     return;
   }
 
@@ -1062,7 +1063,7 @@ function loadTypesFilter() {
   ].sort();
 
   if (types.length === 0) {
-    typesFilter.innerHTML = "<p>Keine Prompts mit einem Typ</p>";
+    typesFilter.innerHTML = "<p>No prompts with a type</p>";
     return;
   }
 

@@ -638,7 +638,7 @@ function moveToFolder(prompt, folderId, row) {
         return;
       }
 
-      const newFolderId = "folder_" + Date.now();
+      const newFolderId = `${Date.now()}_${generateUUID()}`;
       folders[newFolderId] = {
         id: newFolderId,
         name: newFolderName,

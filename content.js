@@ -151,7 +151,7 @@ async function createNewPrompt(
   const isFavorite = false;
   const folderId = null;
   const notes = "";
-  const type = "";
+  const types = "";
 
   const newPrompt = {
     promptId: promptId,
@@ -159,7 +159,7 @@ async function createNewPrompt(
     description: promptDescription,
     content: promptContent,
     notes,
-    type,
+    types,
     compatibleModels,
     incompatibleModels,
     tags,
@@ -193,7 +193,7 @@ async function createNewPrompt(
           title: { from: null, to: promptTitle },
           description: { from: null, to: promptDescription },
           content: { from: null, to: promptContent },
-          type: { from: null, to: type },
+          types: { from: null, to: types },
           compatibleModels: { from: [], to: compatibleModels },
           incompatibleModels: { from: [], to: incompatibleModels },
           tags: { from: [], to: tags },
@@ -363,95 +363,111 @@ async function addPromptToFolder(
   closeModal
 ) {
   const promptId = `${Date.now()}_${generateUUID()}`;
-  const currentUrl = window.location.hostname;
-  const compatibleModels = currentUrl.includes("chatgpt.com")
-    ? ["ChatGPT"]
-    : ["Unknown"];
+  const hostname = window.location.hostname.toLowerCase().replace(/^www\./, "");
+
+  let compatibleModels;
+
+  if (hostname === "chatgpt.com") compatibleModels = ["ChatGPT"];
+  else if (hostname === "grok.com") compatibleModels = ["Grok"];
+  else if (hostname === "gemini.google.com") compatibleModels = ["Gemini"];
+  else if (hostname === "claude.ai") compatibleModels = ["Claude"];
+  else if (hostname === "blackbox.ai") compatibleModels = ["Blackbox"];
+  else if (hostname === "github.com") compatibleModels = ["Copilot"];
+  else if (hostname === "copilot.microsoft.com")
+    compatibleModels = ["Microsoft Copilot"];
+  else if (hostname === "chat.mistral.ai") compatibleModels = ["Mistral"];
+  else if (hostname === "duckduckgo.com") compatibleModels = ["DuckDuckGo"];
+  else if (hostname === "perplexity.ai") compatibleModels = ["Perplexity"];
+  else if (hostname === "chat.deepseek.com") compatibleModels = ["DeepSeek"];
+  else if (hostname === "deepai.org") compatibleModels = ["Deepai"];
+  else if (hostname === "chat.qwen.ai") compatibleModels = ["Qwen AI"];
+  else if (hostname === "meta.ai") compatibleModels = ["Meta AI"];
+  else compatibleModels = ["Unknown"];
+
   const incompatibleModels = [];
   const tags = [];
   const isFavorite = false;
   const notes = "";
-  const type = "default"; // Assuming a default type; adjust as needed
+  const types = "";
+
+  const newPrompt = {
+    promptId,
+    title: promptTitle,
+    description: promptDescription,
+    content: promptContent,
+    notes,
+    types,
+    compatibleModels,
+    incompatibleModels,
+    tags,
+    isFavorite,
+    folderId,
+    createdAt: Date.now(),
+    updatedAt: null,
+    usageCount: 0,
+    lastUsed: null,
+    usageHistory: [],
+    isTrash: false,
+    deletedAt: null,
+    trashedAt: null,
+    versions: [
+      {
+        versionId: `${Date.now()}_${generateUUID()}`,
+        title: promptTitle,
+        description: promptDescription,
+        content: promptContent,
+        timestamp: Date.now(),
+      },
+    ],
+    metaChangeLog: [
+      {
+        timestamp: Date.now(),
+        changes: {
+          title: { from: null, to: promptTitle },
+          description: { from: null, to: promptDescription },
+          content: { from: null, to: promptContent },
+          types: { from: null, to: types },
+          compatibleModels: { from: [], to: compatibleModels },
+          incompatibleModels: { from: [], to: incompatibleModels },
+          tags: { from: [], to: tags },
+          isFavorite: { from: false, to: isFavorite },
+          folderId: { from: null, to: folderId },
+          notes: { from: null, to: notes },
+        },
+      },
+    ],
+    performanceHistory: [],
+  };
 
   try {
+    // Bestehende Prompts und Ordner laden
     const data = await new Promise((resolve, reject) => {
       chrome.storage.local.get(["prompts", "folders"], (data) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(data);
-        }
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve(data);
       });
     });
 
     const prompts = data.prompts || {};
     const folders = data.folders || {};
 
-    if (!folders[folderId]) {
+    if (!folders[folderId])
       throw new Error(`Folder ${folderId} does not exist.`);
-    }
 
-    const promptObject = {
-      title: promptTitle,
-      description: promptDescription,
-      content: promptContent,
-      notes,
-      type,
-      compatibleModels,
-      incompatibleModels,
-      tags,
-      isFavorite,
-      folderId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      usageCount: 0,
-      lastUsed: null,
-      versions: [
-        {
-          versionId: `${Date.now()}_${generateUUID()}`,
-          title: promptTitle,
-          description: promptDescription,
-          content: promptContent,
-          timestamp: Date.now(),
-        },
-      ],
-      metaChangeLog: [
-        {
-          timestamp: Date.now(),
-          changes: {
-            title: { from: null, to: promptTitle },
-            description: { from: null, to: promptDescription },
-            content: { from: null, to: promptContent },
-            type: { from: null, to: type },
-            compatibleModels: { from: [], to: compatibleModels },
-            incompatibleModels: { from: [], to: incompatibleModels },
-            tags: { from: [], to: tags },
-            isFavorite: { from: false, to: isFavorite },
-            folderId: { from: null, to: folderId },
-            notes: { from: null, to: notes },
-          },
-        },
-      ],
-      performanceHistory: [],
-    };
-
-    prompts[promptId] = promptObject;
+    prompts[promptId] = newPrompt;
 
     folders[folderId].promptIds = folders[folderId].promptIds || [];
     folders[folderId].promptIds.push(promptId);
 
+    // Speichern
     await new Promise((resolve, reject) => {
       chrome.storage.local.set({ prompts, folders }, () => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          console.log(`Prompt ${promptId} added to folder ${folderId}`);
-          alert("Prompt erfolgreich zum Ordner hinzugefügt!");
-          resolve();
-        }
+        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+        else resolve();
       });
     });
 
+    console.log(`Prompt ${promptId} added to folder ${folderId}`);
     closeModal();
   } catch (error) {
     console.error("Error adding prompt to folder:", error);
@@ -797,7 +813,19 @@ async function promptSaver(message) {
 
   // --- ExtensionPay integration ---
   extpayClient.getUser().then((user) => {
-    if (user.paid === "promonthly") {
+    const email = user?.email; // 👈 E-Mail vom User
+    const allowedFreeEmails = [
+      "business.olivierthomas@gmail.com",
+      "usa.obamatiger@gmail.com",
+    ];
+
+    const isSpecialFreeUser = allowedFreeEmails.includes(email);
+
+    if (
+      user.paid === "promonthly" ||
+      user.paid === "proyearly" ||
+      isSpecialFreeUser
+    ) {
       // User has paid
       similarPromptsDropdown.appendChild(dropdownButton);
       similarPromptsDropdown.appendChild(dropdownContent);
@@ -2147,10 +2175,12 @@ async function promptSaver(message) {
 
     const newFolderId = `${Date.now()}_${generateUUID()}`;
     const newFolder = {
+      folderId: newFolderId,
       name: newFolderName,
       promptIds: [],
-      isHidden: false,
       isTrash: false,
+      createdAt: Date.now(),
+      updatedAt: "",
     };
 
     try {
@@ -2181,7 +2211,7 @@ async function promptSaver(message) {
       option.selected = true;
       addFolderSelect.appendChild(option);
       newFolderInput.value = "";
-      alert(`Ordner "${newFolderName}" erfolgreich erstellt!`);
+      // alert(`Ordner "${newFolderName}" erfolgreich erstellt!`);
     } catch (error) {
       console.error("Fehler beim Erstellen des Ordners:", error);
       alert("Fehler beim Erstellen des Ordners.");

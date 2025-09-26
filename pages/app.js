@@ -28,11 +28,8 @@ document.addEventListener("DOMContentLoaded", () => {
           initializeAnalytics();
         } else {
           // Keine Lizenz → Kauf-Flow für spezifisches Pro-Modell starten
-          alert(
-            "🚀 Please upgrade to the Basic plan to access Prompt Analytics."
-          );
           extpayClient
-            .openPaymentPage("basicmonthly") // Hier den Plan-Namen angeben
+            .openPaymentPage("basicyearly") // Hier den Plan-Namen angeben
             .catch((err) => {
               console.error("ExtPay Checkout Fehler:", err);
               alert(
@@ -51,16 +48,24 @@ document.addEventListener("DOMContentLoaded", () => {
       .then((user) => {
         console.log("ExtPay user object:", user);
 
-        // 👇 explizit prüfen, ob es der Pro-Plan ist
-        if (user.paid === "promonthly") {
-          // Lizenz vorhanden → Benchmarking öffnen
+        const plan = user?.plan;
+        const email = user?.email; // 👈 E-Mail vom User
+        const allowedFreeEmails = [
+          "business.olivierthomas@gmail.com",
+          "usa.obamatiger@gmail.com",
+        ];
+
+        const isSpecialFreeUser = allowedFreeEmails.includes(email);
+
+        if (
+          plan === "promonthly" ||
+          plan === "proyearly" ||
+          isSpecialFreeUser
+        ) {
+          // Zugriff für Pro-User + ausgewählte Free-Tester
           switchView("benchmarking-view", { view: "benchmarking" });
           initializeBenchmarking();
         } else {
-          // Keine Pro-Lizenz → Kauf-Flow starten
-          alert(
-            "🚀 Please upgrade to the Pro plan to access Prompt Benchmarking."
-          );
           extpayClient.openPaymentPage("promonthly").catch((err) => {
             console.error("ExtPay Checkout Fehler:", err);
             alert(
@@ -401,11 +406,8 @@ document.addEventListener("DOMContentLoaded", () => {
               initializeAnalytics();
             } else {
               // Keine Lizenz → Kauf-Flow für spezifisches Pro-Modell starten
-              alert(
-                "🚀 Please upgrade to the Basic plan to access Prompt Analytics."
-              );
               extpayClient
-                .openPaymentPage("basicmonthly") // Hier den Plan-Namen angeben
+                .openPaymentPage("basicyearly") // Hier den Plan-Namen angeben
                 .catch((err) => {
                   console.error("ExtPay Checkout Fehler:", err);
                   alert(
@@ -424,16 +426,24 @@ document.addEventListener("DOMContentLoaded", () => {
           .then((user) => {
             console.log("ExtPay user object:", user);
 
-            // 👇 explizit prüfen, ob es der Pro-Plan ist
-            if (user.paid === "promonthly") {
-              // Lizenz vorhanden → Benchmarking öffnen
+            const plan = user?.plan;
+            const email = user?.email; // 👈 E-Mail vom User
+            const allowedFreeEmails = [
+              "business.olivierthomas@gmail.com",
+              "usa.obamatiger@gmail.com",
+            ];
+
+            const isSpecialFreeUser = allowedFreeEmails.includes(email);
+
+            if (
+              plan === "promonthly" ||
+              plan === "proyearly" ||
+              isSpecialFreeUser
+            ) {
+              // Zugriff für Pro-User + ausgewählte Free-Tester
               switchView("benchmarking-view", { view: "benchmarking" });
               initializeBenchmarking();
             } else {
-              // Keine Pro-Lizenz → Kauf-Flow starten
-              alert(
-                "🚀 Please upgrade to the Pro plan to access Prompt Benchmarking."
-              );
               extpayClient.openPaymentPage("promonthly").catch((err) => {
                 console.error("ExtPay Checkout Fehler:", err);
                 alert(

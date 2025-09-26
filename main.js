@@ -115,8 +115,8 @@ async function displaySubscriptionDetails() {
         const plans = {
           basic: { monthly: 1, monthlyOrig: 3 },
           pro: { monthly: 5, monthlyOrig: 10 },
-          basicyearly: { yearly: 10, yearlyOrig: 15 },
-          proyearly: { yearly: 50, yearlyOrig: 75 },
+          basicyearly: { yearly: 10, yearlyOrig: 22.95 },
+          proyearly: { yearly: 50, yearlyOrig: 121.95 },
         };
 
         function formatPrice(planKey, isYearly) {
@@ -135,31 +135,34 @@ async function displaySubscriptionDetails() {
             ? (plan.yearlyOrig / 12).toFixed(2)
             : monthlyOrig;
 
-          const savePercent = isYearly
-            ? Math.round(((yearlyOrig - yearly) / yearlyOrig) * 100)
-            : Math.round(((monthlyOrig - monthly) / monthlyOrig) * 100);
+          // 👇 individuelle Prozentwerte für yearly-Pläne
+          let savePercent;
+          if (isYearly) {
+            if (planKey === "pro") savePercent = 59;
+            else if (planKey === "basic") savePercent = 56;
+          } else {
+            savePercent = 0; // 👈 Immer 0% bei monatlichen Plänen
+          }
 
           if (isYearly) {
             return `
-        <div style="display:flex; align-items:center; gap:10px; font-size:1.1em;">
-          <div style="text-decoration:line-through; color:#999;">€${displayMonthlyOrig}/month</div>
-          <div style="font-weight:bold; color:#27ae60;">€${displayMonthly}/month</div>
-          <div style="color:#27ae60; font-weight:bold;">Save ${savePercent}%</div>
-        </div>
-        <div style="font-size:0.8em; color:red;">
-          + 3 Months EXTRA
-        </div>
-        <div style="font-size:0.8em; color:#555;"><s>€${yearlyOrig}</s> €${yearly} for the first 12 months, billed annually + taxes may apply</div>
-      `;
+      <div style="display:flex; align-items:center; gap:10px; font-size:1.1em;">
+        <div style="font-weight:bold;color:black;">€${displayMonthly}/month</div>
+        <div style="color:#27ae60; font-weight:bold;">Save ${savePercent}%</div>
+      </div>
+      <div style="font-size:0.8em; color:red;">
+        + 3 Months EXTRA
+      </div>
+      <div style="font-size:0.8em; color:#555;"><s>€${yearlyOrig}</s> €${yearly} for the first 12 months, billed annually + taxes may apply</div>
+    `;
           } else {
             return `
-        <div style="display:flex; align-items:center; gap:10px; font-size:1.1em;">
-          <div style="text-decoration:line-through; color:#999;">€${monthlyOrig}/month</div>
-          <div style="font-weight:bold; color:#27ae60;">€${monthly}/month</div>
-          <div style="color:#27ae60; font-weight:bold;">Save ${savePercent}%</div>
-        </div>
-        <div style="font-size:0.8em; color:#555;">Billed monthly, taxes may apply</div>
-      `;
+      <div style="display:flex; align-items:center; gap:10px; font-size:1.1em;">
+        <div style="font-weight:bold; color:black;">€${monthly}/month</div>
+        <div style="color:#27ae60; font-weight:bold;">Save ${savePercent}%</div>
+      </div>
+      <div style="font-size:0.8em; color:#555;">Billed monthly, taxes may apply</div>
+    `;
           }
         }
 
@@ -261,9 +264,9 @@ async function displaySubscriptionDetails() {
           button.style.color = "#fff";
           button.style.cursor = "pointer";
           button.addEventListener("click", () => {
-            extPay.openPaymentPage(
-              `${planKey}${isYearly ? "yearly" : "monthly"}`
-            );
+            const paymentId = `${planKey}${isYearly ? "yearly" : "monthly"}`;
+            console.log("🔗 Upgrade button clicked → Payment ID:", paymentId);
+            extPay.openPaymentPage(paymentId);
           });
 
           card.appendChild(button);
@@ -2324,9 +2327,7 @@ function importDataFromJSON(event) {
         importedData.workflows.forEach((workflow) => {
           let newWorkflowId = workflow.workflowId;
           if (updatedData.workflows[newWorkflowId]) {
-            newWorkflowId = `workflow_${Date.now()}_${Math.random()
-              .toString(36)
-              .substr(2, 9)}`;
+            newWorkflowId = `${Date.now()}_${generateUUID()}`;
           }
           workflowIdMapping[workflow.workflowId] = newWorkflowId;
           workflow.tags = Array.isArray(workflow.tags)
@@ -2672,27 +2673,40 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Add Folder Button
+  // Add Folder Button (Header)
   document
     .querySelector(".add-folder-header-btn")
     .addEventListener("click", () => {
       const folderName = prompt(
         translations[currentLang]?.new_foldername || "Neuer Ordnername"
       );
+
       if (folderName) {
         const folderId = `${Date.now()}_${generateUUID()}`;
-        chrome.storage.local.get("folders", (data) => {
-          const folders = data.folders || {};
 
-          folders[folderId] = {
-            name: folderName,
-            promptIds: [],
-            isHidden: false,
-            isTrash: false,
-          };
+        const newFolder = {
+          folderId: folderId,
+          name: folderName,
+          promptIds: [],
+          isTrash: false,
+          createdAt: Date.now(),
+          updatedAt: "",
+        };
 
-          chrome.storage.local.set({ folders }, () => {
-            loadFolders();
+        chrome.storage.local.get(["folders"], ({ folders }) => {
+          const updatedFolders = folders || {};
+          updatedFolders[folderId] = newFolder;
+
+          chrome.storage.local.set({ folders: updatedFolders }, () => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Fehler beim Erstellen des Ordners:",
+                chrome.runtime.lastError
+              );
+              alert("Fehler beim Erstellen des Ordners.");
+            } else {
+              loadFolders();
+            }
           });
         });
       }

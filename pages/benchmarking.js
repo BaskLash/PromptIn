@@ -360,6 +360,14 @@ function renderDashboardLayout() {
         <h3>Most similar prompts</h3>
         <ul id="similarPrompts"></ul>
       </div>
+      <div class="highlight-card" id="8">
+        <h3>Types Performance Recommendations</h3>
+        <ul id="typesRecommendations"></ul>
+      </div>
+      <div class="highlight-card" id="8">
+        <h3>Tags Performance Recommendations</h3>
+        <ul id="tagsRecommendations"></ul>
+      </div>
     </section>
 
     <section>
@@ -537,7 +545,7 @@ function renderTopGainersTodayView() {
         document.getElementById(
           "modalPrompt"
         ).textContent = `Prompt: ${prompt}`;
-        document.getElementById("modalModel").textContent = `Modell: ${model}`;
+        document.getElementById("modalModel").textContent = `Model: ${model}`;
         document.getElementById(
           "modalDetails"
         ).textContent = `Details: ${details}`;
@@ -607,7 +615,7 @@ function renderTopLosersTodayView() {
         document.getElementById(
           "modalPrompt"
         ).textContent = `Prompt: ${prompt}`;
-        document.getElementById("modalModel").textContent = `Modell: ${model}`;
+        document.getElementById("modalModel").textContent = `Model: ${model}`;
         document.getElementById(
           "modalDetails"
         ).textContent = `Details: ${details}`;
@@ -686,7 +694,7 @@ function renderTopGainers7DaysView() {
         document.getElementById(
           "modalPrompt"
         ).textContent = `Prompt: ${prompt}`;
-        document.getElementById("modalModel").textContent = `Modell: ${model}`;
+        document.getElementById("modalModel").textContent = `Model: ${model}`;
         document.getElementById(
           "modalDetails"
         ).textContent = `Details: ${details}`;
@@ -773,7 +781,7 @@ function renderTopLosers7DaysView() {
         document.getElementById(
           "modalPrompt"
         ).textContent = `Prompt: ${prompt}`;
-        document.getElementById("modalModel").textContent = `Modell: ${model}`;
+        document.getElementById("modalModel").textContent = `Model: ${model}`;
         document.getElementById(
           "modalDetails"
         ).textContent = `Details: ${details}`;
@@ -854,150 +862,107 @@ function renderWorkflowsPerModelView() {
 }
 
 function renderLowUsagePromptsView() {
-  // Displays prompts with lower usage compared to their peak
   chrome.storage.local.get("prompts", (result) => {
     const promptList = Object.values(result.prompts || {});
+
     const lowUsage = promptList
       .map((prompt) => {
-        const safeHistory = Array.isArray(prompt?.usageHistory)
+        if (!prompt.versions || prompt.versions.length < 2) return null; // Skip prompts without previous versions
+
+        const safeHistory = Array.isArray(prompt.usageHistory)
           ? prompt.usageHistory
           : [];
-        const peakUsage = Math.max(
-          ...calculateUsagePerDay(safeHistory).map((u) => u.count),
-          prompt.usageCount || 0
-        );
-        const currentUsage = safeHistory
-          .filter(
-            (u) =>
-              u.timestamp >=
-              prompt.versions[prompt.versions.length - 1].timestamp
-          )
-          .reduce((sum, u) => sum + u.count, 0);
+
+        // Calculate usage per version
+        const usageByVersion = prompt.versions.map((version, index) => {
+          const start = version.timestamp;
+          const end = prompt.versions[index + 1]?.timestamp || Date.now();
+          const usageDuringVersion = safeHistory
+            .filter((u) => u.timestamp >= start && u.timestamp < end)
+            .reduce((sum, u) => sum + u.count, 0);
+          return usageDuringVersion;
+        });
+
+        const peakUsage = Math.max(...usageByVersion);
+        const currentUsage = usageByVersion[usageByVersion.length - 1] || 0;
         const changePercent =
           peakUsage === 0
             ? 0
             : Math.round(((currentUsage - peakUsage) / peakUsage) * 100);
-        return { prompt, changePercent, peakUsage, currentUsage };
+
+        // Only return prompts with drop in usage
+        if (changePercent >= 0) return null;
+
+        // Identify which version had peak usage
+        const bestVersionIndex = usageByVersion.indexOf(peakUsage);
+
+        return {
+          prompt,
+          changePercent,
+          peakUsage,
+          currentUsage,
+          bestVersion: prompt.versions[bestVersionIndex],
+        };
       })
-      .filter((p) => p.changePercent < 0)
-      .sort((a, b) => a.changePercent - b.changePercent)
-      .slice(0, 3);
+      .filter(Boolean)
+      .sort((a, b) => a.changePercent - b.changePercent);
 
     document.getElementById("lowUsagePrompts").innerHTML = lowUsage
       .map(
         (p) => `
-        <li data-prompt="${p.prompt.title}" 
-            data-prompt-id="${p.prompt.promptId}" 
-            data-model="${p.prompt.compatibleModels.join(", ") || "Unknown"}" 
-            data-details="Usage declined">
-          ${p.prompt.title}: ${p.changePercent}% (Peak: ${
-          p.peakUsage
-        }, Current: ${p.currentUsage}) (${
-          p.prompt.compatibleModels.join(", ") || "Unknown"
-        })
+        <li data-prompt-id="${p.prompt.promptId}">
+          ${p.prompt.title}: ${p.changePercent}% drop (Peak: ${p.peakUsage}, Current: ${p.currentUsage})
         </li>
       `
       )
       .join("");
 
-    // Modal interaction with improve button
+    // Setup improve button
     document.querySelectorAll("#lowUsagePrompts li").forEach((item) => {
       item.addEventListener("click", () => {
-        const prompt = item.getAttribute("data-prompt");
         const promptId = item.getAttribute("data-prompt-id");
-        const model = item.getAttribute("data-model");
-        const details = item.getAttribute("data-details");
+        const promptData = result.prompts[promptId];
+        const bestVersion = lowUsage.find(
+          (p) => p.prompt.promptId === promptId
+        )?.bestVersion;
 
-        document.getElementById(
-          "modalPrompt"
-        ).textContent = `Prompt: ${prompt}`;
-        document.getElementById("modalModel").textContent = `Modell: ${model}`;
-        document.getElementById(
-          "modalDetails"
-        ).textContent = `Details: ${details}`;
-        document.getElementById("modalPerformance").textContent = "";
-        document.getElementById("modalRecommendation").textContent = "";
-        document.getElementById("modalDailyChange").textContent = "";
-        document.getElementById("improveBtn").style.display = "inline-block";
-        document.getElementById("deleteBtn").style.display = "none";
-        document.getElementById("benchmarkModal").style.display = "flex";
+        if (!bestVersion) return;
 
-        // Improve button logic
-        document.getElementById("improveBtn").onclick = () => {
-          const promptData = result.prompts[promptId];
-          if (
-            !promptData ||
-            !promptData.versions ||
-            promptData.versions.length < 2
-          ) {
-            alert("Keine vorherige Version verfügbar, um zurückzusetzen.");
-            return;
-          }
-
-          const impacts = calculateVersionImpacts(promptData);
-          let bestVersion = promptData.versions[0];
-          let maxUsageAfter = 0;
-          impacts.forEach((impact, index) => {
-            if (impact.usageAfter > maxUsageAfter) {
-              maxUsageAfter = impact.usageAfter;
-              bestVersion = promptData.versions[index + 1];
-            }
-          });
-
-          if (
-            bestVersion.versionId ===
-            promptData.versions[promptData.versions.length - 1].versionId
-          ) {
-            alert("Die aktuelle Version ist bereits die leistungsstärkste.");
-            return;
-          }
-
-          const newVersion = {
-            versionId: `${Date.now()}_${generateUUID()}`,
-            title: bestVersion.title,
-            description: bestVersion.description,
-            content: bestVersion.content,
-            timestamp: Date.now(),
-          };
-
-          const updatedPrompt = {
-            ...promptData,
-            title: bestVersion.title,
-            description: bestVersion.description,
-            content: bestVersion.content,
-            updatedAt: Date.now(),
-            versions: [...promptData.versions, newVersion],
-            metaChangeLog: [
-              ...promptData.metaChangeLog,
-              {
-                timestamp: Date.now(),
-                changes: {
-                  title: { from: promptData.title, to: bestVersion.title },
-                  description: {
-                    from: promptData.description,
-                    to: bestVersion.description,
-                  },
-                  content: {
-                    from: promptData.content,
-                    to: bestVersion.content,
-                  },
-                },
-                note: `Rollback zur Version mit höchster Performance (VersionId: ${bestVersion.versionId})`,
-              },
-            ],
-          };
-
-          result.prompts[promptId] = updatedPrompt;
-          chrome.storage.local.set({ prompts: result.prompts }, () => {
-            renderLowUsagePromptsView();
-            showPromptStatistics(promptId, null, "6");
-            alert(
-              `Prompt "${prompt}" wurde auf die leistungsstärkste Version zurückgesetzt.`
-            );
-          });
+        // Create a new version restoring the best
+        const newVersion = {
+          versionId: `${Date.now()}_${generateUUID()}`,
+          title: bestVersion.title,
+          description: bestVersion.description,
+          content: bestVersion.content,
+          timestamp: Date.now(),
         };
 
-        showPromptStatistics(promptId, null, "6");
+        promptData.title = bestVersion.title;
+        promptData.description = bestVersion.description;
+        promptData.content = bestVersion.content;
+        promptData.updatedAt = Date.now();
+        promptData.versions.push(newVersion);
+        promptData.metaChangeLog.push({
+          timestamp: Date.now(),
+          changes: {
+            title: { from: promptData.title, to: bestVersion.title },
+            description: {
+              from: promptData.description,
+              to: bestVersion.description,
+            },
+            content: { from: promptData.content, to: bestVersion.content },
+          },
+          note: `Rollback to version with highest usage (VersionId: ${bestVersion.versionId})`,
+        });
+
+        result.prompts[promptId] = promptData;
+
+        chrome.storage.local.set({ prompts: result.prompts }, () => {
+          renderLowUsagePromptsView();
+          alert(
+            `Prompt "${promptData.title}" has been reset to its best version.`
+          );
+        });
       });
     });
   });
@@ -1064,7 +1029,7 @@ function renderSimilarPromptsView() {
                 s.performance1 > s.performance2
                   ? s.prompt2.title
                   : s.prompt1.title
-              } löschen">
+              } delete">
             ${s.prompt1.title} & ${s.prompt2.title}: ${Math.round(
           s.similarity * 100
         )}% Similarity (${models1} / ${models2}) | Use: ${totalUsage1} vs. ${totalUsage2}
@@ -1089,11 +1054,11 @@ function renderSimilarPromptsView() {
         document.getElementById(
           "modalPrompt"
         ).textContent = `Prompts: ${prompt1} & ${prompt2}`;
-        document.getElementById("modalModel").textContent = `Modell: ${model}`;
+        document.getElementById("modalModel").textContent = `Model: ${model}`;
         document.getElementById("modalDetails").textContent = "";
         document.getElementById(
           "modalPerformance"
-        ).textContent = `Performance: ${prompt1}: ${performance1}, ${prompt2}: ${performance2}, Ähnlichkeit: ${similarity}`;
+        ).textContent = `Performance: ${prompt1}: ${performance1}, ${prompt2}: ${performance2}, Similarity: ${similarity}`;
         document.getElementById("modalRecommendation").textContent =
           recommendation;
         document.getElementById("modalDailyChange").textContent = "";
@@ -1106,7 +1071,7 @@ function renderSimilarPromptsView() {
           const promptToDelete = recommendation.includes(prompt1)
             ? prompt1
             : prompt2;
-          alert(`Prompt "${promptToDelete}" wird gelöscht...`);
+          alert(`Prompt “${promptToDelete}” is being deleted...`);
           // Note: Actual deletion logic would depend on storage implementation
         };
 
@@ -1166,12 +1131,12 @@ function renderVersioningAnalysisView() {
       .addEventListener("click", () => {
         const promptId = promptSelect.value;
         if (!promptId) {
-          alert("Bitte wählen Sie einen Prompt aus.");
+          alert("Please select a prompt.");
           return;
         }
         const prompt = prompts[promptId];
         if (!prompt) {
-          alert("Fehler: Prompt nicht gefunden.");
+          alert("Error: Prompt not found.");
           return;
         }
 
@@ -1272,7 +1237,7 @@ function showPromptStatistics(promptId, promptId2 = null, cardId = null) {
 
       if (!data1.some((val) => val > 0) && !data2.some((val) => val > 0)) {
         newsContainer.innerHTML =
-          "<p>Keine Nutzungsdaten für die letzten 30 Tage verfügbar.</p>";
+          "<p>No usage data available for the last 30 days.</p>";
         return;
       }
 
@@ -1290,7 +1255,7 @@ function showPromptStatistics(promptId, promptId2 = null, cardId = null) {
         (v) => typeof v.timestamp === "number" && !isNaN(v.timestamp)
       );
       if (!versions.length) {
-        newsContainer.innerHTML = "<p>Keine Versionen verfügbar.</p>";
+        newsContainer.innerHTML = "<p>No versions available.</p>";
         return;
       }
 
@@ -1318,7 +1283,7 @@ function showPromptStatistics(promptId, promptId2 = null, cardId = null) {
 
       if (!data.some((val) => val > 0)) {
         newsContainer.innerHTML =
-          "<p>Keine Nutzungsdaten für die letzten 30 Tage verfügbar.</p>";
+          "<p>No usage data available for the last 30 days.</p>";
         return;
       }
 
@@ -1516,12 +1481,12 @@ function showPromptStatistics(promptId, promptId2 = null, cardId = null) {
             ...(versions1 || []).map((v, idx) => ({
               timestamp: v.timestamp,
               source: `Prompt 1 Version ${idx + 1}`,
-              title: v.title || "Keine Beschreibung verfügbar",
+              title: v.title || "No description available",
             })),
             ...(versions2 || []).map((v, idx) => ({
               timestamp: v.timestamp,
               source: `Prompt 2 Version ${idx + 1}`,
-              title: v.title || "Keine Beschreibung verfügbar",
+              title: v.title || "No description available",
             })),
           ].sort((a, b) => a.timestamp - b.timestamp)
         : versions1
@@ -1530,7 +1495,7 @@ function showPromptStatistics(promptId, promptId2 = null, cardId = null) {
               source: `Version ${
                 idx + 1 - (data1.length - (prompt.usageHistory || []).length)
               }`,
-              title: v.title || "Keine Beschreibung verfügbar",
+              title: v.title || "No description available",
             }))
             .sort((a, b) => a.timestamp - b.timestamp);
 
@@ -1668,6 +1633,346 @@ function showPromptStatistics(promptId, promptId2 = null, cardId = null) {
   });
 }
 
+// === View Functions ===
+// Analyzes performance of prompts by type, calculates averages, and provides reclassification recommendations
+function analyzePromptTypePerformance() {
+  chrome.storage.local.get("prompts", (result) => {
+    const promptList = Object.values(result.prompts || {});
+
+    // Only consider prompts that have at least one type
+    const typedPrompts = promptList.filter(
+      (p) => Array.isArray(p.types) && p.types.length > 0
+    );
+
+    // Group prompts by each type
+    const promptsByType = {};
+    typedPrompts.forEach((prompt) => {
+      prompt.types.forEach((type) => {
+        if (!promptsByType[type]) promptsByType[type] = [];
+        promptsByType[type].push(prompt);
+      });
+    });
+
+    // Calculate performance for each prompt and type
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    const typePerformance = Object.keys(promptsByType).map((type) => {
+      const prompts = promptsByType[type];
+
+      const promptPerformances = prompts.map((prompt) => {
+        const safeHistory = Array.isArray(prompt.usageHistory)
+          ? prompt.usageHistory
+          : [];
+
+        const usage7Days = safeHistory
+          .filter(
+            (u) =>
+              u.timestamp >= sevenDaysAgo.getTime() &&
+              u.timestamp < today.getTime()
+          )
+          .reduce((sum, u) => sum + (u.count || 1), 0);
+
+        const usage30Days = safeHistory
+          .filter(
+            (u) =>
+              u.timestamp >= thirtyDaysAgo.getTime() &&
+              u.timestamp < today.getTime()
+          )
+          .reduce((sum, u) => sum + (u.count || 1), 0);
+
+        const dailyUsage7Days = usage7Days / 7;
+        const dailyUsage30Days = usage30Days / 30;
+        const performance = prompt.usageCount || usage30Days || 0; // Fallback to usageCount
+
+        return {
+          prompt,
+          dailyUsage7Days: Number(dailyUsage7Days.toFixed(2)),
+          dailyUsage30Days: Number(dailyUsage30Days.toFixed(2)),
+          performance,
+        };
+      });
+
+      // Calculate type average performance
+      const typeAvgPerformance = promptPerformances.length
+        ? Number(
+            (
+              promptPerformances.reduce((sum, p) => sum + p.performance, 0) /
+              promptPerformances.length
+            ).toFixed(2)
+          )
+        : 0;
+
+      // Identify underperforming prompts
+      const underperforming = promptPerformances
+        .filter((p) => p.performance < typeAvgPerformance)
+        .map((p) => ({
+          ...p,
+          recommendation: `Consider reclassifying "${p.prompt.title}" to a different type or optimizing its content due to below-average performance.`,
+        }));
+
+      return {
+        type,
+        prompts: promptPerformances,
+        typeAvgPerformance,
+        underperforming,
+      };
+    });
+
+    // Update dashboard UI in typesRecommendations
+    const container = document.getElementById("typesRecommendations");
+    if (!container) return;
+
+    container.innerHTML = typePerformance
+      .map(
+        (t) => `
+        <li>
+          ${t.type} (Avg: ${t.typeAvgPerformance})
+          ${
+            t.underperforming.length
+              ? `
+            - Underperforming:
+            <ul>
+              ${t.underperforming
+                .map(
+                  (p) => `
+                <li data-prompt="${p.prompt.title}" 
+                    data-prompt-id="${p.prompt.promptId}" 
+                    data-model="${
+                      p.prompt.compatibleModels.join(", ") || "Unknown"
+                    }" 
+                    data-performance="7 Days: ${p.dailyUsage7Days}, 30 Days: ${
+                    p.dailyUsage30Days
+                  }" 
+                    data-details="Performance: ${p.performance}" 
+                    data-recommendation="${p.recommendation}">
+                  <span class="loss">${p.prompt.title}</span>: ${
+                    p.performance
+                  } (7 Days: ${p.dailyUsage7Days}, 30 Days: ${
+                    p.dailyUsage30Days
+                  }) - ${p.recommendation}
+                </li>
+              `
+                )
+                .join("")}
+            </ul>
+          `
+              : " - All prompts meet or exceed average performance"
+          }
+        </li>
+      `
+      )
+      .join("");
+
+    // Modal interaction
+    document
+      .querySelectorAll("#typesRecommendations li[data-prompt]")
+      .forEach((item) => {
+        item.addEventListener("click", () => {
+          const prompt = item.getAttribute("data-prompt");
+          const promptId = item.getAttribute("data-prompt-id");
+          const model = item.getAttribute("data-model");
+          const performance = item.getAttribute("data-performance");
+          const recommendation = item.getAttribute("data-recommendation") || "";
+          const details = item.getAttribute("data-details");
+
+          document.getElementById(
+            "modalPrompt"
+          ).textContent = `Prompt: ${prompt}`;
+          document.getElementById("modalModel").textContent = `Model: ${model}`;
+          document.getElementById(
+            "modalDetails"
+          ).textContent = `Details: ${details}`;
+          document.getElementById(
+            "modalPerformance"
+          ).textContent = `Performance: ${performance}`;
+          document.getElementById("modalRecommendation").textContent =
+            recommendation;
+          document.getElementById("modalDailyChange").textContent = "";
+          document.getElementById("improveBtn").style.display = "none";
+          document.getElementById("deleteBtn").style.display = "none";
+          document.getElementById("benchmarkModal").style.display = "flex";
+
+          showPromptStatistics(promptId, null, "8");
+        });
+      });
+  });
+}
+
+// === View Functions ===
+// Analyzes performance of prompts by tags, calculates averages, and provides reclassification recommendations
+function analyzePromptTagsPerformance() {
+  chrome.storage.local.get("prompts", (result) => {
+    const promptList = Object.values(result.prompts || {});
+
+    // Only consider prompts that have at least one tag
+    const taggedPrompts = promptList.filter(
+      (p) => Array.isArray(p.tags) && p.tags.length > 0
+    );
+
+    // Group prompts by each tag
+    const promptsByTag = {};
+    taggedPrompts.forEach((prompt) => {
+      prompt.tags.forEach((tag) => {
+        if (!promptsByTag[tag]) promptsByTag[tag] = [];
+        promptsByTag[tag].push(prompt);
+      });
+    });
+
+    // Calculate performance for each prompt and tag
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    const tagPerformance = Object.keys(promptsByTag).map((tag) => {
+      const prompts = promptsByTag[tag];
+
+      const promptPerformances = prompts.map((prompt) => {
+        const safeHistory = Array.isArray(prompt.usageHistory)
+          ? prompt.usageHistory
+          : [];
+
+        const usage7Days = safeHistory
+          .filter(
+            (u) =>
+              u.timestamp >= sevenDaysAgo.getTime() &&
+              u.timestamp < today.getTime()
+          )
+          .reduce((sum, u) => sum + (u.count || 1), 0);
+
+        const usage30Days = safeHistory
+          .filter(
+            (u) =>
+              u.timestamp >= thirtyDaysAgo.getTime() &&
+              u.timestamp < today.getTime()
+          )
+          .reduce((sum, u) => sum + (u.count || 1), 0);
+
+        const dailyUsage7Days = usage7Days / 7;
+        const dailyUsage30Days = usage30Days / 30;
+        const performance = prompt.usageCount || usage30Days || 0;
+
+        return {
+          prompt,
+          dailyUsage7Days: Number(dailyUsage7Days.toFixed(2)),
+          dailyUsage30Days: Number(dailyUsage30Days.toFixed(2)),
+          performance,
+        };
+      });
+
+      // Calculate tag average performance
+      const tagAvgPerformance = promptPerformances.length
+        ? Number(
+            (
+              promptPerformances.reduce((sum, p) => sum + p.performance, 0) /
+              promptPerformances.length
+            ).toFixed(2)
+          )
+        : 0;
+
+      // Identify underperforming prompts
+      const underperforming = promptPerformances
+        .filter((p) => p.performance < tagAvgPerformance)
+        .map((p) => ({
+          ...p,
+          recommendation: `Consider optimizing "${p.prompt.title}" or adjusting its tags due to below-average performance.`,
+        }));
+
+      return {
+        tag,
+        prompts: promptPerformances,
+        tagAvgPerformance,
+        underperforming,
+      };
+    });
+
+    // Update dashboard UI in tagsRecommendations
+    const container = document.getElementById("tagsRecommendations");
+    if (!container) return;
+
+    container.innerHTML = tagPerformance
+      .map(
+        (t) => `
+        <li>
+          ${t.tag} (Avg: ${t.tagAvgPerformance})
+          ${
+            t.underperforming.length
+              ? `
+            - Underperforming:
+            <ul>
+              ${t.underperforming
+                .map(
+                  (p) => `
+                <li data-prompt="${p.prompt.title}" 
+                    data-prompt-id="${p.prompt.promptId}" 
+                    data-model="${
+                      p.prompt.compatibleModels.join(", ") || "Unknown"
+                    }" 
+                    data-performance="7 Days: ${p.dailyUsage7Days}, 30 Days: ${
+                    p.dailyUsage30Days
+                  }" 
+                    data-details="Performance: ${p.performance}" 
+                    data-recommendation="${p.recommendation}">
+                  <span class="loss">${p.prompt.title}</span>: ${
+                    p.performance
+                  } (7 Days: ${p.dailyUsage7Days}, 30 Days: ${
+                    p.dailyUsage30Days
+                  }) - ${p.recommendation}
+                </li>
+              `
+                )
+                .join("")}
+            </ul>
+          `
+              : " - All prompts meet or exceed average performance"
+          }
+        </li>
+      `
+      )
+      .join("");
+
+    // Modal interaction
+    document
+      .querySelectorAll("#tagsRecommendations li[data-prompt]")
+      .forEach((item) => {
+        item.addEventListener("click", () => {
+          const prompt = item.getAttribute("data-prompt");
+          const promptId = item.getAttribute("data-prompt-id");
+          const model = item.getAttribute("data-model");
+          const performance = item.getAttribute("data-performance");
+          const recommendation = item.getAttribute("data-recommendation") || "";
+          const details = item.getAttribute("data-details");
+
+          document.getElementById(
+            "modalPrompt"
+          ).textContent = `Prompt: ${prompt}`;
+          document.getElementById("modalModel").textContent = `Model: ${model}`;
+          document.getElementById(
+            "modalDetails"
+          ).textContent = `Details: ${details}`;
+          document.getElementById(
+            "modalPerformance"
+          ).textContent = `Performance: ${performance}`;
+          document.getElementById("modalRecommendation").textContent =
+            recommendation;
+          document.getElementById("modalDailyChange").textContent = "";
+          document.getElementById("improveBtn").style.display = "none";
+          document.getElementById("deleteBtn").style.display = "none";
+          document.getElementById("benchmarkModal").style.display = "flex";
+
+          showPromptStatistics(promptId, null, "8");
+        });
+      });
+  });
+}
+
 // === Initialization Function ===
 function initializeBenchmarking() {
   console.log("Benchmarking Dashboard Initialized");
@@ -1688,6 +1993,8 @@ function initializeBenchmarking() {
   renderLowUsagePromptsView();
   renderSimilarPromptsView();
   renderVersioningAnalysisView();
+  analyzePromptTypePerformance();
+  analyzePromptTagsPerformance();
 
   // Setup modal close button
   document.querySelector(".close-btn").addEventListener("click", () => {

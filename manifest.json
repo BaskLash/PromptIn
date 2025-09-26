@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PromptIn: AI Prompt Management System, All in One Prompt Manager",
   "description": "An intelligent tool for managing and optimizing AI prompts for efficient and precise results",
-  "version": "1.0.12",
+  "version": "1.0.14",
   "permissions": ["storage", "unlimitedStorage", "tabs"],
   "icons": {
     "16": "icon/icon16.png",

@@ -1628,7 +1628,7 @@ function showCreateWorkflowModal() {
           };
 
           if (useCustomPrompt) {
-            const newPromptId = `prompt_${Date.now()}_${generateUUID()}`;
+            const newPromptId = `${Date.now()}_${generateUUID()}`
             const snippet =
               customPrompt.length > 10
                 ? customPrompt.substring(0, 10)
@@ -1713,7 +1713,7 @@ function showCreateWorkflowModal() {
       });
 
       // 3️⃣ Speichere Workflow
-      const workflowId = `workflow_${Date.now()}`;
+      const workflowId = `${Date.now()}_${generateUUID()}`;
       const newWorkflow = {
         name,
         steps: workflowSteps,
@@ -2034,9 +2034,7 @@ async function copyWorkflow(workflowId) {
     if (!originalWorkflow) throw new Error("Workflow not found");
 
     // Neuen Workflow mit neuer ID erstellen
-    const newWorkflowId = `workflow_${Date.now()}_${Math.floor(
-      Math.random() * 10000
-    )}`;
+    const newWorkflowId = `${Date.now()}_${generateUUID()}`;
     const newWorkflow = {
       ...originalWorkflow,
       workflowId: newWorkflowId,

@@ -26,8 +26,8 @@ function loadFolders() {
       <span class="folder-actions">
         <button class="folder-action blue-dots-button" title="Aktionen">⋯</button>
         <div class="folder-dropdown hidden">
-          <div class="dropdown-option edit-folder">✏️ Bearbeiten</div>
-          <div class="dropdown-option delete-folder">🗑️ Löschen</div>
+          <div class="dropdown-option edit-folder">✏️ Edit</div>
+          <div class="dropdown-option delete-folder">🗑️ Delete</div>
         </div>
       </span>
     `;
@@ -233,15 +233,17 @@ addFolderBtn.addEventListener("click", () => {
       return;
     }
 
-    const folderId = `folder_${Date.now()}_${generateUUID()}`;
+    const folderId = `${Date.now()}_${generateUUID()}`
     const newFolder = {
       folderId: folderId,
       name: folderName,
       promptIds: [],
       isTrash: false,
       createdAt: Date.now(),
-      updatedAt: Date.now(),
+      updatedAt: "",
     };
+
+    // TODO: Messure the performance per prompts
 
     chrome.storage.local.get(["folders"], ({ folders }) => {
       const updatedFolders = folders || {};

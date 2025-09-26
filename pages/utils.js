@@ -65,7 +65,7 @@ function savePrompt(
       title: promptData.title || "Untitled Prompt",
       description: promptData.description || "",
       content: promptData.content || "",
-      type: promptData.type || "text",
+      types: promptData.type || "text",
       isFavorite: promptData.isFavorite || false,
       tags: promptData.tags || [],
       notes: promptData.notes || "",
