@@ -29,6 +29,7 @@ async function displaySubscriptionDetails() {
     return;
   }
 
+  subscriptionElement.setAttribute("data-i18n", "loading");
   subscriptionElement.textContent = "Loading...";
   subscriptionButtons.innerHTML = "";
   subscriptionBenefits.innerHTML = "";
@@ -46,20 +47,22 @@ async function displaySubscriptionDetails() {
         : "Never";
 
       subscriptionElement.innerHTML = `
-        <strong>Current Plan:</strong> ${plan.name} (${plan.amount} ${plan.currency}/mo)<br/>
-        <strong>Status:</strong> ${status}<br/>
-        <strong>Started:</strong> ${startDate}<br/>
-        <strong>Expires:</strong> ${endDate}<br/>
+        <strong data-i18n="currentPlan">Current Plan:</strong> ${plan.name} (${plan.amount} ${plan.currency}/mo)<br/>
+        <strong data-i18n="status">Status:</strong> ${status}<br/>
+        <strong data-i18n="started">Started:</strong> ${startDate}<br/>
+        <strong data-i18n="expires">Expires:</strong> ${endDate}<br/>
       `;
 
       // Button zum Wechseln des Plans
       const switchButton = document.createElement("button");
       if (plan.id === "basicmonthly") {
+        switchButton.setAttribute("data-i18n", "switchToPro");
         switchButton.innerText = "Switch to PRO Plan";
         switchButton.addEventListener("click", () => {
           extPay.openPaymentPage("promonthly");
         });
       } else if (plan.id === "promonthly") {
+        switchButton.setAttribute("data-i18n", "switchToBasic");
         switchButton.innerText = "Switch to BASIC Plan";
         switchButton.addEventListener("click", () => {
           extPay.openPaymentPage("basicmonthly");
@@ -69,12 +72,13 @@ async function displaySubscriptionDetails() {
     } else {
       // -------------------- FALL 2: Nicht eingeloggt oder kein Abo --------------------
       subscriptionElement.innerHTML = `
-        No active subscription. Upgrade or log in to your existing account.
+        <span data-i18n="noSubscription">No active subscription. Upgrade or log in to your existing account.</span>
         <br/>
       `;
 
       // Login button
       const loginButton = document.createElement("button");
+      loginButton.setAttribute("data-i18n", "login");
       loginButton.innerText = "Log in";
       loginButton.style.marginTop = "8px";
       loginButton.addEventListener("click", function () {
@@ -92,11 +96,13 @@ async function displaySubscriptionDetails() {
 
       const yearlyOption = document.createElement("option");
       yearlyOption.value = "yearly";
+      yearlyOption.setAttribute("data-i18n", "yearlyPlans");
       yearlyOption.textContent = "Yearly Plans";
       yearlyOption.selected = true;
 
       const monthlyOption = document.createElement("option");
       monthlyOption.value = "monthly";
+      monthlyOption.setAttribute("data-i18n", "monthlyPlans");
       monthlyOption.textContent = "Monthly Plans";
 
       planSelector.appendChild(yearlyOption);
@@ -135,33 +141,32 @@ async function displaySubscriptionDetails() {
             ? (plan.yearlyOrig / 12).toFixed(2)
             : monthlyOrig;
 
-          // 👇 individuelle Prozentwerte für yearly-Pläne
           let savePercent;
           if (isYearly) {
             if (planKey === "pro") savePercent = 59;
             else if (planKey === "basic") savePercent = 56;
           } else {
-            savePercent = 0; // 👈 Immer 0% bei monatlichen Plänen
+            savePercent = 0;
           }
 
           if (isYearly) {
             return `
       <div style="display:flex; align-items:center; gap:10px; font-size:1.1em;">
-        <div style="font-weight:bold;color:black;">€${displayMonthly}/month</div>
-        <div style="color:#27ae60; font-weight:bold;">Save ${savePercent}%</div>
+        <div style="font-weight:bold;color:black;">€${displayMonthly}/<span data-i18n="month">month</span></div>
+        <div style="color:#27ae60; font-weight:bold;"><span data-i18n="save">Save</span> ${savePercent}%</div>
       </div>
-      <div style="font-size:0.8em; color:red;">
+      <div style="font-size:0.8em; color:red;" data-i18n="bonusMonths">
         + 3 Months EXTRA
       </div>
-      <div style="font-size:0.8em; color:#555;"><s>€${yearlyOrig}</s> €${yearly} for the first 12 months, billed annually + taxes may apply</div>
+      <div style="font-size:0.8em; color:#555;"><s>€${yearlyOrig}</s> €${yearly} <span data-i18n="yearlyBilling">for the first 12 months, billed annually + taxes may apply</span></div>
     `;
           } else {
             return `
       <div style="display:flex; align-items:center; gap:10px; font-size:1.1em;">
-        <div style="font-weight:bold; color:black;">€${monthly}/month</div>
-        <div style="color:#27ae60; font-weight:bold;">Save ${savePercent}%</div>
+        <div style="font-weight:bold; color:black;">€${monthly}/<span data-i18n="month">month</span></div>
+        <div style="color:#27ae60; font-weight:bold;"><span data-i18n="save">Save</span> ${savePercent}%</div>
       </div>
-      <div style="font-size:0.8em; color:#555;">Billed monthly, taxes may apply</div>
+      <div style="font-size:0.8em; color:#555;" data-i18n="monthlyBilling">Billed monthly, taxes may apply</div>
     `;
           }
         }
@@ -183,6 +188,7 @@ async function displaySubscriptionDetails() {
           // Most popular badge
           if (isYearly && planKey === "pro") {
             const badge = document.createElement("div");
+            badge.setAttribute("data-i18n", "mostPopular");
             badge.textContent = "Most Popular";
             badge.style.color = "#fff";
             badge.style.backgroundColor = "#e67e22";
@@ -198,7 +204,7 @@ async function displaySubscriptionDetails() {
 
           // Plan header
           const header = document.createElement("h3");
-          header.innerHTML = `${planKey.toUpperCase()} Plan`;
+          header.innerHTML = `<span data-i18n="${planKey}Plan">${planKey.toUpperCase()} Plan</span>`;
           card.appendChild(header);
 
           // Price
@@ -207,7 +213,7 @@ async function displaySubscriptionDetails() {
           priceDiv.innerHTML = formatPrice(planKey, isYearly);
           card.appendChild(priceDiv);
 
-          // Benefits with green checkmarks
+          // Benefits
           const ul = document.createElement("ul");
           ul.style.listStyle = "none";
           ul.style.padding = "0";
@@ -215,31 +221,58 @@ async function displaySubscriptionDetails() {
           const benefits =
             planKey === "basic"
               ? [
-                  "Know which prompts actually perform best",
-                  "Use the most effective and popular prompts for your specific AI model",
-                  "Easily combine your prompts with the best matches — and get smart suggestions even when nothing fits",
-                  "Stay on top of how and when your prompts are used",
-                  "Standard support",
+                  {
+                    key: "benefitBasic1",
+                    text: "Know which prompts actually perform best",
+                  },
+                  {
+                    key: "benefitBasic2",
+                    text: "Use the most effective and popular prompts for your specific AI model",
+                  },
+                  {
+                    key: "benefitBasic3",
+                    text: "Easily combine your prompts with the best matches — and get smart suggestions even when nothing fits",
+                  },
+                  {
+                    key: "benefitBasic4",
+                    text: "Stay on top of how and when your prompts are used",
+                  },
+                  { key: "benefitBasic5", text: "Standard support" },
                 ]
               : [
-                  "Everything from the basic plan",
-                  "Spot when a prompt starts losing quality and learn how, when, and why",
-                  "Swap weak prompts for stronger ones instantly",
-                  "Replace prompts with stronger alternatives",
-                  "Be first to try the newest AI features",
-                  "Priority support",
+                  {
+                    key: "benefitPro1",
+                    text: "Everything from the basic plan",
+                  },
+                  {
+                    key: "benefitPro2",
+                    text: "Spot when a prompt starts losing quality and learn how, when, and why",
+                  },
+                  {
+                    key: "benefitPro3",
+                    text: "Swap weak prompts for stronger ones instantly",
+                  },
+                  {
+                    key: "benefitPro4",
+                    text: "Replace prompts with stronger alternatives",
+                  },
+                  {
+                    key: "benefitPro5",
+                    text: "Be first to try the newest AI features",
+                  },
+                  { key: "benefitPro6", text: "Priority support" },
                 ];
 
           benefits.forEach((b) => {
             const li = document.createElement("li");
-            li.innerHTML = `<span style="color:#27ae60; font-weight:bold;">✔</span> ${b}`;
+            li.innerHTML = `<span style="color:#27ae60; font-weight:bold;">✔</span> <span data-i18n="${b.key}">${b.text}</span>`;
             li.style.marginBottom = "5px";
             ul.appendChild(li);
           });
 
           card.appendChild(ul);
 
-          // 30-Tage Geld-zurück-Banner
+          // Refund banner
           const refundBanner = document.createElement("div");
           refundBanner.style.display = "flex";
           refundBanner.style.alignItems = "center";
@@ -249,11 +282,12 @@ async function displaySubscriptionDetails() {
           refundBanner.style.backgroundColor = "#eafaf1";
           refundBanner.style.border = "1px solid #27ae60";
           refundBanner.style.borderRadius = "6px";
-          refundBanner.innerHTML = `<span style="color:#27ae60; font-weight:bold;">💰</span> 30-day money-back guarantee, no questions asked`;
+          refundBanner.innerHTML = `<span style="color:#27ae60; font-weight:bold;">💰</span> <span data-i18n="refund">30-day money-back guarantee, no questions asked</span>`;
           card.appendChild(refundBanner);
 
           // Upgrade Button
           const button = document.createElement("button");
+          button.setAttribute("data-i18n", `upgrade${planKey}`);
           button.textContent = `Upgrade to ${planKey.toUpperCase()}`;
           button.style.marginTop = "15px";
           button.style.padding = "10px 15px";
@@ -284,6 +318,7 @@ async function displaySubscriptionDetails() {
     }
   } catch (error) {
     console.error("Error fetching subscription:", error);
+    subscriptionElement.setAttribute("data-i18n", "errorSubscription");
     subscriptionElement.textContent = "Error loading subscription details.";
   }
 }
@@ -2542,6 +2577,25 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+
+  document
+    .querySelector(".prompt-benchmarking")
+    .addEventListener("click", () => {
+      const appUrl = chrome.runtime.getURL("/pages/app.html?view=benchmarking");
+
+      chrome.tabs.query({ url: appUrl }, function (tabs) {
+        if (tabs.length > 0) {
+          // Ein Tab mit der URL existiert bereits
+          const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+          chrome.tabs.update(existingTab.id, { active: true }, () => {
+            chrome.windows.update(existingTab.windowId, { focused: true });
+          });
+        } else {
+          // Kein Tab mit der URL existiert, erstelle einen neuen
+          chrome.tabs.create({ url: appUrl });
+        }
+      });
+    });
 
   // FAQ
   faqBtn.addEventListener("click", () => {

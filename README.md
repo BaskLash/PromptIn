@@ -25,6 +25,7 @@ Kompatibel mit:
 - [Lovable AI](https://lovable.dev/)
 - [Cursor AI](https://cursor.com/)
 - [Lumo](https://lumo.proton.me/guest)
+- [Amazon Bedrock]()
 
 ## Inhaltsverzeichnis
 
