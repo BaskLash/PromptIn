@@ -15,6 +15,9 @@ document.addEventListener("DOMContentLoaded", () => {
   } else if (view === "types") {
     switchView("types-view", { view: "types" });
     loadTypes();
+  } else if (view === "folders") {
+    switchView("folders-view", { view: "folders" });
+    loadFoldersView();
   } else if (view === "anonymizer") {
     switchView("anonymizer-view", { view: "anonymizer" });
     initializeAnonymizer();
@@ -29,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           // Keine Lizenz → Kauf-Flow für spezifisches Pro-Modell starten
           extpayClient
-            .openPaymentPage("basicyearly") // Hier den Plan-Namen angeben
+            .openPaymentPage("basicmonthly") // Hier den Plan-Namen angeben
             .catch((err) => {
               console.error("ExtPay Checkout Fehler:", err);
               alert(
@@ -393,6 +396,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (view === "type") {
         switchView("types-view", { view: "types" });
         loadTypes();
+      } else if (view === "folders") {
+        switchView("folders-view", { view: "folders" });
+        loadFoldersView();
       } else if (view === "anonymizer") {
         switchView("anonymizer-view", { view: "anonymizer" });
         initializeAnonymizer();
@@ -407,7 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
               // Keine Lizenz → Kauf-Flow für spezifisches Pro-Modell starten
               extpayClient
-                .openPaymentPage("basicyearly") // Hier den Plan-Namen angeben
+                .openPaymentPage("basicmonthly") // Hier den Plan-Namen angeben
                 .catch((err) => {
                   console.error("ExtPay Checkout Fehler:", err);
                   alert(
@@ -504,6 +510,221 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+function loadFoldersView() {
+  chrome.storage.local.get(["folders", "prompts"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const folders = data.folders || {};
+    const allPrompts = data.prompts || {};
+    const folderContainer = document.getElementById("folder-container");
+
+    if (!folderContainer) {
+      console.error("Folder container not found");
+      return;
+    }
+
+    // Clear container
+    folderContainer.innerHTML = "";
+
+    const folderIds = Object.keys(folders);
+
+    // If no folders exist
+    if (folderIds.length === 0) {
+      const noFolders = document.createElement("div");
+      noFolders.className = "no-tags";
+      noFolders.textContent =
+        "No folders available. Create one to get started!";
+      folderContainer.appendChild(noFolders);
+      return;
+    }
+
+    // Convert prompts object into array form
+    const promptsArray = Object.entries(allPrompts).map(
+      ([promptId, prompt]) => ({
+        ...prompt,
+        id: promptId,
+        folderId: prompt.folderId || null,
+        usageHistory: Array.isArray(prompt.usageHistory)
+          ? prompt.usageHistory
+          : [],
+      })
+    );
+
+    // Create grid container
+    const folderGrid = document.createElement("div");
+    folderGrid.className = "tag-grid";
+    folderGrid.style.display = "flex";
+
+    // Daily average usage calculation across all folders
+    const folderUsageStats = new Map();
+    let maxDailyAverage = 0;
+
+    // Check overall activity in the last 7 days
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const hasRecentActivity = promptsArray.some((prompt) =>
+      prompt.usageHistory.some((entry) => entry.timestamp >= sevenDaysAgo)
+    );
+
+    folderIds.forEach((folderId) => {
+      const folder = folders[folderId];
+      const promptsOfFolder = promptsArray.filter(
+        (prompt) => prompt.folderId === folderId
+      );
+
+      let totalDailyAverage = 0;
+      const promptCount = promptsOfFolder.length;
+
+      promptsOfFolder.forEach((prompt) => {
+        const usageHistory = prompt.usageHistory;
+        if (usageHistory.length === 0) return;
+
+        const timestamps = usageHistory
+          .map((entry) => entry.timestamp)
+          .filter((ts) => typeof ts === "number" && !isNaN(ts));
+        if (timestamps.length === 0) return;
+
+        const earliest = Math.min(...timestamps);
+        const latest = Math.max(...timestamps);
+        const timeSpanDays = (latest - earliest) / (1000 * 60 * 60 * 24) || 1;
+        const dailyAverage = usageHistory.length / timeSpanDays;
+        totalDailyAverage += dailyAverage;
+      });
+
+      const folderDailyAverage =
+        promptCount > 0 ? totalDailyAverage / promptCount : 0;
+      folderUsageStats.set(folderId, {
+        dailyAverage: folderDailyAverage,
+        promptCount,
+      });
+
+      if (folderDailyAverage > maxDailyAverage) {
+        maxDailyAverage = folderDailyAverage;
+      }
+    });
+
+    // Render folder boxes
+    folderIds.forEach((folderId) => {
+      const folder = folders[folderId];
+      const folderName = folder.name || "Unnamed Folder";
+      const promptsOfFolder = promptsArray.filter(
+        (prompt) => prompt.folderId === folderId
+      );
+      const promptCount = promptsOfFolder.length;
+
+      // Performance calculation with inactivity check
+      let performancePercent = 0;
+      let trendArrow = "→";
+      let colorStyle = "color: gray;";
+      let statusText = "";
+
+      if (!hasRecentActivity) {
+        statusText = "No usage (inactive)";
+        performancePercent = 0;
+        trendArrow = "−";
+      } else {
+        let recentUses = 0;
+        let totalUsesBefore = 0;
+
+        promptsOfFolder.forEach((prompt) => {
+          if (Array.isArray(prompt.usageHistory)) {
+            prompt.usageHistory.forEach((ts) => {
+              if (ts.timestamp >= sevenDaysAgo) {
+                recentUses++;
+              } else {
+                totalUsesBefore++;
+              }
+            });
+          }
+        });
+
+        if (recentUses > 0 || totalUsesBefore > 0) {
+          const pastAvg = totalUsesBefore / (promptCount || 1);
+          const recentAvg = recentUses / (promptCount || 1);
+
+          if (pastAvg === 0 && recentAvg > 0) {
+            performancePercent = 100;
+            trendArrow = "↑";
+            colorStyle = "color: green;";
+            statusText = `${performancePercent}% ↑`;
+          } else if (pastAvg > 0) {
+            performancePercent = Math.round(
+              ((recentAvg - pastAvg) / pastAvg) * 100
+            );
+            if (performancePercent > 0) {
+              trendArrow = "↑";
+              colorStyle = "color: green;";
+              statusText = `${performancePercent}% ↑`;
+            } else if (performancePercent < 0) {
+              trendArrow = "↓";
+              colorStyle = "color: red;";
+              statusText = `${performancePercent}% ↓`;
+            } else {
+              statusText = "0% →";
+            }
+          } else {
+            statusText = "0% →";
+          }
+        } else {
+          statusText = "No usage";
+        }
+      }
+
+      // Daily averages & percentages
+      const stats = folderUsageStats.get(folderId) || {
+        dailyAverage: 0,
+        promptCount: 0,
+      };
+      const dailyAverage = stats.dailyAverage.toFixed(4);
+      const percentage =
+        maxDailyAverage > 0
+          ? ((stats.dailyAverage / maxDailyAverage) * 100).toFixed(2)
+          : 0;
+
+      // Build folder box
+      const folderBox = document.createElement("div");
+      folderBox.className = "tag-box";
+      folderBox.dataset.folderId = escapeHTML(folderId);
+      folderBox.innerHTML = `
+        <span class="tag-name">${escapeHTML(folderName)}</span>
+        <span class="prompt-count">${promptCount} Prompt${
+        promptCount !== 1 ? "s" : ""
+      }</span>
+        <span class="stats" style="${colorStyle}">
+          ${statusText} | Avg Daily: ${dailyAverage} (${percentage}%)
+        </span>
+        <button class="delete-tag-btn" data-folder-id="${escapeHTML(
+          folderId
+        )}" title="Delete folder">×</button>
+      `;
+
+      folderGrid.appendChild(folderBox);
+    });
+
+    folderContainer.appendChild(folderGrid);
+
+    // Event listener for folder boxes (open modal)
+    document.querySelectorAll(".tag-box").forEach((box) => {
+      box.addEventListener("click", (e) => {
+        if (!e.target.classList.contains("delete-tag-btn")) {
+          const folderId = box.dataset.folderId;
+          showFolderModal(folderId, promptsArray);
+        }
+      });
+    });
+
+    // Event listener for delete buttons
+    document.querySelectorAll(".delete-tag-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteFolder(btn.dataset.folderId);
+      });
+    });
+  });
+}
 
 function loadTags() {
   chrome.storage.local.get(["tags", "prompts"], (data) => {
@@ -1619,6 +1840,264 @@ function showPromptTypeModal(type) {
     document.querySelectorAll(".prompt-item").forEach((item) => {
       item.addEventListener("click", (e) => {
         if (e.target.classList.contains("remove-type-btn")) return;
+        const folderId = item.dataset.folderId;
+        modal.style.display = "none";
+        if (!folderId) {
+          switchView("prompts-view", {
+            view: "prompts",
+            category: "Single Prompts",
+          });
+          handleCategoryClick("Single Prompts");
+        } else {
+          switchView("prompts-view", { view: "prompts", folderId });
+          handleFolderClick(folderId);
+        }
+      });
+    });
+
+    const closeModal = document.querySelector(".close-modal");
+    if (closeModal) {
+      closeModal.addEventListener("click", () => {
+        modal.style.display = "none";
+      });
+    }
+
+    modal.style.display = "flex";
+  });
+}
+
+function showFolderModal(folderId) {
+  const modal = document.getElementById("promptModal");
+  const modalTagName = document.getElementById("modalTagName");
+  const modalPromptList = document.getElementById("modalPromptList");
+
+  if (!modal || !modalTagName || !modalPromptList) {
+    console.error("Modal elements not found");
+    return;
+  }
+
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    const allPrompts = data.prompts || {};
+    const folders = data.folders || {};
+    const folderName = folders[folderId]?.name || "Unnamed Folder";
+
+    modalTagName.textContent = `Folder: ${escapeHTML(folderName)}`;
+
+    // Step 1: Filter prompts by folderId
+    const filteredPrompts = Object.entries(allPrompts)
+      .map(([promptId, prompt]) => ({
+        ...prompt,
+        promptId,
+        usageHistory: Array.isArray(prompt.usageHistory)
+          ? prompt.usageHistory
+          : [],
+      }))
+      .filter((prompt) => prompt.folderId === folderId);
+
+    // Step 2: Calculate daily averages
+    let maxDailyAverage = 0;
+    const promptStats = filteredPrompts.map((prompt) => {
+      let dailyAverage = 0;
+      if (prompt.usageHistory.length > 0) {
+        const timestamps = prompt.usageHistory
+          .map((entry) => entry.timestamp)
+          .filter((ts) => typeof ts === "number" && !isNaN(ts));
+        if (timestamps.length > 0) {
+          const earliest = Math.min(...timestamps);
+          const latest = Math.max(...timestamps);
+          const timeSpanDays = (latest - earliest) / (1000 * 60 * 60 * 24) || 1;
+          dailyAverage = prompt.usageHistory.length / timeSpanDays;
+        }
+      }
+      if (dailyAverage > maxDailyAverage) maxDailyAverage = dailyAverage;
+      return { ...prompt, dailyAverage };
+    });
+
+    // Step 3: Build HTML list
+    let promptListHTML = "";
+    if (promptStats.length === 0) {
+      promptListHTML = "<p>No prompts found in this folder.</p>";
+    } else {
+      promptListHTML = promptStats
+        .map((prompt) => {
+          const percentage =
+            maxDailyAverage > 0
+              ? ((prompt.dailyAverage / maxDailyAverage) * 100).toFixed(2)
+              : 0;
+
+          return `
+          <div class="prompt-item" 
+               data-prompt-id="${escapeHTML(prompt.promptId)}" 
+               data-folder-id="${escapeHTML(prompt.folderId || "")}"
+               style="cursor: pointer;">
+            <h3>${escapeHTML(prompt.title || "Untitled")}</h3>
+            <p>Created: ${new Date(prompt.createdAt || 0).toLocaleString()}</p>
+            <p>Avg Daily Usage: ${prompt.dailyAverage.toFixed(
+              4
+            )} (${percentage}%)</p>
+            <button class="remove-folder-btn" 
+                    data-folder-id="${escapeHTML(folderId)}" 
+                    data-prompt-id="${escapeHTML(prompt.promptId)}" 
+                    title="Remove this prompt from the folder">×</button>
+          </div>`;
+        })
+        .join("");
+    }
+
+    modalPromptList.innerHTML = promptListHTML;
+
+    // Step 4: Chart containers
+    const chartContainer = document.createElement("div");
+    chartContainer.id = "usageChartContainer";
+    chartContainer.style.marginTop = "20px";
+
+    // Bar Chart
+    const barTitle = document.createElement("h3");
+    barTitle.textContent = "Daily Usage Comparison";
+    chartContainer.appendChild(barTitle);
+
+    const usageBarCanvas = document.createElement("canvas");
+    usageBarCanvas.id = "usageBarChart";
+    usageBarCanvas.style.maxWidth = "600px";
+    usageBarCanvas.style.maxHeight = "400px";
+    chartContainer.appendChild(usageBarCanvas);
+
+    const unlockUsageBar = document.createElement("span");
+    unlockUsageBar.id = "unlockUsageBar";
+    unlockUsageBar.textContent = "🔒 Unlock Bar Chart";
+    unlockUsageBar.style.cursor = "pointer";
+    unlockUsageBar.style.fontSize = "14px";
+    unlockUsageBar.style.marginRight = "20px";
+    chartContainer.appendChild(unlockUsageBar);
+
+    // Line Chart
+    const trendContainer = document.createElement("div");
+    trendContainer.id = "trendChartContainer";
+    trendContainer.style.marginTop = "20px";
+
+    const lineTitle = document.createElement("h3");
+    lineTitle.textContent = "Usage Trend Over Time";
+    trendContainer.appendChild(lineTitle);
+
+    const usageLineCanvas = document.createElement("canvas");
+    usageLineCanvas.id = "usageLineChart";
+    usageLineCanvas.style.maxWidth = "600px";
+    usageLineCanvas.style.maxHeight = "400px";
+    trendContainer.appendChild(usageLineCanvas);
+
+    const unlockUsageLine = document.createElement("span");
+    unlockUsageLine.id = "unlockUsageLine";
+    unlockUsageLine.textContent = "🔒 Unlock Line Chart";
+    unlockUsageLine.style.cursor = "pointer";
+    unlockUsageLine.style.fontSize = "14px";
+    trendContainer.appendChild(unlockUsageLine);
+
+    chartContainer.appendChild(trendContainer);
+    modalPromptList.appendChild(chartContainer);
+
+    // Step 5: ExtPay check
+    extpayClient
+      .getUser()
+      .then((user) => {
+        if (user.paid) {
+          // Locks entfernen
+          unlockUsageBar.remove();
+          unlockUsageLine.remove();
+
+          // Chart.js laden
+          const script = document.createElement("script");
+          script.src = "chart.umd.min.js";
+          script.onload = () => {
+            // ----- Bar Chart -----
+            const barEl = document.getElementById("usageBarChart");
+            if (barEl) {
+              const barCtx = barEl.getContext("2d");
+              if (promptStats.length > 0) {
+                new Chart(barCtx, {
+                  type: "bar",
+                  data: {
+                    labels: promptStats.map((p) =>
+                      escapeHTML(p.title || "Untitled").substring(0, 15)
+                    ),
+                    datasets: [
+                      {
+                        label: "Avg Daily Usage",
+                        data: promptStats.map((p) => p.dailyAverage.toFixed(4)),
+                        backgroundColor: "rgba(100, 150, 255, 0.6)",
+                        borderColor: "rgba(100, 150, 255, 1)",
+                        borderWidth: 1,
+                      },
+                    ],
+                  },
+                  options: {
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        title: { display: true, text: "Average Daily Usage" },
+                      },
+                      x: { title: { display: true, text: "Prompts" } },
+                    },
+                  },
+                });
+              } else {
+                barCtx.canvas.parentNode.innerHTML +=
+                  "<p>No data available</p>";
+              }
+            }
+
+            // ----- Line Chart -----
+            const lineEl = document.getElementById("usageLineChart");
+            if (lineEl) {
+              const lineCtx = lineEl.getContext("2d");
+              const trendData = buildTrendData(promptStats);
+              if (trendData.labels.length > 0) {
+                new Chart(lineCtx, {
+                  type: "line",
+                  data: {
+                    labels: trendData.labels,
+                    datasets: trendData.datasets,
+                  },
+                  options: {
+                    responsive: true,
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        title: { display: true, text: "Daily Usage Count" },
+                      },
+                      x: { title: { display: true, text: "Date" } },
+                    },
+                  },
+                });
+              } else {
+                lineCtx.canvas.parentNode.innerHTML +=
+                  "<p>Not enough timestamp data for trend analysis</p>";
+              }
+            }
+          };
+          document.body.appendChild(script);
+        } else {
+          // Locks aktiv lassen
+          unlockUsageBar.onclick = () =>
+            extpayClient.openPaymentPage("basicmonthly");
+          unlockUsageLine.onclick = () =>
+            extpayClient.openPaymentPage("promonthly");
+        }
+      })
+      .catch((err) => {
+        console.error("ExtPay error:", err);
+      });
+
+    // Step 6: Event handlers
+    document.querySelectorAll(".remove-folder-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removePromptFromFolder(btn.dataset.folderId, btn.dataset.promptId);
+      });
+    });
+
+    document.querySelectorAll(".prompt-item").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        if (e.target.classList.contains("remove-folder-btn")) return;
         const folderId = item.dataset.folderId;
         modal.style.display = "none";
         if (!folderId) {
