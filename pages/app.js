@@ -386,6 +386,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  document.getElementById("addFolderBtn2").addEventListener("click", () => {
+  const folderName = prompt("Enter a new folder:");
+
+  if (!folderName) {
+    alert("The folder name must not be empty!");
+    return;
+  }
+
+  const folderId = `${Date.now()}_${generateUUID()}`;
+  const timestamp = Date.now();
+
+  const newFolder = {
+    folderId,
+    name: folderName.trim(),
+    promptIds: [],
+    isTrash: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  chrome.storage.local.get({ folders: {} }, (result) => {
+    const folders = result.folders;
+    folders[folderId] = newFolder;
+
+    chrome.storage.local.set({ folders }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Fehler beim Erstellen des Ordners:",
+          chrome.runtime.lastError
+        );
+        alert("Fehler beim Erstellen des Ordners.");
+      } else {
+        console.log("Ordner erfolgreich erstellt:", newFolder);
+        loadFoldersView();
+        loadFolders(); // UI sofort aktualisieren
+      }
+    });
+  });
+});
+
+
   document.querySelectorAll(".accordion-content li").forEach((item) => {
     item.addEventListener("click", () => {
       const view = item.getAttribute("data-view");

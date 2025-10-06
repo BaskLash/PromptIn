@@ -1830,7 +1830,7 @@ async function promptSaver(message) {
         displaySuggestedPrompts(relevantPrompts);
       } else {
         suggestedDropdownContent.innerHTML =
-          "<div class='dropdown-item'>Keine passenden Prompts gefunden.</div>";
+          "<div class='dropdown-item'>No matching prompts found.</div>";
         suggestedPromptsDropdown.style.display = "block";
         suggestedPromptsLabel.style.display = "block";
       }
