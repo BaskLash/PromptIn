@@ -15,14 +15,19 @@ setInterval(() => {
     addChatGPTButton();
   }
   if (
-    window.location.hostname === "gemini.google.com" &&
-    path.startsWith("/app/")
-  ) {
-    addGeminiButton();
-  }
-  if (window.location.hostname === "grok.com" && path.startsWith("/chat/")) {
-    addGrokButton();
-  }
+  window.location.hostname === "gemini.google.com" &&
+  /\/app\//.test(path)
+) {
+  addGeminiButton();
+}
+
+  if (
+  window.location.hostname === "grok.com" &&
+  (path.includes("/c") || path.includes("/chat"))
+) {
+  addGrokButton();
+}
+
   if (
     (window.location.hostname === "blackbox.ai" ||
       window.location.hostname === "www.blackbox.ai") &&
@@ -240,7 +245,7 @@ async function createNewPrompt(
     closeModal();
   } catch (error) {
     console.error("Fehler beim Erstellen des Prompts:", error);
-    alert("Fehler beim Erstellen des Prompts: " + error.message);
+    alert("Error creating prompt: " + error.message);
   }
 }
 
@@ -267,7 +272,7 @@ async function replacePrompt(
     const { prompts = {}, folders = {} } = data;
 
     if (!prompts[promptId]) {
-      alert("Prompt nicht gefunden!");
+      alert("Prompt not found!");
       return;
     }
 
@@ -341,7 +346,7 @@ async function replacePrompt(
           reject(chrome.runtime.lastError);
         } else {
           console.log(`Prompt ${promptId} erfolgreich ersetzt.`);
-          alert("Prompt erfolgreich ersetzt!");
+          alert("Promptly replaced successfully!");
           resolve();
         }
       });
@@ -350,7 +355,7 @@ async function replacePrompt(
     closeModal();
   } catch (error) {
     console.error("Fehler beim Ersetzen des Prompts:", error);
-    alert("Fehler beim Ersetzen des Prompts.");
+    alert("Error replacing the prompt.");
   }
 }
 
@@ -471,7 +476,7 @@ async function addPromptToFolder(
     closeModal();
   } catch (error) {
     console.error("Error adding prompt to folder:", error);
-    alert("Fehler beim Hinzufügen des Prompts: " + error.message);
+    alert("Error adding prompt: " + error.message);
   }
 }
 
@@ -498,7 +503,7 @@ async function combineWithExistingPrompt(
     const folders = data.folders || {};
 
     if (!prompts[promptId]) {
-      alert("Prompt nicht gefunden!");
+      alert("Prompt not found!");
       return;
     }
 
@@ -569,7 +574,7 @@ async function combineWithExistingPrompt(
           console.log(
             `Prompt ${promptId} erfolgreich kombiniert und gespeichert.`
           );
-          alert("Prompt erfolgreich kombiniert und gespeichert!");
+          alert("Successfully combined and saved!");
           resolve();
         }
       });
@@ -578,7 +583,7 @@ async function combineWithExistingPrompt(
     closeModal();
   } catch (error) {
     console.error("Fehler beim Kombinieren des Prompts:", error);
-    alert("Fehler beim Kombinieren des Prompts.");
+    alert("Error combining the prompt.");
   }
 }
 
@@ -588,7 +593,7 @@ async function promptSaver(message) {
     console.error(
       "DOM nicht verfügbar: document.body oder document.head fehlt."
     );
-    alert("Fehler: Seite nicht vollständig geladen. Bitte versuche es erneut.");
+    alert("Error: Page not fully loaded. Please try again.");
     return;
   }
 
@@ -691,7 +696,7 @@ async function promptSaver(message) {
 
   const checkboxLabel = document.createElement("label");
   checkboxLabel.setAttribute("for", "showFullContent");
-  checkboxLabel.textContent = "Gesamten Inhalt anzeigen (inkl. Text nach ':')";
+  checkboxLabel.textContent = "Show entire content (including text after ‘:’)";
   checkboxLabel.style.fontSize = "14px";
   checkboxLabel.style.marginTop = "5px";
   checkboxLabel.style.userSelect = "none";
@@ -703,6 +708,21 @@ async function promptSaver(message) {
       ? originalMessage.split(":")[0].trim()
       : originalMessage;
   });
+
+  // Prevent Enter key from propagating to the ChatGPT page
+promptTextarea.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault(); // Stop default Enter behavior
+    e.stopPropagation(); // Prevent event from bubbling to parent page
+    const start = promptTextarea.selectionStart;
+    const end = promptTextarea.selectionEnd;
+    const value = promptTextarea.value;
+    // Insert line break at cursor position
+    promptTextarea.value = value.substring(0, start) + "\n" + value.substring(end);
+    // Move cursor to after the inserted line break
+    promptTextarea.selectionStart = promptTextarea.selectionEnd = start + 1;
+  }
+});
 
   promptTextarea.addEventListener("input", (e) => {
     const currentText = e.target.value;
@@ -1455,7 +1475,7 @@ async function promptSaver(message) {
     console.log("Modal created and appended to shadow root");
   } catch (error) {
     console.error("Fehler beim Hinzufügen des Modals zum Shadow Root:", error);
-    alert("Fehler beim Erstellen des Modals. Bitte versuche es erneut.");
+    alert("Error creating the modal. Please try again.");
     return;
   }
 
@@ -2169,7 +2189,7 @@ async function promptSaver(message) {
   createFolderButton.addEventListener("click", async () => {
     const newFolderName = newFolderInput.value.trim();
     if (!newFolderName) {
-      alert("Bitte gib einen Ordnernamen ein!");
+      alert("Please enter a folder name!");
       return;
     }
 
@@ -2214,7 +2234,7 @@ async function promptSaver(message) {
       // alert(`Ordner "${newFolderName}" erfolgreich erstellt!`);
     } catch (error) {
       console.error("Fehler beim Erstellen des Ordners:", error);
-      alert("Fehler beim Erstellen des Ordners.");
+      alert("Error creating folder.");
     }
   });
 
@@ -2406,11 +2426,7 @@ async function promptSaver(message) {
 
   nextToPromptButton.addEventListener("click", (e) => {
     if (promptTitleInput.value.trim() === "") {
-      alert("Bitte gib einen Prompt-Titel ein!");
-      return;
-    }
-    if (promptDescInput.value.trim() === "") {
-      alert("Bitte gib eine Prompt-Beschreibung ein!");
+      alert("Please enter a prompt title!");
       return;
     }
     titleSection.classList.remove("active");
@@ -2426,7 +2442,7 @@ async function promptSaver(message) {
 
   nextToOptionsButton.addEventListener("click", () => {
     if (promptTextarea.value.trim() === "") {
-      alert("Bitte gib einen Prompt-Inhalt ein!");
+      alert("Please enter a prompt!");
       return;
     }
     promptSection.classList.remove("active");
@@ -2468,9 +2484,9 @@ async function promptSaver(message) {
     const promptDescription = promptDescInput.value.trim();
     const promptContent = promptTextarea.value.trim();
 
-    if (!promptTitle || !promptDescription || !promptContent) {
+    if (!promptTitle || !promptContent) {
       alert(
-        "Bitte fülle alle Felder aus (Titel, Beschreibung, Prompt-Inhalt)!"
+        "Please fill in all fields (title, prompt content)!"
       );
       return;
     }
@@ -2489,7 +2505,7 @@ async function promptSaver(message) {
         const folderId = replaceFolderSelect.value;
         const promptValue = replacePromptSelect.value;
         if (!folderId || !promptValue) {
-          alert("Bitte wähle einen Ordner und einen Prompt zum Ersetzen aus!");
+          alert("Please select a folder and a prompt to replace!");
           return;
         }
         await replacePrompt(
@@ -2505,7 +2521,7 @@ async function promptSaver(message) {
       case "add":
         const addFolderId = addFolderSelect.value;
         if (!addFolderId) {
-          alert("Bitte wähle einen Ordner aus oder erstelle einen neuen!");
+          alert("Please select a folder or create a new one!");
           return;
         }
         await addPromptToFolder(
@@ -2520,12 +2536,12 @@ async function promptSaver(message) {
       case "combine":
         const combinePromptValue = combinePromptSelect.value;
         if (!combinePromptValue) {
-          alert("Bitte wähle einen Prompt zum Kombinieren aus!");
+          alert("Please select a prompt to combine!");
           return;
         }
         const combinedText = combinedPromptPreview.value.trim();
         if (!combinedText) {
-          alert("Kombinierter Prompt-Inhalt ist leer!");
+          alert("Combined prompt content is empty!");
           return;
         }
         await combineWithExistingPrompt(
@@ -2538,7 +2554,7 @@ async function promptSaver(message) {
         break;
 
       default:
-        alert("Ungültige Option ausgewählt!");
+        alert("Invalid option selected!");
     }
   });
 }
