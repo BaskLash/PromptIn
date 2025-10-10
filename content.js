@@ -105,12 +105,7 @@ setInterval(() => {
 inputFieldTrigger();
 
 // Subfunction to handle creating a new prompt
-async function createNewPrompt(
-  promptTitle,
-  promptDescription,
-  promptContent,
-  closeModal
-) {
+async function createNewPrompt(promptData, closeModal) {
   console.log("So werde ich gespeichert bei PromptSaver");
   const promptId = `${Date.now()}_${generateUUID()}`;
   const hostname = window.location.hostname.toLowerCase().replace(/^www\./, "");
@@ -152,71 +147,62 @@ async function createNewPrompt(
   console.log("compatibleModels:", compatibleModels);
 
   const incompatibleModels = [];
-  const tags = [];
   const isFavorite = false;
   const folderId = null;
   const notes = "";
-  const types = "";
 
   const newPrompt = {
     promptId: promptId,
-    title: promptTitle,
-    description: promptDescription,
-    content: promptContent,
+    title: promptData.title,
+    description: promptData.description,
+    content: promptData.content,
     notes,
-    types,
+    types: promptData.types || "", // Verwende promptData.type
     compatibleModels,
     incompatibleModels,
-    tags,
+    tags: promptData.tags || [], // Verwende promptData.tags
     isFavorite,
     folderId,
     createdAt: Date.now(),
     updatedAt: null,
-
     usageCount: 0,
     lastUsed: null,
-    usageHistory: [], // NEW: store detailed timestamps of each use
-
+    usageHistory: [],
     isTrash: false,
     deletedAt: null,
     trashedAt: null,
-
     versions: [
       {
         versionId: `${Date.now()}_${generateUUID()}`,
-        title: promptTitle,
-        description: promptDescription,
-        content: promptContent,
+        title: promptData.title,
+        description: promptData.description,
+        content: promptData.content,
         timestamp: Date.now(),
       },
     ],
-
     metaChangeLog: [
       {
         timestamp: Date.now(),
         changes: {
-          title: { from: null, to: promptTitle },
-          description: { from: null, to: promptDescription },
-          content: { from: null, to: promptContent },
-          types: { from: null, to: types },
+          title: { from: null, to: promptData.title },
+          description: { from: null, to: promptData.description },
+          content: { from: null, to: promptData.content },
+          types: { from: null, to: promptData.types || "" }, // Anpassung für type
           compatibleModels: { from: [], to: compatibleModels },
           incompatibleModels: { from: [], to: incompatibleModels },
-          tags: { from: [], to: tags },
+          tags: { from: [], to: promptData.tags || [] }, // Anpassung für tags
           isFavorite: { from: false, to: isFavorite },
           folderId: { from: null, to: folderId },
           notes: { from: null, to: notes },
         },
       },
     ],
-
     performanceHistory: [],
   };
 
   try {
-    // Bestehende Prompts laden
     const data = await new Promise((resolve, reject) => {
       chrome.storage.local.get(["prompts", "folders"], (data) => {
-        // Hinzugefügt: "folders" laden, um updateTable zu unterstützen
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
         } else {
@@ -226,10 +212,9 @@ async function createNewPrompt(
     });
 
     const prompts = data.prompts || {};
-    const folders = data.folders || {}; // Hinzugefügt für updateTable
+    const folders = data.folders || {};
     prompts[promptId] = newPrompt;
 
-    // Neuen Prompt speichern
     await new Promise((resolve, reject) => {
       chrome.storage.local.set({ prompts }, () => {
         if (chrome.runtime.lastError) {
@@ -241,7 +226,6 @@ async function createNewPrompt(
       });
     });
 
-    //alert("Prompt erfolgreich erstellt!");
     closeModal();
   } catch (error) {
     console.error("Fehler beim Erstellen des Prompts:", error);
@@ -250,14 +234,7 @@ async function createNewPrompt(
 }
 
 // Subfunction to handle replacing an existing prompt
-async function replacePrompt(
-  promptTitle,
-  promptDescription,
-  promptContent,
-  folderId,
-  promptId,
-  closeModal
-) {
+async function replacePrompt(promptData, folderId, promptId, closeModal) {
   try {
     const data = await new Promise((resolve, reject) => {
       chrome.storage.local.get(["prompts", "folders"], (data) => {
@@ -282,30 +259,27 @@ async function replacePrompt(
       ? ["ChatGPT"]
       : ["Unknown"];
     const incompatibleModels = oldPrompt.incompatibleModels || [];
-    const tags = oldPrompt.tags || [];
     const isFavorite = oldPrompt.isFavorite || false;
     const notes = oldPrompt.notes || "";
-    const type = oldPrompt.type || "default";
 
-    // Neue Version anhängen
     const newVersion = {
       versionId: `${Date.now()}_${generateUUID()}`,
-      title: promptTitle,
-      description: promptDescription,
-      content: promptContent,
+      title: promptData.title,
+      description: promptData.description,
+      content: promptData.content,
       timestamp: Date.now(),
     };
 
     const updatedPrompt = {
       ...oldPrompt,
-      title: promptTitle,
-      description: promptDescription,
-      content: promptContent,
+      title: promptData.title,
+      description: promptData.description,
+      content: promptData.content,
       notes,
-      type,
+      types: promptData.types || oldPrompt.types || "", // Behalte alten Typ, falls keiner neu angegeben
       compatibleModels,
       incompatibleModels,
-      tags,
+      tags: promptData.tags || oldPrompt.tags || [], // Behalte alte Tags, falls keine neuen angegeben
       isFavorite,
       folderId,
       updatedAt: Date.now(),
@@ -316,13 +290,15 @@ async function replacePrompt(
         {
           timestamp: Date.now(),
           changes: {
-            title: { from: oldPrompt.title, to: promptTitle },
-            description: { from: oldPrompt.description, to: promptDescription },
-            content: { from: oldPrompt.content, to: promptContent },
+            title: { from: oldPrompt.title, to: promptData.title },
+            description: { from: oldPrompt.description, to: promptData.description },
+            content: { from: oldPrompt.content, to: promptData.content },
+            types: { from: oldPrompt.types || "", to: promptData.types || oldPrompt.types || "" },
             compatibleModels: {
               from: oldPrompt.compatibleModels || [],
               to: compatibleModels,
             },
+            tags: { from: oldPrompt.tags || [], to: promptData.tags || oldPrompt.tags || [] },
           },
         },
         ...(oldPrompt.metaChangeLog || []),
@@ -332,11 +308,10 @@ async function replacePrompt(
 
     prompts[promptId] = updatedPrompt;
 
-    // Optional: Wenn das Prompt der einzige Eintrag in einem Folder ist, kann man den Namen anpassen
     if (folderId && folders[folderId]) {
       const folder = folders[folderId];
       if (folder.promptIds.length === 1) {
-        folder.name = promptTitle;
+        folder.name = promptData.title;
       }
     }
 
@@ -360,13 +335,7 @@ async function replacePrompt(
 }
 
 // Subfunction to handle adding a prompt to a folder
-async function addPromptToFolder(
-  promptTitle,
-  promptDescription,
-  promptContent,
-  folderId,
-  closeModal
-) {
+async function addPromptToFolder(promptData, folderId, closeModal) {
   const promptId = `${Date.now()}_${generateUUID()}`;
   const hostname = window.location.hostname.toLowerCase().replace(/^www\./, "");
 
@@ -390,21 +359,19 @@ async function addPromptToFolder(
   else compatibleModels = ["Unknown"];
 
   const incompatibleModels = [];
-  const tags = [];
   const isFavorite = false;
   const notes = "";
-  const types = "";
 
   const newPrompt = {
     promptId,
-    title: promptTitle,
-    description: promptDescription,
-    content: promptContent,
+    title: promptData.title,
+    description: promptData.description,
+    content: promptData.content,
     notes,
-    types,
+    types: promptData.types || [],
     compatibleModels,
     incompatibleModels,
-    tags,
+    tags: promptData.tags || [],
     isFavorite,
     folderId,
     createdAt: Date.now(),
@@ -418,9 +385,9 @@ async function addPromptToFolder(
     versions: [
       {
         versionId: `${Date.now()}_${generateUUID()}`,
-        title: promptTitle,
-        description: promptDescription,
-        content: promptContent,
+        title: promptData.title,
+        description: promptData.description,
+        content: promptData.content,
         timestamp: Date.now(),
       },
     ],
@@ -428,13 +395,13 @@ async function addPromptToFolder(
       {
         timestamp: Date.now(),
         changes: {
-          title: { from: null, to: promptTitle },
-          description: { from: null, to: promptDescription },
-          content: { from: null, to: promptContent },
-          types: { from: null, to: types },
+          title: { from: null, to: promptData.title },
+          description: { from: null, to: promptData.description },
+          content: { from: null, to: promptData.content },
+          types: { from: [], to: promptData.types || [] },
           compatibleModels: { from: [], to: compatibleModels },
           incompatibleModels: { from: [], to: incompatibleModels },
-          tags: { from: [], to: tags },
+          tags: { from: [], to: promptData.tags || [] },
           isFavorite: { from: false, to: isFavorite },
           folderId: { from: null, to: folderId },
           notes: { from: null, to: notes },
@@ -482,8 +449,7 @@ async function addPromptToFolder(
 
 // Subfunction to handle combining with an existing prompt
 async function combineWithExistingPrompt(
-  promptTitle,
-  promptDescription,
+  promptData,
   combinedText,
   promptId,
   closeModal
@@ -513,30 +479,28 @@ async function combineWithExistingPrompt(
       ? ["ChatGPT"]
       : ["Unknown"];
     const incompatibleModels = existingPrompt.incompatibleModels || [];
-    const tags = existingPrompt.tags || [];
     const isFavorite = existingPrompt.isFavorite || false;
     const folderId = existingPrompt.folderId || null;
     const notes = existingPrompt.notes || "";
-    const type = existingPrompt.type || "default";
 
     const newVersion = {
       versionId: `${Date.now()}_${generateUUID()}`,
-      title: promptTitle,
-      description: promptDescription,
+      title: promptData.title,
+      description: promptData.description,
       content: combinedText,
       timestamp: Date.now(),
     };
 
     const updatedPrompt = {
       ...existingPrompt,
-      title: promptTitle,
-      description: promptDescription,
+      title: promptData.title,
+      description: promptData.description,
       content: combinedText,
       notes,
-      type,
+      types: promptData.types || existingPrompt.types || [],
       compatibleModels,
       incompatibleModels,
-      tags,
+      tags: promptData.tags || existingPrompt.tags || [],
       isFavorite,
       folderId,
       updatedAt: Date.now(),
@@ -547,16 +511,15 @@ async function combineWithExistingPrompt(
         {
           timestamp: Date.now(),
           changes: {
-            title: { from: existingPrompt.title, to: promptTitle },
-            description: {
-              from: existingPrompt.description,
-              to: promptDescription,
-            },
+            title: { from: existingPrompt.title, to: promptData.title },
+            description: { from: existingPrompt.description, to: promptData.description },
             content: { from: existingPrompt.content, to: combinedText },
+            types: { from: existingPrompt.types || [], to: promptData.types || existingPrompt.types || [] },
             compatibleModels: {
               from: existingPrompt.compatibleModels || [],
               to: compatibleModels,
             },
+            tags: { from: existingPrompt.tags || [], to: promptData.tags || existingPrompt.tags || [] },
           },
         },
         ...(existingPrompt.metaChangeLog || []),
@@ -633,14 +596,29 @@ async function promptSaver(message) {
   titleSection.className = "step-section active";
 
   const promptTitleLabel = document.createElement("label");
-  promptTitleLabel.setAttribute("for", "promptTitle");
-  promptTitleLabel.textContent = "Prompt Title:";
+promptTitleLabel.setAttribute("for", "promptTitle");
+
+// Create the label text with a red asterisk
+promptTitleLabel.innerHTML = 'Prompt Title: <span style="color: red">*</span>';
 
   const promptTitleInput = document.createElement("input");
   promptTitleInput.type = "text";
   promptTitleInput.id = "promptTitle";
   promptTitleInput.name = "promptTitle";
   promptTitleInput.placeholder = "Enter a title for your prompt";
+
+  // === Handle Enter Key ===
+promptTitleInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    e.stopPropagation();
+    const start = promptTitleInput.selectionStart;
+    const end = promptTitleInput.selectionEnd;
+    const value = promptTitleInput.value;
+    promptTitleInput.value = value.substring(0, start) + "\n" + value.substring(end);
+    promptTitleInput.selectionStart = promptTitleInput.selectionEnd = start + 1;
+  }
+});
 
   const promptDescLabel = document.createElement("label");
   promptDescLabel.setAttribute("for", "promptDescription");
@@ -678,24 +656,79 @@ chrome.storage.local.get(["types"], (data)=>{
 
   const types = data.types || [];
 
-  // Wenn keine Typen vorhanden sind
+  // Setze den Inhalt des Select-Elements abhängig davon, ob Typen vorhanden sind
   if (types.length === 0) {
     console.log("No types exist");
+
+    typeSelect.innerHTML = `
+      <option value="">No types available</option>
+    `;
+    typeSelect.disabled = true; // Optional: deaktivieren, wenn keine Auswahl möglich ist
+  } else {
+    typeSelect.innerHTML = `
+      <option value="">Select type</option>
+      ${types.map(type => `<option value="${type}">${type}</option>`).join("")}
+    `;
   }
-
-  typeSelect.innerHTML = `
-  <option value="">Select a type</option>
-  ${types.map(type => `<option value="${type}">${type}</option>`).join("")}
-`;
-
 })
 
 const tagsLabel = document.createElement("label");
 tagsLabel.setAttribute("for", "promptTags");
 tagsLabel.textContent = "Prompt Tags (select multiple):";
 tagsLabel.style.marginTop = "16px";
+tagsLabel.style.display = "block";
 
-// Tags
+// Container für Checkboxen
+const tagsContainer = document.createElement("div");
+tagsContainer.id = "promptTags";
+tagsContainer.style.display = "flex";
+tagsContainer.style.flexWrap = "wrap";
+tagsContainer.style.gap = "8px";
+tagsContainer.style.marginTop = "8px";
+tagsContainer.style.border = "1px solid #ccc";
+tagsContainer.style.padding = "10px";
+tagsContainer.style.borderRadius = "6px";
+tagsContainer.style.backgroundColor = "#f9f9f9";
+
+// Tags aus Speicher laden
+chrome.storage.local.get(["tags"], (data) => {
+  if (chrome.runtime.lastError) {
+    console.error("Error loading tags:", chrome.runtime.lastError);
+    return;
+  }
+
+  const tags = data.tags || [];
+
+  if (tags.length === 0) {
+    const noTags = document.createElement("div");
+    noTags.textContent = "No tags available.";
+    tagsContainer.appendChild(noTags);
+    return;
+  }
+
+  tags.forEach((tag) => {
+    const tagWrapper = document.createElement("label");
+    tagWrapper.style.display = "flex";
+    tagWrapper.style.alignItems = "center";
+    tagWrapper.style.gap = "4px";
+    tagWrapper.style.padding = "4px 8px";
+    tagWrapper.style.background = "#eee";
+    tagWrapper.style.borderRadius = "4px";
+    tagWrapper.style.cursor = "pointer";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.name = "promptTags";
+    checkbox.value = tag;
+
+    const labelText = document.createElement("span");
+    labelText.textContent = tag;
+
+    tagWrapper.appendChild(checkbox);
+    tagWrapper.appendChild(labelText);
+    tagsContainer.appendChild(tagWrapper);
+  });
+});
 
   const nextToPromptButton = document.createElement("button");
   nextToPromptButton.textContent = "Next";
@@ -708,7 +741,7 @@ promptSection.className = "step-section";
 // Label
 const promptTextareaLabel = document.createElement("label");
 promptTextareaLabel.setAttribute("for", "promptTextarea");
-promptTextareaLabel.textContent = "Your Prompt:";
+promptTextareaLabel.innerHTML = 'Your Prompt: <span style="color: red">*</span';
 
 // Textarea
 const promptTextarea = document.createElement("textarea");
@@ -1141,6 +1174,14 @@ updateOptionsVisibility();
   newFolderInput.placeholder = "Enter new folder name";
   newFolderInput.style.marginBottom = "10px";
 
+    // === Handle Enter Key ===
+newFolderInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+});
+
   const createFolderButton = document.createElement("button");
   createFolderButton.textContent = "Create Folder";
   createFolderButton.className = "create-folder-button";
@@ -1242,6 +1283,14 @@ updateOptionsVisibility();
   combinedPromptPreview.style.fontSize = "14px";
   combinedPromptPreview.style.whiteSpace = "pre-wrap";
   combinedPromptPreview.placeholder = "The combined prompt will appear here...";
+
+  // === Handle Enter Key ===
+combinedPromptPreview.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+});
 
   combineContent.appendChild(unlockCombine);
 
@@ -1672,7 +1721,7 @@ updateOptionsVisibility();
   titleSection.appendChild(typeLabel);
   titleSection.appendChild(typeSelect);
   titleSection.appendChild(tagsLabel);
-  // titleSection.appendChild(tagsSelect);
+  titleSection.appendChild(tagsContainer);
   titleSection.appendChild(nextToPromptButton);
 
   modalBody.appendChild(titleSection);
@@ -2693,86 +2742,71 @@ updateOptionsVisibility();
   });
 
   saveButton.addEventListener("click", async () => {
-    const activeOption = optionsSwitch
-      .querySelector("button.active")
-      .getAttribute("data-tab");
-    const promptTitle = promptTitleInput.value.trim();
-    const promptDescription = promptDescInput.value.trim();
-    const promptContent = promptTextarea.value.trim();
+  const activeOption = optionsSwitch
+    .querySelector("button.active")
+    .getAttribute("data-tab");
+  const promptTitle = promptTitleInput.value.trim();
+  const promptDescription = promptDescInput.value.trim();
+  const promptContent = promptTextarea.value.trim();
+  const promptType = typeSelect.value; // Extrahiere den ausgewählten Typ
+  const promptTags = Array.from(tagsContainer.querySelectorAll('input[name="promptTags"]:checked')).map(checkbox => checkbox.value); // Extrahiere ausgewählte Tags
 
-    if (!promptTitle || !promptContent) {
-      alert(
-        "Please fill in all fields (title, prompt content)!"
+  if (!promptTitle || !promptContent) {
+    alert("Please fill in all fields (title, prompt content)!");
+    return;
+  }
+
+  const promptData = {
+  title: promptTitle,
+  description: promptDescription,
+  content: promptContent,
+  types: promptType ? [promptType] : [],
+  tags: promptTags || [],
+};
+
+  switch (activeOption) {
+    case "create":
+      await createNewPrompt(promptData, closeModal);
+      break;
+    case "replace":
+      const folderId = replaceFolderSelect.value;
+      const promptValue = replacePromptSelect.value;
+      if (!folderId || !promptValue) {
+        alert("Please select a folder and a prompt to replace!");
+        return;
+      }
+      await replacePrompt(promptData, folderId, promptValue, closeModal);
+      break;
+    case "add":
+      const addFolderId = addFolderSelect.value;
+      if (!addFolderId) {
+        alert("Please select a folder or create a new one!");
+        return;
+      }
+      await addPromptToFolder(promptData, addFolderId, closeModal);
+      break;
+    case "combine":
+      const combinePromptValue = combinePromptSelect.value;
+      if (!combinePromptValue) {
+        alert("Please select a prompt to combine!");
+        return;
+      }
+      const combinedText = combinedPromptPreview.value.trim();
+      if (!combinedText) {
+        alert("Combined prompt content is empty!");
+        return;
+      }
+      await combineWithExistingPrompt(
+        promptData,
+        combinedText,
+        combinePromptValue,
+        closeModal
       );
-      return;
-    }
-
-    switch (activeOption) {
-      case "create":
-        await createNewPrompt(
-          promptTitle,
-          promptDescription,
-          promptContent,
-          closeModal
-        );
-        break;
-
-      case "replace":
-        const folderId = replaceFolderSelect.value;
-        const promptValue = replacePromptSelect.value;
-        if (!folderId || !promptValue) {
-          alert("Please select a folder and a prompt to replace!");
-          return;
-        }
-        await replacePrompt(
-          promptTitle,
-          promptDescription,
-          promptContent,
-          folderId,
-          promptValue,
-          closeModal
-        );
-        break;
-
-      case "add":
-        const addFolderId = addFolderSelect.value;
-        if (!addFolderId) {
-          alert("Please select a folder or create a new one!");
-          return;
-        }
-        await addPromptToFolder(
-          promptTitle,
-          promptDescription,
-          promptContent,
-          addFolderId,
-          closeModal
-        );
-        break;
-
-      case "combine":
-        const combinePromptValue = combinePromptSelect.value;
-        if (!combinePromptValue) {
-          alert("Please select a prompt to combine!");
-          return;
-        }
-        const combinedText = combinedPromptPreview.value.trim();
-        if (!combinedText) {
-          alert("Combined prompt content is empty!");
-          return;
-        }
-        await combineWithExistingPrompt(
-          promptTitle,
-          promptDescription,
-          combinedText,
-          combinePromptValue,
-          closeModal
-        );
-        break;
-
-      default:
-        alert("Invalid option selected!");
-    }
-  });
+      break;
+    default:
+      alert("Invalid option selected!");
+  }
+});
 }
 
 function generateUUID() {
