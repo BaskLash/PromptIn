@@ -2128,6 +2128,62 @@ function showFolderModal(folderId) {
         console.error("ExtPay error:", err);
       });
 
+    function removePromptFromFolder(folderId, promptId) {
+  chrome.storage.local.get(["prompts", "folders"], (data) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error loading data:", chrome.runtime.lastError);
+      return;
+    }
+
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+
+    if (!prompts[promptId]) {
+      console.error(`Prompt mit ID ${promptId} nicht gefunden`);
+      return;
+    }
+
+    if (!folders[folderId]) {
+      console.error(`Folder mit ID ${folderId} nicht gefunden`);
+      return;
+    }
+
+    // Entferne folderId aus dem Prompt
+    prompts[promptId] = {
+      ...prompts[promptId],
+      folderId: null,
+    };
+
+    // Entferne promptId aus der promptIds-Liste des Folders
+    folders[folderId] = {
+      ...folders[folderId],
+      promptIds: folders[folderId].promptIds.filter((id) => id !== promptId),
+      updatedAt: Date.now(),
+    };
+
+    // Speichere die Änderungen
+    chrome.storage.local.set({ prompts, folders }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving updated data:", chrome.runtime.lastError);
+        return;
+      }
+
+      console.log(`Prompt ${promptId} wurde aus Folder ${folderId} entfernt.`);
+
+      // Entferne das Prompt-Element aus der UI
+      const promptElement = document.querySelector(
+        `#modalPromptList .prompt-item[data-prompt-id="${CSS.escape(promptId)}"]`
+      );
+      if (promptElement) {
+        promptElement.remove();
+      }
+
+      // Aktualisiere die Folder-Ansicht
+      loadFoldersView();
+    });
+  });
+}
+
     // Step 6: Event handlers
     document.querySelectorAll(".remove-folder-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {

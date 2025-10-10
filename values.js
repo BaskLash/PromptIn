@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.get(null, function (data) {
       if (!data || Object.keys(data).length === 0) {
         tableBody.innerHTML =
-          '<tr><td colspan="2">Keine Prompts vorhanden</td></tr>';
+          '<tr><td colspan="2">No prompts available.</td></tr>';
         return;
       }
 
@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (allPrompts.length === 0) {
         tableBody.innerHTML =
-          '<tr><td colspan="2">Keine Prompts vorhanden</td></tr>';
+          '<tr><td colspan="2">No prompts available.</td></tr>';
         return;
       }
 

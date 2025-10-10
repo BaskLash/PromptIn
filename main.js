@@ -328,6 +328,7 @@ function updateSortButtonText() {
   const sortKeyMap = {
     createdAt: "last_created",
     lastUsed: "last_used",
+    mostTrending:"most_trending",
     mostUsed: "most_used",
     title: "title",
     ascending: "ascending",
@@ -447,7 +448,7 @@ function loadPromptsTable() {
 
     if (allPromptEntries.length === 0) {
       tableBody.innerHTML =
-        '<tr><td colspan="2">Keine Prompts vorhanden</td></tr>';
+        '<tr><td colspan="2">No prompts available.</td></tr>';
     } else {
       const sortedPrompts = sortPrompts(allPromptEntries);
       sortedPrompts.forEach(({ prompt, promptId, folderId, folderName }) => {
@@ -757,7 +758,11 @@ function updateSortDropdownSelection(dropdown = sortDropdown) {
 }
 
 function sortPrompts(prompts) {
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000; // 7 Tage in ms
+
   console.log("Sortiere Prompts mit sortState:", sortState); // Debugging
+
   return prompts.sort((a, b) => {
     let aValue, bValue;
 
@@ -766,18 +771,33 @@ function sortPrompts(prompts) {
         aValue = a.prompt.title?.toLowerCase() || "";
         bValue = b.prompt.title?.toLowerCase() || "";
         break;
+
       case "lastUsed":
         aValue = a.prompt.lastUsed || 0;
         bValue = b.prompt.lastUsed || 0;
         break;
+
       case "createdAt":
         aValue = a.prompt.createdAt || 0;
         bValue = b.prompt.createdAt || 0;
         break;
+
       case "mostUsed":
         aValue = a.prompt.usageCount || 0;
         bValue = b.prompt.usageCount || 0;
         break;
+
+      case "mostTrending":
+        const aRecentUses = (a.prompt.usageHistory || []).filter(
+          (timestamp) => timestamp >= sevenDaysAgo
+        ).length;
+        const bRecentUses = (b.prompt.usageHistory || []).filter(
+          (timestamp) => timestamp >= sevenDaysAgo
+        ).length;
+        aValue = aRecentUses;
+        bValue = bRecentUses;
+        break;
+
       default:
         aValue = a.prompt.title?.toLowerCase() || "";
         bValue = b.prompt.title?.toLowerCase() || "";

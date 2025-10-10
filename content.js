@@ -657,100 +657,267 @@ async function promptSaver(message) {
   nextToPromptButton.className = "next-button";
 
   // Schritt 2: Prompt-Textarea
-  const promptSection = document.createElement("div");
-  promptSection.className = "step-section";
+const promptSection = document.createElement("div");
+promptSection.className = "step-section";
 
-  const promptTextareaLabel = document.createElement("label");
-  promptTextareaLabel.setAttribute("for", "promptTextarea");
-  promptTextareaLabel.textContent = "Your Prompt:";
+// Label
+const promptTextareaLabel = document.createElement("label");
+promptTextareaLabel.setAttribute("for", "promptTextarea");
+promptTextareaLabel.textContent = "Your Prompt:";
 
-  const promptTextarea = document.createElement("textarea");
-  promptTextarea.id = "promptTextarea";
-  promptTextarea.name = "promptTextarea";
-  promptTextarea.rows = 10;
-  promptTextarea.style.width = "100%";
+// Textarea
+const promptTextarea = document.createElement("textarea");
+promptTextarea.id = "promptTextarea";
+promptTextarea.name = "promptTextarea";
+promptTextarea.rows = 10;
+promptTextarea.style.width = "100%";
 
-  message =
-    typeof message === "string" ? message.trim() : String(message).trim();
-  const originalMessage = message;
-  let processedMessage = message.includes(":")
-    ? message.split(":")[0].trim()
-    : message;
+// Initial Message
+message = typeof message === "string" ? message.trim() : String(message).trim();
+let originalMessage = message;
+promptTextarea.value = message;
+promptTextarea.placeholder = "Edit your prompt here...";
 
-  promptTextarea.value = processedMessage;
-  promptTextarea.placeholder = "Bearbeite deinen Prompt hier...";
+// === STATE TRACKING ===
+let colonTrimmed = false;
+let colonTrimOriginal = promptTextarea.value;
 
-  const checkboxContainer = document.createElement("div");
-  checkboxContainer.style.marginTop = "10px";
-  checkboxContainer.style.display = "flex";
-  checkboxContainer.style.alignItems = "center";
-  checkboxContainer.style.display = message.includes(":") ? "flex" : "none";
+let codeSeparated = false;
+let codeDetectionOriginal = promptTextarea.value;
+let detectedCode = "";
+let detectedPromptWithoutCode = "";
 
-  const showFullContentCheckbox = document.createElement("input");
-  showFullContentCheckbox.type = "checkbox";
-  showFullContentCheckbox.id = "showFullContent";
-  showFullContentCheckbox.name = "showFullContent";
-  showFullContentCheckbox.style.width = "16px";
-  showFullContentCheckbox.style.height = "16px";
-  showFullContentCheckbox.style.marginRight = "10px";
+let smartSplitApplied = false;
+let smartSplitOriginal = promptTextarea.value;
 
-  const checkboxLabel = document.createElement("label");
-  checkboxLabel.setAttribute("for", "showFullContent");
-  checkboxLabel.textContent = "Show entire content (including text after ‘:’)";
-  checkboxLabel.style.fontSize = "14px";
-  checkboxLabel.style.marginTop = "5px";
-  checkboxLabel.style.userSelect = "none";
+// === OPTIONS BOX ===
+const optionsBox = document.createElement("div");
+optionsBox.className = "options-box";
+optionsBox.style.marginTop = "15px";
+optionsBox.style.padding = "15px";
+optionsBox.style.border = "1px solid #ccc";
+optionsBox.style.borderRadius = "6px";
+optionsBox.style.background = "#f9f9f9";
 
-  showFullContentCheckbox.addEventListener("change", (e) => {
-    promptTextarea.value = e.target.checked
-      ? originalMessage
-      : originalMessage.includes(":")
-      ? originalMessage.split(":")[0].trim()
-      : originalMessage;
-  });
+// === FUNCTION: Check and Render Visibility of Option Elements ===
+function updateOptionsVisibility() {
+  colonContainer.style.display = promptTextarea.value.includes(":") ? "block" : "none";
 
-  // Prevent Enter key from propagating to the ChatGPT page
+  const codeRegex = /```[\s\S]*?```|(<\/?[\w\s="/.':;#-\/\?]+>)/g;
+  codeDetectContainer.style.display = codeRegex.test(promptTextarea.value) ? "block" : "none";
+
+  const smartSplitIndicators = ["Please", "Explain", "Summarize", "\n\n"];
+  const matches = smartSplitIndicators.some((indicator) =>
+    promptTextarea.value.includes(indicator)
+  );
+  smartSplitContainer.style.display = matches ? "block" : "none";
+}
+
+// === Colon-Based Trimming ===
+const colonTrimCheckbox = document.createElement("input");
+colonTrimCheckbox.type = "checkbox";
+colonTrimCheckbox.id = "colonTrimCheckbox";
+
+const colonTrimLabel = document.createElement("label");
+colonTrimLabel.setAttribute("for", "colonTrimCheckbox");
+colonTrimLabel.textContent = "Trim prompt at first colon ':'";
+colonTrimLabel.style.marginLeft = "8px";
+
+const colonContainer = document.createElement("div");
+colonContainer.style.marginBottom = "10px";
+colonContainer.appendChild(colonTrimCheckbox);
+colonContainer.appendChild(colonTrimLabel);
+colonContainer.style.display = "none";
+
+colonTrimCheckbox.addEventListener("change", (e) => {
+  if (e.target.checked) {
+    if (!colonTrimmed && promptTextarea.value.includes(":")) {
+      colonTrimOriginal = promptTextarea.value;
+      promptTextarea.value = promptTextarea.value.split(":")[0].trim();
+      colonTrimmed = true;
+    }
+  } else {
+    if (colonTrimmed) {
+      promptTextarea.value = colonTrimOriginal;
+      colonTrimmed = false;
+    }
+  }
+});
+
+// === Insert Variable Button ===
+const insertVariableButton = document.createElement("button");
+insertVariableButton.textContent = "Insert {{variable}}";
+insertVariableButton.className = "insert-variable-button";
+insertVariableButton.style.margin = "10px 0";
+insertVariableButton.style.padding = "6px 12px";
+insertVariableButton.style.background = "#1e90ff";
+insertVariableButton.style.color = "white";
+insertVariableButton.style.border = "none";
+insertVariableButton.style.borderRadius = "4px";
+insertVariableButton.style.cursor = "pointer";
+
+insertVariableButton.addEventListener("mouseover", () => {
+  insertVariableButton.style.background = "#4169e1";
+});
+insertVariableButton.addEventListener("mouseout", () => {
+  insertVariableButton.style.background = "#1e90ff";
+});
+
+insertVariableButton.addEventListener("click", () => {
+  const placeholder = "{{variable}}";
+  const start = promptTextarea.selectionStart;
+  const end = promptTextarea.selectionEnd;
+  const value = promptTextarea.value;
+  promptTextarea.value = value.slice(0, start) + placeholder + value.slice(end);
+  promptTextarea.selectionStart = promptTextarea.selectionEnd = start + placeholder.length;
+  promptTextarea.focus();
+});
+
+// === Code Block Detection ===
+const autoCodeDetectCheckbox = document.createElement("input");
+autoCodeDetectCheckbox.type = "checkbox";
+autoCodeDetectCheckbox.id = "autoCodeDetectCheckbox";
+
+const autoCodeDetectLabel = document.createElement("label");
+autoCodeDetectLabel.setAttribute("for", "autoCodeDetectCheckbox");
+autoCodeDetectLabel.textContent = "➡️ Automatically detect and separate code blocks";
+autoCodeDetectLabel.style.marginLeft = "8px";
+
+const codeDetectContainer = document.createElement("div");
+codeDetectContainer.style.marginTop = "10px";
+codeDetectContainer.appendChild(autoCodeDetectCheckbox);
+codeDetectContainer.appendChild(autoCodeDetectLabel);
+codeDetectContainer.style.display = "none";
+
+autoCodeDetectCheckbox.addEventListener("change", () => {
+  const codeRegex = /```[\s\S]*?```|(<\/?[\w\s="/.':;#-\/\?]+>)/g;
+
+  if (autoCodeDetectCheckbox.checked) {
+    const value = promptTextarea.value;
+    const matches = value.match(codeRegex);
+
+    if (matches) {
+      codeDetectionOriginal = promptTextarea.value;
+      detectedCode = matches.join("\n\n");
+      detectedPromptWithoutCode = value.replace(codeRegex, "").trim();
+      promptTextarea.value = detectedPromptWithoutCode;
+      codeSeparated = true;
+    }
+  } else {
+    if (codeSeparated) {
+      promptTextarea.value = codeDetectionOriginal;
+      codeSeparated = false;
+    }
+  }
+});
+
+// === Intelligent Prompt Splitting ===
+const smartSplitCheckbox = document.createElement("input");
+smartSplitCheckbox.type = "checkbox";
+smartSplitCheckbox.id = "smartSplitCheckbox";
+
+const smartSplitLabel = document.createElement("label");
+smartSplitLabel.setAttribute("for", "smartSplitCheckbox");
+smartSplitLabel.textContent = "➡️ Enable intelligent prompt splitting";
+smartSplitLabel.style.marginLeft = "8px";
+
+const smartSplitContainer = document.createElement("div");
+smartSplitContainer.style.marginTop = "10px";
+smartSplitContainer.appendChild(smartSplitCheckbox);
+smartSplitContainer.appendChild(smartSplitLabel);
+smartSplitContainer.style.display = "none";
+
+smartSplitCheckbox.addEventListener("change", () => {
+  if (smartSplitCheckbox.checked) {
+    const text = promptTextarea.value;
+    const keywords = ["Please", "Explain", "Summarize"];
+    let splitPoint = -1;
+
+    for (let keyword of keywords) {
+      let index = text.indexOf(keyword);
+      if (index !== -1 && (splitPoint === -1 || index < splitPoint)) {
+        splitPoint = index;
+      }
+    }
+
+    if (splitPoint === -1) {
+      splitPoint = text.indexOf("\n\n");
+    }
+
+    if (splitPoint !== -1) {
+      smartSplitOriginal = promptTextarea.value;
+      const main = text.substring(0, splitPoint).trim();
+      const extra = text.substring(splitPoint).trim();
+      promptTextarea.value = main;
+      smartSplitApplied = true;
+    }
+  } else {
+    if (smartSplitApplied) {
+      promptTextarea.value = smartSplitOriginal;
+      smartSplitApplied = false;
+    }
+  }
+});
+
+// === Input Listener for Dynamic Option Visibility + State Reset ===
+promptTextarea.addEventListener("input", () => {
+  updateOptionsVisibility();
+
+  if (!colonTrimCheckbox.checked) {
+    colonTrimOriginal = promptTextarea.value;
+  }
+  if (!autoCodeDetectCheckbox.checked) {
+    codeDetectionOriginal = promptTextarea.value;
+  }
+  if (!smartSplitCheckbox.checked) {
+    smartSplitOriginal = promptTextarea.value;
+  }
+});
+
+// === Assemble Options Box ===
+optionsBox.appendChild(colonContainer);
+optionsBox.appendChild(insertVariableButton);
+optionsBox.appendChild(codeDetectContainer);
+optionsBox.appendChild(smartSplitContainer);
+
+// === Buttons ===
+const promptButtons = document.createElement("div");
+promptButtons.className = "button-group";
+promptButtons.style.marginTop = "10px";
+
+const backToTitleButton = document.createElement("button");
+backToTitleButton.textContent = "Back";
+backToTitleButton.className = "back-button";
+
+const nextToOptionsButton = document.createElement("button");
+nextToOptionsButton.textContent = "Next";
+nextToOptionsButton.className = "next-button";
+
+promptButtons.appendChild(backToTitleButton);
+promptButtons.appendChild(nextToOptionsButton);
+
+// === Handle Enter Key ===
 promptTextarea.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
-    e.preventDefault(); // Stop default Enter behavior
-    e.stopPropagation(); // Prevent event from bubbling to parent page
+    e.preventDefault();
+    e.stopPropagation();
     const start = promptTextarea.selectionStart;
     const end = promptTextarea.selectionEnd;
     const value = promptTextarea.value;
-    // Insert line break at cursor position
     promptTextarea.value = value.substring(0, start) + "\n" + value.substring(end);
-    // Move cursor to after the inserted line break
     promptTextarea.selectionStart = promptTextarea.selectionEnd = start + 1;
   }
 });
 
-  promptTextarea.addEventListener("input", (e) => {
-    const currentText = e.target.value;
-    checkboxContainer.style.display = currentText.includes(":")
-      ? "flex"
-      : "none";
-  });
+// === Final Assembly ===
+promptSection.appendChild(promptTextareaLabel);
+promptSection.appendChild(promptTextarea);
+promptSection.appendChild(optionsBox);
+promptSection.appendChild(promptButtons);
 
-  const promptButtons = document.createElement("div");
-  promptButtons.className = "button-group";
-  promptButtons.style.marginTop = "10px";
+// === Init ===
+updateOptionsVisibility();
 
-  const backToTitleButton = document.createElement("button");
-  backToTitleButton.textContent = "Back";
-  backToTitleButton.className = "back-button";
-
-  const nextToOptionsButton = document.createElement("button");
-  nextToOptionsButton.textContent = "Next";
-  nextToOptionsButton.className = "next-button";
-
-  promptSection.appendChild(promptTextareaLabel);
-  promptSection.appendChild(promptTextarea);
-  checkboxContainer.appendChild(showFullContentCheckbox);
-  checkboxContainer.appendChild(checkboxLabel);
-  promptSection.appendChild(checkboxContainer);
-  promptButtons.appendChild(backToTitleButton);
-  promptButtons.appendChild(nextToOptionsButton);
-  promptSection.appendChild(promptButtons);
 
   // Schritt 3: Optionen
   const optionsSection = document.createElement("div");
