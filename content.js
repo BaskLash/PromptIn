@@ -652,6 +652,51 @@ async function promptSaver(message) {
   promptDescInput.rows = 3;
   promptDescInput.placeholder = "Enter a description for your prompt";
 
+  // === Handle Enter Key ===
+promptDescInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+});
+
+// Type Selection
+const typeLabel = document.createElement("label");
+typeLabel.setAttribute("for", "promptType");
+typeLabel.textContent = "Prompt Type:";
+typeLabel.style.marginTop = "16px";
+
+const typeSelect = document.createElement("select");
+typeSelect.id = "promptType";
+typeSelect.name = "promptType";
+
+chrome.storage.local.get(["types"], (data)=>{
+  if (chrome.runtime.lastError) {
+    console.error("Error loading data:", chrome.runtime.lastError);
+    return;
+  }
+
+  const types = data.types || [];
+
+  // Wenn keine Typen vorhanden sind
+  if (types.length === 0) {
+    console.log("No types exist");
+  }
+
+  typeSelect.innerHTML = `
+  <option value="">Select a type</option>
+  ${types.map(type => `<option value="${type}">${type}</option>`).join("")}
+`;
+
+})
+
+const tagsLabel = document.createElement("label");
+tagsLabel.setAttribute("for", "promptTags");
+tagsLabel.textContent = "Prompt Tags (select multiple):";
+tagsLabel.style.marginTop = "16px";
+
+// Tags
+
   const nextToPromptButton = document.createElement("button");
   nextToPromptButton.textContent = "Next";
   nextToPromptButton.className = "next-button";
@@ -1624,6 +1669,10 @@ updateOptionsVisibility();
   titleSection.appendChild(promptTitleInput);
   titleSection.appendChild(promptDescLabel);
   titleSection.appendChild(promptDescInput);
+  titleSection.appendChild(typeLabel);
+  titleSection.appendChild(typeSelect);
+  titleSection.appendChild(tagsLabel);
+  // titleSection.appendChild(tagsSelect);
   titleSection.appendChild(nextToPromptButton);
 
   modalBody.appendChild(titleSection);
