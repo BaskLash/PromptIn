@@ -6,6 +6,7 @@
   "tags_label": "Tags",
   "tag_overview": "Tag Overview",
   "type_overview": "Type Overview",
+  "folder_overview":"Folder Overview",
   "workflows": "Workflows",
   "text_anonymizer": "Text Anonymizer",
   "prompt_analytics": "Prompt Analytics",

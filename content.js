@@ -1,3 +1,36 @@
+window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0YQT34L1Q8');
+
+function sendGAEvent(eventName, params = {}) {
+  const clientId = localStorage.getItem('ga_client_id') || crypto.randomUUID();
+  localStorage.setItem('ga_client_id', clientId);
+
+  fetch('https://www.google-analytics.com/mp/collect?measurement_id=G-0YQT34L1Q8&api_secret=3ZNay-lSRlC4QjUQV6RJZw', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      client_id: clientId,
+      events: [
+        {
+          name: eventName,
+          params: {
+            ...params,
+            timestamp: new Date().toISOString(),
+          }
+        }
+      ]
+    })
+  }).then(res => {
+    console.log(`[GA] Event "${eventName}" gesendet:`, res.status);
+  }).catch(err => {
+    console.error(`[GA] Fehler beim Senden des Events "${eventName}":`, err);
+  });
+}
+
 const extpayClient = ExtPay("promptin"); // ExtPay global verfügbar
 
 setInterval(() => {
@@ -808,6 +841,10 @@ colonContainer.appendChild(colonTrimLabel);
 colonContainer.style.display = "none";
 
 colonTrimCheckbox.addEventListener("change", (e) => {
+  sendGAEvent('toggle_colon_trim', {
+      enabled: e.target.checked,
+      domain: window.location.hostname || 'unknown'
+    });
   if (e.target.checked) {
     if (!colonTrimmed && promptTextarea.value.includes(":")) {
       colonTrimOriginal = promptTextarea.value;
@@ -848,6 +885,9 @@ insertVariableButton.addEventListener("click", () => {
   const value = promptTextarea.value;
   promptTextarea.value = value.slice(0, start) + placeholder + value.slice(end);
   promptTextarea.selectionStart = promptTextarea.selectionEnd = start + placeholder.length;
+  sendGAEvent('insert_variable', {
+      domain: window.location.hostname || 'unknown'
+    });
   promptTextarea.focus();
 });
 
@@ -868,6 +908,11 @@ codeDetectContainer.appendChild(autoCodeDetectLabel);
 codeDetectContainer.style.display = "none";
 
 autoCodeDetectCheckbox.addEventListener("change", () => {
+  sendGAEvent('toggle_code_detect', {
+      enabled: autoCodeDetectCheckbox.checked,
+      domain: window.location.hostname || 'unknown'
+    });
+
   const codeRegex = /```[\s\S]*?```|(<\/?[\w\s="/.':;#-\/\?]+>)/g;
 
   if (autoCodeDetectCheckbox.checked) {
@@ -906,6 +951,11 @@ smartSplitContainer.appendChild(smartSplitLabel);
 smartSplitContainer.style.display = "none";
 
 smartSplitCheckbox.addEventListener("change", () => {
+  sendGAEvent('toggle_smart_split', {
+      enabled: smartSplitCheckbox.checked,
+      domain: window.location.hostname || 'unknown'
+    });
+
   if (smartSplitCheckbox.checked) {
     const text = promptTextarea.value;
     const keywords = ["Please", "Explain", "Summarize"];
@@ -1110,6 +1160,11 @@ updateOptionsVisibility();
 
       // Redirect beim Klick
       lockedMsg.addEventListener("click", () => {
+        sendGAEvent('unlock_plan', {
+      plan: 'promonthly',
+      domain: window.location.hostname || 'unknown'
+    });
+
         extpayClient.openPaymentPage("promonthly");
       });
 
@@ -1341,6 +1396,10 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
 
         // Redirect on click
         unlockCombine.onclick = () => {
+          sendGAEvent('unlock_plan', {
+      plan: 'basicmonthly',
+      domain: window.location.hostname || 'unknown'
+    });
           extpayClient.openPaymentPage("basicmonthly");
         };
       }
@@ -1757,6 +1816,10 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
   setTimeout(() => {
     modal.style.display = "block";
     console.log("Modal display set to block");
+    sendGAEvent('modal_open', {
+      modal_name: 'prompt_saver',
+      domain: window.location.hostname || 'unknown'
+    });
     if (promptTitleInput) {
       promptTitleInput.focus();
     }
@@ -1772,10 +1835,23 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
   });
   observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
 
-  closeSpan.addEventListener("click", closeModal);
+  // Close-Button
+  closeSpan.addEventListener("click", () => {
+    sendGAEvent('modal_close', {
+      modal_name: 'prompt_saver',
+      method: 'close_button',
+      domain: window.location.hostname || 'unknown'
+    });
+    closeModal();
+  });
 
   modal.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
+      sendGAEvent('modal_close', {
+        modal_name: 'prompt_saver',
+        method: 'escape',
+        domain: window.location.hostname || 'unknown'
+      });
       closeModal();
     }
   });
@@ -2455,6 +2531,12 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
     const newFolderName = newFolderInput.value.trim();
     if (!newFolderName) {
       alert("Please enter a folder name!");
+
+      sendGAEvent('save_error', {
+        error: 'missing_folder_name',
+        domain: window.location.hostname || 'unknown'
+      });
+
       return;
     }
 
@@ -2484,6 +2566,12 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
               reject(chrome.runtime.lastError);
             } else {
               console.log("Neuer Ordner erstellt:", newFolder);
+
+              sendGAEvent('create_folder', {
+              folder_name: newFolderName,
+              domain: window.location.hostname || 'unknown'
+            });
+
               resolve();
             }
           });
@@ -2500,11 +2588,20 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
     } catch (error) {
       console.error("Fehler beim Erstellen des Ordners:", error);
       alert("Error creating folder.");
+      sendGAEvent('save_error', {
+        error: 'folder_creation_failed',
+        domain: window.location.hostname || 'unknown'
+      });
     }
   });
 
   replaceFolderSelect.addEventListener("change", async (e) => {
     const selection = replaceFolderSelect.value;
+    sendGAEvent('select_folder', {
+      folder_id: selection || 'none',
+      folder_type: selection.startsWith('folder:') ? 'folder' : selection || 'none',
+      domain: window.location.hostname || 'unknown'
+    });
     replacePromptSelect.disabled = !selection;
     replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
     shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
@@ -2573,6 +2670,13 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
 
   combinePromptSelect.addEventListener("change", async (e) => {
     const promptId = combinePromptSelect.value;
+
+    sendGAEvent('select_prompt', {
+      prompt_id: promptId || 'none',
+      context: 'combine',
+      domain: window.location.hostname || 'unknown'
+    });
+
     combinedPromptPreview.innerHTML = "The combined prompt will appear here...";
 
     if (promptId !== "") {
@@ -2611,6 +2715,12 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
 
   replacePromptSelect.addEventListener("change", async (e) => {
     const promptId = replacePromptSelect.value;
+
+    sendGAEvent('select_prompt', {
+      prompt_id: promptId || 'none',
+      context: 'replace',
+      domain: window.location.hostname || 'unknown'
+    });
 
     if (promptId !== "") {
       try {
@@ -2679,9 +2789,30 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
     };
   }
 
+  // Titel-Eingabe
+  promptTitleInput.addEventListener("input", debounce(() => {
+    sendGAEvent('input_title', {
+      input_length: promptTitleInput.value.trim().length,
+      domain: window.location.hostname || 'unknown'
+    });
+  }, 500));
+
+  // Beschreibung-Eingabe
+  promptDescInput.addEventListener("input", debounce(() => {
+    sendGAEvent('input_description', {
+      input_length: promptDescInput.value.trim().length,
+      domain: window.location.hostname || 'unknown'
+    });
+  }, 500));
+
+  // Prompt-Eingabe
   promptTextarea.addEventListener(
     "input",
     debounce(() => {
+      sendGAEvent('input_prompt', {
+      input_length: promptTextarea.value.trim().length,
+      domain: window.location.hostname || 'unknown'
+    });
       const currentPrompt = promptTextarea.value.trim();
       if (currentPrompt) {
         loadSimilarPrompts(currentPrompt);
@@ -2689,30 +2820,73 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
     }, 500)
   );
 
+  // Typ-Auswahl
+  typeSelect.addEventListener("change", () => {
+    sendGAEvent('select_type', {
+      type: typeSelect.value || 'none',
+      domain: window.location.hostname || 'unknown'
+    });
+  });
+
+  // Tag-Auswahl
+  tagsContainer.addEventListener("change", (e) => {
+    if (e.target.name === 'promptTags') {
+      const selectedTags = Array.from(tagsContainer.querySelectorAll('input[name="promptTags"]:checked')).map(checkbox => checkbox.value);
+      sendGAEvent('select_tags', {
+        tag_count: selectedTags.length,
+        tags: selectedTags.join(',') || 'none',
+        domain: window.location.hostname || 'unknown'
+      });
+    }
+  });
+
   nextToPromptButton.addEventListener("click", (e) => {
     if (promptTitleInput.value.trim() === "") {
       alert("Please enter a prompt title!");
+      sendGAEvent('save_error', {
+        error: 'missing_title',
+        domain: window.location.hostname || 'unknown'
+      });
       return;
     }
     titleSection.classList.remove("active");
     promptSection.classList.add("active");
+    sendGAEvent('step_navigation', {
+      step_from: 'title',
+      step_to: 'prompt',
+      domain: window.location.hostname || 'unknown'
+    });
     promptTextarea.focus();
   });
 
   backToTitleButton.addEventListener("click", () => {
     promptSection.classList.remove("active");
     titleSection.classList.add("active");
+    sendGAEvent('step_navigation', {
+      step_from: 'prompt',
+      step_to: 'title',
+      domain: window.location.hostname || 'unknown'
+    });
     promptTitleInput.focus();
   });
 
   nextToOptionsButton.addEventListener("click", () => {
     if (promptTextarea.value.trim() === "") {
       alert("Please enter a prompt!");
+      sendGAEvent('save_error', {
+        error: 'missing_prompt',
+        domain: window.location.hostname || 'unknown'
+      });
       return;
     }
     promptSection.classList.remove("active");
     optionsSection.classList.add("active");
     modalContent.classList.add("options-active");
+    sendGAEvent('step_navigation', {
+      step_from: 'prompt',
+      step_to: 'options',
+      domain: window.location.hostname || 'unknown'
+    });
     loadFolders();
     loadCombinePrompts(promptTextarea.value.trim());
     loadSimilarPrompts(promptTextarea.value.trim());
@@ -2722,6 +2896,11 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
     optionsSection.classList.remove("active");
     promptSection.classList.add("active");
     modalContent.classList.remove("options-active");
+    sendGAEvent('step_navigation', {
+      step_from: 'options',
+      step_to: 'prompt',
+      domain: window.location.hostname || 'unknown'
+    });
     promptTextarea.focus();
   });
 
@@ -2738,6 +2917,11 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
         `#${button.getAttribute("data-tab")}`
       );
       if (targetContent) targetContent.classList.add("active");
+
+      sendGAEvent('select_option', {
+        option: button.getAttribute("data-tab"),
+        domain: window.location.hostname || 'unknown'
+      });
     });
   });
 
@@ -2753,6 +2937,11 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
 
   if (!promptTitle || !promptContent) {
     alert("Please fill in all fields (title, prompt content)!");
+
+    sendGAEvent('pls_fill_fields_tpc_onUserInput', {
+        error: 'missing_fields',
+        domain: window.location.hostname || 'unknown'
+      });
     return;
   }
 
@@ -2764,6 +2953,13 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
   tags: promptTags || [],
 };
 
+sendGAEvent('save_prompt', {
+      option: activeOption,
+      folder_id: activeOption === 'add' ? addFolderSelect.value : (activeOption === 'replace' ? replaceFolderSelect.value : 'none'),
+      prompt_id: activeOption === 'replace' ? replacePromptSelect.value : (activeOption === 'combine' ? combinePromptSelect.value : 'none'),
+      domain: window.location.hostname || 'unknown'
+    });
+
   switch (activeOption) {
     case "create":
       await createNewPrompt(promptData, closeModal);
@@ -2773,6 +2969,11 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
       const promptValue = replacePromptSelect.value;
       if (!folderId || !promptValue) {
         alert("Please select a folder and a prompt to replace!");
+
+        sendGAEvent('select_folder_prompt_to_replace_onUserInput', {
+            error: 'missing_folder_or_prompt',
+            domain: window.location.hostname || 'unknown'
+          });
         return;
       }
       await replacePrompt(promptData, folderId, promptValue, closeModal);
@@ -2781,6 +2982,11 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
       const addFolderId = addFolderSelect.value;
       if (!addFolderId) {
         alert("Please select a folder or create a new one!");
+
+        sendGAEvent('missing_prompt_folder_selection_onUserInput', {
+            error: 'missing_folder',
+            domain: window.location.hostname || 'unknown'
+          });
         return;
       }
       await addPromptToFolder(promptData, addFolderId, closeModal);
@@ -2789,11 +2995,21 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
       const combinePromptValue = combinePromptSelect.value;
       if (!combinePromptValue) {
         alert("Please select a prompt to combine!");
+
+        sendGAEvent('save_error', {
+            error: 'no_prompt_selected_for_prompt_combined_onUserInput',
+            domain: window.location.hostname || 'unknown'
+          });
         return;
       }
       const combinedText = combinedPromptPreview.value.trim();
       if (!combinedText) {
         alert("Combined prompt content is empty!");
+
+        sendGAEvent('save_error', {
+            error: 'empty_combined_prompt_onUserInput',
+            domain: window.location.hostname || 'unknown'
+          });
         return;
       }
       await combineWithExistingPrompt(

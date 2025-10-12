@@ -1072,22 +1072,24 @@ dropdown.querySelector(".share-btn").addEventListener("click", () => {
   const promptId = dropdown.dataset.promptId;
   console.log(`Sharing prompt: ID=${promptId}`);
 
-  sendGAEvent('share_prompt', {
-  event_category: 'prompt_management',
-  event_label: navigator.share ? 'web_share' : choice ? 'whatsapp' : 'email',
-  prompt_id: promptId
-});
-
   chrome.storage.local.get(["prompts"], function (data) {
     const prompt = data.prompts?.[promptId];
     if (prompt) {
       const textToShare =
         prompt.content || prompt.title || "Check out this prompt!";
+      
       if (navigator.share) {
         navigator
           .share({
             title: "Shared Prompt",
             text: textToShare,
+          })
+          .then(() => {
+            sendGAEvent('share_prompt', {
+              event_category: 'prompt_management',
+              event_label: 'web_share',
+              prompt_id: promptId
+            });
           })
           .catch((err) => {
             console.error("Share failed:", err);
@@ -1099,6 +1101,14 @@ dropdown.querySelector(".share-btn").addEventListener("click", () => {
         const choice = confirm(
           "Click OK to share via WhatsApp, Cancel for Email"
         );
+
+        // Send GA event after determining method
+        sendGAEvent('share_prompt', {
+          event_category: 'prompt_management',
+          event_label: choice ? 'whatsapp' : 'email',
+          prompt_id: promptId
+        });
+
         if (choice) {
           window.open(whatsappUrl, "_blank");
         } else {
@@ -1121,6 +1131,7 @@ dropdown.querySelector(".share-btn").addEventListener("click", () => {
   }
   currentButton = null;
 });
+
 
 // Rename Prompt
 dropdown.querySelector(".rename-btn").addEventListener("click", () => {
@@ -1253,6 +1264,10 @@ function handleActionButtonClick(btn, tr) {
         chrome.storage.local.get(["prompts"], function (data) {
           const prompts = data.prompts || {};
           if (prompts[promptId]) {
+            sendGAEvent('perma_delete_prompt', {
+      event_category: 'perma_delete_prompt',
+      event_label: 'perma_delete_prompt',
+    });
             delete prompts[promptId];
             chrome.storage.local.set({ prompts }, () => {
               if (navigationState.category === "category_trash") {
@@ -1979,6 +1994,9 @@ function handleActionButtonClick(btn, tr) {
     if (restoreBtn) {
       console.log("Reestore process enabled");
       restoreBtn.addEventListener("click", () => {
+        const folderId = dropdown.dataset.folderId;
+        const promptId = dropdown.dataset.promptId;
+
         sendGAEvent('restore_prompt', {
   event_category: 'prompt_management',
   event_label: 'restore_button',
@@ -1986,13 +2004,10 @@ function handleActionButtonClick(btn, tr) {
   folder_id: folderId || 'none'
 });
 
-        const folderId = dropdown.dataset.folderId;
-        const promptId = dropdown.dataset.promptId;
-
         if (
           !confirm(
             translations[currentLang]?.confirm_restore ||
-              "Möchtest du diesen Prompt wiederherstellen?"
+              "Would you like to restore this prompt?"
           )
         ) {
           return;
@@ -2040,6 +2055,10 @@ function handleActionButtonClick(btn, tr) {
     const trashBtn = dropdown.querySelector(".trash-btn");
     if (trashBtn) {
       trashBtn.addEventListener("click", () => {
+
+        const folderId = dropdown.dataset.folderId;
+        const promptId = dropdown.dataset.promptId;
+
         sendGAEvent('move_to_trash', {
   event_category: 'prompt_management',
   event_label: 'trash_button',
@@ -2047,13 +2066,10 @@ function handleActionButtonClick(btn, tr) {
   folder_id: folderId || 'none'
 });
 
-        const folderId = dropdown.dataset.folderId;
-        const promptId = dropdown.dataset.promptId;
-
         if (
           !confirm(
             translations[currentLang]?.confirm_trash ||
-              "Möchtest du diese Prompt in den Papierkorb verschieben?"
+              "Would you like to move this prompt to the trash?"
           )
         ) {
           return;
@@ -2119,7 +2135,7 @@ dropdown.addEventListener("click", (e) => {
     if (
       !confirm(
         translations[currentLang]?.confirm_delete ||
-          "Möchtest du diesen Prompt endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+          "Do you want to permanently delete this prompt? This action cannot be undone."
       )
     ) {
       return;
@@ -2580,6 +2596,12 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.set({ language: currentLang }, () => {
       loadTranslations(currentLang);
     });
+
+    sendGAEvent('language_change', {
+      event_category: 'language_change',
+      event_label: 'language_change',
+      language_change_to: currentLang
+    });
   });
   async function loadTranslations(lang) {
     try {
@@ -2654,6 +2676,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".workflows").addEventListener("click", () => {
+    sendGAEvent('open_workflows_page', {
+      event_category: 'open_workflows_page',
+      event_label: 'open_workflows_page',
+    });
+
     const appUrl = chrome.runtime.getURL("/pages/app.html?view=workflows");
 
     chrome.tabs.query({ url: appUrl }, function (tabs) {
@@ -2671,6 +2698,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".tags").addEventListener("click", () => {
+    sendGAEvent('open_tags_page', {
+      event_category: 'open_workflows_page',
+      event_label: 'open_workflows_page',
+    });
+
     const appUrl = chrome.runtime.getURL("/pages/app.html?view=tags");
 
     chrome.tabs.query({ url: appUrl }, function (tabs) {
@@ -2688,6 +2720,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".types").addEventListener("click", () => {
+    sendGAEvent('open_types_page', {
+      event_category: 'open_workflows_page',
+      event_label: 'open_workflows_page',
+    });
+
     const appUrl = chrome.runtime.getURL("/pages/app.html?view=types");
 
     chrome.tabs.query({ url: appUrl }, function (tabs) {
@@ -2704,7 +2741,34 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  document.querySelector(".folders").addEventListener("click", () => {
+    sendGAEvent('open_folders_page', {
+      event_category: 'open_folders_page',
+      event_label: 'open_folders_page',
+    });
+
+    const appUrl = chrome.runtime.getURL("/pages/app.html?view=folders");
+
+    chrome.tabs.query({ url: appUrl }, function (tabs) {
+      if (tabs.length > 0) {
+        // Ein Tab mit der URL existiert bereits
+        const existingTab = tabs[0]; // Nimm den ersten passenden Tab
+        chrome.tabs.update(existingTab.id, { active: true }, () => {
+          chrome.windows.update(existingTab.windowId, { focused: true });
+        });
+      } else {
+        // Kein Tab mit der URL existiert, erstelle einen neuen
+        chrome.tabs.create({ url: appUrl });
+      }
+    });
+  });
+
   document.querySelector(".text-anonymizer").addEventListener("click", () => {
+    sendGAEvent('open_text_anonymizer_page', {
+      event_category: 'open_workflows_page',
+      event_label: 'open_workflows_page',
+    });
+
     const appUrl = chrome.runtime.getURL("/pages/app.html?view=anonymizer");
 
     chrome.tabs.query({ url: appUrl }, function (tabs) {
@@ -2722,6 +2786,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".prompt-analytics").addEventListener("click", () => {
+    sendGAEvent('open_prompt_analytics_page', {
+      event_category: 'open_workflows_page',
+      event_label: 'open_workflows_page',
+    });
+
     const appUrl = chrome.runtime.getURL("/pages/app.html?view=analytics");
 
     chrome.tabs.query({ url: appUrl }, function (tabs) {
@@ -2741,6 +2810,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .querySelector(".prompt-benchmarking")
     .addEventListener("click", () => {
+      sendGAEvent('open_prompt_benchmarking_page', {
+      event_category: 'open_benchmarking_page',
+      event_label: 'open_benchmarking_page',
+    });
+
       const appUrl = chrome.runtime.getURL("/pages/app.html?view=benchmarking");
 
       chrome.tabs.query({ url: appUrl }, function (tabs) {
@@ -2816,6 +2890,12 @@ document.addEventListener("DOMContentLoaded", () => {
   themeSelect.addEventListener("change", (e) => {
     const selectedTheme = e.target.value;
     applyTheme(selectedTheme);
+
+    sendGAEvent('theme_change', {
+      event_category: 'theme_change',
+      event_label: 'theme_change',
+      selected_theme: selectedTheme
+    });
   });
 
   // System Theme Listener
@@ -2939,10 +3019,10 @@ document.addEventListener("DOMContentLoaded", () => {
           chrome.storage.local.set({ folders: updatedFolders }, () => {
             if (chrome.runtime.lastError) {
               console.error(
-                "Fehler beim Erstellen des Ordners:",
+                "Error creating folder:",
                 chrome.runtime.lastError
               );
-              alert("Fehler beim Erstellen des Ordners.");
+              alert("Error creating folder.");
             } else {
               sendGAEvent('folder_created', {
       event_category: 'folder_management',
@@ -3427,7 +3507,7 @@ sendGAEvent('Share PromptIn', {
       const whatsappUrl = `https://wa.me/?text=${encodedText}`;
       const emailUrl = `mailto:?subject=PromptIn Extension&body=${encodedText}`;
 
-      const choice = confirm("OK für WhatsApp teilen, Abbrechen für E-Mail");
+      const choice = confirm("OK to share on WhatsApp, Cancel for email");
       if (choice) {
         window.open(whatsappUrl, "_blank");
       } else {
@@ -3504,6 +3584,11 @@ sendGAEvent('Share PromptIn', {
   // Prompt Import/Export
   document.getElementById("import-prompt-btn").addEventListener("click", () => {
     importInput.click();
+
+    sendGAEvent('import_prompts', {
+      event_category: 'import_prompts',
+      event_label: 'import_prompts',
+    });
   });
 
   document.getElementById("export-prompt-btn").addEventListener("click", () => {
@@ -3531,6 +3616,12 @@ sendGAEvent('Share PromptIn', {
 
   toggle.addEventListener("change", () => {
     chrome.storage.local.set({ enabled: toggle.checked });
+    sendGAEvent('highlight_to_prompt_toggle', {
+  event_category: 'highlight_to_prompt',
+  event_label: toggle.checked ? 'enabled' : 'disabled',
+  enabled_status: toggle.checked
+});
+
   });
 
   // Delete Data
@@ -3538,15 +3629,20 @@ sendGAEvent('Share PromptIn', {
     if (
       confirm(
         translations[currentLang]?.confirm_delete_all ||
-          "Möchten Sie wirklich alle Daten löschen?"
+          "Are you sure you want to delete all data?"
       )
     ) {
       chrome.storage.local.clear(() => {
         alert(
-          translations[currentLang]?.data_deleted || "Daten wurden gelöscht."
+          translations[currentLang]?.data_deleted || "Data has been deleted."
         );
         loadFolders();
         loadPromptsTable();
+
+        sendGAEvent('delete_data', {
+      event_category: 'delete_data',
+      event_label: 'delete_data',
+    });
       });
     }
   });
@@ -3751,12 +3847,12 @@ sendGAEvent('Share PromptIn', {
       newTypeInput.value = "";
     } else if (!newType) {
       alert(
-        translations?.[currentLang]?.type_empty || "Type darf nicht leer sein!"
+        translations?.[currentLang]?.type_empty || "Type must not be empty!"
       );
     } else {
       alert(
         translations?.[currentLang]?.type_exists ||
-          "Dieser Type existiert bereits!"
+          "This type already exists!"
       );
     }
   });
@@ -3787,7 +3883,7 @@ sendGAEvent('Share PromptIn', {
       newTagInput.value = "";
     } else if (!newTag) {
       alert(
-        translations?.[currentLang]?.tag_empty || "Tag darf nicht leer sein!"
+        translations?.[currentLang]?.tag_empty || "The tag must not be empty!"
       );
     }
   });
@@ -3821,14 +3917,14 @@ sendGAEvent('Share PromptIn', {
     // Validierung
     if (!title) {
       alert(
-        translations[currentLang]?.required_title || "Titel ist erforderlich!"
+        translations[currentLang]?.required_title || "Title is required!"
       );
       return;
     }
     if (!content) {
       alert(
         translations[currentLang]?.content_required ||
-          "Bitte geben Sie einen Prompt ein!"
+          "Please enter a prompt!"
       );
       return;
     }
@@ -3948,7 +4044,7 @@ sendGAEvent('Share PromptIn', {
       newTagInput.value = "";
     } else if (!newTag) {
       alert(
-        translations[currentLang]?.tag_empty || "Tag darf nicht leer sein!"
+        translations[currentLang]?.tag_empty || "The tag must not be empty!"
       );
     }
   });

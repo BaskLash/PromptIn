@@ -1418,6 +1418,7 @@ body.dark-theme .checkbox-group.scrollable {
 #tools-overlay .workflows,
 #tools-overlay .tags,
 #tools-overlay .types,
+#tools-overlay .folders,
 #tools-overlay .text-anonymizer,
 #tools-overlay .prompt-analytics,
 #tools-overlay .prompt-benchmarking {
@@ -1432,6 +1433,7 @@ body.dark-theme .checkbox-group.scrollable {
 #tools-overlay .workflows:hover,
 #tools-overlay .tags:hover,
 #tools-overlay .types:hover,
+#tools-overlay .folders:hover,
 #tools-overlay .text-anonymizer:hover,
 #tools-overlay .prompt-analytics:hover,
 #tools-overlay .prompt-benchmarking:hover {
