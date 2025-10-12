@@ -1,3 +1,6 @@
+const MEASUREMENT_ID = 'G-0YQT34L1Q8';
+const API_SECRET = '3ZNay-lSRlC4QjUQV6RJZw';
+
 // Global Variables
 const overviewBtn = document.getElementById("overview-btn");
 const faqBtn = document.getElementById("faq-btn");
@@ -15,6 +18,40 @@ let currentButton = null;
 let isDropdownOpen = false;
 let isMouseOverDropdown = false;
 let hoveredRow = null;
+
+window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-0YQT34L1Q8');
+
+function sendGAEvent(eventName, params = {}) {
+  const clientId = localStorage.getItem('ga_client_id') || crypto.randomUUID();
+  localStorage.setItem('ga_client_id', clientId);
+
+  fetch('https://www.google-analytics.com/mp/collect?measurement_id=G-0YQT34L1Q8&api_secret=3ZNay-lSRlC4QjUQV6RJZw', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      client_id: clientId,
+      events: [
+        {
+          name: eventName,
+          params: {
+            ...params,
+            timestamp: new Date().toISOString(),
+          }
+        }
+      ]
+    })
+  }).then(res => {
+    console.log(`[GA] Event "${eventName}" gesendet:`, res.status);
+  }).catch(err => {
+    console.error(`[GA] Fehler beim Senden des Events "${eventName}":`, err);
+  });
+}
+
 
 const extPay = ExtPay("promptin"); // ExtPay global verfügbar
 
@@ -59,12 +96,20 @@ async function displaySubscriptionDetails() {
         switchButton.setAttribute("data-i18n", "switchToPro");
         switchButton.innerText = "Switch to PRO Plan";
         switchButton.addEventListener("click", () => {
+          sendGAEvent('switch_plan_click', {
+  event_category: 'subscription',
+  event_label: plan.id === 'basicmonthly' ? 'to_pro' : 'to_basic'
+});
           extPay.openPaymentPage("promonthly");
         });
       } else if (plan.id === "promonthly") {
         switchButton.setAttribute("data-i18n", "switchToBasic");
         switchButton.innerText = "Switch to BASIC Plan";
         switchButton.addEventListener("click", () => {
+          sendGAEvent('switch_plan_click', {
+  event_category: 'subscription',
+  event_label: plan.id === 'basicmonthly' ? 'to_pro' : 'to_basic'
+});
           extPay.openPaymentPage("basicmonthly");
         });
       }
@@ -82,6 +127,10 @@ async function displaySubscriptionDetails() {
       loginButton.innerText = "Log in";
       loginButton.style.marginTop = "8px";
       loginButton.addEventListener("click", function () {
+        sendGAEvent('login_click', {
+    event_category: 'subscription',
+    event_label: 'login_button'
+  });
         extPay.openLoginPage();
       });
       subscriptionElement.appendChild(loginButton);
@@ -821,6 +870,12 @@ function handleSortOptionClick(option) {
     sortState.sortBy = option.dataset.sortBy;
   }
 
+  sendGAEvent('sort_prompts', {
+    event_category: 'interaction',
+    event_label: `sort_${sortState.sortBy}_${sortState.sortOrder}`,
+    source: dropdown.id === 'sort-dropdown' ? 'main' : 'folder'
+  });
+
   // Save sortState to chrome.storage.local
   chrome.storage.local.set({ sortOptions: sortState }, () => {
     console.log(
@@ -912,6 +967,12 @@ dropdown.querySelector(".favorit-btn").addEventListener("click", () => {
   const promptId = dropdown.dataset.promptId;
   console.log(`Marking prompt as favorite: ID=${promptId}`);
 
+  sendGAEvent('toggle_favorite', {
+  event_category: 'prompt_management',
+  event_label: prompt.isFavorite ? 'remove_favorite' : 'add_favorite',
+  prompt_id: promptId
+});
+
   chrome.storage.local.get(["prompts"], function (data) {
     const prompts = data.prompts || {};
     const prompt = prompts[promptId];
@@ -947,6 +1008,11 @@ dropdown.querySelector(".favorit-btn").addEventListener("click", () => {
 // Copy Prompt Content
 dropdown.querySelector(".copy-btn").addEventListener("click", () => {
   const promptId = dropdown.dataset.promptId;
+  sendGAEvent('copy_prompt', {
+    event_category: 'prompt_management',
+    event_label: 'copy_button',
+    prompt_id: promptId
+  });
 
   chrome.storage.local.get(["prompts"], function (data) {
     const prompts = data.prompts || {};
@@ -1006,6 +1072,12 @@ dropdown.querySelector(".share-btn").addEventListener("click", () => {
   const promptId = dropdown.dataset.promptId;
   console.log(`Sharing prompt: ID=${promptId}`);
 
+  sendGAEvent('share_prompt', {
+  event_category: 'prompt_management',
+  event_label: navigator.share ? 'web_share' : choice ? 'whatsapp' : 'email',
+  prompt_id: promptId
+});
+
   chrome.storage.local.get(["prompts"], function (data) {
     const prompt = data.prompts?.[promptId];
     if (prompt) {
@@ -1052,6 +1124,11 @@ dropdown.querySelector(".share-btn").addEventListener("click", () => {
 
 // Rename Prompt
 dropdown.querySelector(".rename-btn").addEventListener("click", () => {
+  sendGAEvent('rename_prompt', {
+  event_category: 'prompt_management',
+  event_label: 'rename_button',
+});
+
   const promptId = dropdown.dataset.promptId;
   const folderId = dropdown.dataset.folderId;
   const newName = prompt(
@@ -1215,6 +1292,12 @@ function handleActionButtonClick(btn, tr) {
 
 // Ordner umbenennen (renameFolder)
 function renameFolder(folderId, newName) {
+  sendGAEvent('rename_folder', {
+  event_category: 'folder_management',
+  event_label: 'rename_folder',
+  folder_id: folderId,
+  new_name: newName
+});
   chrome.storage.local.get("folders", (data) => {
     const folders = data.folders || {};
     if (folders[folderId]) {
@@ -1230,6 +1313,11 @@ function renameFolder(folderId, newName) {
 
 // Ordner löschen (deleteFolder)
 function deleteFolder(folderId) {
+  sendGAEvent('delete_folder', {
+  event_category: 'folder_management',
+  event_label: 'delete_folder',
+  folder_id: folderId
+});
   chrome.storage.local.get(["folders", "prompts"], (data) => {
     const folders = data.folders || {};
     const prompts = data.prompts || {};
@@ -1404,6 +1492,12 @@ function attachMainTableEvents() {
 
 // Ensure dataset attributes are set in showFolder
 function showFolder(folderId) {
+  sendGAEvent('view_folder', {
+    event_category: 'navigation',
+    event_label: 'folder_view',
+    folder_id: folderId
+  });
+
   const folderEntries = document.getElementById("folder-entries");
   const promptSearchInput = document.getElementById("prompt-search");
   folderEntries.innerHTML = "";
@@ -1486,6 +1580,11 @@ function showFolder(folderId) {
 
     promptSearchInput.value = "";
     promptSearchInput.oninput = function () {
+      sendGAEvent('search_prompts', {
+  event_category: 'interaction',
+  event_label: 'prompt_search',
+  search_term: searchTerm
+});
       const searchTerm = this.value.trim().toLowerCase();
       if (!searchTerm) {
         renderPrompts(promptsWithDetails, folderId);
@@ -1521,6 +1620,12 @@ function showFolder(folderId) {
 }
 
 function showCategory(category) {
+  sendGAEvent('view_category', {
+  event_category: 'navigation',
+  event_label: category,
+  non_interaction: true
+});
+
   console.log(`showCategory called with category: ${category}`);
   const folderEntries = document.getElementById("folder-entries");
   const promptSearchInput = document.getElementById("prompt-search");
@@ -1829,6 +1934,13 @@ function handleActionButtonClick(btn, tr) {
     const deleteBtn = dropdown.querySelector(".delete-btn");
     if (deleteBtn) {
       deleteBtn.addEventListener("click", () => {
+        sendGAEvent('delete_prompt', {
+  event_category: 'prompt_management',
+  event_label: 'delete_button',
+  prompt_id: promptId,
+  folder_id: folderId || 'none'
+});
+
         const promptId = dropdown.dataset.promptId;
         if (
           !confirm(
@@ -1867,6 +1979,13 @@ function handleActionButtonClick(btn, tr) {
     if (restoreBtn) {
       console.log("Reestore process enabled");
       restoreBtn.addEventListener("click", () => {
+        sendGAEvent('restore_prompt', {
+  event_category: 'prompt_management',
+  event_label: 'restore_button',
+  prompt_id: promptId,
+  folder_id: folderId || 'none'
+});
+
         const folderId = dropdown.dataset.folderId;
         const promptId = dropdown.dataset.promptId;
 
@@ -1921,6 +2040,13 @@ function handleActionButtonClick(btn, tr) {
     const trashBtn = dropdown.querySelector(".trash-btn");
     if (trashBtn) {
       trashBtn.addEventListener("click", () => {
+        sendGAEvent('move_to_trash', {
+  event_category: 'prompt_management',
+  event_label: 'trash_button',
+  prompt_id: promptId,
+  folder_id: folderId || 'none'
+});
+
         const folderId = dropdown.dataset.folderId;
         const promptId = dropdown.dataset.promptId;
 
@@ -2108,6 +2234,10 @@ function attachCategoryClickEvents() {
     const categoryKey = category.getAttribute("data-i18n");
     if (categoryKey) {
       category.addEventListener("click", () => {
+        sendGAEvent('accordion_category_opened', {
+      event_category: 'open_category',
+      event_label: 'open_category',
+    });
         showCategory(categoryKey);
       });
     }
@@ -2239,6 +2369,11 @@ function exportDataToJSON() {
 }
 
 function importDataFromJSON(event) {
+  sendGAEvent('import_data', {
+  event_category: 'data_management',
+  event_label: 'import_json',
+});
+
   const file = event.target.files[0];
   if (!file) {
     alert("No file selected!");
@@ -2494,6 +2629,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Übersicht öffnen
   overviewBtn.addEventListener("click", () => {
+    sendGAEvent('overviewPageOpen', {
+    event_category: 'opening off Full Page',
+    event_label: 'View Full Page',
+  });
+
     const appBaseUrl = chrome.runtime.getURL("/pages/app.html");
 
     chrome.tabs.query({}, function (tabs) {
@@ -2619,6 +2759,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // FAQ
   faqBtn.addEventListener("click", () => {
+    sendGAEvent('open_faq', {
+  event_category: 'faq_opening',
+});
+
     const appUrl = chrome.runtime.getURL("/pages/faq.html");
 
     chrome.tabs.query({ url: appUrl }, function (tabs) {
@@ -2725,12 +2869,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Burger Menu
   document.getElementById("burger-menu").addEventListener("click", () => {
+    sendGAEvent('open_sideNav', {
+      event_category: 'folder_management',
+      event_label: 'open_sidenav',
+    });
     document.getElementById("side-nav").classList.add("open");
     document.getElementById("plus-btn").style.display = "none";
     loadFolders();
   });
 
   document.getElementById("close-nav").addEventListener("click", () => {
+    sendGAEvent('close_sideNav', {
+      event_category: 'folder_management',
+      event_label: 'close_sidenav',
+    });
     document.getElementById("side-nav").classList.remove("open");
     document.getElementById("plus-btn").style.display = "flex";
   });
@@ -2738,6 +2890,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Accordion Mechanik
   document.querySelectorAll(".accordion-header").forEach((header) => {
     header.addEventListener("click", (event) => {
+      sendGAEvent('opened_accordion_in_sideNav', {
+      event_category: 'folder_management',
+      event_label: 'oepened_accordion_overview',
+    });
       if (!event.target.classList.contains("add-folder-header-btn")) {
         const parentItem = header.parentElement;
         const content = header.nextElementSibling;
@@ -2751,6 +2907,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .querySelector(".add-folder-header-btn")
     .addEventListener("click", () => {
+      sendGAEvent('add_folder_Sidenav', {
+      event_category: 'add_folder',
+      event_label: 'add_folder',
+    });
       const folderName = prompt(
         translations[currentLang]?.new_foldername || "Neuer Ordnername"
       );
@@ -2767,6 +2927,11 @@ document.addEventListener("DOMContentLoaded", () => {
           updatedAt: "",
         };
 
+        sendGAEvent('create_folder', {
+      event_category: 'folder_management',
+      event_label: 'create_folder',
+    });
+
         chrome.storage.local.get(["folders"], ({ folders }) => {
           const updatedFolders = folders || {};
           updatedFolders[folderId] = newFolder;
@@ -2779,6 +2944,10 @@ document.addEventListener("DOMContentLoaded", () => {
               );
               alert("Fehler beim Erstellen des Ordners.");
             } else {
+              sendGAEvent('folder_created', {
+      event_category: 'folder_management',
+      event_label: 'folder_created',
+    });
               loadFolders();
             }
           });
@@ -3007,6 +3176,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   cancelBtnAdd.addEventListener("click", () => {
+    sendGAEvent('cancel_prompt_creation', {
+      event_category: 'prompt_management',
+      event_label: 'cancel_prompt_creation',
+    });
     document.getElementById("add-overlay").classList.remove("open");
     document.getElementById("plus-btn").style.display = "flex";
     if (navigationState.source === "folder" && navigationState.folderId) {
@@ -3190,6 +3363,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const toolsBackBtn = document.getElementById("tools-back-btn");
 
   toolsIcon.addEventListener("click", () => {
+    sendGAEvent('open_tools', {
+  event_category: 'navigation',
+  event_label: 'tools_overlay'
+});
+
     toolsOverlay.classList.add("open");
     document.getElementById("plus-btn").style.display = "none";
   });
@@ -3205,6 +3383,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const settingsBackBtn = document.getElementById("settings-back-btn");
 
   settingsIcon.addEventListener("click", () => {
+    sendGAEvent('open_settings', {
+  event_category: 'navigation',
+  event_label: 'settings_overlay'
+});
+
     settingsOverlay.classList.add("open");
     document.getElementById("plus-btn").style.display = "none";
   });
@@ -3217,6 +3400,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Share Icon Click Event
   const shareIcon = document.getElementById("share-icon");
   shareIcon.addEventListener("click", () => {
+sendGAEvent('Share PromptIn', {
+      event_category: 'share_promptIn',
+      event_label: 'sharePromptIn',
+    });
+
     const extensionLink =
       "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje";
 
@@ -3254,6 +3442,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const userBackBtn = document.getElementById("user-back-btn");
 
   userIcon.addEventListener("click", () => {
+    sendGAEvent('open_user', {
+  event_category: 'navigation',
+  event_label: 'user_overlay'
+});
+
     userOverlay.classList.add("open");
     document.getElementById("plus-btn").style.display = "none";
   });
@@ -3314,8 +3507,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("export-prompt-btn").addEventListener("click", () => {
-    exportDataToJSON();
+  sendGAEvent('export_data', {
+    event_category: 'data_management',
+    event_label: 'export_json'
   });
+  exportDataToJSON();
+});
 
   // Verstecktes Input-Element für Datei-Auswahl erstellen
   const importInput = document.createElement("input");
@@ -3356,12 +3553,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Feedback, Feature Request, Review
   document.getElementById("feedback-btn").addEventListener("click", () => {
-    window.open("https://forms.gle/9fN4XeUbhFL1xsyx8", "_blank");
+  sendGAEvent('external_link', {
+    event_category: 'engagement',
+    event_label: 'feedback_form'
   });
+  window.open("https://forms.gle/9fN4XeUbhFL1xsyx8", "_blank");
+});
 
   document
     .getElementById("feature-request-btn")
     .addEventListener("click", () => {
+      sendGAEvent('external_link', {
+  event_category: 'engagement',
+  event_label: 'feature_request_form'
+});
       window.open("https://forms.gle/5EM4tPz9b7d1p6iB7", "_blank");
     });
 
@@ -3374,6 +3579,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("review-btn").addEventListener("click", () => {
+    sendGAEvent('external_link', {
+  event_category: 'engagement',
+  event_label: 'review_link'
+});
     window.open(
       "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje/reviews",
       "_blank"
@@ -3390,6 +3599,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Plus Button (Create New Prompt)
   document.getElementById("plus-btn").addEventListener("click", () => {
+    sendGAEvent('open_createNewFolder', {
+      event_category: 'create_folder_page',
+      event_label: 'create_folder_page',
+    });
+
     const detailOverlay = document.getElementById("add-overlay");
     const detailTitle = document.getElementById("detail-title-add");
     const entryTitle = document.getElementById("entry-title-add");
@@ -3579,6 +3793,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelector(".save-btn-add").addEventListener("click", () => {
+    sendGAEvent('create_prompt', {
+      event_category: 'prompt_management',
+      event_label: 'create_prompt',
+    });
+    
     console.log("Save from popup");
     const title = document.getElementById("entry-title-add").value.trim();
     const description = document

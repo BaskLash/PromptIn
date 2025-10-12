@@ -1,6 +1,6 @@
 function showPromptVersions(promptId) {
   console.log("ID: " + promptId);
-  chrome.storage.local.get(["prompts"], function (data) {
+  chrome.storage.local.get(["prompts", "folders"], function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
       return;
@@ -748,65 +748,83 @@ function showPromptVersions(promptId) {
     );
   });
 }
-function restoreVersion(folderId, promptIndex, versionId, promptItem) {
-  chrome.storage.local.get(folderId, function (data) {
+
+function restoreVersion(promptId, versionId) {
+  chrome.storage.local.get(["prompts", "folders"], function (data) {
     if (chrome.runtime.lastError) {
       console.error("Error fetching data:", chrome.runtime.lastError);
+      alert("Error fetching prompt data.");
       return;
     }
 
-    const prompt = data[folderId].prompts[promptIndex];
-    if (!prompt || !prompt.versions) return;
+    const prompts = data.prompts || {};
+    const folders = data.folders || {};
+    const prompt = prompts[promptId];
+    if (!prompt || !prompt.versions) {
+      console.error(`Prompt with ID ${promptId} not found or no versions available`);
+      alert(`Prompt with ID ${promptId} not found or no versions available.`);
+      return;
+    }
 
     const version = prompt.versions.find((v) => v.versionId === versionId);
-    if (!version) return;
-
-    // Check if the restored version differs from the current state
-    const isDifferent =
-      prompt.title !== version.title ||
-      (prompt.description || "") !== (version.description || "") ||
-      prompt.content !== version.content;
-
-    if (isDifferent) {
-      // Save current state as a new version only if there's a difference
-      prompt.versions.push({
-        versionId: `${Date.now()}_${generateUUID()}`,
-        title: prompt.title,
-        description: prompt.description || "",
-        content: prompt.content,
-        timestamp: Date.now(),
-      });
+    if (!version) {
+      console.error(`Version ${versionId} not found for prompt ${promptId}`);
+      alert(`Version ${versionId} not found.`);
+      return;
     }
+
+    // Always save current state as a new version before restoring
+    prompt.versions.push({
+      versionId: `${Date.now()}_${generateUUID()}`,
+      title: prompt.title,
+      description: prompt.description || "",
+      content: prompt.content,
+      timestamp: Date.now(),
+    });
+
+    // Always log changes in metaChangeLog
+    prompt.metaChangeLog.push({
+      timestamp: Date.now(),
+      changes: {
+        title: { from: prompt.title, to: version.title },
+        description: { from: prompt.description || "", to: version.description || "" },
+        content: { from: prompt.content, to: version.content },
+      },
+    });
 
     // Update prompt to selected version
     prompt.title = version.title;
     prompt.description = version.description || "";
     prompt.content = version.content;
+    prompt.updatedAt = Date.now();
 
     // Enforce version limit
     if (prompt.versions.length > 50) {
       prompt.versions.shift();
     }
 
-    chrome.storage.local.set({ [folderId]: data[folderId] }, function () {
+    // Save updated prompts back to storage
+    chrome.storage.local.set({ prompts, folders }, function () {
       if (chrome.runtime.lastError) {
         console.error("Error restoring version:", chrome.runtime.lastError);
-        alert("Fehler beim Wiederherstellen der Version.");
+        alert("Error restoring version.");
       } else {
-        console.log(`Version ${versionId} restored for prompt in ${folderId}`);
-        promptItem.querySelector(".prompt-text").textContent = version.title;
-        if (!data[folderId].isHidden) {
-          showFolderContent(folderId);
-          if (mainHeaderTitle.textContent === "Categorised Prompts")
-            showCategorisedPrompts();
-        } else {
-          if (mainHeaderTitle.textContent === "Single Prompts")
-            showSinglePrompts();
+        console.log(`Version ${versionId} restored for prompt ${promptId}`);
+        alert("Version restored successfully!");
+        // Update UI to reflect the restored version
+        if (typeof updateTable === "function") {
+          updateTable(prompt, folders);
         }
-        if (mainHeaderTitle.textContent === "All Prompts") showAllPrompts();
-        if (mainHeaderTitle.textContent === "Favorites") showFavoritePrompts();
       }
     });
+  });
+}
+
+// Utility function to generate UUID
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
   });
 }
 // Function to compute the diff between two texts (adapted from promptSaver's computePromptDiff)
