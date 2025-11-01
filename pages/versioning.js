@@ -123,7 +123,8 @@ function showPromptVersions(promptId) {
       versionTitleWrapper.className = "version-title-wrapper";
 
       const versionTitle = document.createElement("h3");
-      versionTitle.textContent = `Version ${versions.length - index}`;
+      versionTitle.textContent = `Version ${versions.length - index}` +
+  (version.isRestorePoint ? ` [Restored]` : "");
       versionTitleWrapper.appendChild(versionTitle);
 
       if (index === 0) {
@@ -176,8 +177,9 @@ function showPromptVersions(promptId) {
 
         const diffTitle = document.createElement("h4");
         diffTitle.textContent = `Changes from version ${
-          versions.length - (index + 1)
-        } to version ${versions.length - index}`;
+  versions.length - (index + 1)
+} to version ${versions.length - index}` +
+  (version.isRestorePoint ? ` [Restored]` : ``);
         diffWrapper.appendChild(diffTitle);
 
         const titleDiffWrapper = document.createElement("div");
@@ -773,30 +775,44 @@ function restoreVersion(promptId, versionId) {
       return;
     }
 
-    // Always save current state as a new version before restoring
-    prompt.versions.push({
-      versionId: `${Date.now()}_${generateUUID()}`,
-      title: prompt.title,
-      description: prompt.description || "",
-      content: prompt.content,
-      timestamp: Date.now(),
-    });
+    // 1. Speichere aktuelle Version als neue Version (mit Restore-Hinweis)
+const restoreFromIndex = prompt.versions.findIndex(v => v.versionId === versionId) + 1;
+const restoreNote = `(Restored from Version ${restoreFromIndex})`;
 
-    // Always log changes in metaChangeLog
-    prompt.metaChangeLog.push({
-      timestamp: Date.now(),
-      changes: {
-        title: { from: prompt.title, to: version.title },
-        description: { from: prompt.description || "", to: version.description || "" },
-        content: { from: prompt.content, to: version.content },
-      },
-    });
+// --- Speichere alte Werte vor dem Überschreiben ---
+const oldTitle = prompt.title;
+const oldDescription = prompt.description || "";
+const oldContent = prompt.content;
 
-    // Update prompt to selected version
-    prompt.title = version.title;
-    prompt.description = version.description || "";
-    prompt.content = version.content;
-    prompt.updatedAt = Date.now();
+const newVersion = {
+  versionId: `${Date.now()}_${generateUUID()}`,
+  title: version.title,
+  description: version.description || "",
+  content: version.content,
+  timestamp: Date.now(),
+  restoredFrom: versionId,
+  isRestorePoint: true
+};
+
+prompt.versions.push(newVersion);
+
+// 2. Aktualisiere Prompt
+prompt.title = version.title;
+prompt.description = version.description || "";
+prompt.content = version.content;
+prompt.updatedAt = Date.now();
+
+// 3. Log in metaChangeLog mit korrekten "from/to"
+prompt.metaChangeLog.push({
+  timestamp: Date.now(),
+  changes: {
+    title: { from: oldTitle, to: version.title },
+    description: { from: oldDescription, to: version.description || "" },
+    content: { from: oldContent, to: version.content },
+  },
+  restore: true,
+  restoredVersionId: versionId
+});
 
     // Enforce version limit
     if (prompt.versions.length > 50) {

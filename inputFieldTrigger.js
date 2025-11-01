@@ -1,51 +1,3 @@
-const MEASUREMENT_ID = 'G-0YQT34L1Q8';
-const API_SECRET = '3ZNay-lSRlC4QjUQV6RJZw';
-
-// Hilfsfunktion zum Holen/Generieren einer Client-ID (unique pro User)
-async function getClientId() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get('gaClientId', (data) => {
-      if (data.gaClientId) {
-        resolve(data.gaClientId);
-      } else {
-        const newId = crypto.randomUUID(); // Oder eine andere UUID-Generierung
-        chrome.storage.local.set({ gaClientId: newId }, () => {
-          resolve(newId);
-        });
-      }
-    });
-  });
-}
-
-// Funktion zum Senden eines GA-Events
-function sendGAEvent(eventName, params = {}) {
-  const clientId = localStorage.getItem('ga_client_id') || crypto.randomUUID();
-  localStorage.setItem('ga_client_id', clientId);
-
-  fetch('https://www.google-analytics.com/mp/collect?measurement_id=G-0YQT34L1Q8&api_secret=3ZNay-lSRlC4QjUQV6RJZw', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      client_id: clientId,
-      events: [
-        {
-          name: eventName,
-          params: {
-            ...params,
-            timestamp: new Date().toISOString(),
-          }
-        }
-      ]
-    })
-  }).then(res => {
-    console.log(`[GA] Event "${eventName}" gesendet:`, res.status);
-  }).catch(err => {
-    console.error(`[GA] Fehler beim Senden des Events "${eventName}":`, err);
-  });
-}
-
 const extPay = ExtPay("promptin"); // ExtPay global verfügbar
 
 // Initialize categories and promptSourceMap
@@ -304,12 +256,6 @@ function inputFieldTrigger() {
     );
     return;
   }
-
-  // Neu: Sende GA-Event für Trigger-Auslösung (trackt Domain und Pfad)
-  sendGAEvent('input_field_trigger_activated', {
-    domain: currentDomain,
-    page_path: window.location.pathname  // Trackt Website-Content
-  });
 
   // Warte, bis das DOM geladen ist
   document.addEventListener("DOMContentLoaded", () => {
@@ -616,23 +562,17 @@ function inputFieldTrigger() {
               });
 
               contentItem.addEventListener("click", () => {
-  const key = Array.from(promptSourceMap.keys()).find((k) =>
-    k.startsWith(workflowName + "_")
-  );
-  const source = promptSourceMap.get(key);
-  if (source && source.workflowId) {
-    sendGAEvent('select_workflow', {
-      event_category: 'workflow',
-      event_label: 'workflow_selection',
-      workflow_id: source.workflowId,
-      workflow_name_length: source.workflow.name.length // Anonymized
-    });
-    console.log("Workflow selected:", source.workflow.name);
-    showDynamicVariablesModal(source.workflowId);
-    dropdown.style.display = "none";
-    clearFocus();
-  }
-});
+                const key = Array.from(promptSourceMap.keys()).find((k) =>
+                  k.startsWith(workflowName + "_")
+                );
+                const source = promptSourceMap.get(key);
+                if (source && source.workflowId) {
+                  console.log("Workflow selected:", source.workflow.name);
+                  showDynamicVariablesModal(source.workflowId);
+                  dropdown.style.display = "none"; // Dropdown nach Auswahl schließen
+                  clearFocus();
+                }
+              });
 
               contentItem.addEventListener("keydown", (e) => {
                 if (e.key === "Enter") {
@@ -712,52 +652,47 @@ function inputFieldTrigger() {
               });
 
               contentItem.addEventListener("click", async () => {
-  const currentText = getInputText(inputField);
-  const slashIndex = currentText.indexOf("/");
-  let newText = "";
-  const selectedPrompt =
-    source && source.prompt
-      ? typeof source.prompt === "string"
-        ? source.prompt
-        : source.prompt.content || ""
-      : "";
+                const currentText = getInputText(inputField);
+                const slashIndex = currentText.indexOf("/");
+                let newText = "";
+                const selectedPrompt =
+                  source && source.prompt
+                    ? typeof source.prompt === "string"
+                      ? source.prompt
+                      : source.prompt.content || ""
+                    : "";
 
-  if (slashIndex !== -1) {
-    const textBeforeSlash = currentText.substring(0, slashIndex).trim();
-    if (textBeforeSlash === "") {
-      newText = selectedPrompt;
-    } else {
-      const hasSpace =
-        currentText[slashIndex - 1] === " " ||
-        currentText[slashIndex + 1] === " ";
-      newText = hasSpace
-        ? `${textBeforeSlash} ${selectedPrompt}`
-        : `${textBeforeSlash}${selectedPrompt}`;
-    }
-  } else {
-    newText = currentText
-      ? `${currentText} ${selectedPrompt}`
-      : selectedPrompt;
-  }
+                if (slashIndex !== -1) {
+                  const textBeforeSlash = currentText
+                    .substring(0, slashIndex)
+                    .trim();
+                  if (textBeforeSlash === "") {
+                    newText = selectedPrompt;
+                  } else {
+                    const hasSpace =
+                      currentText[slashIndex - 1] === " " ||
+                      currentText[slashIndex + 1] === " ";
+                    newText = hasSpace
+                      ? `${textBeforeSlash} ${selectedPrompt}`
+                      : `${textBeforeSlash}${selectedPrompt}`;
+                  }
+                } else {
+                  newText = currentText
+                    ? `${currentText} ${selectedPrompt}`
+                    : selectedPrompt;
+                }
 
-  await sendGAEvent('select_prompt', {
-    event_category: 'dropdown',
-    event_label: source.category,
-    prompt_id: source.promptId,
-    folder_id: source.folderId || 'none',
-    model: getCurrentMode() || 'unknown'
-  });
+                setInputText(inputField, newText);
+                inputField.focus();
+                setCursorToEnd(inputField);
+                dropdown.style.display = "none";
+                clearFocus();
 
-  setInputText(inputField, newText);
-  inputField.focus();
-  setCursorToEnd(inputField);
-  dropdown.style.display = "none";
-  clearFocus();
-
-  if (source.category !== "Workflows") {
-    updatePromptLastUsed(source.promptId);
-  }
-});
+                // Nur für reguläre Prompts lastUsed aktualisieren
+                if (source.category !== "Workflows") {
+                  updatePromptLastUsed(source.promptId);
+                }
+              });
 
               contentPanel.appendChild(contentItem);
             });
@@ -830,35 +765,25 @@ function inputFieldTrigger() {
           });
 
           navItem.addEventListener("click", () => {
-  if (category === "Recommended" && !isRecommendedUnlocked) {
-    sendGAEvent('attempt_recommended_access', {
-      event_category: 'navigation',
-      event_label: 'recommended_locked',
-      payment_status: 'not_paid'
-    });
-    extPay.openPaymentPage("basicmonthly");
-    return;
-  }
-  sendGAEvent('select_category', {
-    event_category: 'navigation',
-    event_label: category,
-    payment_status: isRecommendedUnlocked ? 'unlocked' : 'locked'
-  });
-  document
-    .querySelectorAll(".nav-item, .folder-item")
-    .forEach((item) => {
-      item.classList.remove("active");
-      item.style.fontWeight = "normal";
-      item.style.backgroundColor = "transparent";
-    });
+            if (category === "Recommended" && !isRecommendedUnlocked) {
+              extPay.openPaymentPage("basicmonthly");
+              return;
+            }
+            document
+              .querySelectorAll(".nav-item, .folder-item")
+              .forEach((item) => {
+                item.classList.remove("active");
+                item.style.fontWeight = "normal";
+                item.style.backgroundColor = "transparent";
+              });
 
-  navItem.classList.add("active");
-  navItem.style.fontWeight = "bold";
-  navItem.style.backgroundColor = "#e3e3e3";
-  selectedCategoryOrFolder = category;
-  renderContentPanel(category);
-  setFocus(navItem);
-});
+            navItem.classList.add("active");
+            navItem.style.fontWeight = "bold";
+            navItem.style.backgroundColor = "#e3e3e3";
+            selectedCategoryOrFolder = category;
+            renderContentPanel(category);
+            setFocus(navItem);
+          });
 
           navPanel.appendChild(navItem);
 
@@ -901,26 +826,21 @@ function inputFieldTrigger() {
                 });
 
                 folderItem.addEventListener("click", () => {
-  sendGAEvent('select_folder', {
-    event_category: 'navigation',
-    event_label: 'folder_selection',
-    folder_name_length: folder.length // Anonymized
-  });
-  document
-    .querySelectorAll(".nav-item, .folder-item")
-    .forEach((item) => {
-      item.classList.remove("active");
-      item.style.fontWeight = "normal";
-      item.style.backgroundColor = "transparent";
-    });
+                  document
+                    .querySelectorAll(".nav-item, .folder-item")
+                    .forEach((item) => {
+                      item.classList.remove("active");
+                      item.style.fontWeight = "normal";
+                      item.style.backgroundColor = "transparent";
+                    });
 
-  folderItem.classList.add("active");
-  folderItem.style.fontWeight = "bold";
-  folderItem.style.backgroundColor = "#e3e3e3";
-  selectedCategoryOrFolder = folder;
-  renderContentPanel(folder);
-  setFocus(folderItem);
-});
+                  folderItem.classList.add("active");
+                  folderItem.style.fontWeight = "bold";
+                  folderItem.style.backgroundColor = "#e3e3e3";
+                  selectedCategoryOrFolder = folder;
+                  renderContentPanel(folder);
+                  setFocus(folderItem);
+                });
 
                 folderContainer.appendChild(folderItem);
               });
@@ -1077,226 +997,220 @@ function inputFieldTrigger() {
 
       // Function to handle keyboard navigation
       function handleKeyboardNavigation(e) {
-  if (dropdown.style.display !== "flex") return;
+        if (dropdown.style.display !== "flex") return;
 
-  const navigationKeys = [
-    "ArrowUp",
-    "ArrowDown",
-    "ArrowLeft",
-    "ArrowRight",
-    "Enter",
-    "Escape",
-    "Backspace",
-    "Delete",
-  ];
-  if (navigationKeys.includes(e.key)) {
-    e.preventDefault();
-    e.stopPropagation();
-    // Track keyboard navigation event
-    sendGAEvent('keyboard_navigation', {
-      event_category: 'dropdown',
-      event_label: e.key.toLowerCase(),
-      context: currentFocusElement?.classList.contains('dropdown-item') ? 'content' : 'navigation'
-    });
-  } else {
-    return;
-  }
+        const navigationKeys = [
+          "ArrowUp",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowRight",
+          "Enter",
+          "Escape",
+          "Backspace",
+          "Delete",
+        ];
+        if (navigationKeys.includes(e.key)) {
+          e.preventDefault();
+          e.stopPropagation();
+        } else {
+          return;
+        }
 
-  const navItems = Array.from(
-    navPanel.querySelectorAll(".nav-item, .folder-item")
-  );
-  const contentItems = Array.from(
-    contentPanel.querySelectorAll(".dropdown-item")
-  );
+        const navItems = Array.from(
+          navPanel.querySelectorAll(".nav-item, .folder-item")
+        );
+        const contentItems = Array.from(
+          contentPanel.querySelectorAll(".dropdown-item")
+        );
 
-  if (e.key === "ArrowDown") {
-    if (currentFocusElement) {
-      const items =
-        currentFocusElement.classList.contains("nav-item") ||
-        currentFocusElement.classList.contains("folder-item")
-          ? navItems
-          : contentItems;
-      const currentIndex = items.indexOf(currentFocusElement);
-      if (currentIndex < items.length - 1) {
-        const nextItem = items[currentIndex + 1];
-        setFocus(nextItem);
-        if (
-          nextItem.classList.contains("nav-item") ||
-          nextItem.classList.contains("folder-item")
-        ) {
-          document
-            .querySelectorAll(".nav-item, .folder-item")
-            .forEach((item) => {
-              item.classList.remove("active");
-              item.style.fontWeight = "normal";
-              item.style.backgroundColor = "transparent";
-            });
-          nextItem.classList.add("active");
-          nextItem.style.fontWeight = "bold";
-          nextItem.style.backgroundColor = "#e3e3e3";
-          selectedCategoryOrFolder = nextItem.textContent;
-          renderContentPanel(nextItem.textContent);
+        if (e.key === "ArrowDown") {
+          if (currentFocusElement) {
+            const items =
+              currentFocusElement.classList.contains("nav-item") ||
+              currentFocusElement.classList.contains("folder-item")
+                ? navItems
+                : contentItems;
+            const currentIndex = items.indexOf(currentFocusElement);
+            if (currentIndex < items.length - 1) {
+              const nextItem = items[currentIndex + 1];
+              setFocus(nextItem);
+              if (
+                nextItem.classList.contains("nav-item") ||
+                nextItem.classList.contains("folder-item")
+              ) {
+                document
+                  .querySelectorAll(".nav-item, .folder-item")
+                  .forEach((item) => {
+                    item.classList.remove("active");
+                    item.style.fontWeight = "normal";
+                    item.style.backgroundColor = "transparent";
+                  });
+                nextItem.classList.add("active");
+                nextItem.style.fontWeight = "bold";
+                nextItem.style.backgroundColor = "#e3e3e3";
+                selectedCategoryOrFolder = nextItem.textContent;
+                renderContentPanel(nextItem.textContent);
+              }
+            }
+          } else if (navItems.length > 0) {
+            setFocus(navItems[0]);
+            document
+              .querySelectorAll(".nav-item, .folder-item")
+              .forEach((item) => {
+                item.classList.remove("active");
+                item.style.fontWeight = "normal";
+                item.style.backgroundColor = "transparent";
+              });
+            navItems[0].classList.add("active");
+            navItems[0].style.fontWeight = "bold";
+            navItems[0].style.backgroundColor = "#e3e3e3";
+            selectedCategoryOrFolder = navItems[0].textContent;
+            renderContentPanel(navItems[0].textContent);
+          }
+        } else if (e.key === "ArrowUp") {
+          if (currentFocusElement) {
+            const items =
+              currentFocusElement.classList.contains("nav-item") ||
+              currentFocusElement.classList.contains("folder-item")
+                ? navItems
+                : contentItems;
+            const currentIndex = items.indexOf(currentFocusElement);
+            if (currentIndex > 0) {
+              const prevItem = items[currentIndex - 1];
+              setFocus(prevItem);
+              if (
+                prevItem.classList.contains("nav-item") ||
+                prevItem.classList.contains("folder-item")
+              ) {
+                document
+                  .querySelectorAll(".nav-item, .folder-item")
+                  .forEach((item) => {
+                    item.classList.remove("active");
+                    item.style.fontWeight = "normal";
+                    item.style.backgroundColor = "transparent";
+                  });
+                prevItem.classList.add("active");
+                prevItem.style.fontWeight = "bold";
+                prevItem.style.backgroundColor = "#e3e3e3";
+                selectedCategoryOrFolder = prevItem.textContent;
+                renderContentPanel(prevItem.textContent);
+              }
+            }
+          } else if (navItems.length > 0) {
+            setFocus(navItems[0]);
+            document
+              .querySelectorAll(".nav-item, .folder-item")
+              .forEach((item) => {
+                item.classList.remove("active");
+                item.style.fontWeight = "normal";
+                item.style.backgroundColor = "transparent";
+              });
+            navItems[0].classList.add("active");
+            navItems[0].style.fontWeight = "bold";
+            navItems[0].style.backgroundColor = "#e3e3e3";
+            selectedCategoryOrFolder = navItems[0].textContent;
+            renderContentPanel(navItems[0].textContent);
+          }
+        } else if (e.key === "ArrowRight") {
+          if (
+            currentFocusElement &&
+            (currentFocusElement.classList.contains("nav-item") ||
+              currentFocusElement.classList.contains("folder-item"))
+          ) {
+            const firstContentItem =
+              contentPanel.querySelector(".dropdown-item");
+            if (firstContentItem) {
+              setFocus(firstContentItem);
+            }
+          }
+        } else if (e.key === "ArrowLeft") {
+          if (
+            currentFocusElement &&
+            currentFocusElement.classList.contains("dropdown-item")
+          ) {
+            const activeNavItem = navPanel.querySelector(
+              ".nav-item.active, .folder-item.active"
+            );
+            if (activeNavItem) {
+              setFocus(activeNavItem);
+            } else if (navItems.length > 0) {
+              setFocus(navItems[0]);
+              document
+                .querySelectorAll(".nav-item, .folder-item")
+                .forEach((item) => {
+                  item.classList.remove("active");
+                  item.style.fontWeight = "normal";
+                  item.style.backgroundColor = "transparent";
+                });
+              navItems[0].classList.add("active");
+              navItems[0].style.fontWeight = "bold";
+              navItems[0].style.backgroundColor = "#e3e3e3";
+              selectedCategoryOrFolder = navItems[0].textContent;
+              renderContentPanel(navItems[0].textContent);
+            }
+          }
+        } else if (e.key === "Enter") {
+          if (currentFocusElement) {
+            if (currentFocusElement.classList.contains("dropdown-item")) {
+              currentFocusElement.click();
+              isDropdownTriggered = false;
+              isSlashKeyboardInput = false;
+            }
+          }
+        } else if (e.key === "Escape") {
+          isDropdownTriggered = false;
+          isSlashKeyboardInput = false;
+          hideDropdown();
+          isEscaped = true;
+          inputField.focus();
+        } else if (e.key === "Backspace") {
+          const currentText = getInputText(inputField);
+          const slashIndex = currentText.lastIndexOf("/");
+
+          if (slashIndex !== -1) {
+            let cursorPos = getCursorPosition(inputField);
+
+            if (cursorPos > slashIndex + 1) {
+              const queryStart = slashIndex + 1;
+              const queryIndex = cursorPos - queryStart;
+              const query = currentText.substring(queryStart);
+              const newQuery =
+                query.substring(0, queryIndex - 1) +
+                query.substring(queryIndex);
+              const newText =
+                currentText.substring(0, slashIndex + 1) + newQuery;
+
+              setInputText(inputField, newText);
+              const newCursorPos = cursorPos - 1; // Cursor wird korrekt nach links verschoben
+              setCursorPosition(inputField, newCursorPos);
+            } else {
+              // Cursor direkt nach dem Slash oder davor: nichts löschen, Cursor bleibt
+              setCursorPosition(inputField, slashIndex + 1);
+            }
+          }
+        } else if (e.key === "Delete") {
+          const currentText = getInputText(inputField);
+          const slashIndex = currentText.lastIndexOf("/");
+
+          if (slashIndex !== -1) {
+            let cursorPos = getCursorPosition(inputField);
+            const queryStart = slashIndex + 1;
+            const query = currentText.substring(queryStart);
+
+            if (cursorPos >= queryStart && cursorPos < currentText.length) {
+              const queryIndex = cursorPos - queryStart;
+              const newQuery =
+                query.substring(0, queryIndex) +
+                query.substring(queryIndex + 1);
+              const newText =
+                currentText.substring(0, slashIndex + 1) + newQuery;
+
+              setInputText(inputField, newText);
+              setCursorPosition(inputField, cursorPos); // Cursor bleibt an der gleichen Position
+            }
+          }
         }
       }
-    } else if (navItems.length > 0) {
-      setFocus(navItems[0]);
-      document
-        .querySelectorAll(".nav-item, .folder-item")
-        .forEach((item) => {
-          item.classList.remove("active");
-          item.style.fontWeight = "normal";
-          item.style.backgroundColor = "transparent";
-        });
-      navItems[0].classList.add("active");
-      navItems[0].style.fontWeight = "bold";
-      navItems[0].style.backgroundColor = "#e3e3e3";
-      selectedCategoryOrFolder = navItems[0].textContent;
-      renderContentPanel(navItems[0].textContent);
-    }
-  } else if (e.key === "ArrowUp") {
-    if (currentFocusElement) {
-      const items =
-        currentFocusElement.classList.contains("nav-item") ||
-        currentFocusElement.classList.contains("folder-item")
-          ? navItems
-          : contentItems;
-      const currentIndex = items.indexOf(currentFocusElement);
-      if (currentIndex > 0) {
-        const prevItem = items[currentIndex - 1];
-        setFocus(prevItem);
-        if (
-          prevItem.classList.contains("nav-item") ||
-          prevItem.classList.contains("folder-item")
-        ) {
-          document
-            .querySelectorAll(".nav-item, .folder-item")
-            .forEach((item) => {
-              item.classList.remove("active");
-              item.style.fontWeight = "normal";
-              item.style.backgroundColor = "transparent";
-            });
-          prevItem.classList.add("active");
-          prevItem.style.fontWeight = "bold";
-          prevItem.style.backgroundColor = "#e3e3e3";
-          selectedCategoryOrFolder = prevItem.textContent;
-          renderContentPanel(prevItem.textContent);
-        }
-      }
-    } else if (navItems.length > 0) {
-      setFocus(navItems[0]);
-      document
-        .querySelectorAll(".nav-item, .folder-item")
-        .forEach((item) => {
-          item.classList.remove("active");
-          item.style.fontWeight = "normal";
-          item.style.backgroundColor = "transparent";
-        });
-      navItems[0].classList.add("active");
-      navItems[0].style.fontWeight = "bold";
-      navItems[0].style.backgroundColor = "#e3e3e3";
-      selectedCategoryOrFolder = navItems[0].textContent;
-      renderContentPanel(navItems[0].textContent);
-    }
-  } else if (e.key === "ArrowRight") {
-    if (
-      currentFocusElement &&
-      (currentFocusElement.classList.contains("nav-item") ||
-        currentFocusElement.classList.contains("folder-item"))
-    ) {
-      const firstContentItem =
-        contentPanel.querySelector(".dropdown-item");
-      if (firstContentItem) {
-        setFocus(firstContentItem);
-      }
-    }
-  } else if (e.key === "ArrowLeft") {
-    if (
-      currentFocusElement &&
-      currentFocusElement.classList.contains("dropdown-item")
-    ) {
-      const activeNavItem = navPanel.querySelector(
-        ".nav-item.active, .folder-item.active"
-      );
-      if (activeNavItem) {
-        setFocus(activeNavItem);
-      } else if (navItems.length > 0) {
-        setFocus(navItems[0]);
-        document
-          .querySelectorAll(".nav-item, .folder-item")
-          .forEach((item) => {
-            item.classList.remove("active");
-            item.style.fontWeight = "normal";
-            item.style.backgroundColor = "transparent";
-          });
-        navItems[0].classList.add("active");
-        navItems[0].style.fontWeight = "bold";
-        navItems[0].style.backgroundColor = "#e3e3e3";
-        selectedCategoryOrFolder = navItems[0].textContent;
-        renderContentPanel(navItems[0].textContent);
-      }
-    }
-  } else if (e.key === "Enter") {
-    if (currentFocusElement) {
-      if (currentFocusElement.classList.contains("dropdown-item")) {
-        currentFocusElement.click();
-        isDropdownTriggered = false;
-        isSlashKeyboardInput = false;
-      }
-    }
-  } else if (e.key === "Escape") {
-    isDropdownTriggered = false;
-    isSlashKeyboardInput = false;
-    hideDropdown();
-    isEscaped = true;
-    inputField.focus();
-  } else if (e.key === "Backspace") {
-    const currentText = getInputText(inputField);
-    const slashIndex = currentText.lastIndexOf("/");
-
-    if (slashIndex !== -1) {
-      let cursorPos = getCursorPosition(inputField);
-
-      if (cursorPos > slashIndex + 1) {
-        const queryStart = slashIndex + 1;
-        const queryIndex = cursorPos - queryStart;
-        const query = currentText.substring(queryStart);
-        const newQuery =
-          query.substring(0, queryIndex - 1) +
-          query.substring(queryIndex);
-        const newText =
-          currentText.substring(0, slashIndex + 1) + newQuery;
-
-        setInputText(inputField, newText);
-        const newCursorPos = cursorPos - 1; // Cursor wird korrekt nach links verschoben
-        setCursorPosition(inputField, newCursorPos);
-      } else {
-        // Cursor direkt nach dem Slash oder davor: nichts löschen, Cursor bleibt
-        setCursorPosition(inputField, slashIndex + 1);
-      }
-    }
-  } else if (e.key === "Delete") {
-    const currentText = getInputText(inputField);
-    const slashIndex = currentText.lastIndexOf("/");
-
-    if (slashIndex !== -1) {
-      let cursorPos = getCursorPosition(inputField);
-      const queryStart = slashIndex + 1;
-      const query = currentText.substring(queryStart);
-
-      if (cursorPos >= queryStart && cursorPos < currentText.length) {
-        const queryIndex = cursorPos - queryStart;
-        const newQuery =
-          query.substring(0, queryIndex) +
-          query.substring(queryIndex + 1);
-        const newText =
-          currentText.substring(0, slashIndex + 1) + newQuery;
-
-        setInputText(inputField, newText);
-        setCursorPosition(inputField, cursorPos); // Cursor bleibt an der gleichen Position
-      }
-    }
-  }
-}
 
       function getCursorPosition(el) {
         if (el.selectionStart !== undefined) return el.selectionStart;
@@ -1363,12 +1277,6 @@ function inputFieldTrigger() {
                 .slice(getInputText(inputField).indexOf("/") + 1)
                 .trim();
               if (query) {
-                sendGAEvent('search_prompts', {
-  event_category: 'search',
-  event_label: 'dropdown_search',
-  query_length: query.length,
-  result_count: scoredPrompts.length
-});
                 renderSearchResults(query);
               } else {
                 renderCategoryNavigation();
@@ -1420,12 +1328,6 @@ function inputFieldTrigger() {
           dropdown.style.opacity = "1";
           dropdown.style.transform = "translateY(0)";
           if (query) {
-            sendGAEvent('search_prompts', {
-  event_category: 'search',
-  event_label: 'dropdown_search',
-  query_length: query.length,
-  result_count: scoredPrompts.length
-});
             renderSearchResults(query);
             const firstResult = contentPanel.querySelector(".dropdown-item");
             if (firstResult) {
@@ -1713,37 +1615,34 @@ function inputFieldTrigger() {
 
         // Klickverhalten des Buttons
         newButton.addEventListener("click", (e) => {
-  e.preventDefault();
-  if (
-    typeof dropdown === "undefined" ||
-    typeof inputField === "undefined"
-  ) {
-    console.error("Dropdown oder InputField nicht definiert.");
-    return;
-  }
-  const isOpening = dropdown.style.display !== "flex";
-  sendGAEvent('plus_button_click', {
-    event_category: 'dropdown',
-    event_label: isOpening ? 'open_dropdown' : 'close_dropdown'
-  });
-  if (isOpening) {
-    const currentText = getInputText(inputField);
-    if (!currentText.includes("/")) {
-      setInputText(inputField, currentText + "/");
-    }
-    inputField.focus();
-    setCursorToEnd(inputField);
-    showDropdown();
-    dropdown.dataset.openedByButton = "true";
-    dropdownClosedByUser = false;
-    tooltip.textContent = "Close the PromptIn Management Menu";
-  } else {
-    hideDropdown();
-    delete dropdown.dataset.openedByButton;
-    dropdownClosedByUser = false;
-    tooltip.textContent = "Open the PromptIn Management Menu";
-  }
-});
+          e.preventDefault();
+          // Hier kannst du das Verhalten für das Öffnen und Schließen des PromptIn Management Menüs einbauen
+          if (
+            typeof dropdown === "undefined" ||
+            typeof inputField === "undefined"
+          ) {
+            console.error("Dropdown oder InputField nicht definiert.");
+            return;
+          }
+
+          if (dropdown.style.display === "flex") {
+            hideDropdown();
+            delete dropdown.dataset.openedByButton;
+            dropdownClosedByUser = false;
+            tooltip.textContent = "Open the PromptIn Management Menu";
+          } else {
+            const currentText = getInputText(inputField);
+            if (!currentText.includes("/")) {
+              setInputText(inputField, currentText + "/");
+            }
+            inputField.focus();
+            setCursorToEnd(inputField);
+            showDropdown();
+            dropdown.dataset.openedByButton = "true";
+            dropdownClosedByUser = false;
+            tooltip.textContent = "Close the PromptIn Management Menu";
+          }
+        });
       }
 
       // Periodic check for shortcut and plus button
@@ -1780,20 +1679,10 @@ function inputFieldTrigger() {
                 if (!query) {
                   isEscaped = false;
                   showDropdown(query);
-                  sendGAEvent('open_dropdown_slash', {
-  event_category: 'dropdown',
-  event_label: 'slash_input',
-  query_length: query.length // Anonymized
-});
                 }
               } else {
                 isEscaped = false;
                 showDropdown(query);
-                sendGAEvent('open_dropdown_slash', {
-  event_category: 'dropdown',
-  event_label: 'slash_input',
-  query_length: query.length // Anonymized
-});
               }
             } else if (
               !text.includes("/") &&
@@ -2524,12 +2413,6 @@ function showDynamicVariablesModal(workflowId) {
             scrollLeftBtn.remove();
             scrollRightBtn.remove();
           }
-          sendGAEvent('close_repetition', {
-  event_category: 'workflow',
-  event_label: 'close_repetition',
-  workflow_id: workflowId,
-  repetition_index: repIndex
-});
         };
         repDiv.appendChild(closeBtn);
 
@@ -2632,71 +2515,56 @@ function showDynamicVariablesModal(workflowId) {
     addRepetitionBtn.addEventListener("click", () => {
       repetitions.push(initRepetition());
       renderSteps();
-
-      sendGAEvent('add_repetition', {
-  event_category: 'workflow',
-  event_label: 'add_repetition',
-  workflow_id: workflowId,
-  repetition_count: repetitions.length + 1
-});
     });
 
     sendBtn.addEventListener("click", async () => {
-  await sendGAEvent('execute_workflow', {
-    event_category: 'workflow',
-    event_label: 'execute_workflow',
-    workflow_id: workflowId,
-    repetition_count: repetitions.length,
-    model: getCurrentMode() || 'unknown'
-  });
+      const executions = repetitions.map((repData) =>
+        workflow.steps.map((step, stepIndex) => {
+          if (!step.effectivePrompt) return "";
+          if (!hasDynamicVariables(step.effectivePrompt))
+            return step.effectivePrompt;
+          let promptText = step.effectivePrompt;
+          const vars = extractVariables(step.effectivePrompt);
+          vars.forEach((variable) => {
+            const val =
+              (repData[stepIndex] && repData[stepIndex][variable]) ||
+              `{${variable}}`;
+            promptText = promptText.replace(`{{${variable}}}`, val);
+          });
+          return promptText;
+        })
+      );
 
-  const executions = repetitions.map((repData) =>
-    workflow.steps.map((step, stepIndex) => {
-      if (!step.effectivePrompt) return "";
-      if (!hasDynamicVariables(step.effectivePrompt))
-        return step.effectivePrompt;
-      let promptText = step.effectivePrompt;
-      const vars = extractVariables(step.effectivePrompt);
-      vars.forEach((variable) => {
-        const val =
-          (repData[stepIndex] && repData[stepIndex][variable]) ||
-          `{${variable}}`;
-        promptText = promptText.replace(`{{${variable}}}`, val);
-      });
-      return promptText;
-    })
-  );
+      const allPrompts = executions.flat().filter((item) => item);
+      modal.remove();
+      scrollLeftBtn.remove();
+      scrollRightBtn.remove();
 
-  const allPrompts = executions.flat().filter((item) => item);
-  modal.remove();
-  scrollLeftBtn.remove();
-  scrollRightBtn.remove();
-
-  for (const prompt of allPrompts) {
-    await sendPrompt(prompt);
-  }
-
-  // Update lastUsed timestamp
-  chrome.storage.local.get(["workflows"], (data) => {
-    const updatedWorkflow = {
-      ...data.workflows[workflowId],
-      lastUsed: Date.now(),
-    };
-    chrome.storage.local.set(
-      { workflows: { ...data.workflows, [workflowId]: updatedWorkflow } },
-      () => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "Error updating workflow:",
-            chrome.runtime.lastError
-          );
-        }
-        console.log("Workflow execution completed.");
-        renderWorkflows();
+      for (const prompt of allPrompts) {
+        await sendPrompt(prompt);
       }
-    );
-  });
-});
+
+      // Update lastUsed timestamp
+      chrome.storage.local.get(["workflows"], (data) => {
+        const updatedWorkflow = {
+          ...data.workflows[workflowId],
+          lastUsed: Date.now(),
+        };
+        chrome.storage.local.set(
+          { workflows: { ...data.workflows, [workflowId]: updatedWorkflow } },
+          () => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Error updating workflow:",
+                chrome.runtime.lastError
+              );
+            }
+            console.log("Workflow execution completed.");
+            renderWorkflows(); // Assumes renderWorkflows is globally available
+          }
+        );
+      });
+    });
 
     async function sendPrompt(prompt) {
       const geminiSendButton = document.querySelector(
@@ -2806,12 +2674,6 @@ function showDynamicVariablesModal(workflowId) {
       modal.remove();
       scrollLeftBtn.remove();
       scrollRightBtn.remove();
-
-      sendGAEvent('close_workflow_modal', {
-  event_category: 'workflow',
-  event_label: 'modal_close',
-  workflow_id: workflowId
-});
     };
 
     renderSteps();

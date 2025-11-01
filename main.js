@@ -3156,52 +3156,71 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const saveBtnEdit = document.querySelector(".save-btn-edit");
 
-  saveBtnEdit.addEventListener("click", async () => {
-    const promptId = saveBtnEdit.dataset.promptId;
-    if (!promptId) {
-      console.error("Prompt-ID fehlt");
-      return;
-    }
+saveBtnEdit.addEventListener("click", async () => {
+  const promptId = saveBtnEdit.dataset.promptId;
+  if (!promptId) {
+    console.error("Prompt-ID fehlt");
+    return;
+  }
 
-    // load current prompts from storage
-    const data = await chrome.storage.local.get(["prompts"]);
+  // --- Werte aus dem Formular holen ---
+  const entryTitle = document.getElementById("entry-title").value.trim();
+  const entryDescription = document
+    .getElementById("entry-description")
+    .value.trim();
+  const entryContent = document.getElementById("entry-content").value.trim();
+  const entryNotes = document.getElementById("entry-notes").value.trim();
+  const entryTypes = Array.from(
+    document.getElementById("entry-types").selectedOptions
+  )
+    .map((opt) => opt.value)
+    .filter((val) => val && val.trim() !== "");
+  const entryFavorite = document.getElementById("entry-favorite").checked;
+
+  const entryFolderSelect = document.getElementById("entry-folder");
+  const newFolderId = entryFolderSelect ? (entryFolderSelect.value || null) : null;
+  const newFolderName = newFolderId
+    ? entryFolderSelect.selectedOptions[0]?.textContent || null
+    : null;
+
+  const compatibleModels = Array.from(
+    document.querySelectorAll(
+      "#entry-compatible input[type='checkbox']:checked"
+    )
+  ).map((cb) => cb.value);
+
+  const incompatibleModels = Array.from(
+    document.querySelectorAll(
+      "#entry-incompatible input[type='checkbox']:checked"
+    )
+  ).map((cb) => cb.value);
+
+  const tags = Array.from(
+    document.querySelectorAll("#entry-tags input[type='checkbox']:checked")
+  ).map((cb) => cb.value);
+
+  // Validierung (gleiche UX wie bei Create)
+  if (!entryTitle) {
+    alert(translations[currentLang]?.required_title || "Title is required!");
+    return;
+  }
+  if (!entryContent) {
+    alert(translations[currentLang]?.content_required || "Please enter a prompt!");
+    return;
+  }
+
+  try {
+    // lade prompts + folders
+    const data = await chrome.storage.local.get(["prompts", "folders"]);
     const prompts = data.prompts || {};
+    const folders = data.folders || {};
 
     if (!prompts[promptId]) {
       console.error("Prompt nicht gefunden");
       return;
     }
 
-    // --- Werte aus dem Formular holen ---
-    const entryTitle = document.getElementById("entry-title").value.trim();
-    const entryDescription = document
-      .getElementById("entry-description")
-      .value.trim();
-    const entryContent = document.getElementById("entry-content").value.trim();
-    const entryNotes = document.getElementById("entry-notes").value.trim();
-    const entryTypes = Array.from(
-      document.getElementById("entry-types").selectedOptions
-    )
-      .map((opt) => opt.value)
-      .filter((val) => val && val.trim() !== ""); // Placeholder rausfiltern
-    const entryFavorite = document.getElementById("entry-favorite").checked;
-    const entryFolder = document.getElementById("entry-folder").value || null;
-
-    const compatibleModels = Array.from(
-      document.querySelectorAll(
-        "#entry-compatible input[type='checkbox']:checked"
-      )
-    ).map((cb) => cb.value);
-
-    const incompatibleModels = Array.from(
-      document.querySelectorAll(
-        "#entry-incompatible input[type='checkbox']:checked"
-      )
-    ).map((cb) => cb.value);
-
-    const tags = Array.from(
-      document.querySelectorAll("#entry-tags input[type='checkbox']:checked")
-    ).map((cb) => cb.value);
+    const oldFolderId = prompts[promptId].folderId || null;
 
     // --- Prompt-Daten aktualisieren ---
     prompts[promptId] = {
@@ -3210,38 +3229,86 @@ document.addEventListener("DOMContentLoaded", () => {
       description: entryDescription,
       content: entryContent,
       notes: entryNotes,
-      types: entryTypes, // Array (leer falls nichts gewählt)
-      isFavorite: entryFavorite, // ✅ wichtig: field isFavorite
-      folderId: entryFolder,
+      types: entryTypes,
+      isFavorite: entryFavorite,
+      folderId: newFolderId,
+      // optional: store folderName for quicker lookup/display (wie bei savePrompt)
+      folderName: newFolderName,
       tags,
       compatibleModels,
       incompatibleModels,
       updatedAt: Date.now(),
     };
 
-    try {
-      await chrome.storage.local.set({ prompts });
-      console.log(`Prompt ${promptId} wurde erfolgreich gespeichert.`);
-
-      // Overlay schließen + UI zurücksetzen
-      document.getElementById("detail-overlay").classList.remove("open");
-      document.getElementById("plus-btn").style.display = "flex";
-
-      // richtige Ansicht neu laden
-      if (navigationState.source === "folder" && navigationState.folderId) {
-        showFolder(navigationState.folderId);
-      } else if (
-        navigationState.source === "category" &&
-        navigationState.category
-      ) {
-        showCategory(navigationState.category);
+    // --- Ordner-Änderungen korrekt verarbeiten ---
+    // 1) Entfernen aus altem Ordner (falls sich geändert und altes vorhanden)
+    if (oldFolderId && oldFolderId !== newFolderId) {
+      if (folders[oldFolderId] && Array.isArray(folders[oldFolderId].promptIds)) {
+        folders[oldFolderId].promptIds = folders[oldFolderId].promptIds.filter(
+          (id) => id !== promptId
+        );
       } else {
-        loadPromptsTable();
+        // defensive: wenn Struktur fehlt, stell sicher, dass nichts kaputt geht
+        if (folders[oldFolderId]) folders[oldFolderId].promptIds = [];
       }
-    } catch (err) {
-      console.error("Fehler beim Speichern des Prompts:", err);
     }
-  });
+
+    // 2) Hinzufügen zum neuen Ordner (falls gesetzt und geändert)
+    if (newFolderId && newFolderId !== oldFolderId) {
+      if (!folders[newFolderId]) {
+        // defensive: falls Ordner auf einmal nicht existiert, lege minimalen Eintrag an
+        folders[newFolderId] = {
+          id: newFolderId,
+          name: newFolderName || "Unnamed folder",
+          promptIds: [],
+        };
+      }
+      if (!Array.isArray(folders[newFolderId].promptIds)) {
+        folders[newFolderId].promptIds = [];
+      }
+      // nur hinzufügen, wenn noch nicht vorhanden
+      if (!folders[newFolderId].promptIds.includes(promptId)) {
+        folders[newFolderId].promptIds.push(promptId);
+      }
+    }
+
+    // optional: wenn user moved prompt to "kein Ordner", dann brauchen wir nichts weiter
+    // (das Entfernen aus altem Ordner oben behandelt das)
+
+    // --- Speichern ---
+    await chrome.storage.local.set({ prompts, folders });
+
+    console.log(`Prompt ${promptId} wurde erfolgreich gespeichert und ggf. verschoben.`);
+
+    // Overlay schließen + UI zurücksetzen
+    document.getElementById("detail-overlay").classList.remove("open");
+    document.getElementById("plus-btn").style.display = "flex";
+
+    // UI-Aktualisierung - konsistent mit Add-Funktion
+    if (navigationState.source === "folder" && navigationState.folderId) {
+      // Wenn wir gerade im alten oder neuen Folder-View sind, lade passende Ansicht neu
+      // Falls wir im Folder-View sind, wollen wir die aktuell geöffnete Folder-Ansicht neu laden.
+      // Wenn navigationState.folderId === newFolderId: showFolder(newFolderId)
+      // Wenn navigationState.folderId === oldFolderId: showFolder(oldFolderId) (wurde evtl. verändert)
+      if (navigationState.folderId === newFolderId) {
+        await showFolder(newFolderId);
+      } else {
+        // falls wir vorher im Ordner-View eines anderen Ordners waren -> reload that view
+        await showFolder(navigationState.folderId);
+      }
+    } else if (navigationState.source === "category" && navigationState.category) {
+      await showCategory(navigationState.category);
+    } else {
+      await loadPromptsTable();
+    }
+
+    // sicherstellen, dass Folder-Liste aktualisiert ist
+    await loadFolders();
+  } catch (err) {
+    console.error("Fehler beim Speichern/Verschieben des Prompts:", err);
+  }
+});
+
 
   // Add Overlay Buttons
   const backBtnAdd = document.getElementById("back-btn-add");
