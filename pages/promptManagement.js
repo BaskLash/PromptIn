@@ -787,18 +787,151 @@ function moveToTrash(prompt, folderId, row) {
 
 function sharePrompt(prompt) {
   console.log(prompt.promptId);
+
+  const shareUrl   = `${window.location.origin}/prompt/${prompt.promptId}`;
+  const shareTitle = prompt.title;
+  const shareText  = prompt.content;
+
+  // ---------- Native Web Share ----------
   if (navigator.share) {
-    navigator
-      .share({
-        title: prompt.title,
-        text: prompt.content,
-      })
-      .catch((err) => {
-        console.error("Failed to share prompt:", err);
-      });
-  } else {
-    alert("Sharing is not supported in this browser.");
+    navigator.share({
+      title: shareTitle,
+      text:  shareText,
+      url:   shareUrl
+    }).catch(err => console.error('Native share failed:', err));
+    return;
   }
+
+  // ---------- Fallback Modal ----------
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding: 1rem;
+  `;
+
+  // ----- Platform definitions (icon + share URL) -----
+  const platforms = [
+    {
+      name: 'Twitter / X',
+      icon: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/x.svg',
+      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTitle)}&url=${encodeURIComponent(shareUrl)}`
+    },
+    {
+      name: 'Facebook',
+      icon: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/facebook.svg',
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
+    },
+    {
+      name: 'LinkedIn',
+      icon: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg',
+      url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`
+    },
+    {
+      name: 'Reddit',
+      icon: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/reddit.svg',
+      url: `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}`
+    },
+    {
+      name: 'WhatsApp',
+      icon: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/whatsapp.svg',
+      url: `https://wa.me/?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}`
+    },
+    {
+      name: 'Telegram',
+      icon: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/telegram.svg',
+      url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`
+    },
+    {
+      name: 'Email',
+      icon: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/gmail.svg',
+      url: `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareTitle + '\n\n' + shareUrl)}`
+    },
+    {
+      name: 'Copy Prompt',
+      icon: 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/clipboard.svg',
+      url: '#',
+      isCopyPrompt: true
+    }
+  ];
+
+  // ----- Build social buttons -----
+  const buttonsHTML = platforms.map(p => {
+    const isCopy = p.isCopyPrompt;
+    const tag = isCopy ? 'button' : 'a';
+    const attrs = isCopy
+      ? `id="copyPromptBtn" style="background:none;border:none;cursor:pointer;"`
+      : `href="${p.url}" target="_blank" rel="noopener"`;
+    return `
+      <${tag} ${attrs} title="${p.name}"
+        style="width:48px;height:48px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+        <img src="${p.icon}" alt="${p.name}" width="26" height="26" style="pointer-events:none;">
+      </${tag}>
+    `;
+  }).join('');
+
+  // ----- Escape HTML to safely show prompt content -----
+  const escapeHtml = (text) => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
+  modal.innerHTML = `
+    <div style="
+      background:#fff; padding:1.5rem; border-radius:16px;
+      max-width:420px; width:100%; max-height:90vh; overflow-y:auto;
+      box-shadow:0 15px 40px rgba(0,0,0,0.25); text-align:center;
+      display:flex; flex-direction:column; gap:1rem;
+    ">
+      <h3 style="margin:0; font-size:1.3rem; color:#1a1a1a;">Share this prompt</h3>
+
+      <!-- Prompt Preview -->
+      <div style="
+        background:#f8f9fa; border:1px solid #e9ecef; border-radius:10px;
+        padding:1rem; text-align:left; font-family:monospace; font-size:0.9rem;
+        max-height:180px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;
+        color:#333; line-height:1.5;
+      ">
+        ${escapeHtml(shareText)}
+      </div>
+
+      <!-- Social Buttons -->
+      <div style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center;">
+        ${buttonsHTML}
+      </div>
+
+      <!-- Close Button -->
+      <button id="closeModalBtn" style="
+        padding:0.6rem 1.2rem; background:#e9ecef; border:none; border-radius:8px;
+        cursor:pointer; font-size:0.95rem; font-weight:500; align-self:center;
+      ">Close</button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // ----- Close Modal -----
+  const close = () => modal.remove();
+  modal.querySelector('#closeModalBtn').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  // ----- Copy Prompt to Clipboard -----
+  modal.querySelector('#copyPromptBtn')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(shareText).then(() => {
+      const img = modal.querySelector('#copyPromptBtn img');
+      const originalSrc = img.src;
+      img.src = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/check2.svg';
+      img.style.filter = 'invert(47%) sepia(93%) saturate(1448%) hue-rotate(88deg) brightness(95%) contrast(92%)'; // green
+      setTimeout(() => {
+        img.src = originalSrc;
+        img.style.filter = '';
+      }, 1600);
+    }).catch(() => {
+      alert('Kopieren fehlgeschlagen');
+    });
+  });
 }
 
 function toggleFavorite(promptId) {

@@ -122,6 +122,7 @@
   "sort_by_last_used": "Last Used",
   "sort_by_last_created": "Last Created",
   "sort_by_most_used": "Most Used",
+  "sort_by_most_trending": "Most Trending",
   "noPromptsInFolder": "No prompts in this folder",
   "noPromptsFound": "No prompts found",
   "loading": "Loading...",

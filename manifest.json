@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PromptIn: AI Prompt Manager for ChatGPT, Claude, Gemini, Perplexity & more!",
   "description": "Manage, organize, and optimize AI prompts for ChatGPT, Claude, Gemini, Perplexity, Grok & more — all in one extension.",
-  "version": "1.0.0",
+  "version": "1.0.19",
   "permissions": ["storage", "unlimitedStorage", "tabs"],
   "icons": {
     "16": "icon/icon16.png",
@@ -31,7 +31,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icon/icon48.png", "i18n/*.json", "pages/ExtPay.js"],
+      "resources": ["icon/icon48.png", "i18n/*.json", "pages/ExtPay.js", "privacy.html"],
       "matches": ["<all_urls>"]
     }
   ],

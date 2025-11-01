@@ -415,9 +415,10 @@ function calculateTagUsage(prompts) {
 function calculateTypeUsage(prompts) {
   const typeUsage = {};
   prompts.forEach((prompt) => {
-    if (!prompt.types) return;
-    prompt.types.forEach((type) => {
-      typeUsage[type] = (typeUsage[type] || 0) + 1;
+    // Sicherstellen, dass types existiert und ein Array ist
+    const types = Array.isArray(prompt.types) ? prompt.types : [];
+    types.forEach((type) => {
+      if (type) typeUsage[type] = (typeUsage[type] || 0) + 1;
     });
   });
   return typeUsage;

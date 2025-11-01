@@ -145,40 +145,56 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Funktion zum Anzeigen der Inhalte eines Ordners
   function showFolder(folderId) {
-    const folderEntries = document.getElementById("folder-entries");
-    folderEntries.innerHTML = "";
+  const folderEntries = document.getElementById("folder-entries");
+  folderEntries.innerHTML = "";
 
-    chrome.storage.local.get(null, function (data) {
-      const topic = data[folderId];
-      if (!topic || !topic.prompts || !Array.isArray(topic.prompts)) {
-        folderEntries.innerHTML =
-          '<tr><td colspan="2">Keine Prompts in diesem Ordner</td></tr>';
-        return;
-      }
+  chrome.storage.local.get(["folders", "prompts"], function (data) {
+    const folders = data.folders || {};
+    const prompts = data.prompts || {};
+    const folder = folders[folderId];
 
-      document.getElementById("folder-title").textContent = topic.name;
-      topic.prompts.forEach((prompt, index) => {
-        const tr = document.createElement("tr");
-        tr.dataset.entry = prompt.title;
-        tr.dataset.folderId = folderId;
-        tr.dataset.promptIndex = index;
-        tr.innerHTML = `
-                    <td>${prompt.title}</td>
-                    <td class="action-cell">
-                        <button class="action-btn">⋮</button>
-                    </td>
-                `;
-        tr.addEventListener("click", (event) => {
-          if (!event.target.classList.contains("action-btn")) {
-            showPromptDetails(folderId, index);
-          }
-        });
-        folderEntries.appendChild(tr);
+    if (!folder || !folder.promptIds || !Array.isArray(folder.promptIds)) {
+      folderEntries.innerHTML =
+        '<tr><td colspan="2">Keine Prompts in diesem Ordner</td></tr>';
+      return;
+    }
+
+    // WICHTIG: Nur existierende und NICHT im Trash befindliche Prompts
+    const validPrompts = folder.promptIds
+      .map(id => prompts[id])
+      .filter(p => p && !p.isTrash); // ← HIER FILTERN!
+
+    document.getElementById("folder-title").textContent = folder.name;
+
+    if (validPrompts.length === 0) {
+      folderEntries.innerHTML =
+        '<tr><td colspan="2">Keine sichtbaren Prompts in diesem Ordner</td></tr>';
+      return;
+    }
+
+    validPrompts.forEach((prompt, index) => {
+      const originalIndex = folder.promptIds.indexOf(prompt.id); // Falls du originalen Index brauchst
+      const tr = document.createElement("tr");
+      tr.dataset.entry = prompt.title;
+      tr.dataset.folderId = folderId;
+      tr.dataset.promptIndex = originalIndex;
+      tr.innerHTML = `
+        <td>${prompt.title}</td>
+        <td class="action-cell">
+          <button class="action-btn">⋮</button>
+        </td>
+      `;
+      tr.addEventListener("click", (event) => {
+        if (!event.target.classList.contains("action-btn")) {
+          showPromptDetails(folderId, originalIndex);
+        }
       });
-
-      document.getElementById("folder-overlay").style.display = "block";
+      folderEntries.appendChild(tr);
     });
-  }
+
+    document.getElementById("folder-overlay").style.display = "block";
+  });
+}
 
   function showPromptDetails(folderId, promptIndex) {
     chrome.storage.local.get(folderId, function (data) {

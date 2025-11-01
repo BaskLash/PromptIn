@@ -1068,69 +1068,129 @@ dropdown.querySelector(".copy-btn").addEventListener("click", () => {
 });
 
 // Share Prompt
-dropdown.querySelector(".share-btn").addEventListener("click", () => {
+
+dropdown.querySelector(".share-btn").addEventListener("click", (event) => {
+  event.stopPropagation();
+
   const promptId = dropdown.dataset.promptId;
-  console.log(`Sharing prompt: ID=${promptId}`);
 
-  chrome.storage.local.get(["prompts"], function (data) {
+  chrome.storage.local.get(["prompts"], (data) => {
     const prompt = data.prompts?.[promptId];
-    if (prompt) {
-      const textToShare =
-        prompt.content || prompt.title || "Check out this prompt!";
-      
-      if (navigator.share) {
-        navigator
-          .share({
-            title: "Shared Prompt",
-            text: textToShare,
-          })
-          .then(() => {
-            sendGAEvent('share_prompt', {
-              event_category: 'prompt_management',
-              event_label: 'web_share',
-              prompt_id: promptId
-            });
-          })
-          .catch((err) => {
-            console.error("Share failed:", err);
-          });
-      } else {
-        const encodedText = encodeURIComponent(textToShare);
-        const whatsappUrl = `https://wa.me/?text=${encodedText}`;
-        const emailUrl = `mailto:?subject=Shared Prompt&body=${encodedText}`;
-        const choice = confirm(
-          "Click OK to share via WhatsApp, Cancel for Email"
-        );
+    if (!prompt) return;
 
-        // Send GA event after determining method
-        sendGAEvent('share_prompt', {
-          event_category: 'prompt_management',
-          event_label: choice ? 'whatsapp' : 'email',
-          prompt_id: promptId
-        });
+    const textToShare = prompt.content || prompt.title || "Check out this prompt!";
+    const encodedText = encodeURIComponent(textToShare);
 
-        if (choice) {
-          window.open(whatsappUrl, "_blank");
-        } else {
-          window.open(emailUrl, "_blank");
-        }
+    // Web Share API
+    if (navigator.share) {
+      navigator
+        .share({ title: "Shared Prompt", text: textToShare })
+        .catch((err) => console.error("Share failed:", err));
+      return;
+    }
+
+    // Falls bereits ein Menü offen ist → löschen
+    const oldMenu = document.querySelector(".share-menu");
+    if (oldMenu) oldMenu.remove();
+
+    // Menü erstellen
+    const shareMenu = document.createElement("div");
+    shareMenu.className = "share-menu";
+    Object.assign(shareMenu.style, {
+      position: "absolute",
+      top: `${event.clientY + 10}px`,
+      left: `${event.clientX - 120}px`,
+      background: "#fff",
+      border: "1px solid #ddd",
+      borderRadius: "10px",
+      boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+      padding: "8px",
+      zIndex: "9999",
+      color: "#000",
+      minWidth: "180px",
+      fontFamily: "system-ui, sans-serif",
+    });
+
+    const platforms = [
+      { name: "WhatsApp", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/whatsapp.svg", url: `https://wa.me/?text=${encodedText}` },
+      { name: "Telegram", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/telegram.svg", url: `https://t.me/share/url?text=${encodedText}` },
+      { name: "Twitter / X", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/x.svg", url: `https://twitter.com/intent/tweet?text=${encodedText}` },
+      { name: "Facebook", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/facebook.svg", url: `https://www.facebook.com/sharer/sharer.php?u=${encodedText}` },
+      { name: "LinkedIn", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg", url: `https://www.linkedin.com/shareArticle?mini=true&url=${encodedText}` },
+      { name: "Email", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/gmail.svg", url: `mailto:?subject=Shared Prompt&body=${encodedText}` },
+    ];
+
+    // Buttons erzeugen
+    platforms.forEach((platform) => {
+      const btn = document.createElement("div");
+      Object.assign(btn.style, {
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        cursor: "pointer",
+        padding: "6px 10px",
+        borderRadius: "6px",
+        fontSize: "14px",
+      });
+
+      const icon = document.createElement("img");
+      icon.src = platform.icon;
+      icon.width = 18;
+      icon.height = 18;
+
+      const text = document.createElement("span");
+      text.textContent = platform.name;
+
+      btn.append(icon, text);
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        window.open(platform.url, "_blank");
+        shareMenu.remove();
+      });
+
+      btn.addEventListener("mouseover", () => (btn.style.background = "#f5f5f5"));
+      btn.addEventListener("mouseout", () => (btn.style.background = "transparent"));
+
+      shareMenu.appendChild(btn);
+    });
+
+    document.body.appendChild(shareMenu);
+
+    // Klick außerhalb → Menü schließen
+    window.onclick = function (e) {
+      if (!shareMenu.contains(e.target)) {
+        shareMenu.remove();
+        window.onclick = null; // Event-Handler wieder entfernen
       }
-    } else {
-      console.error(`Prompt with ID ${promptId} not found`);
-    }
+    };
   });
-
-  dropdown.style.display = "none";
-  isDropdownOpen = false;
-  if (currentButton) {
-    if (currentButton.closest("tr") === hoveredRow) {
-      keepActionButtonVisible(currentButton);
-    } else {
-      hideActionButton(currentButton);
-    }
-  }
-  currentButton = null;
 });
+
+
+
+
+
+// Animation Styles hinzufügen (einmalig)
+const style = document.createElement("style");
+style.textContent = `
+  .fade-in {
+    opacity: 0;
+    transform: scale(0.95);
+    animation: fadeIn 0.2s forwards ease-out;
+  }
+  .fade-out {
+    opacity: 1;
+    transform: scale(1);
+    animation: fadeOut 0.2s forwards ease-in;
+  }
+  @keyframes fadeIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fadeOut {
+    to { opacity: 0; transform: scale(0.95); }
+  }
+`;
+document.head.appendChild(style);
 
 
 // Rename Prompt
@@ -1581,6 +1641,7 @@ function showFolder(folderId) {
       attachFolderTableEvents();
     }
 
+    // 🔥 Nur nicht-weggeworfene Prompts laden
     let promptsWithDetails = folder.promptIds
       .map((pid) => {
         const prompt = prompts[pid];
@@ -1588,47 +1649,35 @@ function showFolder(folderId) {
         console.warn(`Prompt with ID ${pid} not found in prompts`);
         return null;
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter(({ prompt }) => !prompt.isTrash); // <--- hier der entscheidende Filter
 
     promptsWithDetails = sortPrompts(promptsWithDetails);
     renderPrompts(promptsWithDetails, folderId);
 
     promptSearchInput.value = "";
     promptSearchInput.oninput = function () {
-      sendGAEvent('search_prompts', {
-  event_category: 'interaction',
-  event_label: 'prompt_search',
-  search_term: searchTerm
-});
       const searchTerm = this.value.trim().toLowerCase();
+      sendGAEvent('search_prompts', {
+        event_category: 'interaction',
+        event_label: 'prompt_search',
+        search_term: searchTerm
+      });
       if (!searchTerm) {
         renderPrompts(promptsWithDetails, folderId);
         return;
       }
       const scoredPrompts = promptsWithDetails.map(({ prompt, id }) => {
-        const titleDistance = levenshteinDistance(
-          prompt.title.toLowerCase(),
-          searchTerm
-        );
+        const titleDistance = levenshteinDistance(prompt.title.toLowerCase(), searchTerm);
         const descriptionDistance = prompt.description
           ? levenshteinDistance(prompt.description.toLowerCase(), searchTerm)
           : Infinity;
-        const contentDistance = levenshteinDistance(
-          prompt.content.toLowerCase(),
-          searchTerm
-        );
-        const minDistance = Math.min(
-          titleDistance,
-          descriptionDistance,
-          contentDistance
-        );
+        const contentDistance = levenshteinDistance(prompt.content.toLowerCase(), searchTerm);
+        const minDistance = Math.min(titleDistance, descriptionDistance, contentDistance);
         return { prompt, id, distance: minDistance };
       });
       scoredPrompts.sort((a, b) => a.distance - b.distance);
-      const filteredPrompts = scoredPrompts.map(({ prompt, id }) => ({
-        prompt,
-        id,
-      }));
+      const filteredPrompts = scoredPrompts.map(({ prompt, id }) => ({ prompt, id }));
       renderPrompts(filteredPrompts, folderId);
     };
   });
@@ -1688,64 +1737,72 @@ function showCategory(category) {
     let displayName = category;
 
     switch (category) {
-      case "category_favorites":
-        filteredPrompts = allPrompts.filter(
-          ({ prompt }) => prompt.isFavorite && !prompt.isTrash
-        );
-        displayName =
-          translations[currentLang]?.category_favorites || "Favorites";
-        break;
-      case "category_all_prompts":
-        filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.isTrash);
-        displayName =
-          translations[currentLang]?.category_all_prompts || "All Prompts";
-        break;
-      case "category_single_prompts":
-        filteredPrompts = allPrompts.filter(
-          ({ prompt }) => !prompt.folderId && !prompt.isTrash
-        );
-        displayName =
-          translations[currentLang]?.category_single_prompts ||
-          "Single Prompts";
-        break;
-      case "category_categorised_prompts":
-        filteredPrompts = allPrompts.filter(
-          ({ prompt }) => prompt.folderId && !prompt.isTrash
-        );
-        displayName =
-          translations[currentLang]?.category_categorised_prompts ||
-          "Categorised Prompts";
-        break;
-      case "category_dynamic_prompts":
-        filteredPrompts = allPrompts.filter(
-          ({ prompt }) =>
-            [...prompt.content.matchAll(/\{\{([^}]+)\}\}/g)].length > 0
-        );
-        displayName =
-          translations[currentLang]?.category_dynamic_prompts ||
-          "Dynamic Prompts";
-        break;
-      case "category_static_prompts":
-        filteredPrompts = allPrompts.filter(
-          ({ prompt }) => !/\{\{([^}]+)\}\}/g.test(prompt.content)
-        );
-        displayName =
-          translations[currentLang]?.category_static_prompts ||
-          "Static Prompts";
-        break;
-      case "category_unused_prompts":
-        filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.lastUsed);
-        displayName =
-          translations[currentLang]?.category_unused_prompts ||
-          "Unused Prompts";
-        break;
-      case "category_trash":
-        filteredPrompts = allPrompts.filter(({ prompt }) => prompt.isTrash);
-        displayName = translations[currentLang]?.category_trash || "Trash";
-        break;
-      default:
-        filteredPrompts = [];
-    }
+  case "category_favorites":
+    filteredPrompts = allPrompts.filter(
+      ({ prompt }) => prompt.isFavorite && !prompt.isTrash
+    );
+    displayName =
+      translations[currentLang]?.category_favorites || "Favorites";
+    break;
+
+  case "category_all_prompts":
+    filteredPrompts = allPrompts.filter(({ prompt }) => !prompt.isTrash);
+    displayName =
+      translations[currentLang]?.category_all_prompts || "All Prompts";
+    break;
+
+  case "category_single_prompts":
+    filteredPrompts = allPrompts.filter(
+      ({ prompt }) => !prompt.folderId && !prompt.isTrash
+    );
+    displayName =
+      translations[currentLang]?.category_single_prompts || "Single Prompts";
+    break;
+
+  case "category_categorised_prompts":
+    filteredPrompts = allPrompts.filter(
+      ({ prompt }) => prompt.folderId && !prompt.isTrash
+    );
+    displayName =
+      translations[currentLang]?.category_categorised_prompts ||
+      "Categorised Prompts";
+    break;
+
+  case "category_dynamic_prompts":
+    filteredPrompts = allPrompts.filter(
+      ({ prompt }) =>
+        !prompt.isTrash && [...prompt.content.matchAll(/\{\{([^}]+)\}\}/g)].length > 0
+    );
+    displayName =
+      translations[currentLang]?.category_dynamic_prompts || "Dynamic Prompts";
+    break;
+
+  case "category_static_prompts":
+    filteredPrompts = allPrompts.filter(
+      ({ prompt }) =>
+        !prompt.isTrash && !/\{\{([^}]+)\}\}/g.test(prompt.content)
+    );
+    displayName =
+      translations[currentLang]?.category_static_prompts || "Static Prompts";
+    break;
+
+  case "category_unused_prompts":
+    filteredPrompts = allPrompts.filter(
+      ({ prompt }) => !prompt.lastUsed && !prompt.isTrash
+    );
+    displayName =
+      translations[currentLang]?.category_unused_prompts || "Unused Prompts";
+    break;
+
+  case "category_trash":
+    filteredPrompts = allPrompts.filter(({ prompt }) => prompt.isTrash);
+    displayName = translations[currentLang]?.category_trash || "Trash";
+    break;
+
+  default:
+    filteredPrompts = [];
+}
+
 
     document.getElementById("folder-title").textContent = displayName;
     promptSearchInput.style.display =
@@ -2214,9 +2271,9 @@ function loadFolders() {
       }</li>`;
     } else {
       visibleFolders.forEach(([folderId, folder]) => {
-        const promptCount = (folder.promptIds || []).filter(
-          (id) => prompts[id] !== undefined
-        ).length;
+        const promptCount = (folder.promptIds || [])
+  .map(id => prompts[id])
+  .filter(p => p && !p.isTrash).length;
 
         const li = document.createElement("li");
         li.textContent = `📁 ${folder.name} (${promptCount})`;
@@ -3545,43 +3602,239 @@ saveBtnEdit.addEventListener("click", async () => {
   });
 
   // Share Icon Click Event
-  const shareIcon = document.getElementById("share-icon");
-  shareIcon.addEventListener("click", () => {
-sendGAEvent('Share PromptIn', {
-      event_category: 'share_promptIn',
-      event_label: 'sharePromptIn',
+  let activeShareMenu = null;
+
+const shareIcon = document.getElementById("share-icon");
+
+shareIcon.addEventListener("click", (event) => {
+  sendGAEvent("Share PromptIn", {
+    event_category: "share_promptIn",
+    event_label: "sharePromptIn",
+  });
+
+  const extensionLink =
+    "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje";
+  const shareText = `Check out this AI Prompt Manager: ${extensionLink}`;
+
+  // Falls bereits offen → schließen
+  if (activeShareMenu) {
+    activeShareMenu.classList.add("fade-out");
+    setTimeout(() => {
+      activeShareMenu.remove();
+      activeShareMenu = null;
+    }, 200);
+    return;
+  }
+
+  // Native Share API
+  if (navigator.share) {
+    navigator
+      .share({
+        title: "PromptIn – AI Prompt Manager",
+        text: "Check out this AI Prompt Manager:",
+        url: extensionLink,
+      })
+      .catch((err) => console.error("Share failed:", err));
+    return;
+  }
+
+  // Menü erstellen
+  const shareMenu = document.createElement("div");
+  shareMenu.className = "share-menu fade-in";
+  Object.assign(shareMenu.style, {
+    position: "absolute",
+    top: `${event.clientY + 10}px`,
+    left: `${event.clientX - 100}px`,
+    background: "#fff",
+    border: "1px solid #ccc",
+    borderRadius: "10px",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+    padding: "8px",
+    zIndex: "9999",
+    minWidth: "200px",
+    color: "#000",
+    fontFamily: "system-ui, sans-serif",
+  });
+
+  const platforms = [
+    // Global messengers
+    {
+      name: "WhatsApp",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/whatsapp.svg",
+      url: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+    },
+    // Email & general
+    {
+      name: "Email",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/gmail.svg",
+      url: `mailto:?subject=PromptIn%20Extension&body=${encodeURIComponent(shareText)}`,
+    },
+    {
+      name: "Copy Link",
+      icon: "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/link-45deg.svg",
+      url: "#",
+    },
+    {
+      name: "Telegram",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/telegram.svg",
+      url: `https://t.me/share/url?url=${encodeURIComponent(extensionLink)}&text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      name: "Snapchat",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/snapchat.svg",
+      url: `https://www.snapchat.com/scan?attachmentUrl=${encodeURIComponent(extensionLink)}`,
+    },
+    {
+      name: "Messenger",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/messenger.svg",
+      url: `fb-messenger://share?link=${encodeURIComponent(extensionLink)}`,
+    },
+
+    // Major social networks
+    {
+      name: "Twitter / X",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/x.svg",
+      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      name: "Facebook",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/facebook.svg",
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(extensionLink)}`,
+    },
+    {
+      name: "Instagram (copy link)",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/instagram.svg",
+      url: extensionLink,
+    },
+    {
+      name: "LinkedIn",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg",
+      url: `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(extensionLink)}&title=PromptIn%20AI%20Prompt%20Manager`,
+    },
+    {
+      name: "Reddit",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/reddit.svg",
+      url: `https://www.reddit.com/submit?url=${encodeURIComponent(extensionLink)}&title=${encodeURIComponent("PromptIn – AI Prompt Manager")}`,
+    },
+    {
+      name: "VK",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/vk.svg",
+      url: `https://vk.com/share.php?url=${encodeURIComponent(extensionLink)}&title=${encodeURIComponent("PromptIn – AI Prompt Manager")}`,
+    },
+    {
+      name: "Pinterest",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/pinterest.svg",
+      url: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(extensionLink)}&description=${encodeURIComponent(shareText)}`,
+    },
+    {
+      name: "Tumblr",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tumblr.svg",
+      url: `https://www.tumblr.com/widgets/share/tool?canonicalUrl=${encodeURIComponent(extensionLink)}&caption=${encodeURIComponent(shareText)}`,
+    },
+    {
+      name: "Weibo",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/sinaweibo.svg",
+      url: `http://service.weibo.com/share/share.php?url=${encodeURIComponent(extensionLink)}&title=${encodeURIComponent(shareText)}`,
+    },
+    {
+      name: "Line",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/line.svg",
+      url: `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(extensionLink)}`,
+    },
+    {
+      name: "QQ",
+      icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tencentqq.svg",
+      url: `https://connect.qq.com/widget/shareqq/index.html?url=${encodeURIComponent(extensionLink)}&title=${encodeURIComponent("PromptIn – AI Prompt Manager")}&desc=${encodeURIComponent(shareText)}`,
+    },
+  ];
+
+  // Menüelemente erzeugen
+  platforms.forEach((platform) => {
+    const btn = document.createElement("div");
+    btn.style.display = "flex";
+    btn.style.alignItems = "center";
+    btn.style.gap = "8px";
+    btn.style.cursor = "pointer";
+    btn.style.padding = "6px 10px";
+    btn.style.borderRadius = "6px";
+    btn.style.fontSize = "14px";
+    btn.style.transition = "background 0.15s ease";
+
+    const icon = document.createElement("img");
+    icon.src = platform.icon;
+    icon.alt = platform.name;
+    icon.width = 18;
+    icon.height = 18;
+
+    const text = document.createElement("span");
+    text.textContent = platform.name;
+
+    btn.appendChild(icon);
+    btn.appendChild(text);
+
+    btn.addEventListener("mouseover", () => (btn.style.background = "#f5f5f5"));
+    btn.addEventListener("mouseout", () => (btn.style.background = "transparent"));
+    btn.addEventListener("click", async () => {
+      if (platform.name === "Copy Link") {
+        await navigator.clipboard.writeText(extensionLink);
+        text.textContent = "Copied!";
+        setTimeout(() => (text.textContent = platform.name), 1200);
+      } else {
+        window.open(platform.url, "_blank");
+      }
+
+      shareMenu.classList.add("fade-out");
+      setTimeout(() => shareMenu.remove(), 200);
+      activeShareMenu = null;
     });
 
-    const extensionLink =
-      "https://chromewebstore.google.com/detail/promptin-ai-prompt-manage/pbfmkjjnmjfjlebpfcndpdhofoccgkje";
-
-    // Falls Browser die Web Share API unterstützt (meist mobil)
-    if (navigator.share) {
-      navigator
-        .share({
-          title: "PromptIn – AI Prompt Manager",
-          text: "Schau dir diese Extension an:",
-          url: extensionLink,
-        })
-        .catch((err) => {
-          console.error("Share failed:", err);
-        });
-    } else {
-      // Fallback: WhatsApp oder Email
-      const encodedText = encodeURIComponent(
-        `Schau dir diese Extension an: ${extensionLink}`
-      );
-      const whatsappUrl = `https://wa.me/?text=${encodedText}`;
-      const emailUrl = `mailto:?subject=PromptIn Extension&body=${encodedText}`;
-
-      const choice = confirm("OK to share on WhatsApp, Cancel for email");
-      if (choice) {
-        window.open(whatsappUrl, "_blank");
-      } else {
-        window.open(emailUrl, "_blank");
-      }
-    }
+    shareMenu.appendChild(btn);
   });
+
+  document.body.appendChild(shareMenu);
+  activeShareMenu = shareMenu;
+
+  // Klick außerhalb schließt Menü
+  setTimeout(() => {
+    document.addEventListener(
+      "click",
+      (e) => {
+        if (!shareMenu.contains(e.target) && e.target !== shareIcon) {
+          shareMenu.classList.add("fade-out");
+          setTimeout(() => {
+            shareMenu.remove();
+            activeShareMenu = null;
+          }, 200);
+        }
+      },
+      { once: true }
+    );
+  }, 0);
+});
+
+// Animationen
+const style = document.createElement("style");
+style.textContent = `
+  .fade-in {
+    opacity: 0;
+    transform: scale(0.95);
+    animation: fadeIn 0.2s forwards ease-out;
+  }
+  .fade-out {
+    opacity: 1;
+    transform: scale(1);
+    animation: fadeOut 0.2s forwards ease-in;
+  }
+  @keyframes fadeIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fadeOut {
+    to { opacity: 0; transform: scale(0.95); }
+  }
+`;
+document.head.appendChild(style);
+
+
 
   // Login & User Overlay
   const userIcon = document.getElementById("user-icon");

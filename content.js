@@ -1093,7 +1093,9 @@ dropdownContent.addEventListener("click", async (e) => {
 let folderValue = "";
 if (folderId) {
   folderValue = `folder:${folderId}`;
-} else if (item.dataset.isCategorised === "true") {
+} else if (item.dataset.folderId) {
+  folderValue = `folder:${item.dataset.folderId}`;
+} else if (item.dataset.hasFolder === "true") {
   folderValue = "categorised";
 } else {
   folderValue = "single";
@@ -1827,23 +1829,66 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
     return;
   }
 
-  function closeModal() {
-    modal.style.display = "none";
-    observer.disconnect();
-    try {
-      document.body.removeChild(shadowHost);
-    } catch (error) {
-      console.error("Fehler beim Entfernen des Shadow Hosts:", error);
-    }
+  // === Fokus-Verwaltung ===
+let focusRestoreElement = null;
+let lastFocusedInModal = null;
+
+// Öffnen des Modals
+function openModal() {
+  focusRestoreElement = document.activeElement; // aktives Element merken
+  modal.style.display = "block";
+
+  // Erstes Eingabefeld fokussieren (z. B. promptTitleInput)
+  promptTitleInput.focus();
+
+  // Fokus im Modal halten
+  requestAnimationFrame(keepFocusInModal);
+}
+
+// Schließen des Modals
+function closeModal() {
+  modal.style.display = "none";
+  observer.disconnect();
+
+  // Fokus wieder zurück ins ursprüngliche Feld
+  if (focusRestoreElement && focusRestoreElement.focus) {
+    setTimeout(() => focusRestoreElement.focus(), 50);
   }
 
-  setTimeout(() => {
-    modal.style.display = "block";
-    console.log("Modal display set to block");
-    if (promptTitleInput) {
-      promptTitleInput.focus();
+  try {
+    document.body.removeChild(shadowHost);
+  } catch (error) {
+    console.error("Fehler beim Entfernen des Shadow Hosts:", error);
+  }
+}
+
+// === Fokus innerhalb des Modals halten ===
+function keepFocusInModal() {
+  if (modal.style.display === "block") {
+    const active = shadowRoot.activeElement;
+    const focusable = Array.from(
+      shadowRoot.querySelectorAll('input, textarea, select, button')
+    ).filter(el => el.offsetParent !== null && !el.disabled);
+
+    // Wenn der Fokus das Modal verlässt → zurück auf letztes fokussiertes Element
+    if (!active || !modal.contains(active)) {
+      (lastFocusedInModal || focusable[0])?.focus();
     }
-  }, 100);
+
+    requestAnimationFrame(keepFocusInModal);
+  }
+}
+
+// Letztes fokussiertes Element im Modal merken
+shadowRoot.addEventListener("focusin", (e) => {
+  if (modal.contains(e.target)) {
+    lastFocusedInModal = e.target;
+  }
+});
+
+// Beispiel: Modal öffnen
+setTimeout(openModal, 100);
+
 
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
@@ -2025,9 +2070,9 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
           .join("")}
       </optgroup>
       <optgroup label="Categories">
-        <option value="categorised">Categorised Prompts</option>
-        <option value="single">Single Prompts</option>
-      </optgroup>
+  <option value="categorised">All prompts in folders</option>
+  <option value="single">Unassigned prompts (Single)</option>
+</optgroup>
     `;
 
       // Dropdown zum Hinzufügen zu einem Ordner (unchanged for this section)
@@ -2494,7 +2539,7 @@ combinedPromptPreview.addEventListener("keydown", (e) => {
        // Nur Daten ins Item packen – kein Event-Listener!
 item.dataset.promptId = prompt.promptId;
 item.dataset.folderId = prompt.folderId || "";
-item.dataset.isCategorised = !!prompt.isCategorised || false;
+item.dataset.hasFolder = !!prompt.folderId; // statt isCategorised
 item.dataset.title = prompt.title;
 item.dataset.content = prompt.content;
 
@@ -2562,72 +2607,74 @@ item.dataset.content = prompt.content;
   });
 
   replaceFolderSelect.addEventListener("change", async (e) => {
-    const selection = replaceFolderSelect.value;
-    replacePromptSelect.disabled = !selection;
-    replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
-    shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
+  const selection = replaceFolderSelect.value;
+  replacePromptSelect.disabled = !selection;
+  replacePromptSelect.innerHTML = '<option value="">Select a prompt</option>';
+  shadowRoot.getElementById("promptDiffOutput").innerHTML = "";
 
-    if (!selection) return;
+  if (!selection) return;
 
-    try {
-      const data = await new Promise((resolve, reject) => {
-        chrome.storage.local.get(["folders", "prompts"], (data) => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
-          } else {
-            resolve(data);
-          }
-        });
-      });
-
-      const folders = data.folders || {};
-      const prompts = data.prompts || {};
-
-      let promptList = [];
-
-      // Modified: Handle different selection types (folder, categorised, single)
-      // Explanation: We now check the selection type and populate prompts accordingly
-      if (selection.startsWith("folder:")) {
-        const folderId = selection.replace("folder:", "");
-        const folder = folders[folderId];
-        if (folder && Array.isArray(folder.promptIds)) {
-          promptList = folder.promptIds
-            .map((promptId) => prompts[promptId])
-            .filter((prompt) => prompt && !prompt.isDeleted);
+  try {
+    const data = await new Promise((resolve, reject) => {
+      chrome.storage.local.get(["folders", "prompts"], (data) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(data);
         }
-      } else if (selection === "categorised") {
-        // Handle Categorised Prompts
-        promptList = Object.values(prompts).filter(
-          (prompt) => prompt && prompt.isCategorised && !prompt.isDeleted
-        );
-      } else if (selection === "single") {
-        // Handle Single Prompts (prompts not linked to any folder)
-        promptList = Object.values(prompts).filter(
-          (prompt) => prompt && !prompt.folderId && !prompt.isDeleted
-        );
-      }
+      });
+    });
 
-      // Populate the prompt dropdown
+    const folders = data.folders || {};
+    const prompts = data.prompts || {};
+
+    let promptList = [];
+
+    if (selection.startsWith("folder:")) {
+      const folderId = selection.replace("folder:", "");
+      const folder = folders[folderId];
+      if (folder && Array.isArray(folder.promptIds)) {
+        promptList = folder.promptIds
+          .map((promptId) => prompts[promptId])
+          .filter((prompt) => prompt && !prompt.isDeleted);
+      }
+    } 
+    else if (selection === "categorised") {
+      // FIX: Alle Prompts, die in einem Ordner sind (folderId existiert)
+      promptList = Object.values(prompts).filter(
+        (prompt) => prompt && prompt.folderId && !prompt.isDeleted
+      );
+    } 
+    else if (selection === "single") {
+      // OK: Prompts ohne folderId
+      promptList = Object.values(prompts).filter(
+        (prompt) => prompt && !prompt.folderId && !prompt.isDeleted
+      );
+    }
+
+    // --- Befülle replacePromptSelect ---
+    if (promptList.length === 0) {
+      replacePromptSelect.innerHTML = '<option value="">No prompts available</option>';
+      replacePromptSelect.disabled = true;
+    } else {
       promptList.forEach((prompt) => {
         const option = document.createElement("option");
         option.value = prompt.promptId;
         const promptTitle = prompt.title || "Untitled Prompt";
-        option.textContent =
-          promptTitle.length > 50
-            ? promptTitle.slice(0, 50) + "..."
-            : promptTitle;
+        option.textContent = promptTitle.length > 50 
+          ? promptTitle.slice(0, 50) + "..." 
+          : promptTitle;
         option.title = promptTitle;
         replacePromptSelect.appendChild(option);
       });
-
-      // Enable the prompt select if there are prompts available
-      replacePromptSelect.disabled = promptList.length === 0;
-    } catch (error) {
-      console.error("Error fetching folder or prompt data:", error);
-      replacePromptSelect.innerHTML =
-        '<option value="">Error loading prompts</option>';
+      replacePromptSelect.disabled = false;
     }
-  });
+
+  } catch (error) {
+    console.error("Error fetching folder or prompt data:", error);
+    replacePromptSelect.innerHTML = '<option value="">Error loading prompts</option>';
+  }
+});
 
   combinePromptSelect.addEventListener("change", async (e) => {
     const promptId = combinePromptSelect.value;
