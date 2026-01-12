@@ -591,21 +591,21 @@ function moveToFolder(prompt, folderId, row) {
   closeSpan.innerHTML = "×";
 
   const headerTitle = document.createElement("h2");
-  headerTitle.textContent = "Prompt in Ordner verschieben";
+  headerTitle.textContent = "Move to folder immediately";
 
   const modalBody = document.createElement("div");
   modalBody.className = "modal-body";
 
   const form = document.createElement("form");
   form.innerHTML = `
-    <label>Zielordner:</label>
+    <label>Destination folder:</label>
     <select id="target-folder" required>
-      <option value="">Kein Ordner</option>
+      <option value="">No folder</option>
     </select>
-    <label>Neuer Ordner:</label>
-    <input type="text" id="new-folder-name" placeholder="Neuer Ordnername">
-    <button type="button" id="save-folder-btn" class="action-btn secondary-btn">Ordner speichern</button>
-    <button type="submit" class="action-btn">Verschieben</button>
+    <label>New folder:</label>
+    <input type="text" id="new-folder-name" placeholder="New folder name">
+    <button type="button" id="save-folder-btn" class="action-btn secondary-btn">Save folder</button>
+    <button type="submit" class="action-btn">Move</button>
   `;
 
   // Ordner-Liste laden und im Dropdown anzeigen
@@ -634,7 +634,7 @@ function moveToFolder(prompt, folderId, row) {
     saveFolderBtn.onclick = () => {
       const newFolderName = newFolderInput.value.trim();
       if (!newFolderName) {
-        alert("Bitte geben Sie einen Ordnernamen ein.");
+        alert("Please enter a folder name.");
         return;
       }
 
@@ -701,10 +701,10 @@ function moveToFolder(prompt, folderId, row) {
       chrome.storage.local.set({ folders, prompts }, () => {
         if (chrome.runtime.lastError) {
           console.error(
-            "Fehler beim Verschieben der Prompt:",
+            "Error moving the prompt:",
             chrome.runtime.lastError
           );
-          alert("Fehler beim Verschieben der Prompt.");
+          alert("Error moving the prompt.");
         } else {
           row.remove();
           const category =
@@ -733,7 +733,7 @@ function moveToFolder(prompt, folderId, row) {
 
 function moveToTrash(prompt, folderId, row) {
   if (
-    !confirm("Möchtest du diese Prompt wirklich in den Papierkorb verschieben?")
+    !confirm("Are you sure you want to move this prompt to the trash?")
   )
     return;
 
@@ -748,7 +748,7 @@ function moveToTrash(prompt, folderId, row) {
 
     // Prüfe, ob sie bereits im Papierkorb ist
     if (targetPrompt.isTrash) {
-      alert("Diese Prompt befindet sich bereits im Papierkorb.");
+      alert("This prompt is already in the trash.");
       return;
     }
 
@@ -772,10 +772,10 @@ function moveToTrash(prompt, folderId, row) {
     chrome.storage.local.set({ folders, prompts }, () => {
       if (chrome.runtime.lastError) {
         console.error(
-          "Fehler beim Verschieben in den Papierkorb:",
+          "Error moving to the recycle bin:",
           chrome.runtime.lastError
         );
-        alert("Fehler beim Verschieben der Prompt in den Papierkorb.");
+        alert("Error moving the prompt to the recycle bin.");
       } else {
         row.remove();
         const category = document.querySelector(".main-header h1").textContent;
@@ -929,7 +929,7 @@ function sharePrompt(prompt) {
         img.style.filter = '';
       }, 1600);
     }).catch(() => {
-      alert('Kopieren fehlgeschlagen');
+      alert('Copying failed');
     });
   });
 }
@@ -939,7 +939,7 @@ function toggleFavorite(promptId) {
   chrome.storage.local.get(["prompts"], (data) => {
     if (chrome.runtime.lastError) {
       console.error("Error reading prompts:", chrome.runtime.lastError);
-      alert("Fehler beim Laden der Prompts.");
+      alert("Error loading prompts.");
       return;
     }
 
@@ -978,8 +978,8 @@ function toggleFavorite(promptId) {
 
     chrome.storage.local.set({ prompts }, () => {
       if (chrome.runtime.lastError) {
-        console.error("Fehler beim Speichern:", chrome.runtime.lastError);
-        alert("Fehler beim Aktualisieren des Favoritenstatus.");
+        console.error("Error while saving:", chrome.runtime.lastError);
+        alert("Error updating favorite status.");
         return;
       }
 
@@ -1008,7 +1008,7 @@ function exportPrompt(promptId) {
     const fullPrompt = allPrompts[promptId];
 
     if (!fullPrompt) {
-      alert("Fehler: Prompt nicht gefunden.");
+      alert("Error: Prompt not found.");
       return;
     }
 
@@ -1078,7 +1078,7 @@ function copyPrompt(prompt) {
         chrome.storage.local.set({ prompts }, () => {
           if (chrome.runtime.lastError) {
             console.error(
-              "Fehler beim Aktualisieren von lastUsed:",
+              "Error updating lastUsed:",
               chrome.runtime.lastError
             );
           }
@@ -1148,8 +1148,8 @@ function renamePrompt(prompt, folderId, row) {
         prompts[promptId] = updatedPrompt;
         chrome.storage.local.set({ prompts }, () => {
           if (chrome.runtime.lastError) {
-            console.error("Fehler beim Umbenennen:", chrome.runtime.lastError);
-            alert("Fehler beim Umbenennen der Prompt.");
+            console.error("Error renaming:", chrome.runtime.lastError);
+            alert("Error renaming the prompt.");
           } else {
             titleCell.textContent = newName;
             prompt.title = newName; // Update lokale Kopie
@@ -1171,7 +1171,7 @@ function trashPrompt(prompt, folderId, row) {
   const promptId = prompt.promptId;
   if (!promptId) return;
 
-  if (!confirm("Möchtest du diese Prompt in den Papierkorb verschieben?"))
+  if (!confirm("Would you like to move this prompt to the trash?"))
     return;
 
   chrome.storage.local.get(["prompts"], (data) => {
@@ -1179,7 +1179,7 @@ function trashPrompt(prompt, folderId, row) {
     const targetPrompt = prompts[promptId];
 
     if (!targetPrompt) {
-      console.error("Prompt nicht gefunden:", promptId);
+      console.error("Prompt not found:", promptId);
       return;
     }
 
@@ -1206,10 +1206,10 @@ function trashPrompt(prompt, folderId, row) {
           "Fehler beim Verschieben in den Papierkorb:",
           chrome.runtime.lastError
         );
-        alert("Fehler beim Verschieben in den Papierkorb.");
+        alert("Error moving to the recycle bin.");
       } else {
         console.log(
-          `Prompt ${promptId} erfolgreich in den Papierkorb verschoben.`
+          `Prompt ${promptId} successfully moved to the trash.`
         );
         if (row) row.remove();
 
@@ -1224,7 +1224,7 @@ function removeFromTrash(prompt, folderId, row) {
   const promptId = prompt.promptId;
   if (!promptId) return;
 
-  if (!confirm("Möchtest du diese Prompt aus dem Papierkorb wiederherstellen?"))
+  if (!confirm("Do you want to restore this prompt from the trash?"))
     return;
 
   chrome.storage.local.get(["prompts"], (data) => {
@@ -1259,10 +1259,10 @@ function removeFromTrash(prompt, folderId, row) {
           "Fehler beim Wiederherstellen aus dem Papierkorb:",
           chrome.runtime.lastError
         );
-        alert("Fehler beim Wiederherstellen aus dem Papierkorb.");
+        alert("Error restoring from the recycle bin.");
       } else {
         console.log(
-          `Prompt ${promptId} erfolgreich aus dem Papierkorb wiederhergestellt.`
+          `Prompt ${promptId} successfully restored from the recycle bin.`
         );
         if (row) row.remove();
 
@@ -1275,7 +1275,7 @@ function removeFromTrash(prompt, folderId, row) {
 
 function deletePrompt(prompt, folderId, row) {
   console.log("ID: " + prompt.promptId);
-  if (!confirm("Möchtest du diese Prompt unwiderruflich löschen?")) return;
+  if (!confirm("Do you want to permanently delete this prompt?")) return;
 
   const promptId = prompt.promptId;
   if (!promptId) return;
@@ -1302,7 +1302,7 @@ function deletePrompt(prompt, folderId, row) {
           "Fehler beim Löschen der Prompt:",
           chrome.runtime.lastError
         );
-        alert("Fehler beim Löschen der Prompt.");
+        alert("Error deleting the prompt.");
       } else {
         row.remove();
         const category = document.querySelector(".main-header h1")?.textContent;
