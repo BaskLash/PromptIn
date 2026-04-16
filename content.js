@@ -1,7 +1,5 @@
 const extpayClient = ExtPay("promptin"); // ExtPay global verfügbar
 
-inputFieldTrigger();
-
 // Subfunction to handle creating a new prompt
 async function createNewPrompt(promptData, closeModal) {
   console.log("So werde ich gespeichert bei PromptSaver");
