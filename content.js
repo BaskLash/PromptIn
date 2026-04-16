@@ -1,107 +1,5 @@
 const extpayClient = ExtPay("promptin"); // ExtPay global verfügbar
 
-setInterval(() => {
-  // Always in use; That's why on top
-  const path = window.location.pathname;
-
-  // Only hide if the user is on the Home Feed
-  if (
-    window.location.hostname === "github.com" &&
-    path.startsWith("/copilot/c/")
-  ) {
-    addCopilotButton();
-  }
-  if (window.location.hostname === "chatgpt.com") {
-    addChatGPTButton();
-  }
-  if (
-  window.location.hostname === "gemini.google.com" &&
-  /\/app\//.test(path)
-) {
-  addGeminiButton();
-}
-
-  if (
-  window.location.hostname === "grok.com" &&
-  (path.includes("/c") || path.includes("/chat"))
-) {
-  addGrokButton();
-}
-
-  if (
-    (window.location.hostname === "blackbox.ai" ||
-      window.location.hostname === "www.blackbox.ai") &&
-    path.startsWith("/chat/")
-  ) {
-    addBlackBoxButton();
-  }
-  if (
-    (window.location.hostname === "claude.ai" ||
-      window.location.hostname === "www.claude.ai") &&
-    path.startsWith("/chat/")
-  ) {
-    addClaudeButton();
-  }
-  if (
-    (window.location.hostname === "copilot.microsoft.com" ||
-      window.location.hostname === "www.copilot.microsoft.com") &&
-    path.startsWith("/chats/")
-  ) {
-    addMicrosoftCopilotButton();
-  }
-  if (
-    (window.location.hostname === "chat.mistral.ai" ||
-      window.location.hostname === "www.chat.mistral.ai") &&
-    path.startsWith("/chat/")
-  ) {
-    addMistralButton();
-  }
-  if (
-    window.location.hostname === "duckduckgo.com" ||
-    window.location.hostname === "www.duckduckgo.com"
-  ) {
-    addDuckduckGoButton();
-  }
-  if (
-    window.location.hostname === "perplexity.ai" ||
-    (window.location.hostname === "www.perplexity.ai" &&
-      path.startsWith("/search/"))
-  ) {
-    addPerplexityButton();
-  }
-  if (
-    window.location.hostname === "chat.deepseek.com" ||
-    (window.location.hostname === "www.chat.deepseek.com" &&
-      path.startsWith("/a/chat/s/"))
-  ) {
-    addDeepSeekButton();
-  }
-  if (
-    window.location.hostname === "v0.dev" ||
-    (window.location.hostname === "www.v0.dev" && path.startsWith("/chat/"))
-  ) {
-    addV0DevButton();
-  }
-  if (
-    window.location.hostname === "deepai.org" ||
-    (window.location.hostname === "www.deepai.org" && path.startsWith("/chat/"))
-  ) {
-    addDeepaiButton();
-  }
-  if (
-    window.location.hostname === "chat.qwen.ai" ||
-    (window.location.hostname === "www.chat.qwen.ai" && path.startsWith("/c/"))
-  ) {
-    addQwenAiButton();
-  }
-  if (
-    window.location.hostname === "meta.ai" ||
-    (window.location.hostname === "www.meta.ai" && path.startsWith("/prompt/"))
-  ) {
-    addMetaAiButton();
-  }
-}, 3000); // Alle 3 Sekunden prüfen
-
 inputFieldTrigger();
 
 // Subfunction to handle creating a new prompt
@@ -2921,8 +2819,6 @@ function generateUUID() {
     return v.toString(16);
   });
 }
-
-document.addEventListener("DOMContentLoaded", removeElement);
 
 // Hilfsfunktion zur Generierung einer eindeutigen ID
 async function generateUniqueID(baseName) {

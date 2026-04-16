@@ -21,9 +21,6 @@
       "js": [
         "pages/ExtPay.js",
         "inputFieldTrigger.js",
-        "addButton.js",
-        "addPlatformClickEvent.js",
-        "removeGitHubElement.js",
         "content.js"
       ],
       "run_at": "document_start"
