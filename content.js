@@ -26,12 +26,57 @@ function getInputText(el) {
   return el.innerText || "";
 }
 
+// Sets text on any input field type, including React-controlled inputs.
+// React tracks input values via an internal _valueTracker. Setting .value
+// directly doesn't update this tracker, so React re-renders and overwrites
+// the value back to its state. The fix: use the native HTMLTextAreaElement
+// or HTMLInputElement prototype setter, which bypasses React's override,
+// then dispatch a real InputEvent that React's synthetic event system picks up.
 function setFieldText(el, text) {
   if (!el) return;
-  if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") el.value = text;
-  else if (el.isContentEditable) el.textContent = text;
-  else el.innerText = text;
-  el.dispatchEvent(new Event("input", { bubbles: true }));
+
+  el.focus();
+
+  if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
+    // Use the native prototype setter to bypass React's value tracker
+    const proto = el.tagName === "TEXTAREA"
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+    const nativeSetter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+
+    if (nativeSetter) {
+      nativeSetter.call(el, text);
+    } else {
+      // Fallback if descriptor is somehow missing
+      el.value = text;
+    }
+
+    // Dispatch InputEvent (not just Event) -- React, Vue, Angular all listen for this
+    el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+    // Some frameworks also need a change event
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+
+  } else if (el.isContentEditable) {
+    // For contenteditable: clear and insert via execCommand for best compat,
+    // falling back to textContent if execCommand is unavailable
+    el.focus();
+    // Select all existing content
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    // insertText triggers proper input events in most browsers
+    if (!document.execCommand("insertText", false, text)) {
+      // Fallback: manual set + event
+      el.textContent = text;
+      el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+    }
+  } else {
+    el.innerText = text;
+    el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+  }
 }
 
 function setCursorToEnd(el) {
@@ -256,13 +301,9 @@ function showDynamicVariablesModal(workflowId) {
         const activeInput = findInputField();
         if (!activeInput) { alert("No input field found."); return; }
 
-        if (activeInput.tagName === "TEXTAREA" || activeInput instanceof HTMLTextAreaElement) {
-          activeInput.value = p;
-        } else {
-          activeInput.innerText = p;
-        }
-        activeInput.dispatchEvent(new Event("input", { bubbles: true }));
-        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
+        // Use the same robust setter that handles React-controlled inputs
+        setFieldText(activeInput, p);
+        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 100)));
 
         // Click send button
         const sendButton = document.querySelector("[data-testid='send-button']") ||
