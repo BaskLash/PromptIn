@@ -1,5 +1,296 @@
 const extpayClient = ExtPay("promptin"); // ExtPay global verfügbar
 
+// =================================================================
+// Side panel message handler
+// =================================================================
+// Receives INSERT_PROMPT from background.js when user selects a
+// prompt or workflow in the side panel. Inserts text into the
+// platform's input field or opens the workflow modal.
+
+function findInputField() {
+  return (
+    document.getElementById("prompt-textarea") ||
+    document.getElementById("copilot-chat-textarea") ||
+    document.querySelector("textarea:not([readonly]):not([disabled])") ||
+    document.querySelector("[contenteditable='true']:not([readonly]):not([disabled])") ||
+    document.querySelector("[role='textbox']:not([readonly]):not([disabled])") ||
+    document.querySelector("[enterkeyhint='enter']:not([readonly]):not([disabled])") ||
+    null
+  );
+}
+
+function getInputText(el) {
+  if (!el) return "";
+  if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") return el.value || "";
+  if (el.isContentEditable) return el.textContent || "";
+  return el.innerText || "";
+}
+
+function setFieldText(el, text) {
+  if (!el) return;
+  if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") el.value = text;
+  else if (el.isContentEditable) el.textContent = text;
+  else el.innerText = text;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function setCursorToEnd(el) {
+  if (!el) return;
+  if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
+    el.selectionStart = el.selectionEnd = el.value.length;
+  } else if (el.isContentEditable) {
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "INSERT_PROMPT") {
+    // --- Workflow: open modal on the page ---
+    if (message.workflowId) {
+      showDynamicVariablesModal(message.workflowId);
+      return;
+    }
+
+    // --- Regular prompt: insert into input field ---
+    const inputField = findInputField();
+    if (!inputField) {
+      console.warn("No input field found for prompt insertion");
+      return;
+    }
+
+    const currentText = getInputText(inputField);
+    const slashIndex = currentText.indexOf("/");
+    const promptContent = message.promptContent || "";
+    let newText;
+
+    if (slashIndex !== -1) {
+      const before = currentText.substring(0, slashIndex).trim();
+      newText = before ? `${before} ${promptContent}` : promptContent;
+    } else {
+      newText = currentText ? `${currentText} ${promptContent}` : promptContent;
+    }
+
+    setFieldText(inputField, newText);
+    inputField.focus();
+    setCursorToEnd(inputField);
+
+    // Update usage stats
+    if (message.promptId) {
+      chrome.storage.local.get("prompts", (data) => {
+        if (chrome.runtime.lastError) return;
+        const prompts = data.prompts || {};
+        const prompt = prompts[message.promptId];
+        if (!prompt) return;
+
+        const hostname = window.location.hostname.replace(/^www\./, "");
+        const domainToModelMap = {
+          "chatgpt.com": "ChatGPT", "grok.com": "Grok",
+          "gemini.google.com": "Gemini", "claude.ai": "Claude",
+          "blackbox.ai": "BlackBox", "github.com": "GitHub Copilot",
+          "copilot.microsoft.com": "Microsoft Copilot",
+          "chat.mistral.ai": "Mistral", "duckduckgo.com": "DuckDuckGo AI Chat",
+          "perplexity.ai": "Perplexity", "chat.deepseek.com": "DeepSeek",
+          "deepai.org": "DeepAI", "chat.qwen.ai": "Qwen AI",
+        };
+        let modelUsed = "Unknown";
+        for (const [d, m] of Object.entries(domainToModelMap)) {
+          if (hostname.includes(d)) { modelUsed = m; break; }
+        }
+
+        prompt.lastUsed = Date.now();
+        prompt.usageCount = (prompt.usageCount || 0) + 1;
+        prompt.usageHistory = prompt.usageHistory || [];
+        prompt.usageHistory.push({ timestamp: Date.now(), modelUsed });
+        chrome.storage.local.set({ prompts: { ...prompts, [message.promptId]: prompt } });
+      });
+    }
+  }
+});
+
+// =================================================================
+// Workflow modal -- runs on the page to access platform input fields
+// =================================================================
+function showDynamicVariablesModal(workflowId) {
+  const inputField = document.getElementById("prompt-textarea");
+  if (inputField) inputField.value = "";
+
+  chrome.storage.local.get(["workflows", "prompts"], async function (data) {
+    if (chrome.runtime.lastError) {
+      alert("Failed to load workflow. Please try again.");
+      return;
+    }
+
+    const workflow = data.workflows?.[workflowId];
+    if (!workflow || !workflow.name || !Array.isArray(workflow.steps)) {
+      alert("Invalid workflow data. Please check the workflow configuration.");
+      return;
+    }
+
+    for (const step of workflow.steps) {
+      if (step.useCustomPrompt && step.customPrompt) {
+        step.effectivePrompt = step.customPrompt;
+      } else if (step.promptId) {
+        const prompt = data.prompts?.[step.promptId];
+        step.effectivePrompt = prompt?.content || "No prompt defined";
+      } else {
+        step.effectivePrompt = "No prompt defined";
+      }
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function hasDynVars(p) { return typeof p === "string" && /\{\{[^}]+\}\}/.test(p); }
+    function extractVars(p) { return (typeof p === "string" ? (p.match(/\{\{([^}]+)\}\}/g) || []) : []).map(m => m.slice(2, -2)); }
+    function initRep() { return workflow.steps.map(s => { const d = {}; if (hasDynVars(s.effectivePrompt)) extractVars(s.effectivePrompt).forEach(v => d[v] = ""); return d; }); }
+
+    // Create modal
+    const modal = document.createElement("div");
+    Object.assign(modal.style, {
+      display: "flex", position: "fixed", zIndex: "10001",
+      left: "0", top: "0", width: "100%", height: "100%",
+      backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center",
+      justifyContent: "center",
+    });
+
+    const modalContent = document.createElement("div");
+    Object.assign(modalContent.style, {
+      backgroundColor: "white", padding: "20px", color: "#333",
+      borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+      width: "90%", maxWidth: "80vw", maxHeight: "80vh", overflowY: "auto",
+      position: "relative", display: "flex", flexDirection: "column",
+    });
+
+    const header = document.createElement("div");
+    header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;";
+    header.innerHTML = `<h2 style="margin:0;font-size:24px;color:#1a1a1a;">Configure Workflow: ${escapeHTML(workflow.name)}</h2><span class="close" style="cursor:pointer;font-size:24px;color:#666;">x</span>`;
+
+    const body = document.createElement("div");
+    body.style.cssText = "flex:1;overflow:hidden;";
+
+    const stepsContainer = document.createElement("div");
+    stepsContainer.style.cssText = "display:flex;overflow-x:auto;scroll-behavior:smooth;padding:10px;background:#f9f9f9;border-radius:8px;margin-bottom:15px;";
+
+    const buttonsDiv = document.createElement("div");
+    buttonsDiv.style.cssText = "display:flex;gap:10px;justify-content:flex-end;";
+
+    const addRepBtn = document.createElement("button");
+    addRepBtn.textContent = "Add Repetition +";
+    addRepBtn.style.cssText = "padding:10px 20px;cursor:pointer;background:#28a745;color:white;border:none;border-radius:6px;";
+
+    const sendBtn = document.createElement("button");
+    sendBtn.textContent = "Execute Workflow";
+    sendBtn.style.cssText = "padding:10px 20px;cursor:pointer;background:#4a90e2;color:white;border:none;border-radius:6px;";
+
+    buttonsDiv.appendChild(addRepBtn);
+    buttonsDiv.appendChild(sendBtn);
+    body.appendChild(stepsContainer);
+    modalContent.appendChild(header);
+    modalContent.appendChild(body);
+    modalContent.appendChild(buttonsDiv);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    const repetitions = [initRep()];
+
+    function renderSteps() {
+      stepsContainer.innerHTML = "";
+      repetitions.forEach((repData, ri) => {
+        const repDiv = document.createElement("div");
+        repDiv.style.cssText = "background:white;padding:15px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.05);width:400px;margin-right:10px;flex-shrink:0;position:relative;overflow-y:auto;max-height:500px;";
+
+        const closeBtn = document.createElement("button");
+        closeBtn.textContent = "x";
+        closeBtn.style.cssText = "position:absolute;top:5px;right:5px;background:#dc3545;color:white;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;";
+        closeBtn.onclick = () => { repetitions.splice(ri, 1); if (!repetitions.length) modal.remove(); else renderSteps(); };
+        repDiv.appendChild(closeBtn);
+
+        const h3 = document.createElement("h3");
+        h3.textContent = `Execution ${ri + 1}`;
+        h3.style.cssText = "margin:0 0 10px;font-size:16px;";
+        repDiv.appendChild(h3);
+
+        workflow.steps.forEach((step, si) => {
+          const stepDiv = document.createElement("div");
+          stepDiv.style.cssText = "margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid #eee;";
+          stepDiv.innerHTML = `<h4 style="margin:0 0 5px;font-size:14px;">${escapeHTML(step.title || "Step " + (si + 1))}</h4><p style="font-size:12px;color:#666;margin:5px 0;">${escapeHTML(step.effectivePrompt)}</p>`;
+
+          if (hasDynVars(step.effectivePrompt)) {
+            extractVars(step.effectivePrompt).forEach(v => {
+              const inp = document.createElement("input");
+              inp.type = "text"; inp.placeholder = `Enter ${v}`;
+              inp.style.cssText = "display:block;width:90%;margin:5px 0;padding:8px;border:1px solid #ddd;border-radius:6px;";
+              inp.value = (repData[si] && repData[si][v]) || "";
+              inp.addEventListener("input", () => { if (!repData[si]) repData[si] = {}; repData[si][v] = inp.value; });
+              stepDiv.appendChild(inp);
+            });
+          }
+          repDiv.appendChild(stepDiv);
+        });
+        stepsContainer.appendChild(repDiv);
+      });
+    }
+
+    addRepBtn.onclick = () => { repetitions.push(initRep()); renderSteps(); };
+
+    sendBtn.onclick = async () => {
+      const executions = repetitions.map(rd => workflow.steps.map((step, si) => {
+        if (!step.effectivePrompt) return "";
+        if (!hasDynVars(step.effectivePrompt)) return step.effectivePrompt;
+        let t = step.effectivePrompt;
+        extractVars(step.effectivePrompt).forEach(v => { t = t.replace(`{{${v}}}`, (rd[si] && rd[si][v]) || `{${v}}`); });
+        return t;
+      }));
+      const allPrompts = executions.flat().filter(Boolean);
+      modal.remove();
+
+      for (const p of allPrompts) {
+        const activeInput = findInputField();
+        if (!activeInput) { alert("No input field found."); return; }
+
+        if (activeInput.tagName === "TEXTAREA" || activeInput instanceof HTMLTextAreaElement) {
+          activeInput.value = p;
+        } else {
+          activeInput.innerText = p;
+        }
+        activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
+
+        // Click send button
+        const sendButton = document.querySelector("[data-testid='send-button']") ||
+          document.querySelector("[data-mat-icon-name='send']")?.parentNode ||
+          document.querySelector("[type='submit']");
+        if (sendButton) sendButton.click();
+        else activeInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // Wait for AI to finish responding
+        const stops = ["[data-testid='stop-button']", "[data-mat-icon-name='stop']", "[data-label='Modell-Antwort stoppen']"];
+        let activeSel = null;
+        while (!activeSel) { for (const s of stops) { if (document.querySelector(s)) { activeSel = s; break; } } if (!activeSel) await new Promise(r => setTimeout(r, 100)); }
+        while (document.querySelector(activeSel)) await new Promise(r => setTimeout(r, 100));
+      }
+
+      chrome.storage.local.get(["workflows"], (d) => {
+        if (d.workflows?.[workflowId]) {
+          const updated = { ...d.workflows[workflowId], lastUsed: Date.now() };
+          chrome.storage.local.set({ workflows: { ...d.workflows, [workflowId]: updated } });
+        }
+      });
+    };
+
+    header.querySelector(".close").onclick = () => modal.remove();
+    renderSteps();
+  });
+}
+
 // Subfunction to handle creating a new prompt
 async function createNewPrompt(promptData, closeModal) {
   console.log("So werde ich gespeichert bei PromptSaver");

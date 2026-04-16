@@ -171,6 +171,8 @@ function selectPrompt(source) {
     promptId: source.promptId || null,
     category: source.category || "",
     workflowId: source.workflowId || null,
+  }).catch((err) => {
+    console.warn("Failed to send prompt selection (content script may not be ready):", err.message);
   });
 }
 
